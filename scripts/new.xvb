@@ -1,0 +1,413 @@
+'
+' New VB Script File - Created 11/28/2005
+'
+'Execute Code Glitch FOR A0FF-INTERCEPT ROM 102, ALL IN ONE
+'AUTO FIND VCC
+'USE ON REVS 105 AND UNDER. OR KNOW WHAT YOUR REPLACING.
+'YOU COULD LOOP YOUR CARD.
+'
+'Fine tune all values for your loader in
+'User selectable options
+'
+'Notes:
+'This script REQUIRES ND13 and it will check for it!!!
+'
+'THANKS TO: NO1B4ME, BobsBigBoy, lynard, dytene, silverman, and many others.
+'
+'Good Luck!
+'penga
+
+
+OPTION EXPLICIT
+Dim FileName
+Dim Dump
+Dim OutFile
+
+
+' You can set your own settings or use these ones.
+' remove ' to use these ones in script
+' CALL setupunlocker()
+
+Sub Main()
+    Dim BootStrapCmd04
+    Dim BSCLen
+    Dim BSCRSP
+    Dim BSACK
+    Dim CmdToGlitch
+    Dim CTGLen
+    Dim CTGRSP
+    Dim CS
+    Dim Bytes
+    Dim BytesRead
+    Dim Bytes1
+    Dim Bytes2
+    Dim DelayStart
+    Dim DelayLimit
+    Dim VCCStart
+    Dim VCCLimit
+    Dim GlitchType
+    Dim GlitchMax
+    Dim GlitchMin
+    Dim Delay
+    Dim VCC
+    Dim Dot
+    Dim ATRrsp
+    Dim loopctr
+    Dim AddrHiStart
+    Dim AddrHiEnd
+    Dim RomAddr
+    Dim PageSet
+    Dim trys
+    Dim mix
+
+    clearoutputwindow
+    Sc.Verbose = TRUE
+    loopctr = 0
+    if CheckChipVer <> 1 then
+        Sc.MsgBox("You need chip version ND13 to run this script" & VbCr & "Flash your Atmel chip with NewD13.hex")
+        Exit Sub
+     End if
+ Sc.Verbose = False    'Turn echo on - False = turns it off
+ VCCStart = &h2f       'h25  is standard, script is auto vcc dont change 90
+ VCCLimit = &h02       'h05  is standard, script is auto vcc dont change 02
+
+'===================================================
+'===================================================
+'User selectable options
+'===================================================
+'===================================================
+
+
+    DelayStart = &h320    'h385 is standard, try 375, 350 has been known to hit too.
+    DelayLimit = &h38a    'h385 is standard, try 395
+    GlitchMax = 8         '7 is standard - 7, 8, or 9
+    GlitchMin = 6          '7 is standard - 6, or 7
+    trys = 100          '100 is standard
+    mix = 0.5                '0.5 is standard - try 0.1 to 1.2 use for +-+-+-+- mix
+
+'**************************************************************************
+'**************************************************************************
+'*******        This Section  is FOR ADVANCE USERS ONLY          **********
+'**************************************************************************
+'**************************************************************************
+'This Packet can be changed however you like and the script will generate
+'the correct loader packet. Do not include the Checksum byte at the end.
+'Cmd 04 without checksum byte - Check will be calculated and inserted
+'Loads the RAM dumper code to EMM buffer
+'
+'Dumper and serial code curtesy of Lynard - Thank you
+'
+'-------------------------------------------------------------------------------
+  'NO1'S BOOTSTRAP
+'------------------------------------------------
+' ROM/EEPROM DUMPER!!!
+' all in one
+' add $8219:17 63 A1 CA 26 03 CC 60 EC CC 7D 99
+' $317F write our bug in table 60DB 8219
+  BootStrapCmd04 = "21 00 6D A0 CA 00 00 67 04 65 01 01 86 00 AA 9D 9D 9D 9D 9D 9D 9D 9D A6 4B B7 6B 18 64 CD 7C 16 82 19 BE 0C A6 4B B7 6B 18 64 CD 7C 16 31 7F A5 04 CC 7A 99 60 DB 82 19 9D 9D 9D 9D 9D 9D 9D 9D 9D 9D 9D 9D 9D 9D 9D 9D 9D 9D 9D BC 80 17 63 A1 CA 26 03 CC 60 EC CC 7D 99 9D 9D 9D 9D 9D 9D 9D 9D 9D 9D 9D 9D 9D 9D 9D 9D 9D 9D 9D 9D BC 80 02"
+'--------------------------------------------------------------------------------------
+    BSCRSP = 8      'Expected Response = 12 00 04 84 00 90 00 02
+                    'Length = 8 bytes
+    BSACK = &H80    'Boot Strap running Acknowledge byte
+'**************************************************************************
+'**************************************************************************
+'**************************************************************************
+'This Packet can be changed however you like and the script will generate
+'the correct loader packet.
+'The acutal packet that we're going to glitch without Checksum
+    CmdToGlitch = "21 00 08 A0 CA 00 00 02 15 00 86"
+    CTGRSP =  6    'Length in bytes of expected response WERE LOOKING FOR 6F
+             'Expected Response = 12 40 02 6F 00 3F
+'**************************************************************************
+'**************************************************************************
+'**************************************************************************
+
+    BSCLen = GetPacketLen(BootStrapCmd04)
+
+    if (BSCLen AND 1) = 1 then
+        Sc.MsgBox("Bad BootStrapCmd04 packet")
+        sc.print BSCLen
+        Exit Sub
+     End if
+
+    BSCLen = BSCLen / 2
+    BSCLen = BSCLen + 1                     'add Checksum byte to packet length
+
+    CTGLen = GetPacketLen(CmdToGlitch)
+
+    if (CTGLen AND 1) = 1 then
+        Sc.MsgBox("Bad CmdToGlitch packet")
+        Exit Sub
+     End if
+
+    CTGLen = CTGLen / 2
+    CTGLen = CTGLen + 1                     'add Checksum byte to packet length
+
+    CS=DoCheckSum (BootStrapCmd04)          'Calculates BootStrapCmd04 Checksum
+    BootStrapCmd04 = BootStrapCmd04 + CS    'add checksum to packet
+
+    CS=DoCheckSum (CmdToGlitch)             'Calculates packet Checksum
+    CmdToGlitch = CmdToGlitch + CS          'add checksum to packet
+
+    GlitchType = GlitchMax
+    Delay = DelayStart
+    VCC = VCCStart
+    Sc.Print "Let the 102 Glitching begin...." & VbCr
+    Dot = 0                                 'Dot progress counter if Sc.Verbose = False
+
+    Do
+        Do
+            sc.delay(5)
+        Sc.Write("A2")
+            Sc.Write("B0" & HexString(VCC, 2))  'set glitch VCC
+        sc.delay(10)
+            Sc.Write("06 10 01 03 50 1A 00")    'reset card
+            Sc.Read(02)
+
+            ATRrsp = Sc.Getbyte(1)
+            if ATRrsp = &h1B then               'check card reset ok
+                Sc.Read(ATRrsp)
+                Exit Do
+            else
+                print VbCr & "NO ATR Rcv'd, trying 2nd ATR..."
+                sc.delay(100)
+                Sc.Write("B0" & HexString(VCC, 2))  'set glitch VCC
+                sc.delay(30)
+            Sc.Write("08 10 01 01 01 03 50 1A 00")    'reset card
+                Sc.Read(02)
+                ATRrsp = Sc.Getbyte(1)
+                if ATRrsp = &h1B then               'check card reset ok
+                    Sc.Read(ATRrsp)
+                Exit Do
+                else
+                    print VbCr & "NO 2nd ATR Rcv'd, continue reset, back to first atr" & VbCr
+                'exit Do
+            sc.delay(100)
+            Sc.Write("04 01 01 01 00")    'reset card
+            end if
+            End if
+        loop
+
+      Sc.Write("02 15 00")                    'set Tx/Rx to 32 cycles per bit
+        Sc.Read(02)
+      sc.delay(5)
+'Send dirty EMM (Cmd04) with our ram dump code
+        Sc.Write(HexString((BSCLen + 5), 2) & "60" & HexString((BSCLen - 1), 2) & BootStrapCmd04 &  "50" & HexString((BSCRSP - 1), 2) & "00")
+        Sc.Read(2)
+
+        Bytes = Sc.Getbyte(1)
+        if Bytes > 0 then
+            Bytes = Sc.Read(Bytes)
+            Bytes1 = Sc.Getbyte(0)
+            Bytes2 = Sc.Getbyte(5)
+            '--------check response to make sure = 12 00 04 97 00 90 00 11--------
+            if Bytes1 = &h12 and Bytes2 = &h90 then
+                sc.verbose = false
+            else
+                print VbCr & "Bad CMD04 response......" & VbCr
+                exit sub
+            end if
+        else
+            print VbCr & "Bad CMD04 response....." & VbCr
+            exit sub
+        End if
+
+    sc.delay(20)
+'loader glitch packet
+    Sc.Write(HexString((CTGLen + 10), 2) & "15 60" & HexString((CTGLen - 1), 2) & CmdToGlitch &  "20" & HexString(Delay, 4)  & HexString(GlitchType, 2) & "50" & HexString((CTGRSP - 1), 2) & "00")
+
+        Sc.Read(2)
+        Bytes = Sc.Getbyte(1)
+        if Bytes > 4 then
+            Bytes = Sc.Read(Bytes)
+            Bytes1 = Sc.Getbyte(3)
+        Bytes2 = Sc.Getbyte(0)
+            '--------check response to SEE IF = 6F 00--------
+            if Bytes1 = &h6F then
+                        sc.verbose = true
+                        Sc.Write("A1")
+                        Sc.Print VbCr
+                        Sc.Print "===========================================" & VbCr
+                        Sc.Print "Glitch Success!! A0FF-INTERCEPT IS ON" & VbCr
+                        Sc.Print "BootLoader 6F 00 RSP Received!!" & VbCr
+                        Sc.Print "VCC = "& HexString(VCC, 2) & "  (~" & ((5/255) * VCC) &" vdc)" & VbCr
+                        Sc.Print "Glitch Delay = "& HexString(Delay, 4) & VbCr
+                        Sc.Print "Glitch type " & HexString(GlitchType, 2) & VbCr
+                        Sc.Print "===========================================" & VbCr
+                        Exit Sub
+
+            end if
+        if Bytes2 <> &h12 then
+            Vcc = Vcc + .25
+              print "+"
+        end if
+        else    'if bytes >4
+           print "NoRsp+"
+         VCC = VCC + .75
+        End if  'if bytes >4
+
+        VCC = VCC - mix
+      print "-"
+      GlitchType = GlitchType - 1
+
+            if VCC < VCCLimit then
+                VCC = &h2f
+              print " hit VCCLimit, back up to &h2f vcc "
+            end if
+        if GlitchType < GlitchMin then
+                GlitchType = Glitchmax
+            end if
+
+
+    loopctr = loopctr +1
+    if loopctr > trys then
+        clearoutputwindow
+        loopctr = 0
+      Delay = Delay + 1
+        if Delay > DelayLimit then
+                    Delay = DelayStart
+            end if
+      Sc.Print "Let the 102 Glitching continue...." & VbCr
+      Sc.Print " LETS TRY NEW DELAY " & VbCr
+        Sc.Print "Glitch Delay = "& HexString(Delay, 4) & VbCr
+        Sc.Print "VCC = "& HexString(VCC, 2) & VbCr
+      Sc.Print "  " & VbCr
+    end if
+
+
+    loop
+
+End Sub
+
+Function GetPacketLen (Packet)
+ Dim Length
+ Dim Temp
+ Dim PK
+ Dim i
+
+ PK = ""
+
+ Length = Len(Packet)                   'get packet length with spaces
+
+ for i = 1 to Length
+    Temp = Mid(Packet, i, 1)
+    if Temp <> " " then                 'remove all spaces in packet
+        PK = PK + Temp
+    End if
+ next
+
+ GetPacketLen = Len(PK)                 'return packet length without spaces
+
+End Function
+
+
+Function DoCheckSum (Packet)
+ Dim Temp
+ Dim Length
+ Dim PK
+ Dim CheckSum
+ Dim i
+
+ PK=""
+
+ Length = Len(Packet)           'get packet length with spaces
+
+ for i = 1 to Length
+    Temp = Mid(Packet, i, 1)
+    if Temp <> " " then         'remove all spaces in packet
+        PK = PK + Temp
+    End if
+ next
+
+ Length = Len(PK)               'get packet length without spaces
+
+ CheckSum = 0
+
+ for i = 0 to Length
+     i=i+1                      'Simulate Step 2 in VB scripting
+     Temp = Mid(PK, i, 2)
+     CheckSum = CheckSum XOR Hex2Dec(Temp)  'Calc Checksum
+ next
+
+ DoCheckSum = HexString(CheckSum, 2) 'convert checksum to a hex strimg and return it to caller
+
+End Function
+
+Function Hex2Dec(HexNumber)
+    ' This function takes 1 argument, a string containing a hex value of any digit length
+    ' and returns the decimal equivalent
+    Dim DecimalValue
+    Dim DigitCount
+    Dim Digit
+    Dim HexDigit
+
+    HexNumber = Replace(UCase(HexNumber), " ", "")
+    DigitCount = Len(HexNumber)
+
+    For Digit = 1 To DigitCount
+
+        HexDigit = Mid(HexNumber, Digit, 1)
+        If Asc(HexDigit) < 58 Then
+            DecimalValue = HexDigit * 16 ^ (DigitCount - Digit)
+        Else
+            DecimalValue = (Asc(HexDigit) - 55) * 16 ^ (DigitCount - Digit)
+        End If
+        Hex2Dec = Hex2Dec + DecimalValue
+    Next
+
+End Function
+
+Function HexString(Number,Length)
+    ' This function takes 2 arguments, a number and a length.  It converts the decimal
+    ' number given by the first argument to a Hexidecimal string with its length
+    ' equal to the number of digits given by the second argument
+    Dim RetVal
+    Dim CurLen
+    RetVal=Hex(Number)
+    CurLen=Len(RetVal)
+    If CurLen<Length Then
+        RetVal=String(Length-CurLen,"0") & RetVal
+    End If
+    HexString=RetVal
+End Function
+
+Function CheckChipVer()
+
+    CheckChipVer = 1
+
+    sc.write("90")
+    delay(80)
+
+    if sc.read(4) <> 4 then
+        CheckChipVer = 0
+        Exit Function
+     End if
+
+    if getbyte(0) <> &H4E then CheckChipVer = 0
+    if getbyte(1) <> &H44 then CheckChipVer = 0
+    if getbyte(2) <> &H31 then CheckChipVer = 0
+    if getbyte(3) <> &H33 then CheckChipVer = 0
+
+End Function
+Function setupunlocker()
+sc.print "________________Setting up WinExplorer_________________" & VbCr
+Wx.BaudRate = 115200
+Wx.ResetBaudRate = 115200
+Wx.Parity = 0 ' 0 = None, 1 = Odd, 2 = Even, 3 = Mark, 4 = Space
+Wx.StopBits = 0 ' 0 = 1 stop bit, 1 = 1.5 stop bits, 2 = 2 stop bits
+Wx.DTRControl = 0 ' Initial state of DTR 0 = off, 1 = on
+Wx.RTSControl = 1 ' Initial state of RTS 0 = off, 1 = on
+Wx.ResetDelay = 100 ' In microseconds
+Wx.ByteDelay = 10 ' In microseconds
+Wx.RxByteTimeout = 500 ' In milliseconds
+Wx.ResetMode = 2 ' 0 = No Resets, 1 = ISO Reset (Expect a ATR), 2 = Device Reset (No ATR)
+Wx.ResetLine = 1 ' 0 = Toggle RTS for Reset, 1 = Toggle DTR for Reset
+Wx.ByteConvention = 1 ' 0 = Inverse, 1 = Direct
+Wx.FlushEchoByte = 0 ' 0 = no flush, 1 = flush - A Phoenix interface will echo each byte transmitted.
+Wx.FlushBeforeWrite = 1 ' 0 = no flush, 1 = flush - Flush the receive buffer before each write to strip off Null bytes.
+Wx.IgnoreTimeouts = 1 ' 0 = Abort script on a receive timeout, 1 = Ignore all receive timeouts
+Wx.ResetAfterTimeout = 0 ' 0 = Don't reset after a timeout, 1 = do a reset after a timeout - Not used if "IgnoreTimeouts=0"
+Wx.LogTransactions = 0 ' 0 = Don't log transactions, 1 = log transactions
+Wx.DisplayUSW = 0 ' Display USW after script complete 0 = no, 1 = yes
+Wx.DisplayFuse = 0 ' Display Fuse after script complete 0 = no, 1 = yes
+End function

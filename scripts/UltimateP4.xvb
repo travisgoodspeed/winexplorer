@@ -1,0 +1,462 @@
+' Partial Dump Read Write Your P4 eEprom.
+'                      \\|//
+'                      (o-o)
+' ****************-o00--(_)--00o-****
+' *****  U L T I M A T E  - P4   ****
+' *****     Use P3 Settings      ****
+' ***** Disable Log Transactions ****
+' *****   ® Starmon  4-18-2004   ****
+' ***********************************
+'Requirements: Winexplorer 5.0 and ISO Programer!!!
+'Please feel free to experiment with this script. This is not mine I've just been
+'Playing and geting stuff to Work... Need to add Unmarry and clear PPV for subbed cards.
+' Directions
+' Change settings to DSS P3 (HU) settings.
+'
+' Click program settings tab and "uncheck" log transactions.
+'
+' Click ok.
+'
+' Insert P4 card into programmer.
+'
+' RUN SCRIPT!!
+'
+'
+'
+'
+'Option Explicit
+Sub Main()
+Dim ErrorString
+Dim PromptString
+Dim Choice
+Dim MenuPrompt
+Dim I
+Sc.Verbose = True
+Sc.Reset
+If Sc.Version < 3.2 Then
+ErrorString = "You need version 3.2 or greater of WinExplorer to run this script"
+Call Sc.MsgBox(ErrorString, vbCritical + vbOKOnly, "Newer version of WinExplorer needed")
+Exit Sub
+End If
+Sc.ByteDelay = 60000
+Do
+MenuPrompt = " Use - P3 Settings [Disable Log Transactions!] " & vbCrLf & vbCrLf
+MenuPrompt = MenuPrompt & "1: Dump 02" & vbCrLf
+MenuPrompt = MenuPrompt & "2: Dump 06" & vbCrLf
+MenuPrompt = MenuPrompt & "3: Dump 12" & vbCrLf
+MenuPrompt = MenuPrompt & "4: Dump 2A" & vbCrLf
+MenuPrompt = MenuPrompt & "5: Dump 28" & vbCrLf
+MenuPrompt = MenuPrompt & "6: Dump 36" & vbCrLf
+MenuPrompt = MenuPrompt & "7: Dump 5A" & vbCrLf
+MenuPrompt = MenuPrompt & "8: Dump 58" & vbCrLf
+MenuPrompt = MenuPrompt & "9: Dump 5E_0B" & vbCrLf
+MenuPrompt = MenuPrompt & "10: Read PPV Info" & vbCrLf
+MenuPrompt = MenuPrompt & "11: Read Password" & vbCrLf
+MenuPrompt = MenuPrompt & "12: Read Spending Limit" & vbCrLf
+MenuPrompt = MenuPrompt & "13: Read Rating Limit" & vbCrLf
+MenuPrompt = MenuPrompt & "14: Set Password" & vbCrLf
+MenuPrompt = MenuPrompt & "15: Set Spending Limit" & vbCrLf
+MenuPrompt = MenuPrompt & "16: Set Rating Limit" & vbCrLf
+MenuPrompt = MenuPrompt & " X : Exit"
+Choice = Sc.InputBox(MenuPrompt, "Ultimate P4")
+Select Case Choice
+Case "1"
+Call SendIns02()
+Case "2"
+Call SendIns06()
+Case "3"
+Call SendIns12()
+Case "4"
+Call SendIns2A()
+Case "5"
+Call SendIns28()
+Case "6"
+Call SendIns36()
+Case "7"
+Call SendIns5A()
+Case "8"
+Call SendIns58()
+Case "9"
+Call SendIns5E_0B()
+Case "10"
+Call ReadPPV()
+Case "11"
+Call ReadPass()
+Case "12"
+Call ReadSpending()
+Case "13"
+Call ReadRating()
+Case "14"
+Call WritePass()
+Case "15"
+Call WriteSpending()
+Case "16"
+Call WriteRating()
+Case "X", "x", ""
+Exit Sub
+End Select
+Loop While True = True
+End Sub
+Sub SendIns02()
+Sc.Write("48 02 00 00 08")
+Sc.Read(1)
+Sc.Read(8)
+Sc.Read(2)
+End Sub
+Sub SendIns06()
+Sc.Write("48 06 00 00 01")
+Sc.Read(1)
+Sc.Read(1)
+Sc.Read(2)
+End Sub
+Sub SendIns12()
+Sc.Write("48 12 00 00 08")
+Sc.Read(1)
+Sc.Read(8)
+Sc.Read(2)
+End Sub
+SuB SendIns2A()
+Sc.Write("48 2a 00 00 80")
+Sc.Print("Sending Ins. 2A")
+Sc.Read(1)
+Sc.Print("Echoes the 2a INS byte")
+Sc.Read(8)
+Sc.Print("Return of 48 12 00 00 08 (varies from card to card)")
+Sc.Read(1)
+Sc.Print("Fusebyte")
+Sc.Read(2)
+Sc.Print("Rating Limit")
+Sc.Read(2)
+Sc.Print("Spending Limit")
+Sc.Read(4)
+Sc.Print("Card activation timestamp")
+Sc.Read(3)
+Sc.Print("Always same 38 B0 04,maybe not.")
+Sc.Read(4)
+Sc.Print("Card# in hex less the last digit (XXXX XXXX XXX_)")
+Sc.Read(4)
+Sc.Print("Card# Xored with ird")
+Sc.Read(2)
+Sc.Print("USW <------update status word in hex (number of updates)")
+Sc.Read(2)
+Sc.Print("Deals with ppv purchases")
+Sc.Read(4)
+Sc.Print("Tier and expiry slot 1 of 80")
+Sc.Read(4)
+Sc.Print("Tier and expiry slot 2 of 80")
+Sc.Read(4)
+Sc.Print("tier and expiry slot 3 of 80")
+Sc.Read(4)
+Sc.Print("Tier and expiry slot 4 of 80")
+Sc.Read(4)
+Sc.Print("Tier and expiry slot 5 of 80")
+Sc.Read(4)
+Sc.Print("Tier and expiry slot 6 of 80")
+Sc.Read(4)
+Sc.Print("Tier and expiry slot 7 of 80")
+Sc.Read(4)
+Sc.Print("Tier and expiry slot 8 of 80")
+Sc.Read(4)
+Sc.Print("Tier and expiry slot 9 of 80")
+Sc.Read(4)
+Sc.Print("Tier and expiry slot 10 of 80")
+Sc.Read(4)
+Sc.Print("Tier and expiry slot 11 of 80")
+Sc.Read(4)
+Sc.Print("Tier and expiry slot 12 of 80")
+Sc.Read(12)
+Sc.Print("PPV tier slot #1 - DTV")
+Sc.Read(12)
+Sc.Print("PPV tier slot #2 - USSB")
+Sc.Read(12)
+Sc.Print("PPV tier slot #3 - unused")
+Sc.Read(12)
+Sc.Print("PPV tier slot #4 - unused")
+Sc.Read(2)
+Sc.Print(" sw1 /sw2")
+End Sub
+Sub SendIns28()
+Sc.Write("48 28 00 00 02")
+Sc.Read(1)
+Sc.Read(2)
+Sc.Read(2)
+End Sub
+Sub SendIns36()
+Sc.Write("48 36 00 00 FF")
+Sc.Print(" Sending Ins36")
+Sc.Read(1)
+Sc.Read(4)
+Sc.Read(4)
+Sc.Print("-Card Number In Hex")
+Sc.Delay(500)
+Sc.Read(8)
+Sc.Read(4)
+Sc.Delay(500)
+Sc.Print("-IRD If Virgin Hu , H ,or Married H")
+Sc.Read(1)
+Sc.Read(2)
+Sc.Print("-USW")
+Sc.Read(19)
+Sc.Read(4)
+Sc.Print("-IRD If Married Hu")
+Sc.Read(209)
+Sc.Read(2)
+End Sub
+Sub SendIns5A()
+Sc.Write("48 5A 00 01 08")
+Sc.Read(1)
+Sc.Delay(1000)
+Sc.Read(8)
+Sc.Read(2)
+End Sub
+Sub SendIns58()
+Sc.Write("48 58 00 00 17")
+Sc.Print("-Sending INS 58")
+Sc.Read(1)
+Sc.Read(1)
+Sc.Read(4)
+Sc.Print("-Card ID In Hex")
+Sc.Read(5)
+Sc.Read(1)
+Sc.Print("-Time Zone")
+Sc.Read(1)
+Sc.Read(1)
+Sc.Print("-Guide Byte")
+Sc.Read(5)
+Sc.Read(5)
+Sc.Read(2)
+End Sub
+Sub SendIns5E_0B()
+Sc.Write("48 5E 00 0b 17")
+Sc.Read(1)
+Sc.Read(1)
+Sc.Read(8)
+Sc.Read(8)
+Sc.Read(2)
+End Sub
+Sub ReadPPV()
+Sc.Write("48 5E 00 0E 4B")
+Sc.Read(1)
+Sc.Read(3)
+Sc.Read(3)
+Sc.Read(3)
+Sc.Read(3)
+Sc.Read(3)
+Sc.Read(3)
+Sc.Read(3)
+Sc.Read(3)
+Sc.Read(3)
+Sc.Read(3)
+Sc.Read(3)
+Sc.Read(3)
+Sc.Read(3)
+Sc.Read(3)
+Sc.Read(3)
+Sc.Read(3)
+Sc.Read(3)
+Sc.Read(3)
+Sc.Read(3)
+Sc.Read(3)
+Sc.Read(3)
+Sc.Read(3)
+Sc.Read(3)
+Sc.Read(3)
+Sc.Read(3)
+Sc.Read(2)
+End Sub
+Sub ReadPass()
+Dim password
+Sc.Write("48 52 00 00 04")
+Sc.Read(1)
+Sc.Read(4)
+password = (Sc.GetByte(02)* &h100) + Sc.GetByte(03)
+Sc.Print ("Password is : ") & (Password)
+Sc.Read(2)
+End Sub
+Sub ReadSpending()
+Dim Spending
+Sc.Write("48 2C 00 00 02")
+Sc.Read(1)
+Sc.Read(2)
+Spending = (Sc.GetByte(00)* &H100) + (Sc.GetByte(01))
+Sc.Print ("Spending Limit is : ") & (Spending)
+Sc.Read(2)
+End Sub
+Sub ReadRating()
+Dim Rating
+Dim Choice
+Sc.Write("48 2C 80 00 02")
+Sc.Read(1)
+Sc.Read(2)
+Choice = Sc.GetByte(00)
+Select Case Choice
+Case "0"
+Rating = "All Locked"
+Case "1"
+Rating = "NR"
+Case "2"
+Rating = "G"
+Case "4"
+Rating = "PG"
+Case "6"
+Rating = "PG-13"
+Case "7"
+Rating = "NR-Content"
+Case "9"
+Rating = "R"
+Case "11"
+Rating = "NR-Mature"
+Case "13"
+Rating = "NC-17"
+Case else
+Rating = " Invalid Value"
+End Select
+Sc.Print ("Rating Limit is : ") & (Rating)
+Sc.Read(2)
+End Sub
+Sub WritePass()
+Dim Password
+Password = EnterPassword()
+Sc.Write("48 48 00 00 04")
+Sc.Read(1)
+Sc.Write("00 00")
+Sc.Write(Password)
+Sc.Read(2)
+End Sub
+Function EnterPassword()
+Dim I
+Dim RetVal
+Dim Password
+Dim HexPass
+Dim DigitStr
+Dim GotInput
+Dim MenuPrompt
+Dim Choice
+GotInput = False
+Do
+MenuPrompt = "Use Two Hex Bytes" & vbCrLf & vbCrLf
+MenuPrompt = MenuPrompt & "Example" & vbCrLf
+MenuPrompt = MenuPrompt & "" & vbCrLf
+MenuPrompt = MenuPrompt & "07D0 = 2000" & vbCrLf
+MenuPrompt = MenuPrompt & "03E8 = 1000" & vbCrLf
+MenuPrompt = MenuPrompt & "04D2 = 1234" & vbCrLf
+Choice = Sc.InputBox(MenuPrompt, "Set Password")
+RetVal = Choice
+If IsHex(RetVal) And Len(RetVal) = 4 Then
+Password = RetVal
+DigitStr = Password
+HexPass = DigitStr
+For I = 1 To 2
+DigitStr = Password
+HexPass = DigitStr
+Next
+GotInput = True
+End If
+If RetVal = "" Then
+HexPass = "00 00"
+End If
+GotInput = True
+Loop Until GotInput = True
+EnterPassword = HexPass
+End Function
+Sub WriteSpending()
+Dim SpendingLimit
+SpendingLimit = EnterSpendingLimit()
+Sc.Write("48 2e 00 00 02")
+Sc.Read(1)
+Sc.Write(SpendingLimit)
+Sc.Read(2)
+End Sub
+Function EnterSpendingLimit()
+Dim I
+Dim RetVal
+Dim SpendingLimit
+Dim HexSpendingLimit
+Dim DigitStr
+Dim GotInput
+Dim MenuPrompt
+Dim Choice
+GotInput = False
+Do
+MenuPrompt = "Use Two Hex Bytes" & vbCrLf & vbCrLf
+MenuPrompt = MenuPrompt & "Example" & vbCrLf
+MenuPrompt = MenuPrompt & "" & vbCrLf
+MenuPrompt = MenuPrompt & " FDE8 = $650.00" & vbCrLf
+MenuPrompt = MenuPrompt & " 03E8 = $10.00" & vbCrLf
+Choice = Sc.InputBox(MenuPrompt, "Set Spending Limit")
+RetVal = Choice
+If IsHex(RetVal) And Len(RetVal) = 4 Then
+SpendingLimit = RetVal
+DigitStr = SpendingLimit
+HexSpendingLimit = DigitStr
+For I = 1 To 2
+DigitStr = SpendingLimit
+HexSpendingLimit = DigitStr
+Next
+GotInput = True
+End If
+If RetVal = "" Then
+HexSpendingLimit = "00 00"
+GotInput = True
+End If
+Loop Until GotInput = True
+EnterSpendingLimit = HexSpendingLimit
+End Function
+Sub WriteRating()
+Dim Rating
+Rating = EnterRating()
+Sc.Write("48 2E 80 00 02")
+Sc.Read(1)
+Sc.Write(Rating)
+Sc.Read(2)
+End Sub
+Function EnterRating()
+Dim I
+Dim RetVal
+Dim Rating
+Dim HexRating
+Dim DigitStr
+Dim GotInput
+Dim MenuPrompt
+Dim Choice
+GotInput = False
+Do
+MenuPrompt = "Use One Hex Byte" & vbCrLf & vbCrLf
+MenuPrompt = MenuPrompt & "Example" & vbCrLf
+MenuPrompt = MenuPrompt & "" & vbCrLf
+MenuPrompt = MenuPrompt & " 00 = All Locked" & vbCrLf
+MenuPrompt = MenuPrompt & " 01 = NR" & vbCrLf
+MenuPrompt = MenuPrompt & " 02 = G" & vbCrLf
+MenuPrompt = MenuPrompt & " 04 = PG" & vbCrLf
+MenuPrompt = MenuPrompt & " 06 = PG-13" & vbCrLf
+MenuPrompt = MenuPrompt & " 07 = NR-Content" & vbCrLf
+MenuPrompt = MenuPrompt & " 09 = R" & vbCrLf
+MenuPrompt = MenuPrompt & " 0B = NR-Mature" & vbCrLf
+MenuPrompt = MenuPrompt & " 0D = NC-17" & vbCrLf
+Choice = Sc.InputBox(MenuPrompt, "Set Rating Limit")
+RetVal = Choice
+If IsHex(RetVal) And Len(RetVal) = 2 Then
+Rating = RetVal
+DigitStr = Rating
+HexRating = DigitStr
+For I = 1 To 2
+DigitStr = Rating
+HexRating = DigitStr + "00"
+Next
+GotInput = True
+End If
+If RetVal = "" Then
+HexRating = "00 00"
+GotInput = True
+End If
+Loop Until GotInput = True
+EnterRating = HexRating
+End Function
+
+
+'TESTING
+'Sub UnmarryIRD()
+'  EEPROM(1120) = &h00
+ ' EEPROM(1121) = &h00
+  'EEPROM(1122) = &h00
+ ' EEPROM(1123) = &h01

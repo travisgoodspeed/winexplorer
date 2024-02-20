@@ -1,0 +1,134 @@
+' New VB Script File - Created 6/21/04
+
+'**************************************************************************************
+'Note: Command table incomplete please look at the firmware code. I was running out of
+'time and decide you guys are smart enough to figure the other commands by have a look
+'at the code.
+'Again Good luck all
+'no1b4me
+'
+'Instruction Table
+'01 Reset Card (Leaves card clock off)
+'02 4.608 MHz Card Clock Off
+'03 4.608 MHz Card Clock On
+'04 XX XX Delay $XXXX card clocks and glitch VCC on high phase with 1.152 MHz Card clock
+'05 XX XX Delay $XXXX card clocks and glitch VCC on high phase with 1.536 MHz Card clock
+'06 XX XX Delay $XXXX card clocks and glitch VCC on high phase with 2.304 MHz Card clock
+'07 XX XX Delay $XXXX card clocks and glitch VCC on high phase with 4.608 MHz Card clock
+'40 XX XX Delay $XXXX card clocks and glitch VCC on low phase with 1.152 MHz Card clock
+'50 XX XX Delay $XXXX card clocks and glitch VCC on low phase with 1.536 MHz Card clock
+'60 XX XX Delay $XXXX card clocks and glitch VCC on low phase with 2.304 MHz Card clock
+'70 XX XX Delay $XXXX card clocks and glitch VCC on low phase with 4.608 MHz Card clock
+
+
+'2X XX XX Delay $X XX XX Atmel clock cycles
+
+'80-BF Rx from card, instruction anded with $3f plus 1 bytes Ex. $BF = rx $40 bytes
+'C0-FF Tx to card, instruction anded with $3f plus 1 bytes Ex. $FF = Tx $40 bytes
+'**************************************************************************************
+'Commands
+'80 Check Card Presence - Sends 1 byte
+'90 Get chip ID - Sends 4 Bytes (DISH)
+'AX Set Bi-color Led - X = 0 off, X = 1 Red, X = 2 Green
+'B0 XX Set Glitch VCC - VCC = (5/255) * XX
+
+Option Explicit
+    Dim Bytes
+    Dim VCCStart
+    Dim VCCLimit
+    Dim VCC
+    Dim Delay
+    Dim DelayLimit
+    Dim DelayStart
+    Dim GlitchType
+    Dim TryCnt
+
+Sub Main()
+    DelayStart = &h2c
+    DelayLimit =  &h2d
+    VCCStart = &h73
+    VCCLimit = &h72
+    GlitchType = &h50
+    TryCnt = 1
+ '   TryLimit = 11
+    Delay = DelayStart
+    VCC = VCCStart
+
+
+    Sc.Print "Searching...." & VbCr
+    Do
+   if GlitchType <> &h50 then GlitchType = &h50
+    'Sc.Verbose = False
+    Sc.Write("B0" & HexString(VCC, 2))
+    Sc.Write("07 0e 02 10 01 03 9a 00")    'reset card
+    Sc.Read(02)
+
+    Bytes = Sc.Getbyte(1)
+    if Bytes > 0 then Sc.Read(Bytes)
+
+
+    Sc.Write("15 0e 10 15 c5 21 00 02 A0 28 AB 80 02"&  HexString(GlitchType, 2)  & HexString(Delay, 4) & "03 20 00 80 8a 00")
+    Sc.Read(02)
+
+    Bytes = Sc.Getbyte(1)
+    if Bytes > 0 then
+        Bytes = Sc.Read(Bytes)
+        if Bytes > 0 then Bytes = Sc.Getbyte(1)
+    else
+        Bytes = 0
+    End if
+
+    if Bytes = &H77 then
+        Sc.Print VbCr
+        Sc.Print "===========================================" & VbCr
+        Sc.Print "Success on Glitch Try #" & TryCnt & VbCr
+        Sc.Print "VCC = "& HexString(VCC, 2) & "  (~" & ((5/255) * VCC) &" vdc)" & VbCr
+        Sc.Print "Glitch Delay = "& HexString(Delay, 4) & VbCr
+        Sc.Print "Glitch type " & HexString(GlitchType, 2) & VbCr
+        if GlitchType < &h08 then
+            Sc.Print "Glitched on high clock phase" & VbCr
+        else
+            Sc.Print "Glitched on low clock phase" & VbCr
+        end if
+        Sc.Print "===========================================" & VbCr
+        Exit Sub
+    Else
+        TryCnt = TryCnt + 1
+        Sc.Print "."
+'        if TryCnt = TryLimit then
+'            TryCnt = 1
+'            Sc.Print HexString(Delay, 4) &" "& HexString(GlitchType, 2) & VbCr
+            VCC = VCC - 1
+            if VCC = VCCLimit then
+                VCC = VCCStart
+                Delay = Delay + 1
+                if Delay = DelayLimit then
+                    Delay = DelayStart
+                    if GlitchType < &h40 then
+                       GlitchType = GlitchType + 1
+                    else
+                       GlitchType = GlitchType + &h10
+                    end if
+                    if GlitchType = &h08 then GlitchType = &h40
+                    if GlitchType = &h80 then GlitchType = &h04
+                End if
+            End if
+'        End if
+    End if
+    loop
+
+End Sub
+
+Function HexString(Number,Length)
+    ' This function takes 2 arguments, a number and a length.  It converts the decimal
+    ' number given by the first argument to a Hexidecimal string with its length
+    ' equal to the number of digits given by the second argument
+    Dim RetVal
+    Dim CurLen
+    RetVal=Hex(Number)
+    CurLen=Len(RetVal)
+    If CurLen<Length Then
+        RetVal=String(Length-CurLen,"0") & RetVal
+    End If
+    HexString=RetVal
+End Function

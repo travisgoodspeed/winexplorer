@@ -1,0 +1,688 @@
+
+'Tier Info Grabber
+'N2 rom101 and 110 support
+'N2 rom206  support
+'N3 rom142 241 support
+'
+'
+'
+'
+' This script REQUIRES ND13 and it will check For it!!!
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+Option Explicit             ' any used variables must be explicitly declared
+
+    Dim CMD
+    Dim RSP_Size
+    Dim RSP
+    dim Datenagra2
+    dim Data
+    dim Hora
+    dim Timenagra2
+    Dim port                        ' port COM  user
+    Dim i
+    Dim t                           '  time "delay"
+
+
+
+
+
+Call SetupUnlocker()        ' setup WinExplorer for comm with loader
+
+
+
+
+Sub Main()
+ call Options()
+end sub
+'####################  ATR ################
+Function ATR()
+         dim y
+         dim a
+
+         Sc.Write("06 10 01 03 50 1A 00")    'reset card
+         Sc.Read(2)
+
+         a = Sc.getbyte(1)
+
+         if a < 1 then
+           Print "Reset failed"& VBCR
+           Print "Error reseting card, ATR string invalid"& VBCR
+         else
+         sc.read(27)
+         Sc.Print "ATR String:  "
+         y=0
+         do
+           sc.print HexString( sc.getbyte(y) , 2)
+           Print " "
+            if y=17 then
+               print ""& VBCR
+               print "             "
+            end if
+           y=y+1
+           loop until y=27
+           call ChkCard()                     '  ROM\Rev
+          exit function
+         end if
+End function
+'#############################################################################
+
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+'#################  ROM  Rev #############
+
+Function ChkCard()
+    dim bytes
+    Dim T1
+    Dim T2
+    Dim T3
+    Dim T4
+    Dim T5
+    Dim T6
+    Dim T7
+
+    sc.verbose = 0
+    ChkCard = 1
+        Sc.Write("06 10 01 03 50 1A 00")   'reset card
+        sc.read(02)
+        bytes = sc.getbyte(1)
+        If bytes < 27 then
+        T7 = 1
+        ClearOutputWindow
+        Exit Function
+        End If
+        sc.read(bytes)
+
+        T1 = chr(sc.getbyte(16))
+        T2 = chr(sc.getbyte(17))
+        T3 = chr(sc.getbyte(18))
+        T4 = chr(sc.getbyte(23))
+        T5 = chr(sc.getbyte(24))
+        T6 = chr(sc.getbyte(25))
+        T1 = T1+T2+T3
+        T4 = T4+T5+T6
+        If asc(T4) = 0 then
+        T4 = "000"
+        End If
+        Print ""  & VBCR & VBCR
+        Print "ROM Revision: " & T1 & " " & VBCR
+        Print "EEPROM Revision: Rev" & T4 & " " & VBCR
+         if T1 > 100 then
+           call SendComands()                            ' ROM 101 or 110
+         else
+           Print"ROM type Not Supported "                  ' 110  101
+           end if
+
+        ChkCard = 0
+        exit function
+        exit function
+
+End Function
+'#################################################################
+
+
+
+
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'######################  Comands #######################
+Function SendCMD()
+         dim y
+         dim cmd_size
+         rsp=""
+
+            cmd_size = GetPacketLen(CMD)
+            cmd_size = cmd_size / 2
+            Sc.Write("02 15 00")
+            sc.write ( hexstring(cmd_size + 5 , 2) & "60" & hexstring(cmd_size -1 , 2) & CMD & "50" & Hexstring(RSP_Size-1 , 2) & "00" )
+            sc.read(RSP_Size + 2)
+
+            y=2
+            do
+              rsp = rsp & hexstring(sc.getbyte(Y),2)
+              y=y+1
+             loop until y=rsp_size+2
+
+
+exit function
+end function
+
+'###################################################################
+
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+
+
+'####################   ROM 101 & 110 #################
+
+
+Function SendComands()
+dim i
+
+
+
+          '#########  CamID #########
+     print""& vbcr
+    CMD = "214008A0CA00000212000615"
+    RSP_Size = 12
+    call sendcmd()
+    print rsp & vbcr
+    i=11
+    Print "CamID:       "
+    do
+      print mid(rsp,i,2)                    'CamID
+      Sc.print" "
+      i=i+2
+    loop until i=19
+      print""& vbcr
+
+      '#######################################################
+
+
+           '#########  IRD #########
+    CMD = "214009A0CA000003220100391B"
+    RSP_Size = 36
+    call sendcmd()
+    'print rsp & vbcr
+    Sc.Print "ProviderID:  "
+    print mid(rsp,21,4)& vbcr              'ProviderID
+    i=35
+    Sc.Print "IRD:         "
+    do
+      print mid(rsp,i,2)                    'IRD
+      Sc.print" "
+      i=i+2
+    loop until i=43
+       print""& vbcr
+    Sc.Print "IRD expired Date:   "
+    print mid(rsp,55,4)                    'DATA
+      data= mid(rsp,55,4)
+      call dataN2conv()
+    print ""& vbcr
+    Sc.Print "IRD expired Time:   "
+    print mid(rsp,59,4)
+      hora = mid(rsp,59,4)
+      call TimeN2conv()
+
+
+       '#############################################################################################################
+
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+        sc.verbose=true
+       '#################################################  DT08 #########################################################
+
+                     print ""& vbcr
+                     print ""& vbcr
+                     CMD = "21C101A041"  ' IFS
+                     RSP_Size = 5
+                     call sendcmd()
+                     'print rsp & vbcr
+                     CMD = "214009A0CA000003220108557F"
+                     RSP_Size = 91
+                     call sendcmd()
+                     'print rsp & vbcr
+                     Sc.Print "DT08:        "
+
+
+                     print mid(rsp,31,73)
+                     print""& vbcr
+                     print"             "
+                     print mid(rsp,104,73)
+
+
+
+
+
+
+
+
+
+
+      '#########################  Tiers ############################
+
+
+
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'         ««««««COMAND FIRST TIERS»»»»»»                                                                                               '
+'                                                                                                         '
+    Print "" & vbcr
+    Print "" & vbcr
+    Print "::::::::First Tiers:::::::: " & vbcr
+    CMD = "210009A0CA0000032201055730"                                  'envio de comando First Tiers
+    RSP_Size = 36
+    call sendcmd()
+    'print rsp & vbcr                                                   'resposta total ao comando
+     Print "" & vbcr
+
+     Sc.Print "Tiers Type:         "
+     print mid(rsp,15,2)                      'Tier Type
+     print""& vbcr
+
+     Sc.Print "ProviderID Tier:    "
+     print mid(rsp,21,4)                      'ProviderID tier
+     print""& vbcr
+
+     Sc.Print "Tiers Rights:       "
+     print mid(rsp,27,6)                      'Tiers Rights
+     print""& vbcr
+
+     Sc.Print "Expire Date Tiers:  "
+     print mid(rsp,33,4)                      'Expire Date Tiers
+       data= mid(rsp,33,4)
+      call dataN2conv()                        'chama a conversao de data N2
+      print""& vbcr
+
+     Sc.Print "Expire Time Tiers:  "
+     print mid(rsp,37,4)                      'Expire Time Tiers
+      hora = mid(rsp,37,4)
+      call TimeN2conv()                         'chama a conversao de Hora N2
+     print""& vbcr
+
+     Sc.Print "Min Channels:       "
+     print mid(rsp,41,4)                      'Min Channels
+     print""& vbcr
+
+     Sc.Print "Max Channels:       "
+     print mid(rsp,63,4)                      'Max Channels
+     print""& vbcr
+
+     Sc.Print "Begin Sub Date:     "
+     print mid(rsp,47,4)                      'Begin Sub Date
+       data= mid(rsp,47,4)
+      call dataN2conv()                         'chama a conversao de data N2
+      print""& vbcr
+
+     Sc.Print "Begin Sub Time:     "
+     print mid(rsp,51,4)                      'Begin Sub Time
+      hora = mid(rsp,51,4)
+      call TimeN2conv()                         'chama a conversao de Hora N2
+     print""& vbcr
+
+     Sc.Print "End Date:           "
+     print mid(rsp,55,4)                      'End Date
+       data= mid(rsp,55,4)
+      call dataN2conv()                         'chama a conversao de data N2
+      print""& vbcr
+
+     Sc.Print "End Time:           "
+     print mid(rsp,59,4)                      'End Time
+      hora = mid(rsp,59,4)
+      call TimeN2conv()                         'chama a conversao de Hora N2
+     print""& vbcr
+
+
+
+     Print"::::::::::::::::::::::::::::"
+     print""& vbcr
+'
+'
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'  ««««««COMANDO DE  NEXT TIERS»»»»»»
+'
+ do
+    Print "" & vbcr
+    Print ":::::::::Next Tiers::::::::: " & vbcr
+    CMD = "210009A0CA00000322018557B0"                                        'envio de comando Next Tiers
+    RSP_Size = 36
+    call sendcmd()
+    'print rsp & vbcr                                                         'resposta total ao comando
+     Print "" & vbcr
+
+     Sc.Print "Tiers Type:          "
+     print mid(rsp,15,2)                      'Next Tier Type
+     print""& vbcr
+
+     Sc.Print "ProviderID Tier:     "
+     print mid(rsp,21,4)                      'Next ProviderID tier
+     print""& vbcr
+
+     Sc.Print "Tiers Rights:        "
+     print mid(rsp,27,6)                      'Next Tiers Rights
+     print""& vbcr
+
+     Sc.Print "Expire Date Tiers:   "
+     print mid(rsp,33,4)                      'Next Expire Date Tiers
+       data= mid(rsp,33,4)
+      call dataN2conv()                         'chama a conversao de data N2
+      print""& vbcr
+
+     Sc.Print "Expire Time Tiers:   "
+     print mid(rsp,37,4)                      'Next Expire Time Tiers
+       hora = mid(rsp,37,4)
+      call TimeN2conv()                         'chama a conversao de Hora N2
+     print""& vbcr
+
+     Sc.Print "Min Channels:        "
+     print mid(rsp,41,4)                      'Next Min Channels
+     print""& vbcr
+
+     Sc.Print "Max Channels:        "
+     print mid(rsp,63,4)                      'Next Max Channels
+     print""& vbcr
+
+     Sc.Print "Begin Sub Date:      "
+     print mid(rsp,47,4)                      'Next Begin Sub Date
+       data= mid(rsp,47,4)
+      call dataN2conv()                         'chama a conversao de data N2
+      print""& vbcr
+
+     Sc.Print "Begin Sub Time:      "
+     print mid(rsp,51,4)                      'Next Begin Sub Time
+       hora = mid(rsp,51,4)
+      call TimeN2conv()                         'chama a conversao de Hora N2
+     print""& vbcr
+
+     Sc.Print "End Date:            "
+     print mid(rsp,55,4)                      'Next End Date
+       data= mid(rsp,55,4)
+      call dataN2conv()                         'chama a conversao de data N2
+      print""& vbcr
+
+     Sc.Print "End Time:            "
+     print mid(rsp,59,4)                      'Next End Time
+     hora = mid(rsp,59,4)
+      call TimeN2conv()                         'chama a conversao de Hora N2
+     print""& vbcr
+
+
+
+     Print"::::::::::::::::::::::::::::"
+
+'
+loop until mid(rsp,11,62)="00000000000000000000000000000000000000000000000000000000000000"
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+    '#################################################################################################
+
+
+exit function
+end function
+
+'###################################################################################################################################
+
+'function Reset()
+
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'############################### CONVERSAO DAS DATAS N2 ####################################
+Function dataN2conv()
+
+DateNagra2 = DateAdd("d", ("&H" + Mid(Data, 1, 4) ), "  01/01/1992")
+Print"   -----> "
+Sc.Print(DateNagra2)
+exit function
+end function
+
+'###############################CONVERSAO DAS HORAS N2 ##################################
+Function timeN2conv()
+
+
+TimeNagra2 = DateAdd("s", ("&H" + Mid(Hora, 1, 4) ), " 12:00:00AM")
+Print"   -----> "
+Sc.Print(TimeNagra2)
+exit function
+end function
+
+
+
+
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+
+
+
+
+'#################### Funcao Time "tempos de espera em milisg.###################
+Function time(t)
+
+  delay(t)
+
+exit function
+end function
+'################################################################################
+
+
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+
+
+function IsCardInserted()
+Dim RetValue
+Dim GotInput
+
+Do
+Sc.Verbose = 0 'Turn off debug mode
+Sc.Write("A0") 'Turn the LED off
+Sc.Write("80") 'Is card present?
+Sc.Delay(100)
+If Sc.BytesInBuffer > 0 then
+Sc.Read(&h01)
+RetValue = Sc.GetByte(0)
+end if
+
+If RetValue = &h0 then
+Call Sc.ProgressBox ("       *** ``PLEASE INSERT YOUR SMARTCARD?? ***", 1, 999, "                      SKYWALKER")
+GotInput = False
+else
+If RetValue = &hFF then
+GotInput = True
+else
+If RetValue <> &h0 or RetValue <> &hFF then
+End if
+End if
+End if
+Loop Until GotInput = True
+Call Sc.ProgressBox("", 0, 100) 'close the dialog
+exit function
+end function
+
+
+
+Function RemoveSpaces(Packet)
+    Dim Length
+    Dim Temp
+    Dim PK
+    Dim i
+
+
+    PK = ""
+
+    Length = Len(Packet)                        ' get packet length with spaces
+
+    For i = 1 to Length
+       Temp = Mid(Packet, i, 1)
+       If Temp <> " " Then                      ' remove all spaces in packet
+           PK = PK + Temp
+       End If
+    Next
+
+    RemoveSpaces = PK                           ' return packet without spaces
+End Function
+
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+' GetPacketLen(Packet) - returns length (in characters) of Packet
+'
+Function GetPacketLen (Packet)
+    Dim PK
+
+    PK = RemoveSpaces(Packet)
+    GetPacketLen = Len(PK)                      ' return packet length without spaces
+End Function
+
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+' DoCheckSum(Packet) - calculate checksum For Packet
+'
+' ripped from ROM102_ND13_A0FF-INTERCEPT-autoVCC_20_Smart.xvb
+'
+Function DoCheckSum (Packet)
+    Dim Temp
+    Dim Length
+    Dim CheckSum
+    Dim i
+    Dim PK
+
+
+    PK = RemoveSpaces(Packet)
+    Length = GetPacketLen(Packet)               ' get packet length without spaces
+
+    CheckSum = 0
+
+    For i = 0 to Length
+        i = i + 1                               ' Simulate Step 2 in VB scripting
+        Temp = Mid(PK, i, 2)
+        CheckSum = CheckSum XOR Hex2Dec(Temp)   ' Calc Checksum
+    Next
+
+    DoCheckSum = HexString(CheckSum, 2) 'convert checksum to a hex strimg and return it to caller
+
+End Function
+
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+' Hex2Dec(HexNumber) - takes a string with a hex value, returns decimal value
+'
+Function Hex2Dec(HexNumber)
+    Dim DecimalValue
+    Dim DigitCount
+    Dim Digit
+    Dim HexDigit
+
+    HexNumber = Replace(UCase(HexNumber), " ", "")
+    DigitCount = Len(HexNumber)
+
+    For Digit = 1 To DigitCount
+
+        HexDigit = Mid(HexNumber, Digit, 1)
+        If Asc(HexDigit) < 58 Then
+            DecimalValue = HexDigit * 16 ^ (DigitCount - Digit)
+        Else
+            DecimalValue = (Asc(HexDigit) - 55) * 16 ^ (DigitCount - Digit)
+        End If
+        Hex2Dec = Hex2Dec + DecimalValue
+    Next
+
+End Function
+
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+' HexString(Number,Length) - convert Number to a string containing Length-digit hex value
+'
+' This function takes 2 arguments, a number and a length.  It converts the decimal
+' number given by the first argument to a Hexidecimal string with its length
+' equal to the number of digits given by the second argument
+'
+Function HexString(Number,Length)
+    Dim RetVal
+    Dim CurLen
+
+    RetVal=Hex(Number)
+    CurLen=Len(RetVal)
+
+    If CurLen<Length Then
+        RetVal=String(Length-CurLen,"0") & RetVal
+    End If
+
+    HexString=RetVal
+End Function
+
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'##### Function CheckChipVer() - verify that loader has been ND13 flash #############
+'
+Function CheckChipVer()
+    CheckChipVer = 1
+    sc.write("90")
+    sc.delay(80)
+    if sc.read(4) <> 4 then
+        CheckChipVer = 0
+        sc.print "Unknown software version or Atmel not programmed!" + vbcrlf
+     End if
+    sc.print "Atmel Software Version: " & chr(getbyte(0)) & chr(getbyte(1)) & chr(getbyte(2)) & chr(getbyte(3)) + vbcrlf
+End Function
+'###############################################################################################
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+' Sub SetupUnlocker()
+'
+Sub SetupUnlocker()
+    Sc.Print "________________Setting up WinExplorer_________________" & VbCr
+    Wx.BaudRate = 115200
+    Wx.ResetBaudRate = 115200
+    Wx.Parity = 0                   ' 0 = None, 1 = Odd, 2 = Even, 3 = Mark, 4 = Space
+    Wx.StopBits = 0                 ' 0 = 1 stop bit, 1 = 1.5 stop bits, 2 = 2 stop bits,
+    Wx.DTRControl = 0               ' Initial state of DTR 0 = off, 1 = on
+    Wx.RTSControl = 1               ' Initial state of RTS 0 = off, 1 = on
+    Wx.ResetDelay = 100             ' In microseconds
+    Wx.ByteDelay = 10               ' In microseconds
+    Wx.RxByteTimeout = 500          ' In milliseconds
+    Wx.ResetMode = 2                ' 0 = No Resets, 1 = ISO Reset (Expect a ATR), 2 = Device Reset (No ATR)
+    Wx.ResetLine = 1                ' 0 = Toggle RTS For Reset, 1 = Toggle DTR For Reset
+    Wx.ByteConvention = 1           ' 0 = Inverse, 1 = Direct,
+    Wx.FlushEchoByte = 0            ' 0 = no flush, 1 = flush - A Phoenix interface will echo each byte transmitted.
+    Wx.FlushBeForeWrite = 1         ' 0 = no flush, 1 = flush - Flush the receive buffer beFore each write to strip off Null bytes.
+    Wx.IgnoreTimeouts = 1           ' 0 = Abort script on a receive timeout, 1 = Ignore all receive timeouts
+    Wx.ResetAfterTimeout = 0        ' 0 = Don't reset after a timeout, 1 = do a reset after a timeout - Not used If "IgnoreTimeouts=0"
+    Wx.LogTransactions = 0          ' 0 = Don't log transactions, 1 = log transactions
+    Wx.DisplayUSW = 0               ' Display USW after script complete 0 = no, 1 = yes
+    Wx.DisplayFuse = 0              ' Display Fuse after script complete 0 = no, 1 = yes
+    ClearOutputWindow
+End Sub
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+
+ Function Options()
+
+ dim MenuChoice
+ Dim MsgPrompt
+
+Sc.MsgBox("  Read Info? ")
+Do
+
+    MsgPrompt="N3 read INFO SKYWALKER"
+    MenuChoice=Sc.ButtonBox(MsgPrompt,vbDefaultButton1+vbQuestion," N3 read INFO  " & "  V.2.0Beta" & "  - Menu :  ","Read INFO","Exit")
+
+    Select Case MenuChoice
+    Case 1:
+                     sc.verbose=false
+
+                     ClearOutputWindow
+                            '>>>>>>>>>>>'COM PORT INFO>>>>>>>>
+                             if Wx.CommPort = "com1:" then
+                              port = " COM1 "
+                               end if
+                                   if Wx.CommPort = "com2:" then
+                                    port = " COM2 "
+                                      end if
+                               '>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+                     call CheckChipVer()                     'Verify ATMEL NEWD13
+                     Sc.Write("A2")                   ' LED OFF
+                     Print"Opening of"
+                     Print Port
+                     Print "was successful"& VBCR
+                     Sc.Write("A1")                       '  LED ON
+                     call ATR()  'le ATR
+                     Print""& VBCR
+                     Print"Closing of"
+                     Print Port
+                     Print"was successful"& VBCR
+                     'call time(1000)                    ' time de espera para desligar leed no fim da comunicacao
+                     Print""& VBCR
+                     Print"*******************************"& VBCR
+                     Print"*     Script Complete         *"& VBCR
+                     Print"*      Tier Dump              *"& VBCR
+                     Print"*******************************"& VBCR
+
+                     Sc.Write("A2")                     ' LED OFF
+
+
+    End Select
+    Loop Until MenuChoice=2
+
+    Exit function
+
+End function
+

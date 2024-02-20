@@ -1,0 +1,687 @@
+'---------------------------------------------------------------------------
+'
+''               DTV GX28 DISEÑADO POR ARGENTINALIVRE
+''
+'
+'                          ARGENTINALIVRE
+'---------------------------------------------------------------------------
+'
+' I have made changes to this script it should unloop the P4 card Then print the ATR , Delay , Dac , Volts.
+' I am not to good at programming so when it prints the Atr I can't get it to print the 3F at the beginning.
+' when the card unloops I think that this is where the bootstrap should start. So if there is a good coders
+' out there maybe he can get it to bootstrap. Then Read and Write. I have made every function to do the
+' same thing. so as not to mess up anybody cards. I know that this is not a big deal but it is a start in the
+' right direction. If every body could add little things we might be able to crack the card. The one thing that I have
+' done is to show that the P4 can be glitches into and unlooped. So everybody put in your 2 cents worth
+' of programming and it will add up to a CRACK.for the P4.
+'
+' This was done with a T911 unloader Flashed with RevolutionX.exe (I think that it is atmel code V 5.0 not for sure)
+
+'---------------------------------------------------------------------------
+'
+'
+'
+' Trabalha com qualquer Unlooper e Atmel com código HU
+'
+' Requer WinExplorer v4.5 ou maior em modo Unlooper, com as opções Log Transactions,
+' Display Fuse After Each Script e Display USW After Each Script desabilitadas.
+'
+Dim DAC(3),Delay(3),GlitchDelay(3),DACI(3),DelayI(3),GlitchDelayI(3)
+Dim Tent(3),TotalTent(3),TentLimit(3),TentLimitN(3),TentLimitI(3),ProcAltTentLimit(3)
+Dim ProcAlt(3),GlitchProc(3),LimFalhas(3),Procura(3)
+Dim ATR(12),GPR(&H60),Ins2A(64)
+Dim Mens0,Mens1,Mens2,GPPLen,GPRLen,Msg,MsgP,RAT,AtrAnt,AtrCart,StatusCart,T1,ProcDelay,BS,Tipo,clock,ponto,UnlooperID
+Dim Eeprom(4096),E,I,C,P,L
+Dim GotInput
+Dim RetValue
+Dim EPROMKey
+Dim Address,Choice,npwd,nspd
+Dim Byte1,Byte2,Byte3,Byte4,Byte5,Byte6,Byte7,Byte8,Byte9
+Dim XORedByte4,XORedByte5,XORedByte6,XORedByte7,XORedByte8,XORedByte9
+Dim Byte1A,Byte2A,Byte3A,Byte4A,Byte5A,Byte6A,Byte7A,Byte8A,Byte1B,Byte2B,Byte3B,Byte4B,Byte5B,Byte6B,Byte7B,Byte8B
+
+Const LimiteFalhas=50000
+
+AtrAnt=" - - -"
+AtrOk="  3F  78  13  25  03  40  B0  20  ff  FF  4A  50  00    "' Atr padrão Brasil
+ScriptN=" DTV GX28 reader "
+'____________________________________________________________________________________________
+'¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯
+Sub Main()                ' Menu e Loop principais do Programa
+    Sc.Verbose=FALSE      ' Suprimir janela de saida...
+    Sc.ByteDelay = 0      ' O Unlooper não necessita byte delay...
+    Call AguardaUnlooper()' Aguarda Conectar/Ligar o unlooper...
+    Dim Retorno,valor
+    Do
+     Msg=string(36,"  ")+"«««««««   "+ScriptN+"   por   ARGENTINALIVRE solo para tarjetas gx28"+"   »»»»»»»"+string(28," ")+ VBcr+string(81," ")+vbcr+vbcr+_
+     "»  Unlooper  con  Atmel  Código  "+UnlooperID+vbcr+vbcr+_
+     "»  please, escoje una opçion:"
+     Retorno=ButtonBox(Msg,vbDefaultButton1,"ºº          DTV GX28  Reader por ARGENTINALIVRE ºº"+string(40,32)+_
+     "","Card Info","Read Eeprom","Alter Data","Write ","Quit")
+     Call SetGlitchValues()  ' Inicializar valores de Glitch
+     Select Case Retorno
+            Case 1:valor=AtrCartao(0)
+            Case 2:valor=GlitchDrive(1)
+            Case 3:valor=Change()
+            Case 4:valor=GlitchDrive(1)
+     End Select
+    Loop Until Retorno=5
+    sc.write("a2")
+End Sub
+'____________________________________________________________________________________________
+'¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯
+Function GlitchDrive(Func)' Direciona o unlooper para Ler o cartão.
+
+  Dim j,Estagio,Tela,TentGeral,Final,EID,CAMID,USW,IRD,MsgP
+  Dim GravarEEPROM(8192)' Array hexadecimal para gravar na EEPROM.
+  GlitchDrive=0
+  TentGeral=0
+  Estagio=1
+  Final=0
+  Tela=0
+  Call AguardaCartao()  ' Aguardar inserção do cartão ...
+
+  Do While (Final=0)
+    If CartaoInserido()=0 Then Estagio=12     'Mensagem de Cartao Removido
+    If TentGeral>LimiteFalhas Then Estagio=13 'Mensagem de erro no procedimento
+    TentGeral=TentGeral+1
+    Select Case Estagio
+    Case 1:
+       Call AtrCartao(1)   ' Analisar status do cartão (Tem ATR, processa pacotes?)
+       If Func=1 Then Sc.Write("A1"):Estagio=2
+
+     Case 2: ' Glitch Tarefa 1 - Ler os 11 primeiros bytes da ATR
+       ATR(0)=&Ha0 ' Zerar ATR
+       If Params(T1) Or Tela<1 Then  Tela=1
+       If GlitchTask1(T1) Then 'Se tarefa 1 Ok, ir para o estágio 3
+          Estagio=3
+          Tent(T1)=0
+          Procura(T1)=0
+       Else ' Se tarefa 1 falhar ...
+          If Procura(T1)=1 Then Tela=0
+          If TotalTent(T1)>=ProcAltTentLimit(T1) Then
+            TotalTent(T1)=0
+          End If
+       End If
+
+    Case 3: ' Glitch Tarefa 3 - Ler ultimos 2 bytes da ATR e Ler EEprom
+       If Params(3) Or Tela<3 Then Tela=3
+       If GlitchTask3(3) Then      ' Se ATR Ok, continuar...
+          Final=1
+          Tent(3)=0
+          Procura(3)=0
+       Else
+          If TotalTent(3)>=ProcAltTentLimit(3) Then
+             TotalTent(3)=0
+             Delay(3)=&H01
+             Delay(3)=Delay(3)+1
+             Clock=Clock+1
+             Dac(3)=DAC(3)+1
+          End If
+          'Delay
+          Estagio=2 ' Glitch Task 3 falhou, reiniciar.
+       End If
+
+    Case 12: ' Cartão removido
+       Call RemoveMsg()' limpar Progress Box
+       Retorno=Sc.MsgBox("    Card has been Removed!",vbInformation+vbOKOnly,ScriptN+"   -   Verificar  tarjeta ...")
+       Final=1
+
+    Case 13: ' Erro no glitching ou gravando/lendo o cartão
+       Sc.Write("A1") ' Ligar Led amarelo
+       SendGP("02")' Desconectar Cartão
+       Call RemoveMsg() ' Limpar Progress Box
+       Retorno=Sc.MsgBox("Disculpame,  no  consigo  Grabar/Leer/hacer  Glitch  en la tarjeta ...",vbExclamation+vbOKOnly,ScriptN+"   -   Erro  no  procedimento ...")
+       Sc.Write("A0")' Desligar LED
+       Final=1
+   End Select
+  Loop
+End Function
+'____________________________________________________________________________________________
+'¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯
+Function AtrCartao(tipo) ' Analisar Status do cartão ...
+
+    Call AguardaUnlooper()
+    Call AguardaCartao()
+    For i=0 To 14:GPR(i)=0:Next
+    Sc.Write("B080")' Setar Voltagem DAC para 2,5v -> (5,0*&H80/256)
+    AtrCart="": StatusCart=0: Mens="tarjeta  sin  ATR ..." 'Assumir Sem ATR ...
+    SendGP("100E030193")' Setar para 9600 baud (10), reset cartão(01), receber 20 bytes da ATR
+    If GPRLen>0 Then Call TipoAtr: Mens="tarjeta  NORMAL,  con  ATR"+Msg: BS=0 ' Se recebeu algo, ver se confere com o esperado...
+    If GPRLen=0 Then ' Se não recebeu nenhum byte, checar se o cartão é BS
+       SendGP("10012003D50B8C")' Setar baud para 9600, reset, delay 03D5 clock cycles, glitch Vcc, receber 13 bytes da ATR
+       If GPRLen>0 Then Call TipoAtr: Mens="Cartão  BS  (área  de  Boot  Danificada),  com  ATR"+Msg: BS=1  'Se recebeu algo, é um cartão BS ...
+    End If
+    If AtrCart="" then AtrCart="  -  -  -":
+   If tipo=1 then Exit Function 'Se apenas teste de Status do cartão, sair ...
+
+    Call GMsg("Testeando  Paquetes ...",3,5,0)
+    Sc.Delay(02)
+    Ins2AOk=0 'Assumir Ins 2A errada ...
+
+    SendGP("19 0E 04 C4 48 2A 00 00 80 80 ")' Setar baud p/ 19200, set watchdog 0E 04, enviar prox. 5 bytes (C4), enviar Ins2A (482A000080), receber 1 byte
+    If GPRLen=1 and GPR(0)=&H2A Then
+       SendGP("BF") ' Ler 64 Bytes
+       For i=0 To 63: Ins2A(i)=GPR(i): Next 'Preencher variável Ins2A
+       SendGP("BF") 'Ler mais 64 bytes
+       SendGP("81") 'Ler ultimos 2 bytes
+       If GPRLen>1 Then Ins2AOk=1 'Se recebeu os últimos bytes, Ins2A Ok ...
+    End If
+    If Ins2AOk Then ' Se tivermos uma Ins2A Ok então analisamos a informação...
+
+       UID="": For i=0 to 7: UID=UID+" "+HexString(Ins2A(i),2): next 'Ver UID
+
+       Fuse=Ins2A(8) ' Ver Fuse Byte
+       Select Case Fuse
+              Case 0: Fuse1="00  ( TARJETA Virgen )"
+              Case 5: Fuse1="05  ( Descasado e Desactivado )"
+              Case 32: Fuse1="20  ( Casado e Desactivado )"
+              Case 45: Fuse1="2D  ( Casado e Cancelado )"
+              Case 37: Fuse1="25  ( Casado e Ativado )"
+              Case Else: Fuse1=HexString(fuse,2)+"  ( Fuse Byte Desconocido )"
+       End Select
+
+       LimR=Ins2A(10) ' Ver Limites (Rating)
+       Select Case LimR
+              Case 0: LimRating="00   ( Bloquear  Todo )"
+              Case 1: LimRating="01   ( Bloquear  Sin  Clasificacion )"
+              Case 2: LimRating="02   ( Bloquear  Libre )"
+              Case 4: LimRating="04   ( Bloquear  Mas  de  12  Anos )"
+              Case 6: LimRating="06   ( Bloquear  Mas  de  15  Anos )"
+              Case 7: LimRating="07   ( Bloquear  Mas  de  18  Anos )"
+              Case 9: LimRating="09   ( Bloquear  Mas  de  21  Anos )"
+              Case 11: LimRating="0B   ( Bloquear  Adulto )"
+              Case 13: LimRating="0D   ( NC - 17 )"
+              Case Else: LimRating=HexString(LimR,2)+"   ( Rating  Desconocido! )"
+           End Select
+
+        RAT=Cstr((&H100*INS2A(11)+INS2A(12)))
+        If len(RAT)=1 Then RAT="$ "+"0,00"
+        If len(RAT)=2 Then RAT="$ "+left(RAT,1)+","+"00"
+        If len(RAT)=3 Then RAT="$ "+left(RAT,2)+","+"00"
+        If len(RAT)=4 Then RAT="$ "+left(RAT,3)+","+"00"
+        If INS2A(11)=&HFF and INS2A(12)=&HFF then RAT= "No  definido"
+
+       If Ins2a(13)=0 and Ins2A(14)=0 then 'Ver data de ativação
+          adata="No  definida"
+       Else
+           data1=DateAdd("m",ins2a(13)-48,adata="01-jan-96") ' Calcular o mês e Ano
+           adata=DateAdd("d",ins2a(14)-1,data1) ' Calcular o dia
+       End If
+
+       CamId="":For i=20 to 23: CamId=CamId+" "+HexString(Ins2A(i),2): next 'Ver CamID
+       ' Rotina para calcular o último dígito da CamID
+       i=HextoDec(CamId)
+       Num=Cstr(i) ' Num = String com o valor decimal da CamId
+       i=Len(Num)  ' i = Tamanho Camid
+       If i<11 then msg=String(11-i,"0")& Num ' Fazer uma string da CamId com 11 casas
+       for i=1 to 10 step 2 ' Usar a fórmula para calcular o CheckDigit
+          c3=mid(msg,(11-i),2)
+          t=cint(right(c3,1))*2
+          If t > 9 then t=t-9
+          total=total+t+cint(left(c3,1))
+       next
+       Res=right(Cstr(100-total),1) ' Res = último dígito da CamId
+
+       Num=left(msg,4)+" "+mid(msg,5,4)+" "+right(msg,3)+res+"  -->  Hex:  "+CamId ' CamId completa
+       IRD="": For i=0 to 3: IRD=IRD+" "+HexString((Ins2A(i+20) Xor Ins2A(i+24)),2): Next
+       USW=256*Ins2A(28)+Ins2A(29)
+       USW1=CStr(USW)+"   -->  Hex:  "+HexString(USW,4)+"     "
+       If (USW=0) Or (USW>0) Then USW1=USW1+"( USW  Válida, Actual )"
+
+       SendGP("1A0E04C4485800001C99")   ' Enviar Ins58
+
+       Tzone=gpr(11)
+       TimeZ=HexString(Tzone,2)+"   ( ARGENTINA )"
+       If Tzone=&H52 then TimeZ=HexString(Tzone,2)+"   ( Brasil )"
+
+       GuideB=gpr(13)
+       Select Case GuideB
+              Case &H0D: Gbit="0D   ( Cono Norte )"
+              Case &H01: Gbit="01   ( México o Puerto Rico )"
+              Case &H02: Gbit="02   ( Brasil )"
+              Case &H04: Gbit="04   ( Venezuela )"
+              Case &H03: Gbit="03   ( Chile )"
+              Case Else: Gbit=HexString(GuideB,2)+"   ( Guide Bit Desconocido! )"
+       End Select
+
+       SendGP("100E100193")
+       SendGP("1A 0E 04 C4 48 52 00 00 04 84") ' Enviar Ins52, recebe 5 bytes
+
+       Call RemoveMsg()
+
+       Senha=Cstr(256*gpr(3)+gpr(4)):If len(senha)<4 Then senha=String(4-len(senha),"0") & Senha
+
+       Msg="la tarjeta es funcional y puede procesar los paquetes ..."+vbcr+vbcr+_
+       Mens+vbcr+vbcr+"*  ATR  enviado      =  "+AtrOk+vbcr+_
+       "*  ATR  Recebido   =  "+AtrCart+"        "+VBcr+VBcr+"*  Fuse  Byte  =  "+string(21," ")+fuse1+vbcr+VBcr+_
+       "*  PROM  UID   =  "+string(18," ")+UID+vbcr+VBcr+"*  EEPROM  CAM ID  =  "+string(10," ")+num+vbcr+VBcr+"*  IRD   =   "+string(30," ")& hextodec(ird)& "  -->  Hex:  "& IRD+vbcr+VBcr+_
+       "*  USW   =   "+string(28," ")+usw1+vbcr+VBcr+"*  Time  Zone  =  "+string(20," ")+Timez+vbcr+VBcr+"*  Guide  Bit   =   "+string(21," ")+GBit+vbcr+VBcr+_
+       "*  Password  ( codigo )  =   "+string(6," ")& Senha+vbcr+VBcr+"*  Lim. de Gastos por PPV  =  "+"   "& RAT+vbcr+VBcr+_
+       "*  Dato  de  Ativacion  =  "+string(9," ")& adata& vbcr& VBcr+"*  Bloqueo  ( Limites )  =  "+string(9," ")& LimRating& vbcr& VBcr
+       call MsgBox(msg,vbInformation,ScriptN+"   -   Análisis  de  tarjeta:")
+       Exit Function
+    End If
+    pac="&H"+hexstring(GPR(0),2)
+    if gpr(0)=0 then pac="-  -  -"
+    Sc.write ("A2")
+    msg=mens+vbcr+vbcr+"ATR Expected = "+AtrOk+string(16,32)+vbcr+string(108,"-")+vbcr+_
+    "ATR Recieved = "+AtrCart+vbcr+string(54,"_")+vbcr+string(54,"¯")+vbcr+_
+    "ATR is Good:"+vbcr+vbcr+"Ins. 2A:    Expected  |  recieved"+vbcr+_
+    string(29,"-")+"+------------------"+vbcr+"Bytes Returned :  1   |      "+HexString(GPRLen,1)+VBcr+_
+    "1º  Byte          &H2A      |    "+pac
+    i= ButtonBox(msg,vbCritical,ScriptN+"  -  Atençion!","read tarjeta","Return")
+    Sc.write ("A0")
+    if i=1 then GlitchDrive(1)
+End Function
+'____________________________________________________________________________________________
+'¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯
+Function Change()
+    Call AguardaUnlooper()
+    Call AguardaCartao()
+     Sc.write ("A1")
+        MsgP=vbcr+_
+        "Por favor, escoje lo que vos queres alterar :"+vbcr
+        Retorno=ButtonBox(MsgP,vbDefaultButton1,"ºº  DTV GX28  Reader  ºº"+string(40,32)+_
+        "","Password","PPV Limit","Ratings Limit"," Act Tiers ","Return")
+        Select Case Retorno
+
+    Case 1:
+        Choice=sc.inputbox("Digite el nuevo codigo de 4 Dígitos" & VBCRLF & VBCRLF & "en formato Decimal. (Ej.: 1234)")
+        If IsHex(Choice) And Len(Choice) = 4 Then
+        npwd = HexString(Choice,4)
+        Sc.Write("B0 80")
+        SendGP("100E100193")
+        SendGP("1A C4 48 48 00 00 04 80")
+        msg="1A C4 00 00"+npwd
+        SendGP msg
+        MsgP=""
+            If gpr(0)=&H90 then
+               MsgP=MsgP+"el codigo fue alterado a: "+Choice+"       "
+                Retorno=Sc.MsgBox(MsgP,vbInformation,ScriptN)
+                Else
+               MsgP=MsgP+"el codigo no fue alterado        "
+              Retorno=Sc.MsgBox(MsgP,vbInformation,ScriptN)
+            End If
+        End If
+    Case 2:
+        Choice=sc.inputbox("Digite un nuevo Limite de Compra con 3 dígitos         " & VBCRLF & VBCRLF & "en formato dec. Ex.: 100   ($100,00)    ")
+        If IsHex(Choice) And Len(Choice) < 4 Then
+        npwd=(Choice*10)
+        nspd = HexString(npwd,4)
+        Sc.Write("B0 80")
+        SendGP("100E100193")
+        SendGP("1A C4 48 2E 00 00 02 80")
+        msg="1A C4"+nspd+"81"
+        SendGP msg
+        MsgP=""
+            If gpr(0)=&H90 then
+               MsgP=MsgP+"el limite de compra fue alterado a:  $ "+Choice+",00       "
+                Retorno=Sc.MsgBox(MsgP,vbInformation,ScriptN)
+                Else
+               MsgP=MsgP+"el limite de compra no fue alterado        "
+              Retorno=Sc.MsgBox(MsgP,vbInformation,ScriptN)
+            End If
+        End If
+    Case 3:
+        MenuPrompt = "Digite a nueva clasificacion con 2 dígitos " & vbCrLf & vbCrLf
+        MenuPrompt = MenuPrompt & "Ejemplos:" & vbCrLf
+        MenuPrompt = MenuPrompt & "" & vbCrLf
+        MenuPrompt = MenuPrompt & " 00   ( Bloquear  Todo )" & vbCrLf
+        MenuPrompt = MenuPrompt & " 01   ( Bloquear  Sin  Clasificacion )" & vbCrLf
+        MenuPrompt = MenuPrompt & " 02   ( Bloquear  Libre )" & vbCrLf
+        MenuPrompt = MenuPrompt & " 04   ( Bloquear  Mas  de  12  Años )" & vbCrLf
+        MenuPrompt = MenuPrompt & " 06   ( Bloquear  Mas  de  15  Años )" & vbCrLf
+        MenuPrompt = MenuPrompt & " 07   ( Bloquear  Mas  de  18  Años )" & vbCrLf
+        MenuPrompt = MenuPrompt & " 09   ( Bloquear  Mas  de  21  Años )" & vbCrLf
+        MenuPrompt = MenuPrompt & " 0B   ( Bloquear  Adulto )" & vbCrLf
+        MenuPrompt = MenuPrompt & " 0D   ( NC - 17 )" & vbCrLf
+        Choice=sc.inputbox(MenuPrompt,"Alterar Rating")
+        If IsHex(Choice) And Len(Choice) = 2 Then
+        Sc.Write("B0 80")
+        SendGP("100E100193")
+        SendGP("1A C4 48 2E 80 00 02 80")
+        msg="1A C4"+Choice+"81"
+        SendGP msg
+        MsgP=""
+            If gpr(0)=&H90 then
+               MsgP=MsgP+"la clasificacion fue alterada a: "+Choice+"       "
+                Retorno=Sc.MsgBox(MsgP,vbInformation,ScriptN)
+                Else
+               MsgP=MsgP+"la classificacion no fue alterada        "
+              Retorno=Sc.MsgBox(MsgP,vbInformation,ScriptN)
+            End If
+        End If
+
+    Case 4:
+
+        Sc.Write("B0 80")
+        SendGP("100E100193")
+        SendGP("1A C4 48 5E 00 0A 01 82 20 00 23 0C 1A BF")
+print "*"
+        SendGP("1A 0E 04 C4 48 4C 00 00 09 BF")
+
+        Sc.Write("B0 80")
+        SendGP("100E100193")                   'RESET
+        SendGP("1A C4 48 5E 00 0B 17 BF")      'Envia Ins5E (?)
+
+        Sc.Write("B0 80")
+        SendGP("100E100193")                   'RESET
+       SendGP("1A C4 48 5E 00 0E 4B BF")      'Envia Ins5E Ler PPV
+        SendGP "BF"
+print "*"
+        Sc.Write("B0 80")
+        SendGP("100E100193")                   'RESET
+        SendGP("1A C4 48 42 00 00 1C 80")      'Envia Ins42, envia próximos 27 bytes, recebe 1  -  (ENVIA TIERS)
+        SendGP("1A C4 09 12 00 00 30")
+        SendGP("1A C5 41 00 31 7E 1F C0")
+        SendGP("1A C6 41 00 33 7E 1F C0")
+        SendGP("1A CA 09 10 00 00 0C AB F6 33 45 94 80")
+        SendGP"81"
+print "*"
+
+  End Select
+End Function
+'____________________________________________________________________________________________
+'¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯
+Function Params(g) ' Atualiza os parametros de glitch dos set de parametros selecionados.
+  Params=0
+  If DAC(g)=0 And Procura(g)=1 Then   ' Usar os valores iniciais se for a primeira entrada...
+        DAC(g)=DACI(g)                ' Voltagem de trabalho atual = Inicial
+        Delay(g)=DelayI(g)            ' Delay de trabalho atual = Inicial
+        GlitchDelay(g)=GlitchDelayI(g)
+        TentLimit(g)=TentLimitI(g)    ' Limite de Tentativas = Limite inicial
+        Tent(g)=0                     ' Inicializar numero de tentativas para este set
+        Params=1                      ' Setar "Params" para atualizado
+  Else   ' Se não for a 1ra entrada ...
+        Tent(g)=Tent(g)+1 ' incrementar a variável tentativas
+        If Procura(g)=0 Then ' Se estiver sendo usado o set padrão, e se foi tentado
+            If Tent(g)>LimFalhas(g) Then  'este set até atingir o limite
+            Procura(g)=1              ' de falhas, setar "Procura" para escolher
+            Tent(g)=TentLimit(g)+1    ' um set diferente na próxima entrada...
+            End If
+        End If
+        If Procura(g)=1 Then    ' Se "Procura" estiver setado para procurar novo set...
+            TotalTent(g)=TotalTent(g)+1   ' incrementar total tentativas, até atingir
+            Call GlitchMsg(g)
+            If Tent(g)>TentLimit(g) Then  ' o limite de falhas, e escolher um set diferente
+               Dac(3)=RandomRange(DacI(3)-6,DacI(3)+6)
+               GlitchDelay(3)=RandomRange(GlitchDelayI(1)-5,GlitchDelayI(1)+5)
+               Delay(3)=RandomRange(DelayI(3)-35,DelayI(3)+35)
+               Delay(1)=Delay(1)+1
+               TentLimit(g)=TentLimitN(g)
+               Tent(g)=0
+               Params=1
+            End If
+        End If
+  End If
+End Function
+'____________________________________________________________________________________________
+'¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯
+Sub GlitchMsg(t)' Mostra progress box do status de unlooping
+    Call MensG
+    Msg="intentando  Glitch,  set  "
+     Msg=Msg+Cstr(t)+"("+Cstr(GlitchProc(t))+")     intento: "+Cstr(TotalTent(t))+"  de  "+Cstr(ProcAltTentLimit(t))+Mens0+vbTab
+    If t>2 Then Msg=Msg+Mens2
+    If gprlen>0 and atr(0)<>256 then AtrAnt=(hexstring(gpr(0),2))+"   Glitch: "+Mens1
+    Msg=Msg+vbcr+"ATR: "+vbTab
+    If ATR(0)<>256 Then
+       Msg=Msg+HexString(ATR(0),2)+" "
+    else
+        Msg=Msg+AtrAnt+" "
+    end if
+    If t>2 Then For i=1 to 12: Msg=Msg+HexString(ATR(i),2)+" ": Next
+    Call Sc.ProgressBox(Msg,t,6,ScriptN+"   -   Procediendo  Glitching,  aguarde...")
+End Sub
+'____________________________________________________________________________________________
+'¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯
+Sub GMsg(Mensagem,Prog,MaxProg,tipo) 'Mostra mensagens genéricas
+    Msg="Status: "+vbTab+Mensagem
+    If tipo=1 then Msg=Msg+MensG()+"ATR: "+vbTab+AtrCart 'Se for para mostrar ATR e glitches
+    Call Sc.ProgressBox(Msg,Prog,MaxProg,ScriptN+"  -  Aguarde ...")
+    Prog=Prog+1
+End Sub
+'____________________________________________________________________________________________
+'¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯
+Sub RemoveMsg() ' Esta função remove o progress box da tela.
+    Call Sc.ProgressBox("",0,0,"")
+End Sub
+'____________________________________________________________________________________________
+'¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯
+Sub SendGP(GP)' Envia o pacote de comandos ao unlooper e recebe a resposta
+    Dim Tam,TempoR,BufferBytes
+    Const MaxTempoR=20000 ' Assegura espera suficiente para computadores rápidos
+    GP=Replace(GP," ","")           ' Elimina espaços na string
+    GP=GP+"00"                      ' Adiciona comando end procedure
+    print "."
+    GP=HexString(Len(GP)\2,2)+GP    ' Adiciona o byte start/length
+    TempoR=0                        ' Atualmente, não aguardar pelo unlooper
+    BufferBytes=0                   ' Bytes atuais no buffer = 0
+    Retorno=Sc.Flush()              ' Flush buffer de recepção
+    Sc.Write(GP)          ' Enviar bytes para o unlooper
+    Do While (BufferBytes=0 And TempoR<MaxTempoR)' loop da espera por bytes
+        TempoR=TempoR+1 : BufferBytes=Sc.BytesInBuffer
+    Loop
+    If TempoR>MaxTempoR or Sc.Read(2)<>2 Then GPPLen=0:GPRLen=0: Exit Sub
+          GPPLen=Sc.GetByte(0) ' Número de bytes enviados para o unlooper
+          GPRLen=Sc.GetByte(1) ' Número de bytes que o unlooper enviou de resposta
+          If GPRLen<>"0" Then Sc.Read(GPRLen) ' Ler bytes extras do unlooper se houverem
+         For i=0 to GPRLen-1 :GPR(i)=Sc.GetByte(i):
+         Next
+End Sub
+'____________________________________________________________________________________________
+'¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯
+Function GlitchTask1(g)' Obter os 20 bytes da ATR.
+    GlitchTask1=0
+    Sc.Write "B0 80"   ' +HexString(DAC(3),2)
+    Msg="1002090193"    ' xxxx bps, Reset card and receive 20 bytes (ATR)
+    SendGP(Msg)
+    If GPRLen=0 Then exit function
+    ATR(0)=GPR(0)
+    if gpr(0)=&H3F Then GlitchTask1=1:For i=0 to 12: ATR(i)=GPR(i) : Next
+
+End Function
+'____________________________________________________________________________________________
+'¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯
+Function GlitchTask3(g)
+  L="Leyendo EEPROM ..."
+  GlitchTask3=0
+  If Delay(3)<1 Then Delay(3)=Int(Rnd(1)*02)
+
+  Sc.Write "B0"+HexString(DAC(3),2)
+  msg="10 02 09 01 93"
+  msg=msg+"00"+HexString(Delay(3),4)+"09 BF"
+
+  V=(5*(DAC(3)/256))
+  SendGP msg
+
+    SendGP "BF"
+     If gprlen>3 and gpr(0)<>&H3F then glitchtask3=1:sc.print vbcr & vbcr & gprlen &" Bytes: "&vbcr&vbcr:for i= 0 to gprlen-2:sc.print  hexstring(gpr(i),2)& " ":next:sc.print vbcr& vbcr& "Delay: " & HexString(Delay(3),4)& "      DAC: "& HexString(DAC(3),2) & " (" & V & " volts)":Call RemoveMsg(): exit function
+  SendGP "BF"
+     If gprlen>3 and gpr(0)<>&H3F then glitchtask3=1:sc.print vbcr & vbcr & gprlen &" Bytes: "&vbcr&vbcr:for i=0 to gprlen-2:sc.print  hexstring(gpr(i),2)& " ":next:sc.print vbcr& vbcr& "Delay: " & HexString(Delay(3),4)& "      DAC: "& HexString(DAC(3),2) & " (" & V & " volts)":Call RemoveMsg():exit function
+
+  If gprlen=40 and gpr(1)<>&H99 then
+
+   Sc.Write("A0 02 02") ' Apagar Leds, Desconectar cartão
+   GlitchTask3=1
+   n=SaveEEPROMFile(EEPROM)
+
+  End if
+End Function
+'____________________________________________________________________________________________
+'¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯
+Sub SetGlitchValues()
+
+' Glitch Task 1 Set A
+DACI(1)=&H99   '&Ha0
+DelayI(1)=&H02
+GlitchDelayI(1)=&H02
+TentLimitN(1)=3
+TentLimitI(1)=05
+GlitchProc(1)=1
+ProcAlt(1)=1
+ProcAltTentLimit(1)=200
+LimFalhas(1)=100
+ProcDelay=2
+
+' Glitch Task 3
+DACI(3)=&H99
+DelayI(3)=&H02
+Delay(3)=&H0002
+TentLimitN(3)=1
+TentLimitI(3)=1
+ProcAltTentLimit(3)=100
+LimFalhas(3)=1
+Clock=&H0002
+
+T1=1 ' Define o Set padrão da tarefa 1
+
+Randomize ' Assegura ter sequencias de glitch aleatórias
+For i=1 To 3:DAC(i)=0:Delay(i)=0:Tent(i)=0:TotalTent(i)=0:TentLimit(i)=0:Procura(i)=1:Next
+For i=0 To 12:ATR(i)=0:Next
+
+End Sub
+'____________________________________________________________________________________________
+'¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯
+Function RandomRange(Low,High) ' A função retorna um inteiro aleatório entre Low e High
+    RandomRange=Int(Rnd()*(High-Low+1))+Low
+End Function
+'____________________________________________________________________________________________
+'¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯
+Function HexString(Numero,Tam) ' Converte "Numero" em uma string Hexa com comprimento=Tam
+    Dim TamAtual,Ret
+    Ret=Hex(Numero)
+    TamAtual=Len(Ret)
+    If TamAtual<Tam Then Ret=String(Tam-TamAtual,"0") & Ret
+    HexString=Ret
+
+End Function
+'____________________________________________________________________________________________
+'¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯
+Function HexToDec(Nhex) ' Converte a string Hexadecimal Nhex em um número decimal.
+    NumHex=Nhex
+    NumHex=Replace(UCase(NumHex)," ","")
+    If NumHex="" then NumHex="00"
+    HexToDec=CLng("&H"+NumHex)
+End Function
+'____________________________________________________________________________________________
+'¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯
+Sub AguardaCartao()   ' Espera inserção do cartão
+    Call Sc.ProgressBox("Please Insert  Card...",1,100,ScriptN+"   -   Aguardando tarjeta...")
+    Do While (CartaoInserido()=0)
+    Loop
+    Call RemoveMsg()
+End Sub
+'____________________________________________________________________________________________
+'¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯
+Function CartaoInserido() ' Esta função testa se o cartão está no unlooper. 1=sim, 0=não.
+    i=Sc.Flush()
+    Sc.Write("80")
+    Sc.Read(1)
+    CartaoInserido=0
+    If Sc.GetByte(0)=&HFF Then CartaoInserido=1
+End Function
+'____________________________________________________________________________________________
+'¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯
+Function ResetVer() ' A função verifica se o unlooper está presente, conectado e
+    ' funcionando. Retorna a identificação se Ok, uma string nula "" se não.
+    ResetVer=""
+    Call Sc.Reset()                  ' Reseta o unlooper
+    Retorno=Sc.Flush()               ' Flush o buffer de recepção
+    sc.write "90"                    ' Pede identificação do unlooper...
+    If Sc.Read(4)=4 Then             ' Se receber 4 bytes do unlooper...
+       UnlooperID=""
+       For i=0 to 3: UnlooperID=UnlooperID+Chr(Sc.GetByte(i)): Next
+       ResetVer=UnlooperID
+       Select Case ResetVer
+               Case"SKY1": UnlooperID="SKY1,  No  Recomendado ... "
+               Case"SKY2": UnlooperID="SKY2,  No  Recomendado ... "
+               Case"OBM2": UnlooperID="OBM2,  No  Recomendado ... "
+               Case"GX.1": UnlooperID="GLA,  No  Recomendado ... "
+               Case"V5.0": UnlooperID="HU,  OK ... "
+               Case"SU-2": UnlooperID="SU2,  No  Recomendado ... "
+               Case"HU7F": UnlooperID="HU7F,  Ok ... "
+       End select
+    End If
+End Function
+'____________________________________________________________________________________________
+'¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯
+Sub AguardaUnlooper()' Espera ligar/conectar um unlooper
+        Do While (ResetVer()="")
+           Call Sc.ProgressBox("Please Conectar el Unlooper...",1,100,ScriptN+"   -   Aguardando conexion...")
+        Loop
+        Call RemoveMsg()
+End Sub
+'____________________________________________________________________________________________
+'¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯
+Function UserCancel()' Verifica se o usuário deseja abortar o script
+  UserCancel=False
+  Msg="Abort Script?"
+  Retorno=Sc.MsgBox(Msg,vbQuestion+vbYesNo,ScriptN+"  -  Abort  Script")
+  If (Retorno=vbYes) Then UserCancel=True
+End Function
+'____________________________________________________________________________________________
+'¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯
+Function MensG() 'Monta as strings de glitches
+   Mens0=vbcr+"DAC: "
+   Mens1=HexString(DAC(T1),2)+"      Clock:  "+HexString(Delay(T1),3)    +"/"+HexString(GlitchDelay(T1),2)+"/"
+   Mens2=HexString(DAC(3),2)+"      Clock:  "+HexString(Delay(3),3)
+   MensG=Mens0+Mens1+Mens2+vbCr
+End Function
+'____________________________________________________________________________________________
+'¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯
+Sub MensErro()
+    Call RemoveMsg()
+    Call Sc.MsgBox("Este archivo no es una Imagen/Binário válida!"+vbCrLf,vbExclamation+vbOKOnly,ScriptN+"  -  Archivo con Problemas")
+    Fs.FileClose(InFile)
+End Sub
+'____________________________________________________________________________________________
+'¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯
+Sub TipoAtr()
+   For i=0 to 14: AtrCart=AtrCart+"  "+hexstring(GPR(i),2): next
+   Msg="  Ok ...": StatusCart=3 'Cartão funcional e ATR OK
+   If AtrCart<>AtrOk and GPR(0)<>GPR(9) then Msg=",  mas  INCORRET!": StatusCart=2 ' Cartão funcional mas ATR ERRADA
+   If GPR(0)=GPR(9) then Msg=",  Card is LOOP!": StatusCart=1 ' Cartão em LOOP
+End Sub
+'____________________________________________________________________________________________
+'¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯
+Function SaveEEPROMFile(EEPROM)
+         Dim GotInput,OutFile,TamArq,NomeArq,Fuse,FuseXor,CAMID
+         Const FileFilter="Bin Files (*.bin)|*.bin|All Files (*.*)|*.*"
+         NomeArq=""
+         GotInput=False
+         SaveEEPROMFile=False
+         For i=&H238 to &H23B: CamID=CamID+HexString(EEPROM(i),2): Next
+         res=CalcDigit(CamID)
+         CamID=right(msg,7)+res+".bin"
+         Do
+           NomeArq=Fs.FileSaveDialog(FileFilter,ScriptN+"   -   guardar Archivo Binário",CAMID)
+           If (NomeArq<>"") Then ' Se o nome retornado é vazio, o usuário cancelou.
+               OutFile=Fs.FileCreate(NomeArq) ' Cria o novo arquivo
+               Call Fs.FileSeek(OutFile,&H0,fsoSEEK_SET)
+               For i=0 to 4095: Call Fs.FilePutc(OutFile,EEPROM(i)):Next
+               GotInput=True
+               SaveEEPROMFile=True
+               Fs.FileClose(OutFile)
+           Else
+               GotInput=True
+           End If
+         Loop Until GotInput=True
+End Function
+'____________________________________________________________________________________________
+'¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯
+Function CalcDigit(CamId)'Calcula o último dígito da CamID
+    i=HextoDec(CamId) 'Calcular último dígito da CamID
+    msg=Cstr(Abs(i))
+    i=Len(msg)
+            If i<8 then msg=String(8-i,"0")& msg
+            for i=1 to 7 step 2
+                c3=mid(msg,(8-i),2)
+                t=cint(right(c3,1))*2
+                If t > 9 then t=t-9
+                total=total+t+cint(left(c3,1))
+            next
+    CalcDigit=right(Cstr(100-total),1)
+End Function
+'____________________________________________________________________________________________
+'¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯

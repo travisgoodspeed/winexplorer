@@ -1,0 +1,2750 @@
+'***********************************************************************************************************
+'                            SUPER CLEAN VERSION 4.1
+'***********************************************************************************************************                                                                                                                                                                                                                                                                                                                                                                                                                                  A150611756CARP1DUN112Y04
+' NOTE: Remember the type of your eeprom EG 4b, 5b, 6b, 7b, 8b, or 9b.
+' This is not the number on the card.  It is the number of the eeprom you loaded to the card.
+' If you recognize your code thank you
+' Created 02/10/2003 ---By Bill
+' Modified 2-18-03 ---By Timbo
+'   Added ClearScratchPad after Alt-EE Fix to clean 2B10-2BAF of left-over bytes.
+' Modified 3-9-03 --- By Me
+'   Added RS Unlooper Functions
+' Modified 4-14-03 --- By TD
+'   Cleaned code for better readability and style.
+' Modified 4-19-03 --- By TD
+'   Major code cleanup.
+'   Improved unlooper to maximize bootstrap loading effectiveness.
+'   Created unlooper range optimized for Dominator Elite loader.
+' Modified 1-12-2004 --- By IeOmega
+'   Revamped and stipped out some of the cluter
+'   TurboMod Unlooper routine, should unloop ALL cards FAST!(tough cards will take longer)
+'   Super WIDE Range Glitching for very badly looped cards.
+'   Super Clean Modified for speed
+'   Cleaned code for better readability and style.
+'***********************************************************************************************************
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Option Explicit
+Const progtitle = "SuperClean "
+Const vbBeBe = "v4.1"
+Const HmTu = 4
+Const HmTlBs = 1
+Const TgS = 20
+Const UseTxFF = 2
+Const TxFF = 3 'Number of times to run FF routine on Unloop
+Const Fix4thBYTE = "yes" 'check and fix fourth bye on super clean
+Const DEBUGGING = False
+Const fsoError = - 1
+Const fsoOpenRead = 0
+Const fsoOpenWrite = 1
+Const fsoOpenReadWrite = 2
+Const fsoSEEK_SET = 0
+Const fsoSEEK_CUR = 1
+Const fsoSEEK_END = 2
+Const FileFilter = "All Eeprom Files (*.Bin, *.Crd)|*.Bin;*.Crd;|Bin Files (*.Bin)|*.Bin|Crd Files (*.Crd)|*.Crd|All (*.*)|*.*"
+Const Ins = &h08
+Const InsParam1 = &h00
+Const InsParam2 = &h00
+Const InsLen = &h34
+Const HexFilter = "Hex Files (*.hex)|*.hex"
+Const TxtFilter = "Text Files (*.txt)|*.txt"
+Const SigFilter = "Signature Files (*.sig)|*.sig"
+
+
+Fs.FileClose(InFile)
+Dim infobox,ReadInfo
+Dim OutFile, InFile, HUBinFile, GlitchSet
+Dim XORedByte(31), Key12byte(11)
+Dim D1,D2,D3,D4,D5,D6,D7,D8,d9
+Dim ScriptStart,ScriptEnd, TempScriptStart
+Dim TimeElapsed, TimeInMinutes, TimeInHours
+Dim ATR, gTotal, bTotal
+Dim RDwriteCLEANglitchCOUNTER
+Dim bootstraploads, loopcount, FirstBootload
+Dim SetBootStrap(50), SetGlitches(50), RelativeSuccess(50), SetSuccess(50), NeverATR(50)
+Dim FxCard,TxCard,tmp
+Dim cnt, b, RetVal, boot, kk, katr
+Dim cter, glcnt, mtries, kp ',atrlock
+Dim d1_cnt, d1_inc, d1_min, d1_cur, d1_max, dac_cur
+TempScriptStart = ScriptStart
+'***********************************************************************************************************
+'    MAIN LOGIC
+'***********************************************************************************************************
+Sub SetUnloopRange(whichopt,atrlock)
+'   This sub sets the D1-D9 values for function UnloopCard()
+'   It was inside UnloopCard(), but now separated for readability
+' NOTE: Cases 1-8 are unchanged from superunlooper v3
+'       Case    9 is new, custom for Dominator Elite
+'       Cases 10-21 are unchanged from SEMU v2.3
+'       Case 21 New Semu 4.3
+  Select case whichopt
+  Case "1"
+'================ SEMU v4.3 TURBOMOD ==============
+      'vcc + last 2 glitch 4 bootloader
+      D2 = INT(RND * &h04) + &h30      ' 48 - 52
+      D3 = INT(RND * &h03) + &h08      '  8 - 11
+      D4 = INT(RND * &h10) + &h86      '134 - 150
+      D9 = INT(RND * &h02) + &h35e     '862 - 864
+'==========================================
+        ' Atr glich point search range
+    if atrlock = 0 then
+          D7 = INT(RND * &h04) + &h1d      '  29 - 33
+          D8 = INT(RND * &h04) + &h38      '  56 - 60
+          D1 = INT(RND * &h5e) + &ha0      '  160 - 254 'this is the wide range
+          D5 = INT(RND * &h02) + &h25d     '  605 - 607
+          D6 = INT(RND * &h07) + &h36      '  54 - 61
+      End If
+
+  Case "2"       'RS2 range - "Other Full-size loader (wider glitch)"
+      D2 = RandomRange(48,54)    'INT(RND * &h06) + &h30      ' 48 -  54
+      D3 = RandomRange(7,11)     'INT(RND * &h04) + &h07      '  7 -  11
+      D4 = RandomRange(130,150)  'INT(RND * &h14) + &h82      '130 - 150
+      D9 = RandomRange(859,866)  'INT(RND * &h07) + &h35b     '859 - 866
+      If atrlock = 0 then
+          D1 = RandomRange(165,200)  'INT(RND * &h23) + &ha5   '165 - 200
+          D5 = RandomRange(605,608)  'INT(RND * &h03) + &h25d  '605 - 608
+          D6 = RandomRange(54,61)    'INT(RND * &h07) + &h36   ' 54 -  61
+          D7 = RandomRange(28,34)    'INT(RND * &h06) + &h1c   ' 28 -  34
+          D8 = RandomRange(56,60)    'INT(RND * &h04) + &h38   ' 56 -  60
+      end If
+
+  Case 3 ' ORIGINAL RS3 range  (allegedly for "small loaders with surface mount chips")
+         ' Change this case to 3 and above case to 399 If you need the old settings
+         ' (it doesn't work at ALL for dominator elite)
+      '==================================================================
+      'vcc + last 2 glitch 4 bootloader
+      D2 = RandomRange(48,56)    'INT(RND * &h08) + &h30      ' 48 -  56
+      D3 = RandomRange(8,11)     'INT(RND * &h03) + &h08      '  8 -  11
+      D4 = RandomRange(140,155)  'INT(RND * &h0f) + &h8c      '140 - 155
+      D9 = RandomRange(862,865)  'INT(RND * &h03) + &h35e     '862 - 865
+      If atrlock = 0 then
+          D1 = RandomRange(200,220)  'INT(RND * &h14) + &hc8   '200 - 220
+          D5 = RandomRange(602,608)  'INT(RND * &h04) + &h25a  '602 - 608
+          D6 = RandomRange(58,64)    'INT(RND * &h06) + &h3a   ' 58 -  64
+          D7 = RandomRange(30,32)    'INT(RND * &h02) + &h1e   ' 30 -  32
+          D8 = RandomRange(58,65)    'INT(RND * &h07) + &h3a   ' 58 -  65
+      end If
+
+  Case 4     'RS4 range     "wider glitch for stubborn and 4b cards"
+      '==============================================
+      'vcc + last 2 glitch 4 bootloader
+      D2 = RandomRange(57,61)    'INT(RND * &h05) + &h39  ' 57 -  61
+      D3 = RandomRange(8,11)     'INT(RND * &h04) + &h08  '  8 -  11
+      D4 = RandomRange(145,165)  'INT(RND * &h14) + &h91  '145 - 165
+      D9 = RandomRange(861,866)  'INT(RND * &h06) + &h35D '861 - 866
+
+      '==========================================
+      ' Atr glich point search range
+      If atrlock = 0 then
+          D1 = RandomRange(160,190)  'INT(RND * &h1e) + &ha0  '160 - 190
+          D5 = RandomRange(606,608)  'INT(RND * &h02) + &h25e '606 - 608
+          D6 = RandomRange(54,68)    'INT(RND * &h04) + &h36  ' 54 -  68
+          D7 = RandomRange(26,30)    'INT(RND * &h04) + &h1a  ' 26 -  30
+          D8 = RandomRange(58,60)    'INT(RND * &h04) + &h38  ' 56 -  60
+      end If
+
+  Case 5    'Mod4 range
+      '==============================================
+      'vcc + last 2 glitch 4 bootloader
+      D2 = RandomRange(56,62)    'INT(RND * &h07) + &h38  ' 56 -  62   These are the glitch value ranges.
+      D3 = RandomRange(8,11)     'INT(RND * &h04) + &h08  '  8 -  11<<<<The Hex value of 07 is added at a random number up to 04 not 5 cuz it always rounds down ie 4.87755 = 4
+      D4 = RandomRange(135,191)  'INT(RND * &h39) + &h87  '135 - 191
+      D9 = RandomRange(862,866)  'INT(RND * &h05) + &h35e '862 - 866
+
+      '==========================================
+      ' Atr glich point search range
+      If atrlock = 0 then
+          D1 = RandomRange(168,175)  'INT(RND * &h08) + &ha8  '168 - 175
+          D5 = 606                    'INT(RND * &h00) + &h25e '606
+          D6 = RandomRange(63,67)    'INT(RND * &h05) + &h3f  ' 63 -  67
+          D7 = RandomRange(29,30)    'INT(RND * &h02) + &h1d  ' 29 -  30
+          D8 = RandomRange(57,59)    'INT(RND * &h03) + &h39  ' 57 -  59
+      end If
+
+  Case 6   'Mod5 range
+      '==============================================
+      'vcc + last 2 glitch 4 bootloader
+      D2 = RandomRange(57,61)    'INT(RND * &h05) + &h39 ' 57 -  61
+      D3 = RandomRange(8,11)     'INT(RND * &h04) + &h08 '  8 -  11
+      D4 = RandomRange(136,196)  'INT(RND * &h3A) + &h88 '136 - 196
+      D9 = RandomRange(861,866)  'INT(RND * &h06) + &h35D'861 - 866
+
+      '==========================================
+      ' Atr glich point search range
+      If atrlock = 0 then
+          D1 = RandomRange(160,189)  'INT(RND * &h1c) + &ha2  '160 - 189
+          D5 = &h25d                   '605     INT(RND * &h02) + &h25D '605 - 606
+          D6 = RandomRange(56,81)    'INT(RND * &h19) + &h38  ' 56 -  81
+          D7 = RandomRange(27,30)    'INT(RND * &h04) + &h1B  ' 27 -  30
+          D8 = RandomRange(57,59)    'INT(RND * &h03) + &h39  ' 57 -  59
+      end If
+
+   Case 7    'New FinalMod Fast
+      '==============================================
+      'vcc + last 2 glitch 4 bootloader
+      D2 = RandomRange(57,58)    'INT(RND * &h02) + &h39  ' 57 -  58
+      D3 = RandomRange(9,11)     'INT(RND * &h03) + &h09  '  9 -  11
+      Do
+          D4 = RandomRange(137,159)  'INT(RND * &h17) + &h89  '137 - 159
+      Loop until D4 = &h89 or D4 = &h9F '137 or 159
+      D9 = &h35d                   '861
+
+      '==========================================
+      ' Atr glich point search range
+      If atrlock = 0 then
+          Do
+              D1 = RandomRange(183,188)  'INT(RND * &h06) + &hB7  '183 - 188
+          Loop Until D1 = &hB7 or D1 = &hBB or D1 = &hBC 'do until you get 183,187, or 188
+          D5 = &h25d                   '605
+          D6 = &h3f                    '63
+          Do
+              D7 = RandomRange(27,30)    'INT(RND * &h04) + &h1B
+          Loop Until D7 = &h1B or D7 = &h1E ' 27 or 30
+          D8 = RandomRange(57,59)        'INT(RND * &h03) + &h39  ' 57 -  59
+      end If
+
+  Case 8 'New FinalMod Medium
+      '==============================================
+      'vcc + last 2 glitch 4 bootloader
+      D2 = RandomRange(57,58)    'INT(RND * &h02) + &h39                   ' 57 -  58
+      D3 = RandomRange(9,11)     'INT(RND * &h03) + &h09                   '  9 -  11
+      Do
+          D4 = RandomRange(137,160)  'INT(RND * &h18) + &h89                   '137 - 160
+'        OLD Version  --- Loop until D4 < &h92 or  D4 > &h97 and D4 < &hA1 '137 - 145, or 152 - 160
+      Loop until D4 < &h92 or D4 > &h97   ' 137-145 or 152-160
+      D9 = &h35d                    '861
+
+      '==========================================
+      ' Atr glich point search range
+      If atrlock = 0 then
+          Do
+              D1 = RandomRange(183,188)  'INT(RND * &h06) + &hB7               '183 - 188
+          Loop Until D1 = &hB7 or D1 = &hBB or D1 = &hBC '183, or 187, or 188
+          D5 = &h25d '605
+          D6 = &h3f '63
+          Do
+              D7 = RandomRange(27,30)    'INT(RND * &h04) + &h1B               ' 27 - 30
+          Loop Until D7 = &h1B or D7 = &h1E              ' 27 or 30
+          D8 = RandomRange(57,59)        'INT(RND * &h03) + &h39               ' 57 -  59
+      end If
+
+'**** New, CUSTOM
+  Case 9       '  RS3 range -- optimized for Dominator Elite loader (4/19/03)
+      D2 = &h38   ' RandomRange(&h38,&h3b)    'MY ranges, x38=56
+      'D3 = RandomRange(&h09,&h0b)
+      ' d3: favor 0a, then 09, then 0b
+      If rnd<.65 then d3=&h0a else If rnd>.9 then d3=&h0b else d3=&h09
+      do
+        D4 = RandomRange(&h8a,&h9f)
+      loop until d4<&h91 or d4>&h99
+      If rnd>.5 then d9=&h0360 else D9 = RandomRange(&h0360,&h0363)  ' favor 0360
+
+      If atrlock = 0 then
+          If rnd>.25 then        ' favor the d0-df range
+              do
+                D1 = RandomRange(&hd0,&hdf)
+              loop until (d1<&hda or d1>&hde)
+          else
+              do
+                d1=RandomRange(&he0,&hed)
+              loop until (d1<&he5 or d1>&he8)
+          end If
+          'D5 = RandomRange(&h025d,&h025e)
+          If int(rnd*100)<75 then d5=&h025e else d5=&h025d
+          do    ' d6: small favor for 40
+            If rnd>.25 then D6 = RandomRange(&h35,&h40) else d6=&h40
+          loop until d6<&h3b or d6>&h3e
+          D7 = RandomRange(&h1d,&h1e)
+          d8=RandomRange(&h38,&h3b)
+      end If
+
+
+'*** From SEMU v2.3
+  Case 10    '5B-6B range SUPER 5B GLITCH RANGE 'bootloader attempt almost every glitch!
+     D2 = RandomRange(40,59)
+     D3 = RandomRange(7,11)
+     D4 = RandomRange(132,175)
+     D9 = RandomRange(858,866)
+     If atrlock = 0 then
+        Do
+            D1 = RandomRange(171,205)
+        Loop Until D1 = &hAB or D1 = &hAC or D1 = &hAE or D1 = &hB4 or D1 = &hB5 or D1 = &hB6 or D1 = &hBE  '171,172,174,180,181,182,190
+        D5 = 606
+        D6 = 55
+        D7 = 30
+        D8 = 57
+     end If
+
+  Case 11    'SEMU SUPER 5B Glitch Range 2
+             '5B-6B range SUPER 5B GLITCH RANGE 'bootloader attempt almost every glitch!
+     D2 = RandomRange(40,59)
+     D3 = RandomRange(7,11)
+     D4 = RandomRange(132,175)
+     D9 = RandomRange(858,866)
+     If atrlock = 0 then
+        Do
+            D1 = INT(RND * &h14) + &hAB '171 - 205 'SEMU range (7B[200,205]
+        Loop Until D1 = &hAB or D1 = &hAC or D1 = &hAE or D1 = &hB4 or D1 = &hB5 or D1 = &hB6 or D1 = &hBE or D1 = &hC0 or D1 = &hCD '171,172,174,180,181,182,190,192,205
+        D5 = RandomRange(605,608)
+        D6 = RandomRange(55,70)
+        D7 = 30
+        D8 = 57
+     end If
+
+  Case 12   ' RS2 Range
+            ' The last 3 sets are almost identical
+     D2 = RandomRange(40,59)
+     D3 = RandomRange(7,11)
+     D4 = RandomRange(132,175)
+     D9 = RandomRange(858,866)
+     If atrlock = 0 then
+        D1 = RandomRange(148,206)
+        D5 = RandomRange(605,608)
+        D6 = RandomRange(55,70)
+        D7 = RandomRange(23,30)
+        D8 = RandomRange(57,60)
+     end If
+
+  Case 13   ' RS3 Range
+     D2 = RandomRange(48,54)
+     D3 = RandomRange(6,10)
+     D4 = RandomRange(128,159)
+     D9 = RandomRange(859,866)
+     If atrlock = 0 then
+        D1 = RandomRange(165,191)
+        D5 = RandomRange(605,608)
+        D6 = RandomRange(54,60)
+        D7 = RandomRange(29,36)
+        D8 = RandomRange(56,59)
+     end If
+
+  Case 14   ' RS4 Range
+     D2 = RandomRange(52,59)
+     D3 = RandomRange(7,11)
+     D4 = RandomRange(151,159)
+     D9 = RandomRange(860,866)
+     If atrlock = 0 then
+        D1 = RandomRange(180,182)
+        D5 = RandomRange(604,606)
+        D6 = RandomRange(60,66)
+        D7 = RandomRange(25,30)
+        D8 = RandomRange(57,59)
+     end If
+
+  Case 15   ' Mod4 Range
+     D2 = RandomRange(56,62)
+     D3 = RandomRange(8,11)
+     D4 = RandomRange(135,191)
+     D9 = RandomRange(862,866)
+     If atrlock = 0 then
+        D1 = RandomRange(168,175)
+        D5 = 606
+        D6 = RandomRange(63,67)
+        D7 = RandomRange(29,30)
+        D8 = RandomRange(57,59)
+     end If
+
+  Case 16       ' Mod5 Range
+     D2 = RandomRange(57,58)
+     D3 = RandomRange(9,11)
+     Do
+         D4 = RandomRange(137,160)
+     Loop until D4 < &h92 or  D4 > &h97 and D4 < &hA1 '137 - 145, or 152 - 160
+     D9 = 861
+     If atrlock = 0 then
+        Do
+            D1 = RandomRange(183,188)
+        Loop Until D1 = &hB7 or D1 = &hBB or D1 = &hBC '183, or 187, or 188
+        D5 = 605
+        D6 = 63
+        Do
+            D7 = RandomRange(27,30)
+        Loop Until D7 = &h1B or D7 = &h1E              ' 27 or 30
+        D8 = RandomRange(57,59)
+     end If
+
+  Case 17      'RS1 Range
+     D2 = RandomRange(48,51)
+     D3 = RandomRange(8,10)
+     D4 = RandomRange(134,150)
+     D9 = RandomRange(862,863)
+     If atrlock = 0 then
+        D1 = RandomRange(165,191)
+        D5 = RandomRange(605,607)
+        D6 = RandomRange(54,61)
+        D7 = RandomRange(29,33)
+        D8 = RandomRange(56,60)
+     end If
+
+  Case 18   ' New Finalmod fast
+     D2 = RandomRange(57,58)
+     D3 = RandomRange(9,11)
+     Do
+         D4 = RandomRange(137,159)
+     Loop until D4 = &h89 or D4 = &h9F '137 or 159
+     D9 = &h35d     '861
+     If atrlock = 0 then
+        Do
+            D1 = RandomRange(183,188)
+        Loop Until D1 = &hB7 or D1 = &hBB or D1 = &hBC 'do until you get 183,187, or 188
+        D5 = 605    'x25d
+        D6 = 63     'x3f
+        Do
+            D7 = RandomRange(27,30)
+        Loop Until D7 = &h1B or D7 = &h1E ' 27 or 30
+        D8 = RandomRange(57,59)
+     end If
+
+  Case 19       ' New Finalmod medium
+     D2 = RandomRange(57,58)
+     D3 = RandomRange(9,11)
+     Do
+         D4 = RandomRange(137,159)
+     Loop until D4 < &h92 or  D4 > &h97 and D4 < &hA1 '137 - 145, or 152 - 160
+     D9 = &h35d     '861
+     If atrlock = 0 then
+        Do
+            D1 = RandomRange(183,188)
+        Loop Until D1 = &hB7 or D1 = &hBB or D1 = &hBC '183, or 187, or 188
+        D5 = &h25d '605
+        D6 = &h3f '63
+        Do
+            D7 = RandomRange(27,30)
+        Loop Until D7 = &h1B or D7 = &h1E              ' 27 or 30
+        D8 = RandomRange(57,59)
+     end If
+
+  Case 20      'Special Range
+     D2 = RandomRange(40,59)
+     D3 = RandomRange(7,11)
+     D4 = RandomRange(132,174)
+     D9 = RandomRange(858,866)
+     If atrlock = 0 then
+        D1 = 188  '188
+        D5 = 607 'D5 = INT(RND * &h04) + &h25d '605 - 608 'Always 606
+        D6 = 66  'D6 = INT(RND * &h0F) + &h37  ' 55 -  70  '55 or 57 (always 55 for 7B)
+        D7 = 30  'D7 = INT(RND * &h8) +&h17    ' 23 -  30 'Always 30
+        D8 = 60  'D8 = INT(RND * &h04) + &h39  ' 57 -  60
+     end If
+  Case 21 ' RS1 range -- "Repair station, full-size loaders"
+     '==================================================================
+     'vcc + last 2 glitch 4 bootloader
+     D2 = RandomRange(46,50)    'INT(RND * &h06) + &h2e      ' 46 -  50
+     D3 = RandomRange(8,10)     'INT(RND * &h02) + &h08      '  8 -  10
+     D4 = RandomRange(138,145)  'INT(RND * &h07) + &h8a      '138 - 145
+     D9 = RandomRange(862,864)  'INT(RND * &h02) + &h35e     '862 - 864
+      If atrlock = 0 then
+       D1 = RandomRange(165,185)    'INT(RND * &h14) + &ha5   '165 - 185
+       D5 = RandomRange(605,607)    'INT(RND * &h02) + &h25d  '605 - 607
+       D6 = RandomRange(56,60)      'INT(RND * &h04) + &h38   ' 56 -  60
+       D7 = RandomRange(29,31)      'INT(RND * &h02) + &h1d   ' 29 -  31
+       D8 = RandomRange(58,60)      'INT(RND * &h02) + &h3a   ' 58 -  60
+     End If
+   End select
+End Sub
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+Sub ReadSuccess()
+    Dim sfile, filename
+
+exit sub
+    FileName = "ul success.txt"
+    ' Fs.FileOpenDialog(FileFilter, "    Please select a valid HU Eprom (*.bin) file to write to the card", "Default.bin")
+    If FileName <> "" Then
+        If Fs.FileExists(FileName) = 0 Then
+            Sc.MsgBox("The file does not exist")
+        Else
+            sFile = Fs.FileOpen(FileName, fsoOpenRead)
+        End If
+    End If
+
+End Sub
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+Sub Main()
+    Call UnlooperSettings()
+    Dim ErrorString
+    Dim RetVal, menuprompt, totalGlitches
+    Dim choice, LBSChoice, RSChoice, WSChoice, UTILChoice
+    Sc.ClearOutputWindow
+    Sc.Verbose = false
+    If Sc.Version < 4.6 Then
+        ErrorString = "You need version 4.6 or greater of WinExplorer to run this script"
+        Sc.MsgBox ErrorString, vbCritical
+        Err.Raise 1050, , ErrorString
+    End If
+
+    If ChipVer <> 1 then
+        Sc.MsgBox("Please Check All Hardware Connections And"&vbCr&vbCr&"That Your Chip Is Flashed With UL4S Code.")
+        Exit Sub
+    End If
+
+    ReadSuccess()
+    Do
+        TotalGlitches = 0
+        loopcount     = 0
+
+        If getatr()=true then
+          menuprompt=vbTab&"     Card appears to have a good ATR."&vbCr&vbCr
+        else
+          menuprompt=vbTab&"       No card present, or no ATR."&vbCr
+        end If
+        Choice = Sc.ButtonBox(MenuPrompt, 0, progtitle+vbBeBe, "Super&Clean", "Smart&Unloop", "&Exit")
+        Select Case Choice
+            Case "1" ' load bootstrap
+                MenuPrompt = vbTab&vbTab&vbTab&vbTab&"Which glitch to use?"&vbCr&vbCr
+                MenuPrompt = MenuPrompt+vbTab+"If you're not sure, it is recommended you start with #1 And work Your way over"&vbCr
+                LBSChoice = Sc.ButtonBox(MenuPrompt, 0, progtitle+vbBeBe+"                Choose Glitch!", "IN&S 4C", "INS &2E", "INS &48", "&Exit")
+                Select Case Choice
+                    Case "1"' INS 4C
+                        If getatr()=true then
+                           Call BootCard("4C")
+                        else
+                         Sc.MousePointer = 14
+                        end If
+                    Case "2"' INS 2E
+                        Call BootCard("2E")
+                        If getatr()=true then
+                           Call BootCard("4C")
+                        else
+                         Sc.MousePointer = 14
+                        end If
+                    Case "3"' INS 48
+                        Call BootCard("48")
+                        If getatr()=true then
+                           Call BootCard("4C")
+                        Else
+                         Sc.MousePointer = 14
+                        end If
+                    Case "4", "" 'Exit (do nothing)
+                End Select  ' LBSchoice
+            Case "2"  ' Unloop Card
+                RetVal = 3
+                Call IsCardPresent()
+                If (GetATR() = True) Then
+                    RetVal=Sc.ButtonBox("This card appears to have a good ATR."&vbCr&vbCr&"                 Continue anyway?" ,  vbDefaultButton2 + vbQuestion, progtitle&vbBeBe, "&Yes", "&No")
+                    If RetVal = 1 then RetVal = 3
+                End If
+                If RetVal = 3 Then
+                    HUBinfile = False
+                    If (UnloopCard())= true Then
+                       'Select a good eeprom bin to write to the card
+                       Call GetFile()
+                       If HUBinFile = True Then
+                          Call WriteCard(32)
+                          Call ShowAtr(1)
+                       Else
+                          Fs.FileClose(InFile)
+                       End If
+                    End If
+                End If
+            Case "3", ""  ' Exit
+                Exit Sub
+            Case Else
+                MenuPrompt =  "Invalid Input!"&vbCr
+        End Select ' Choice
+     Loop While True
+End Sub
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+Sub BootCard(glitch2use)
+    Dim AvgGlitchWrite, AvgGlitchRead, AvgGlitchClean, AvgGlitch, Fix4thBYTE
+
+    TimeElapsed   = 0
+    TimeInMinutes = 0
+    TimeInHours   = 0
+
+    Call IsCardPresent()
+    If (GetATR = False) Then
+        Sc.MsgBox("Card is not returning an ATR." &vbCr & "The card may not be fully Inserted" & vbCr &" or the card contacts may be dirty." & vbCr & "If everything is ok then the card is looped"&vbCr& "You must Unloop the card before using this option ")
+    Else
+       RDwriteCLEANglitchCOUNTER = 0
+       bootstraploads = 1
+       ScriptStart = Now
+       Sc.Print vbTab&"----------------------------------------------------------------" & vbCr
+       Sc.Print vbTab&vbTab&vbTab&"     Start: " & ScriptStart & vbCr     'main screen
+       Sc.Print vbTab&"----------------------------------------------------------------" & vbCr
+       Sc.Print vbTab&vbTab&vbTab&"  Attempting To Load The Bootstrap "&vbCr&vbCr
+       Sc.Print vbTab&vbTab&vbTab&"  Attempt #    INS Used      Dac1  "&vbCr
+       Sc.Print vbTab&vbTab&vbTab&"  =========    ========      ====  "&vbCr
+
+       for bootstraploads = 1 to HmTlBs
+           Call LoadBootStrap(glitch2use)
+       Next
+
+       If Fix4thBYTE = "yes" Then ' NOTE: Nowhere in the code is Fix4thBYTE set
+          Call ExtractCardInfo()
+          Sc.Print vbTab&vbTab&vbTab&vbCr&"Fixing The 4th Byte of The ATR ....."
+          Call WriteViaLoader("2465","0000","E")' FIX 4TH BYTE OF ATR
+          Sc.Print vbTab&vbTab&vbTab&vbCr&"The 4th Byte Of The Atr Was Fixed."&vbCr
+          Fix4thBYTE = ""
+          FirstBootload = 2
+       End If
+
+       AvgGlitchRead = RDwriteCLEANglitchCOUNTER / HmTlBs
+       Sc.Print vbCr&vbTab&vbTab&vbTab&"  Glitches Required To Enter The Card: "&AvgGlitchRead&" Glitches."
+
+       Call SuperClean()
+    End If
+End Sub
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+Sub LoadBootStrap(glitch2use)
+    Dim RdWriGl, cnt, DAC1, attempts, b
+    Dim RetValue, GotInput, Counter, MsgBox, DoubleGlitch, totalglitches, tmp, msg
+
+    Sc.Verbose = False
+
+    TimeElapsed   =  0
+    TimeInMinutes =  0
+    TimeInHours   =  0
+    tmp           =  ""
+    RdWriGl       =  0
+    Counter       =  0
+    Attempts      =  0
+    DAC1          = &h9D
+
+    Call IsCardPresent()
+
+    Do
+        RANDOMIZE TIMER
+        Sc.Write("A1")
+        GotInput = False
+
+        DoubleGlitch = 0
+        Do
+           Attempts     = Attempts     + 1
+           RdWriGl      = RdWriGl      + 1
+           DoubleGlitch = DoubleGlitch + 1
+           Call FormatTime
+           Call Sc.ProgressBox ("           Glitching into card...                       Attempts:        "&Attempts&vbCr&ATR&vbTab&vbTab&vbTab&vbTab&"DAC1 value being used: "& HexString(DAC1,2), 1, 999, progtitle&vbBeBe&"            Glitch # "&Attempts)
+           sc.write("0610010E109300")
+           If Sc.Read(&h02) > 1 then
+              cnt = sc.getbyte(1)
+           Else
+              cnt = 0
+           end If
+
+           If cnt > 0 then
+              cnt = sc.read(cnt)
+
+              for b = 0 to cnt -1
+                 tmp=tmp & HexString(sc.getbyte(b),2) & " "
+              next
+              Atr = tmp
+           Else
+              If loopcount = 0 then
+                 Msg = "        Oh NO!!"
+                 tmp="WARNING !!!! The Card Is Looping."
+                 cnt = Sc.ButtonBox(tmp, 0,Msg , "Ok")
+                 loopcount = loopcount + 1
+              end If
+           end If
+
+           tmp = ""
+           Sc.Write("06100E10019300")
+           Sc.Delay(50)
+           Sc.Read(&h02)
+           RetValue = Sc.GetByte(&h01)
+           Sc.Read (RetValue)
+           Sc.Write("B0")
+           Sc.Write(HexString(DAC1,2))
+
+           If Glitch2Use = "4C" Then 'INS 4C
+              Sc.Write("0C 11 15 C4 48 48 FF 56 B9 70 C9 08 00")
+           End If
+
+           If Glitch2Use = "2E" Then 'INS 2E
+              Sc.Write("0B 15 C4 48 2E FF 56 B9 70 CA 08 00")
+           End If
+
+           If Glitch2Use = "48" Then 'INS 48
+              Sc.Write("0B 15 C4 48 48 FF 56 B9 70 C9 08 00")
+           End If
+
+           Sc.Delay(50)
+           If Sc.BytesInBuffer > 0 Then
+              Sc.Read(&h02)
+              RetValue = Sc.GetByte(&h01)
+              Sc.Read (RetValue)
+           End If
+
+           Sc.Write("B0 80")
+           Sc.Write("38F00000000069FFFFFFFF523FFD2284E172400772FF14C5E2AB0100C3DA07F88C010000000000000000000000000000000000200011098000")
+           Sc.Read(&h02)
+
+           If Sc.GetByte(&h0) = &h38 Then
+              If Sc.GetByte(&h01) = &h01 Then
+                 Sc.Read(&h01)
+                 If Sc.GetByte(&h0) = &h84 Then
+                    GotInput = True
+                 Else
+                    GotInput = False
+                 End If
+              End If
+           End If
+
+           Counter = Counter + 1
+        loop until DoubleGlitch = 6 or GotInput = True
+        If GotInput = False then
+           Do
+              DAC1 = RandomRange(141,169)  'INT(RND * &h1D) + &h8D ' 141 -  169
+           Loop Until DAC1 = &h8D or DAC1 = &h94 or DAC1 = &h96 or DAC1 = &h9A or DAC1 = &h9D or DAC1 = &hA2 or DAC1 = &hA9
+'                             141            148            150            154            157            162            169
+        End If
+    Loop Until GotInput = True
+
+    Sc.Write("42FF225272FF14E1E2D007E2D029E2D02A77800718753F07D307D807C5E2AB0060C3DA07F8726015D404E700D57640070DD3078ECEFB70012ADA07F700C49E2A00FA00")
+    Sc.Read(&h02)
+
+    Sc.Print vbTab&vbTab&vbTab&vbTab&bootstraploads&VbTab&VbTab&Glitch2Use&VbTab&VbTab&(HexString(DAC1,2))&"   <----- " & attempts & " Glitches." & vbCr
+    TotalGlitches = TotalGlitches + attempts
+    RDwriteCLEANglitchCOUNTER = RDwriteCLEANglitchCOUNTER + Attempts
+    FirstBootload = 1
+    Call Sc.ProgressBox ("", 0, 0, "")
+
+End Sub
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+Sub Superclean()
+Dim LBSChoice, menuprompt
+    MenuPrompt = ""
+    MenuPrompt = MenuPrompt & "  SuperClean Your Card!"&vbCr&vbCr
+    MenuPrompt = MenuPrompt & "  Please select the type of EEPROM you are cleaning.   "&vbCr
+    MenuPrompt = MenuPrompt & "  NOTE: This is not the number printed on your card." &vbCr
+    MenuPrompt = MenuPrompt & "  This is type of the EEPROM you have put on the card."&vbCr
+    LBSChoice = Sc.ButtonBox(MenuPrompt, 0, progtitle&vbBeBe, "Type 4B", "Type 5B", "Type 6B", "7B, 8B, or 9B", "Exit")
+Select Case LBSChoice
+    Case "1"
+        Call FourB()
+    Case "2"   ' INS 2E
+        Call FiveB()
+    Case "3"   ' INS 48
+        Call SixB()
+    Case "4"   ' INS 48
+    MenuPrompt = "Please select the type of EEPROM you are cleaning:"
+    LBSChoice = Sc.ButtonBox(MenuPrompt, 0, progtitle, "Type 7B", "Type 8B", "Type 9B", "Exit")
+Select Case LBSChoice
+    Case "1"   ' INS 4C
+            Call SevenB()
+    Case "2"   ' INS 2E
+            Call EightB()
+    Case "3"   ' INS 48
+            Call NineB()
+    Case "4", ""  ' Exit
+End Select
+    Case "5", ""  ' Exit
+End Select
+    Call Shutdowncard()
+End Sub
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+Sub ExtractCardInfo()
+    Call WDTMR()
+    Call Byte_Array()
+End Sub
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+Sub Byte_Array()
+    Dim RetValue, XByte(15), x
+
+    Sc.Write("06C20724C08800")
+    Sc.Read(&h02)
+    RetValue = Sc.GetByte(&h01)
+    Sc.Read(RetValue)
+
+    for x=0 to 7
+      xbyte(x)=sc.getbyte(x)
+    next
+
+    Sc.Write("06C20726588800")
+    Sc.Read(&h02)
+    RetValue = Sc.GetByte(&h01)
+    Sc.Read(RetValue)
+
+    for x=0 to 7
+        XByte(x+8) = Sc.GetByte(x)
+    next
+
+    Sc.Write("06C20B2AE48C00")
+    Sc.Read(&h02)
+    RetValue = Sc.GetByte(&h01)
+    Sc.Read(RetValue)
+
+    for x=0 to 11
+        Key12Byte(x)  = Sc.GetByte(x)
+    next
+
+    for x=0 to 7
+        XORedByte(x)  = HexString(XByte(x) XOR XByte(x+8), 2)
+        XoredByte(x+8)  = XoredByte(x)
+        XoredByte(x+16)  = XoredByte(x)
+        XoredByte(x+24)  = XoredByte(x)
+    next
+End Sub
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+Function UnloopCard()
+
+    Dim cnt, b, RetVal, done, kk, pushbs, atrlock, dropatr
+    Dim gThisSet, gThisATR, bThisSet, bThisATR, progress
+    Dim noresponse, keepd1d9, stubborn
+    Dim minsuccessratio,maxglitchesthisset,gotonextglitch, myoverall
+    Dim GlitchResets, gSinceLastBS, bestsuccess, randomflag
+    Dim SuccessThisATR, SuccessThisSet, LeastGlitches, RaisedExpectations, NoCandidates
+
+    ScriptStart = Now
+    RANDOMIZE TIMER
+
+    GlitchSet= 1         ' start with first set
+    gTotal   = 1         ' total glitches to card
+    gThisSet = 0         ' total gliches from this set
+    gThisATR = 0         ' total glitches since atr was locked
+    bTotal   = 0         ' total bootstrap attempts
+    bThisSet = 0         ' bootstrap attempts (reset on drop atrlock)
+    bThisATR = 0         ' bootstrap attempts since ATR was locked
+    gSinceLastBS= 0
+    stubborn = 1
+    glitchresets=0
+    gotonextglitch=true
+    RandomFlag=False     ' have we random glitched yet?
+    minsuccessratio=.3
+    maxglitchesthisset=15
+    ATRlock  = false     ' lock into this set of d15678
+    done     = false
+    sc.verbose= False
+
+    for b=1 to TgS
+        SetGlitches(b)=0
+        SetBootStrap(b)=0
+        SetSuccess(b)=0
+        NeverATR(b)=True
+    next
+    setbootstrap(3)=0
+    relativesuccess(3)=0
+    gtotal=0
+    btotal=0
+
+    If getATR() = false then FFtheCard()
+    DO
+      gTotal=gTotal+1
+      gThisSet=gThisSet+1
+      gThisATR=gThisATR+1
+      If atrlock=false then gSinceLastBS=gSinceLastBS+1
+      SuccessThisATR=bThisATR/gThisATR
+      SuccessThisSet=bThisSet/gThisSet
+
+      ' are we doing really well?  raise expectations...
+      If atrlock and raisedexpectations=false and SuccessThisATR>MinSuccessRatio and bThisATR/10=int(bThisATR/10) then
+          ' each 10 BS tries during this ATR, raise the expectations
+          b=int((MinSuccessRatio + .5 * (SuccessThisATR-MinSuccessRatio))*100)/100
+          If b>minsuccessratio then
+              If b>.6 then b=.6     ' don't raise expectation over 60%
+              minsuccessratio=b
+              sc.print "  ==> Raising MinSuccessRatio to "&minsuccessratio*100&"%"&vbCr
+              RaisedExpectations=True
+          end If
+      end If
+
+
+      ' Drop ATR??
+      DropATR=False
+      If ((SuccessThisATR<MinSuccessRatio and gThisATR>25) or bThisATR>75) or ATRlock=false then DropATR=true
+        ' this lock had at least 25 tries, and it's below standard, or more than 75 boots
+      If ATRlock=true then
+          If SuccessThisATR<.15 and gThisATR>50 then DropATR=true    ' lame ATR, get another
+          If SuccessThisATR<SuccessThisSet and SuccessThisATR<SetSuccess(Glitchset) and bThisATR>20 then DropATR=true
+            ' this is only so-so, try another
+
+          If SuccessThisATR>SuccessThisSet and SuccessThisATR>MinSuccessRatio and bThisATR<160 then DropATR=False
+            ' this is a really good ATR, keep going a while, but keep raising expectations
+      end If
+
+      If DropATR then
+          If atrlock then
+              sc.print "                                                              *** Dropping ATR  --  "
+              sc.print "Success: ATR=" & int(successthisatr*100)&"% and Set="&int(successthisset*100)&"% ***" &vbCr
+          end If
+          ATRlock=false
+          gThisATR=1
+          bThisATR=0
+      end If
+
+      ' try some intervening random glitches
+      If randomflag=false and (bthisatr>0 and bThisATR/30=int(bThisATR/30)) then
+'        FFthecard()
+'        randomglitch()
+        RandomFlag=true     ' released with next BS attempt
+      end If
+
+      ' change glitch set?
+      GotoNextGlitch=false
+      If atrlock=false and SuccessThisSet<MinSuccessRatio and gThisSet>MaxGlitchesThisSet then GotoNextGlitch=true
+
+      ' CHANGE GLITCH SETS
+      If GotoNextGlitch then
+        ' record this set's results
+        SetGlitches(GlitchSet)=SetGlitches(GlitchSet)+gThisSet
+        If bThisSet>0 then      ' any success at all?
+            ' then record and report
+            If SetBootStrap(GlitchSet)=0 or SuccessThisATR>SetSuccess(GlitchSet)*2 then
+                ' this set blows away past experience, so dump old info
+                SetBootStrap(GlitchSet)=0
+                SetGlitches(GlitchSet)=gThisSet
+            end If
+            SetBootStrap(GlitchSet)=SetBootStrap(GlitchSet)+bThisSet
+            SetSuccess(GlitchSet)=0
+            If SetGlitches(GlitchSet)>0 then SetSuccess(GlitchSet)=int(SetBootStrap(Glitchset)/SetGlitches(GlitchSet)*100)
+
+            ' report all set results, and calculate relative success
+            'sc.print "  Succ: Set #"
+            bestsuccess=0
+            for b=1 to TgS
+                'sc.print b&"="&SetSuccess(b) &"%  "
+                If SetSuccess(b)>bestsuccess then bestsuccess=setsuccess(b)
+            next
+        end If
+
+        ' Now evaluate stubbornness
+        If bestsuccess<40 and glitchresets>TgS then stubborn=2      ' once around, no big winners
+        If bestsuccess<30 and glitchresets>TgS*2 then stubborn=3    ' twice around, no big winners
+        If bestsuccess<20 and glitchresets>TgS*3 then stubborn=4
+        If bestsuccess<10 and glitchresets>TgS*4 then stubborn=5
+        If stubborn<2 and bTotal>100 then stubborn=2
+        If stubborn<3 and bTotal>250 then stubborn=3
+        If stubborn<4 and bTotal>450 then stubborn=4
+        If stubborn<5 and bTotal>600 then stubborn=5
+
+        ' now give welfare to untried sets, and others
+        If bTotal>0 and DEBUGGING then sc.print vbCr&"   Adj rel success: Set#"
+        LeastGlitches=100
+        NoCandidates=true
+        for b=1 to TgS
+            relativesuccess(b)=0
+            If btotal>0 then relativesuccess(b)=int(SetBootStrap(b)/bTotal*100)
+            If SetGlitches(b)<LeastGlitches then LeastGlitches=SetGlitches(b)
+            If setsuccess(b)<bestsuccess or bestsuccess<10 then   ' this is not the best success, so consider welfare
+                If bestsuccess<15 then      ' 1 in 6 glitches makes bs attempt
+                    ' no clear good set yet
+                    If SetGlitches(b)<50 then relativesuccess(b)=relativesuccess(b)+25   ' boost untried sets
+                    If SetGlitches(b)<200*stubborn and SetSuccess(b)>5 and relativesuccess(b)<15 then RelativeSuccess(b)=15   ' had some success, boost it
+                    If relativesuccess(b)<10 and (setsuccess(b)>2 or setglitches(b)<500) then relativesuccess(b)=10     ' no one is leading, so welfare for losers
+                Else
+                    ' there is a good set already, so less welfare
+                    If SetGlitches(b)<50 then relativesuccess(b)=relativesuccess(b)+10   ' boost untried sets
+                    If SetGlitches(b)<300 and SetSuccess(b)>5 and relativesuccess(b)<5 then RelativeSuccess(b)=5   ' had some success, boost it
+                end If
+                If relativesuccess(b)>50 and setsuccess(b)<10 then relativesuccess(b)=50
+                    ' If this isn't such a good glitch, don't favor so heavily
+            end If
+            If NeverATR(b) then
+                ' If the set never returned an ATR, we may not use it
+                If SetGlitches(b)>100*stubborn then relativesuccess(b)=0
+                If SetGlitches(b)>100 and BestSuccess>10 then relativesuccess(b)=0
+            end If
+            If relativesuccess(b)>0 then NoCandidates=false
+            If bTotal>0 and DEBUGGING then sc.print b&"="&relativesuccess(b)&"%("&setbootstrap(b)&")  "
+        next
+
+        If NoCandidates=true then
+            sc.msgbox "All Glitching Sets have been tried with NO success.  " &vbCr&"Try again, or use another unlooper."
+            unloopcard=false
+            exit function
+        end If
+
+        ' randomly choose next glitch set, weighted on past success
+        b=RandomRange(1,100)       ' pick a number 1-100
+        cnt=0                       ' jump until you reach it
+'relativesuccess(9)=0       ' to block out my best set from use
+'setglitches(9)=100
+        do
+            GlitchSet=RandomRange(1,TgS)
+            If RelativeSuccess(GlitchSet)>0 and (LeastGlitches>=10 or SetGlitches(GlitchSet)<10 or Setsuccess(Glitchset)>10) then
+              ' TRIED ALL ONCE  or  Haven't tried THIS       or THIS is a good set
+                cnt=cnt+RelativeSuccess(GlitchSet)
+            end If
+        loop until cnt>b                 ' sum is now over our random number, so use this set
+        sc.print vbCr&"===> Trying glitch set #"&glitchset
+        sc.print "  Whose total success="&setsuccess(glitchset)&"% ("&SetBootStrap(Glitchset)&"/"&SetGlitches(Glitchset)&")"
+        If neverATR(glitchset) then sc.print "*"
+
+        ' set expectations for this set
+        minsuccessratio=setsuccess(glitchset)/100       ' must do as well as my overall success
+        If minsuccessratio<.2 and glitchresets<TgS then minsuccessratio=.2   ' higher expectations to start, so we see more
+        If minsuccessratio<.1 then minsuccessratio=.1
+        If minsuccessratio>.5 then minsuccessratio=.5
+        Select Case Stubborn      ' set thresholds based on experience with this card
+            Case 1
+                MaxGlitchesThisSet=15       ' just starting out, don't stay long
+            Case 2
+                MaxGlitchesThisSet=50
+            Case 3
+                MaxGlitchesThisSet=90
+            Case 4
+                MaxGlitchesThisSet=140
+            Case 5
+                MaxGlitchesThisSet=180
+        End Select
+        If setsuccess(glitchset)<4 and setglitches(glitchset)>100 and bestsuccess>20 then
+            ' this is a long shot, and there's a good set, so don't linger too long
+            If maxglitchesthisset>20 then maxglitchesthisset=20
+        end If
+        If setsuccess(glitchset)>5 then
+            ' this is a good glitch, give it more time
+            If maxglitchesthisset<100 then maxglitchesthisset=100
+        end If
+        sc.print "  Min="&minsuccessratio*100&"%  MaxGl="&maxglitchesthisset
+        sc.print" - Stbn="&stubborn& "  SetChg="&glitchresets&"  TotBS="&bTotal & "  TotGl="&gTotal&vbCr
+
+        bThisSet=0
+        bThisATR=0
+        gThisSet=1
+        gThisATR=1
+        gSinceLastBS=0
+        ATRlock=False
+        GlitchResets=GlitchResets+1
+      end If
+
+
+      If gTotal/2500 = int(gTotal/2500) then ' after each 2000 tries start over (reseed random??)
+         call Card_Reset
+         call FFtheCard()
+'         call RandomGlitch()
+      end If
+
+      call SetUnloopRange(GlitchSet,atrlock)
+      call ProgUpdate(progress,atrlock)
+
+      ' NOW-- go do the glitching and maybe try to load BS
+      sc.write("A1")
+      delay(10)
+      If Chk4Card() = false then    ' failed: card removed
+        BootCard=false
+        Exit Function
+      end If
+'      delay(30)
+
+      sc.write("B0" & HexString(D1,02))
+      sc.write("0f1f0120" & HexString(D5,4) & "0c" & HexString(D7,2) & "20" & HexString(D6,4) & "0d00" & HexString(D8,2) & "0000")
+      Sc.Read(&h02)
+
+      ' seems this is just a priming read and could be eliminated w/better structure
+      cnt=0
+      Sc.Write("028000")
+      If Sc.Read(&h02) = 2 then
+        cnt = sc.getbyte(1)
+        If cnt = 1 then sc.read(1)
+      end If
+
+      pushbs=false
+      If cnt > 0 then       ' there is at least part of an ATR
+          cnt=0
+          NeverATR(GlitchSet)=False
+          progress=progress+1   ' If at least 1 byte, report progress
+          If progress>33 then progress = 33
+
+          sc.print "ATR = "
+          for b = 0 to 10       ' set up to read all the bytes of atr
+              Sc.Write("028000")
+              If Sc.Read(&h02) = 2 then
+                 cnt = sc.getbyte(1)
+              end If
+
+              If cnt > 0 then
+                  cnt = sc.read(cnt)
+                  If sc.getbyte(0) = &h38 then
+                     sc.print "38 "
+                     Sc.Write("028000")
+                     cnt = 0
+                     If Sc.Read(&h02) = 2 then
+                         cnt = sc.getbyte(1)
+                         If cnt = 0 then exit for
+                         Sc.Read(cnt)
+                         If(sc.getbyte(0)) = &hb0 then
+                           pushbs=true      ' Ready to push BS loader...  jump out
+                           exit for
+                         end If
+                     end If
+                   end If      ' If kk=&h38
+              end If
+              sc.print HexString(kk,2) &" "
+          next
+
+          ' Try to load bootloader
+          If pushbs = true then
+             noresponse=0
+             RaisedExpectations=False
+             RandomFlag=False
+             sc.print "B0 "
+             sc.print left("                            ",(9-b)*3)' pad the atr display
+             If keepd1d9 then
+               sc.print "*TRY BOOT -- (Same as above)                      "
+             Else
+               sc.print "*TRY BOOT "&ValuesD1D9()
+             end If
+             bThisSet = bThisSet + 1
+             bThisATR = bThisATR + 1
+             bTotal = bTotal+1
+             gSinceLastBS=0
+             atrlock = true         ' lock the d-values
+
+             sc.write("B0"  & HexString(D4,02))
+             sc.write("071f800d" & HexString(D3,02)& HexString(D2,02)&"0000")
+             cnt=0
+             If Sc.Read(&h02) > 1 then cnt = sc.getbyte(1)
+
+             If cnt > 0 then
+                cnt = sc.read(cnt)
+
+                Sc.Write("31eeFFFFfed18d52E0FD2266E1B9E17201CF725f0772FF14C5E2AB0100C3DA07F88C0100FFFFFFFFFFFFFFFFFFFFFFFF0000")
+                If Sc.Read(&h02)<2 then Sc.Read(&h02)
+                Sc.Write("11c060200350042001500320" & HexString(D9,04) & "0d010000")
+                Sc.Read(&h02)
+
+                for b = 0 to HmTu  ' was 8
+                    Sc.Write("028000")
+                    cnt=0
+                    If Sc.Read(&h02) = 2 then cnt = sc.getbyte(1)
+
+                    If cnt > 0 then
+                        cnt = sc.read(cnt)
+                        kk=sc.getbyte(0)
+                        If kk <> &h66 then exit for
+
+                        Sc.Write("028000")
+                        cnt = 0
+                        If Sc.Read(&h02) = 2 then
+                            cnt = sc.getbyte(1)
+                            If(cnt = 0) then exit for
+                            Sc.Read(cnt)
+                            If(sc.getbyte(0)) = &h99 then
+                                done=true
+                                Sc.ClearOutputWindow
+                                sc.print vbCr&vbCr&vbTab&vbTab&vbTab&vbTab&"   Bootloader installed after "&bTotal&" attempts"
+                                Sc.Print vbCr&vbTab&vbTab&vbTab&vbTab&"  Total # of glitches applied to card "&gTotal
+                                Sc.Print vbCr&vbTab&vbTab&vbTab&vbTab&" "&ValuesD1D9()
+                                ScriptEnd = Now
+                                Sc.Print vbCr&vbTab&vbTab&vbTab&vbTab&vbTab&"Elapsed time: " + FormatNumber((CDbl(ScriptEnd) - CDbl(ScriptStart)) * 24 * 60, 2, True, True, True)&" minutes"
+                                exit for
+                            end If
+                        end If  ' If sc.read...
+                    end If  ' If cnt>0
+                next
+sc.flush()
+    If done=true then
+    If DEBUGGING = false then
+        Sc.Write("021500")
+        Sc.Read(2)
+        Sc.Write("42FF225272FF14E1E2D007E2D029E2D02A77800716753F07D307F75011E29B2A70012ADA07F78E013A00D7D307D8078ECEFBD40770012ADA07F300C6F76211F7631100")
+        Sc.Read(2)
+        Sc.Write("21DE8E0149F76011F76111881c931270FF1203FBF70011728512DA12FDF70011F900")
+        Sc.Read(2)
+        UnloopCard=true
+    Exit Function
+Else
+    atrlock=false
+    glitchresets=0
+    stubborn=1
+End If
+End If
+End If  ' If cnt>0
+             b=bThisATR/gThisATR
+             cnt=bThisSet/gThisSet
+             sc.print "(#"&bThisATR&"- Succ ATR=" & int(b*100) &"% Set="&int(cnt*100)&"%)"
+
+          end If  ' If pushbs=true
+          sc.print vbCr
+      Else  ' If cnt>0
+        progress=progress-1     ' If no atr, then losing progress
+        If progress<1 then progress=1
+        If progress<5 and bestsuccess>10 then progress=5    ' we're having success--don't lie!
+        If progress<10 and bestsuccess>15 then progress=10  ' we're having success--don't lie!
+      end If
+    Loop
+End Function
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+Sub ProgUpdate(progress,atrlock)
+Dim i, Msg
+
+    Msg="Glitches applied to card thus far "&gTotal&"  Elapsed Time: " + FormatNumber((CDbl(Now) - CDbl(ScriptStart)) * 24 * 60, 2, True, True, True) + " minutes"
+    Msg=Msg+vbCr+vbTab+ValuesD1D9+vbCr
+    If atrlock = true then
+       Msg=Msg+"ATR locked!                 "
+    Else
+       Msg=Msg+"Attempting to lock onto ATR."
+    end If
+'    Sc.ClearOutputWindow
+    Msg=msg+vbTab+vbTab+"  Bootloader Attempts: "&bTotal&vbCr
+    Call Sc.ProgressBox(Msg,progress,33, +progtitle+vbBeBe)
+End Sub
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+Function Chk4Card()
+    Dim tmp
+    sc.write("80")
+    sc.delay(10)
+    If sc.read(1) = 1 then
+      tmp=sc.getbyte(0)
+      If tmp = &h0 then
+        Chk4Card=false
+        sc.write("A0")
+        Call Sc.ProgressBox(0,0,0,0)
+        sc.MsgBox("Card Removed Unlooping ended prematurely")
+      Else
+        Chk4Card=true
+      end If
+    end If
+End Function
+
+'***********************************************************************************************************
+'    SUPPORT FUNCTIONS
+'***********************************************************************************************************
+
+Function Hex2Dec(HexNumber)
+    ' This function takes 1 argument, a string containing a hex value of any digit length
+    ' and returns the decimal equivalent
+    Dim DecimalValue
+    Dim DigitCount
+    Dim Digit
+    Dim HexDigit
+
+    HexNumber = Replace(UCase(HexNumber), " ", "")
+    DigitCount = Len(HexNumber)
+
+    For Digit = 1 To DigitCount
+
+        HexDigit = Mid(HexNumber, Digit, 1)
+        If Asc(HexDigit) < 58 Then
+            DecimalValue = HexDigit * 16 ^ (DigitCount - Digit)
+        Else
+            DecimalValue = (Asc(HexDigit) - 55) * 16 ^ (DigitCount - Digit)
+        End If
+        Hex2Dec = Hex2Dec + DecimalValue
+    Next
+
+End Function
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+Function RandomRange(lower,upper)
+    ' returns a random number between lower and upper range
+    RandomRange=INT(RND * (upper-lower+1)) + lower ' 141 -  169
+End Function
+
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+Function FormatTime
+    Dim runtime
+
+    TimeElapsed = FormatNumber((CDbl(Now) - CDbl(TempScriptStart)) * 24 * 60 * 60, 0, True, True, True)
+    If TimeElapsed > 59 then
+       TempScriptStart = Now
+       TimeInMinutes = TimeInMinutes + 1
+       TimeElapsed = 0
+    End If
+
+    If TimeInMinutes > 59 then
+       TempScriptStart = Now
+       TimeInHours = TimeInHours + 1
+       TimeElapsed   = 0
+       TimeInMinutes = 0
+    End If
+
+
+    If TimeInHours > 0 then
+       RunTime=""& TimeInHours&":"
+       If TimeElapsed < 10 then
+          If TimeInMinutes < 10 then
+             RunTime=Runtime & "0"
+          end If
+          RunTime=runtime & TimeInMinutes & ":0" & TimeElapsed
+       Else
+          If TimeInMinutes < 10 then
+             RunTime=runtime & "0"
+          End If
+          RunTime=runtime & TimeInMinutes & ":" & TimeElapsed
+       End If
+    Else
+       If TimeElapsed < 10 then
+          If TimeInMinutes > 0 then
+             RunTime="" & TimeInMinutes & ":0" & TimeElapsed
+          Else
+             RunTime="" & ":0" & TimeElapsed
+          End If
+       Else
+          If TimeInMinutes > 0 then
+             RunTime="" & TimeInMinutes & ":" & TimeElapsed
+          Else
+             RunTime=":" & TimeElapsed
+          End If
+       End If
+     End If
+End Function
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+Function HexString(Number,Length)
+
+    ' This function takes 2 arguments, a number and a length.  It converts the decimal
+    ' number given by the first argument to a Hexidecimal string with its length
+    ' equal to the number of digits given by the second argument
+
+    Dim RetVal, CurLen
+
+    RetVal=Hex(Number)
+    CurLen=Len(RetVal)
+    If CurLen<Length Then
+        RetVal=String(Length-CurLen,"0") & RetVal
+    End If
+    HexString=RetVal
+
+End Function
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+Function HexToDec(HexNumber)
+' This function takes a string as input, assuming it to be a Hexidecimal string,
+' and converts it to a decimal number.
+
+    HexNumber=Replace(UCase(HexNumber)," ","")
+    HexToDec=CLng("&H"+HexNumber)
+End Function
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+Sub GetFileName()
+    Dim FileName
+
+    FileName = Fs.FileSaveDialog(FileFilter, "              Please select a name to save the new bin file as...", "Default.bin")
+    If FileName <> "" Then
+        OutFile = Fs.FileCreate(FileName)
+        HUBinFile = True
+    Else
+        HUBinFile = False
+    End If
+End Sub
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+Sub GetFile()
+Dim FileName, FileSize
+    FileName = Fs.FileOpenDialog(FileFilter, "    Please select a valid HU Eprom (*.bin) file to write to the card", "Default.bin")
+    If FileName <> "" Then
+        If Fs.FileExists(FileName) = 0 Then
+            Sc.MsgBox("The file does not exist")
+        Else
+            InFile = Fs.FileOpen(FileName, fsoOpenRead)
+        End If
+    End If
+
+    FileSize = Fs.FileSeek(InFile, 0, fsoSEEK_END)
+
+    If FileSize <> "8192" Then
+        Sc.MsgBox("This file is NOT a valid HU bin file" & vbCr & "or the bin file you are trying to open" & vbCr & "is being used by another program")
+        HUBinFile = False
+        Exit Sub
+    Else
+        HUBinFile = True
+    End If
+End Sub
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+Function ValuesD1D9()
+'  ValuesD1D9="D1 - D9 values used: " & D1 & ", " & D2 & ", " & D3 & ", " & D4 & ", " & D5 & ", " & D6 & ", " & D7 & ", " & D8 & ", " & D9 & "  "
+  ValuesD1D9="D1 - D9 = " & hexstring(D1,2) & " " & hexstring(D2,2) & " " & hexstring(D3,2) & " " & hexstring(D4,2) & " " & hexstring(D5,4) & " " & hexstring(D6,2) & " " & hexstring(D7,2) & " " & hexstring(D8,2) & " " & hexstring(D9,4) & "  "
+end function
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+Function ShowAtr(displaytype)
+Dim cnt,tmp,b,Msg
+    Msg="  Unlooping results!!!!!"
+    tmp=""
+    sc.write("0610010E109300")
+    If Sc.Read(&h02) > 1 then
+        cnt = sc.getbyte(1)
+    Else
+        cnt = 0
+    end If
+
+    If displaytype = 1 then
+    infobox = +"       "&bTotal&" attempts were made to the card"
+    infobox = infobox &vbCr&"   Unlooped Successfully after "&gTotal&" Glitches"
+    infobox = infobox &vbCr&valuesd1d9()
+    infobox = infobox &vbCr&"     Total time to write HU bin: "&FormatNumber((CDbl(ScriptEnd) - CDbl(ScriptStart)) * 24 * 60, 2, True, True, True)&" minutes"
+    Sc.Msgbox (infobox)
+    ReadInfo = 1
+  end If
+
+    If cnt > 0 then
+        cnt = sc.read(cnt)
+
+        for b = 0 to cnt -1
+          tmp=tmp & HexString(sc.getbyte(b),2) & " "
+        next
+
+        If displaytype = 1 then
+'         cnt  = Sc.ButtonBox(tmp, 0, Msg, "Ok")
+'          sc.print +Sc.ClearOutputWindow+vbTab+"ATR Returned: "&tmp
+        Else
+          ShowAtr = tmp
+        end If
+    Else
+        tmp=""
+        tmp=tmp+vbCr&vbTab&vbTab&"Card did not return an ATR"+vbCr+"Try to unloop the card again"
+        tmp=tmp+vbCr&vbTab&vbTab&"This happens sometimes when the card"
+        tmp=tmp+vbCr&vbTab&vbTab&"doesn't take the eeprom write"
+        cnt = Sc.ButtonBox(tmp, 0,Msg , "Ok")
+    end If
+End Function
+'***********************************************************************************************************
+'    CARD FUNCTIONS
+'***********************************************************************************************************
+Function ChipVer()
+       ChipVer = 1
+       sc.write("90")
+       delay(80)
+    If sc.read(4) <> 4 then
+       ChipVer = 0
+       Exit Function
+End If
+    If getbyte(0) <> &h55 then ChipVer = 0
+    If getbyte(1) <> &h4c then ChipVer = 0
+    If getbyte(2) <> &h34 then ChipVer = 0
+    If getbyte(3) <> &h53 then ChipVer = 0
+End Function
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+function IsCardPresent()
+Dim GotInput
+
+Do
+        Sc.Write("A0")                ' Turn the LED off
+        Sc.Write("80")                ' Is card present?
+        Sc.Delay(100)
+        If Sc.BytesInBuffer > 0 Then
+            Sc.Read(&h01)
+            iscardpresent = Sc.GetByte(0)
+        end If
+Sc.Verbose = True
+        select case iscardpresent
+            case &h0
+                Call Sc.ProgressBox ("                      >>>>> INSERT YOUR CARD! <<<<<" & VbCr & "                                ÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷"& VbCr & "                      >>>>> OR HIT ABORT NOW! <<<<<" , 1, 999, +progtitle+vbBeBe)
+                GotInput = False
+            case &hFF
+                GotInput = True
+            case Else
+                Sc.Write("A0")                ' turn the LED off
+                Sc.Write("020200")
+                Sc.Delay(100)
+                If Sc.BytesInBuffer > 1 Then
+                    Sc.Read(&h02)
+                    GotInput = False
+                Else
+                    GotInput = False
+                End If
+        end select
+    Loop Until GotInput = True
+   Sc.Verbose = False
+End Function
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+Sub WriteViaLoader(address,data,options)' Write up to 32 bytes at a time
+Dim dLen, tlen, parm1, parm2
+Dim i,t, tmp
+Dim datalen, addresslow, Xored, datarray(31), datalength
+dLen  = Len(data)
+dLen  = dLen / 2
+tLen  = Len(data)
+tLen  = tlen + 16
+tLen  = tlen / 2
+tLen  = HexString(tlen,2)
+parm1 = Hex(dLen + &hC2)
+parm2 = Hex(dLen + &h7F)
+
+If Ucase(options) = "E" Then
+'Convert and Split up data String to an array
+t = 0
+For i = 1 To Len(data) Step 2
+tmp = Mid(data, i, 2)
+datarray(t) = (HexToDec(tmp))
+t = t + 1
+Next
+addresslow = HexToDec(Mid(address, 3, 2))     'Get lower byte for offset
+addresslow = (addresslow And &h7)             'Strip bits for offset 0-7
+If UBound(datarray) > 32 Then
+Exit Sub
+End If
+datalength = (Len(data) / 2)
+'Encrypt
+t = 0
+For i = addresslow To datalength + addresslow - 1
+Xored = Xored & HexString(datarray(t) Xor HexToDec(XoredByte(i)), 2)
+t = t + 1
+Next
+data = Xored
+End If
+Sc.Write(tLen & " " & parm1 & " " & parm2 & " " & address & " " & data & " " & "0EFF8000")
+    Sc.Read(&h03)
+End Sub
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+Sub WriteCard(Chunk)
+Dim EEPROM, TByte, Address, EEPROMBytes, Multiplier
+Address = 8192
+If Chunk = 64 Then
+Multiplier = 128
+Else
+Multiplier = 256
+End If
+Sc.Write("A2")
+Call Fs.FileSeek(InFile, 0, fsoSEEK_SET)
+Call WDTMR()
+For EEPROM = 1 to Multiplier
+EEPROMBytes = ""
+For TByte = 1 to Chunk
+EEPROMBytes = EEPROMBytes & HexString(Fs.FileGetc(InFile), 2)
+Next
+
+If Chunk = 64 Then
+Sc.Write("49C2BF" & HexString(Address,4) & "FF" & EEPROMBytes & "0EFF8000")
+Else
+Sc.Write("28E29F" & HexString(Address,4) & EEPROMBytes & "0EFF8000")End If
+
+Sc.Read(&h03)
+Call Sc.ProgressBox ("Writing EEPROM Memory...", EEPROM, Multiplier, progtitle&vbBeBe)
+Address = Address + Chunk
+Next
+Fs.FileClose(InFile)
+Call Card_Reset()
+Call Sc.ProgressBox ("", 0, 0, "")
+End Sub
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+Function GetATR()
+Dim temp
+Call Sc.ProgressBox(0,0,0,0)
+Sc.Write("06100E10019300")
+Sc.Delay(500)
+Sc.Read(&h02)
+temp = Sc.GetByte(&h01)
+Sc.Read (temp)
+GetATR = (temp = 20)
+End Function
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+Sub Card_Reset()
+    Dim RetVal
+    Sc.Write("A0")     ' Turn the LED off If it is on
+    Sc.Write("020200") ' Power down the card
+    Sc.Delay(300)     ' Wait about 1 second
+    Sc.Read(&h02)
+'    Call Sc.Reset()    ' Power up the card
+'    RetVal=Sc.Flush()  ' Flush the receive buffer
+End Sub
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+Sub ShutdownCard()
+    Sc.Write("A0")              ' Turn the LED off
+    Sc.Write("020200")             ' Shutdown card
+    Sc.Delay(100)
+    Sc.Read(&h02)
+End Sub
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+Sub RandomGlitch
+
+  Dim g1,g2,g3,g4,g5,g6
+  Dim dly,v
+
+  RANDOMIZE TIMER
+  sc.print "Random glitching the card to whip it into shape"&vbCr
+  sc.verbose = false
+
+  for v = 1 to 100
+    g1 = INT(RND * &hFF)
+    g2 = INT(RND * &hFF)
+    g3 = INT(RND * &hFF)
+    g4 = INT(RND * &hFF)
+    g5 = INT(RND * &hFF)
+    g6 = INT(RND * &h4F) + &h80
+    dly= INT(RND * 200)  ' changed from &h200
+
+    sc.write("B0" & HexString(g6,2))
+    sc.write("111f0120" & HexString(dly,4) & "0c" & HexString(g1,2) & "0c" & HexString(g2,2) & "0a" & "0c" & HexString(g3,2) & "0c" & HexString(g4,2) & "0c" & HexString(g5,2) & "00")
+    sc.read(2)
+  next
+
+End Sub
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+Sub FFTheCard()
+    If UseTxFF = 0 or TxFF = 0 then Exit Sub
+    If UseTxFF = 1 then TxCard = UCase(True)
+    If TxCard <> UCase(True) then
+    End If
+    Sc.Verbose = False
+    Dim RetValue
+    Dim I
+    Dim L
+
+    Sc.Verbose = False
+    for L = 1 to TxFF
+        Sc.Write("B0 80")
+        For I = &hA0 To &hD0
+            If Chk4Card() = 0 then
+                CrdTyp = "Removed"
+                Exit Sub
+            End If
+            sc.write("A1")
+            Call Sc.ProgressBox (vbCr&"                   Loop The Card " &L& " of "&TxFF&" Times...", I-&h9F, &h30, progtitle&vbBeBe)
+            Sc.Write("0a 01 20 04 94 09 20 00 " + Hex(I) + " 09 00")'
+            Sc.Read(2)
+            RetValue = Sc.GetByte(1)
+            sc.write("A0")
+        Next
+    Next
+    Call Sc.ProgressBox("",0,80,"")
+    sc.write("A0")
+End Sub
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+Sub FourB()
+    Dim CleanCounter, percentageclean
+
+    CleanCounter = 1
+    Sc.Write("A2")
+    If FirstBootload = 1 then
+       Call ExtractCardInfo()
+    End If
+    FirstBootload = 2
+
+    PercentageClean = CleanCounter * 100 / 3
+Call WriteViaLoader("201D","75","D")
+Call WriteViaLoader("237D","8E23CE","D")
+Call WriteViaLoader("2380","8E23CED0298E23CED02A122925E0B2BC","D")
+Call WriteViaLoader("2390","B3D0094229047503295203DF2ADF29CA","D")
+Call WriteViaLoader("23A0","FA74202988290D2C8E23D552089A2A77","D")
+Call WriteViaLoader("23B0","100404","D")
+Call WriteViaLoader("24D2","54","E")
+Call WriteViaLoader("24D6","0000","E")   ' Sub
+    CleanCounter = CleanCounter + 1
+    PercentageClean = CleanCounter * 100 / 3
+    Call Sc.ProgressBox ("Cleaning Main Code..." & INT(PercentageClean) & "%.", CleanCounter, 3,"Cleaning card")
+    Call WriteViaLoader("3157","237D","D")
+    Call WriteViaLoader("393A","75EFB6","D")                              ' Rating
+    CleanCounter = CleanCounter + 1
+    PercentageClean = CleanCounter * 100 / 3
+    Call Sc.ProgressBox ("Cleaning Complete..." & INT(PercentageClean) & "%.", CleanCounter, 3, "Cleaning card")
+    Call Part2()        ' Clean USW portion of code
+    Call Sc.ProgressBox ("", 0, 0, "")
+End Sub
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+Sub FiveB()
+    Dim CleanCounter, percentageclean
+    CleanCounter = 1
+    Sc.Write("A2")
+   If FirstBootload = 1 then
+    Call ExtractCardInfo()
+   End If
+    FirstBootload = 2
+    PercentageClean = CleanCounter * 100 / 3
+Call WriteViaLoader("201D","74","D")
+Call WriteViaLoader("237D","8E23CE","D")
+Call WriteViaLoader("2380","8E23CED0298E23CED02A122925E0B2BC","D")
+Call WriteViaLoader("2390","B3D0094229047503295203DF2ADF29CA","D")
+Call WriteViaLoader("23A0","FA74202988290D2C8E23D552089A2A77","D")
+    CleanCounter = CleanCounter + 1
+    PercentageClean = CleanCounter * 100 / 3
+    Call Sc.ProgressBox ("Cleaning Main Code..." & INT(PercentageClean) & "%.", CleanCounter, 3,"Cleaning card")
+Call WriteViaLoader("23B0","100404","D")
+Call WriteViaLoader("24D2","55","E")
+Call WriteViaLoader("24D6","0000","E")
+Call WriteViaLoader("3157","237D","D")
+Call WriteViaLoader("393A","75EFB6","D")                              ' Rating
+    CleanCounter = CleanCounter + 1
+    PercentageClean = CleanCounter * 100 / 3
+    Call Sc.ProgressBox ("Cleaning Complete..." & INT(PercentageClean) & "%.", CleanCounter, 3, "Cleaning card")
+
+    Call Part2()        ' Clean USW portion of code
+    Call Sc.ProgressBox ("", 0, 0, "")
+End Sub
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+Sub SixB()
+    Dim CleanCounter, percentageclean
+
+    CleanCounter = 1
+
+    Sc.Write("A2")
+    If FirstBootload = 1 then
+       Call ExtractCardInfo()
+    End If
+    FirstBootload = 2
+
+    PercentageClean = CleanCounter * 100 / 3
+Call WriteViaLoader("201D","77","D")
+Call WriteViaLoader("237D","012109","D")
+Call WriteViaLoader("2380","2105050915050505090E75EFB6C5A801","D")
+Call WriteViaLoader("2390","00308EE56EC8520D8ECB11060EAA237C","D")
+Call WriteViaLoader("23A0","C43B00FF5D2D0FE60602F9C4FF8CD02D","D")
+    CleanCounter = CleanCounter + 1
+    PercentageClean = CleanCounter * 100 / 3
+    Call Sc.ProgressBox ("Cleaning Main Code..." & INT(PercentageClean) & "%.", CleanCounter, 3,"Cleaning card")
+Call WriteViaLoader("23B0","FFFFFF","D")
+Call WriteViaLoader("24D2","56","E")
+Call WriteViaLoader("24D6","3000","E")
+Call WriteViaLoader("3157","DFE1","D")
+Call WriteViaLoader("393A","8E238A","D")                              ' Rating
+    CleanCounter = CleanCounter + 1
+    PercentageClean = CleanCounter * 100 / 3
+    Call Sc.ProgressBox ("Cleaning Complete..." & INT(PercentageClean) & "%.", CleanCounter, 3, "Cleaning card")
+
+    Call Part2()        ' Clean USW portion of code
+    Call Sc.ProgressBox ("", 0, 0, "")
+End Sub
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+Sub SevenB()
+Dim CleanCounter, percentageclean
+    CleanCounter = 1
+    Sc.Write("A2")
+   If FirstBootload = 1 then
+    Call ExtractCardInfo()
+   End If
+    FirstBootload = 2
+    PercentageClean = CleanCounter * 100 / 3
+    Call WriteViaLoader("201D","76","D")
+    Call WriteViaLoader("237D","012109","D")
+    Call WriteViaLoader("2380","2105050915050505090E75EFB6C5A801","D")
+    Call WriteViaLoader("2390","00308EE56EC8520D8ECB11060EAA237C","D")
+    Call WriteViaLoader("23A0","C43B00FF5D2D0FE60602F9C4FF8CD02D","D")
+    CleanCounter = CleanCounter + 1
+    PercentageClean = CleanCounter * 100 / 3
+    Call Sc.ProgressBox ("Cleaning Main Code..." & INT(PercentageClean) & "%.", CleanCounter, 3,"Cleaning card")
+    Call WriteViaLoader("23B0","FFFFFF","D")
+    Call WriteViaLoader("24D2","57","E")
+    Call WriteViaLoader("24D6","3000","E")
+    Call WriteViaLoader("3157","DFE1","D")
+    Call WriteViaLoader("393A","8E238A","D")                             ' Rating
+    CleanCounter = CleanCounter + 1
+    PercentageClean = CleanCounter * 100 / 3
+    Call Sc.ProgressBox ("Cleaning Complete..." & INT(PercentageClean) & "%.", CleanCounter, 3, "Cleaning card")
+    Call Part2()        ' Clean USW portion of code
+    Call Sc.ProgressBox ("", 0, 0, "")
+End Sub
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+Sub EightB()
+Dim CleanCounter, percentageclean
+    CleanCounter = 1
+    Sc.Write("A2")
+   If FirstBootload = 1 then
+    Call ExtractCardInfo()
+   End If
+    FirstBootload = 2
+    PercentageClean = CleanCounter * 100 / 3
+    Call WriteViaLoader("201D","79","D")
+    Call WriteViaLoader("237D","012109","D")
+    Call WriteViaLoader("2380","2105050915050505090E75EFB6C5A801","D")
+    Call WriteViaLoader("2390","00308EE56EC8520D8ECB11060EAA237C","D")
+    Call WriteViaLoader("23A0","C43B00FF5D2D0FE60602F9C4FF8CD02D","D")
+    CleanCounter = CleanCounter + 1
+    PercentageClean = CleanCounter * 100 / 3
+    Call Sc.ProgressBox ("Cleaning Main Code..." & INT(PercentageClean) & "%.", CleanCounter, 3,"Cleaning card")
+    Call WriteViaLoader("23B0","FFFFFF","D")
+    Call WriteViaLoader("24D2","58","E")
+    Call WriteViaLoader("24D6","3000","E")
+    Call WriteViaLoader("3157","DFE1","D")
+    Call WriteViaLoader("393A","8E238A","D")                             ' Rating
+    CleanCounter = CleanCounter + 1
+    PercentageClean = CleanCounter * 100 / 3
+    Call Sc.ProgressBox ("Cleaning Complete..." & INT(PercentageClean) & "%.", CleanCounter, 3, "Cleaning card")
+    Call Part2()'Clean USW portion of code
+    Call Sc.ProgressBox ("", 0, 0, "")
+End Sub
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+Sub NineB()
+    Dim CleanCounter, percentageclean
+    CleanCounter = 1
+    Sc.Write("A2")
+   If FirstBootload = 1 then
+   Call ExtractCardInfo()
+   End If
+    FirstBootload = 2
+    PercentageClean = CleanCounter * 100 / 3
+    Call WriteViaLoader("201D","78","D")
+    Call WriteViaLoader("237D","012109","D")
+    Call WriteViaLoader("2380","2105050915050505090E75EFB6C5A801","D")
+    Call WriteViaLoader("2390","00308EE56EC8520D8ECB11060EAA237C","D")
+    Call WriteViaLoader("23A0","C43B00FF5D2D0FE60602F9C4FF8CD02D","D")
+    CleanCounter = CleanCounter + 1
+    PercentageClean = CleanCounter * 100 / 3
+    Call Sc.ProgressBox ("Cleaning Main Code..." & INT(PercentageClean) & "%.", CleanCounter, 3,"Cleaning card")
+    Call WriteViaLoader("23B0","FFFFFF","D")
+    Call WriteViaLoader("24D2","59","E")
+    Call WriteViaLoader("24D6","3000","E")
+    Call WriteViaLoader("3157","DFE1","D")
+    Call WriteViaLoader("393A","8E238A","D")                            ' Rating
+    CleanCounter = CleanCounter + 1
+    PercentageClean = CleanCounter * 100 / 3
+    Call Sc.ProgressBox ("Cleaning Complete..." & INT(PercentageClean) & "%.", CleanCounter, 3, "Cleaning card")
+    Call Part2()'Clean USW portion of code
+    Call Sc.ProgressBox ("", 0, 0, "")
+End Sub
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+Sub Part2()
+Dim CleanCounter, percentageclean
+    CleanCounter = 1
+    Sc.Write("A2")
+   If FirstBootload = 1 then
+    Call ExtractCardInfo()
+   End If
+    FirstBootload = 2
+    PercentageClean = CleanCounter * 100 / 44
+    Call Sc.ProgressBox ("Cleaning Main Code..." & INT(PercentageClean) & "%.", CleanCounter, 44,"Cleaning card")
+    Call WriteViaLoader("2000","0000","D")
+    Call WriteViaLoader("2007","0096A5B34C5200A500","D")
+    Call WriteViaLoader("2010","033F04","D")
+    Call WriteViaLoader("2014","20DF","D")
+    Call WriteViaLoader("2016","44318AD3DB6473","D")
+    Call WriteViaLoader("201E","003A","D")
+    Call WriteViaLoader("2020","14012420","D")
+    Call WriteViaLoader("2660","71BA01409EC32CA038001A5C4AABF706","D")
+    Call WriteViaLoader("22F2","2210E37702270C8EE2B676102805","D")
+    Call WriteViaLoader("2300","75FC67D56A8CDCE712608EDB7E7D0029","D")'''''''''''''''''''''''I left off here!!!!!!!!!!!
+    CleanCounter = CleanCounter + 1
+    PercentageClean = CleanCounter * 100 / 44
+    Call Sc.ProgressBox ("Cleaning Main Code..." & INT(PercentageClean) & "%.", CleanCounter, 44,"Cleaning card")
+    Call WriteViaLoader("2320","BE060375FED28CD15C40010017C5AA00","D")
+    Call WriteViaLoader("2330","60AB0101C33D170FF5748028F9880060","D")
+    Call WriteViaLoader("2340","3088003B327202068EE5ADF972601588","D")
+    Call WriteViaLoader("2350","2ACE2A720204E700098A2ACFB34D0061","D")
+    Call WriteViaLoader("2360","02EAF912088E3C96F9C5AA2AF8D024AA","D")
+    Call WriteViaLoader("2370","3F5013248E3C96C35D080FEEF9","D")
+    Call WriteViaLoader("23B3","982A30EF70012A8E3C96C704ED","D")
+    Call WriteViaLoader("23C0","D70904E0D5088827052A8ED1B0F98ED2","D")
+    Call WriteViaLoader("23D0","1D8E3C96F9C58E23F5F4CC2E2A0F0C8E","D")
+    Call WriteViaLoader("23E0","23F5F4CC2A2E0F07223FE6D32CD32CC3","D")
+    CleanCounter = CleanCounter + 1
+    PercentageClean = CleanCounter * 100 / 44
+    Call Sc.ProgressBox ("Cleaning Main Code..." & INT(PercentageClean) & "%.", CleanCounter, 44,"Cleaning card")
+    Call WriteViaLoader("23F0","5D0C0FE2F99A2CD02DD32C9A2CD02ED3","D")
+    Call WriteViaLoader("2400","2CF9FFFFFFFF","D")
+    Call WriteViaLoader("2690","0000000000000000B3B8BDC2C7C7C7C7","D")
+    Call WriteViaLoader("26A0","C7C7C7C7C7B3B3B3B3B3CCD1D1D1D1D1","D")
+    Call WriteViaLoader("26B0","D1D6DB06C9DC3E1306C9DC3E2B08C9DC","D")
+    Call WriteViaLoader("26C0","3E4306C9DC3E6301C9DC3E7B04C9DC3E","D")
+    Call WriteViaLoader("26D0","7F01C9DC3E8F01C9DC3E9303C9DC3E97","D")
+    Call WriteViaLoader("26E0","FFC8A0CE0D16F082AC8602C081580703","D")
+    Call WriteViaLoader("26F0","0000FF40000000000000000000000000","D")
+    Call WriteViaLoader("2700","DFE1F01A00DFE1003800DF83043800D5","D")
+    CleanCounter = CleanCounter + 1
+    PercentageClean = CleanCounter * 100 / 44
+    Call Sc.ProgressBox ("Cleaning Main Code..." & INT(PercentageClean) & "%.", CleanCounter, 44,"Cleaning card")
+    Call WriteViaLoader("2710","13011800D912031800D597001820D59B","D")
+    Call WriteViaLoader("2720","001820DAE50B1800D8B1812820D7AF82","D")
+    Call WriteViaLoader("2730","3800385003D000289E051C00DFE10238","D")
+    Call WriteViaLoader("2740","00DABE122860D7B30328E0D6A1012860","D")
+    Call WriteViaLoader("2750","DFE2002860D7F3822860D4110828E0D8","D")
+    Call WriteViaLoader("2760","83003800DF7F00380028C50D28E0DEBA","D")
+    Call WriteViaLoader("2770","0228E0D834042860D8B8082860D8DE00","D")
+    Call WriteViaLoader("2780","3800D8D7043800D90B033800D93B2338","D")
+    Call WriteViaLoader("2790","00D9CEF03800DAB7003860DAD0003820","D")
+    Call WriteViaLoader("27A0","DAD4023860DB16043800D42A052860DB","D")
+    CleanCounter = CleanCounter + 1
+    PercentageClean = CleanCounter * 100 / 44
+    Call Sc.ProgressBox ("Cleaning Main Code..." & INT(PercentageClean) & "%.", CleanCounter, 44,"Cleaning card")
+    Call WriteViaLoader("27B0","2800181022F2F01800DFF0042860DD80","D")
+    Call WriteViaLoader("27C0","8D28E0D9CEF03800DB4C853860DFE101","D")
+    Call WriteViaLoader("27D0","180028A1883C002308E12860D5E78218","D")
+    Call WriteViaLoader("27E0","00D667842860DB9FD52860E002822860","D")
+    Call WriteViaLoader("27F0","DBD0813800D809D29000DFE1F0900038","D")
+    Call WriteViaLoader("2800","3003F000D9608628E02FC79028A02F10","D")
+    Call WriteViaLoader("2810","8028A02ABF89D000DB4C8528E02F0884","D")
+    Call WriteViaLoader("2820","28E0DE458C28E0DE548628E05507AA24","D")
+    Call WriteViaLoader("2830","B843000EAA2650130EF9D1FEFEAAFFFD","D")
+    Call WriteViaLoader("2840","8E3F3D2DF78C2F5C8E3F5812399B3012","D")
+    CleanCounter = CleanCounter + 1
+    PercentageClean = CleanCounter * 100 / 44
+    Call Sc.ProgressBox ("Cleaning Main Code..." & INT(PercentageClean) & "%.", CleanCounter, 44,"Cleaning card")
+    Call WriteViaLoader("2850","3AF4EB0130F9B8C8D829D82AC5AA2AF0","D")
+    Call WriteViaLoader("2860","D007AA3F481307AB00DDC35D080FEE22","D")
+    Call WriteViaLoader("2870","A064AB00DDC35D100FF5C59A30AB00ED","D")
+    Call WriteViaLoader("2880","700130C33D060FF38C3039008CC2988C","D")
+    Call WriteViaLoader("2890","C0EC8C3EEB8C3B068C3B348C38198C39","D")
+    Call WriteViaLoader("28A0","788CC27A8C3C968C393A8CE0748C2F43","D")
+    Call WriteViaLoader("28B0","8C37008CE30E8C3D128C37808C37708C","D")
+    Call WriteViaLoader("28C0","E0438C3C968C3D568CD6B28C29C48C2F","D")
+    Call WriteViaLoader("28D0","568C31818C3F378C2AC58C3B558C3B79","D")
+    Call WriteViaLoader("28E0","8C36EA8CC4308C33B78C2F9D8CD6F68C","D")
+    CleanCounter = CleanCounter + 1
+    PercentageClean = CleanCounter * 100 / 44
+    Call Sc.ProgressBox ("Cleaning Main Code..." & INT(PercentageClean) & "%.", CleanCounter, 44,"Cleaning card")
+    Call WriteViaLoader("28F0","31038CD3438C36F58C231E8C37738C3E","D")
+    Call WriteViaLoader("2900","D08C305C8CEC9C8C37728C377220203F","D")
+    Call WriteViaLoader("2910","EF000000000000000000000000000000","D")
+    Call WriteViaLoader("2920","00000000000000000000000000000000","D")
+    Call WriteViaLoader("2930","000000000000000000000000005CDA5E","D")
+    Call WriteViaLoader("2940","FA8F6152EA1CFED0C6043DA97745BB98","D")
+    Call WriteViaLoader("2950","231803ECF766BD3570C1DF224A8EA459","D")
+    Call WriteViaLoader("2960","9B94A5B8FF490C27663B80DE52CD7AE1","D")
+    Call WriteViaLoader("2970","134DAAF79438C92552BC617F8016EE03","D")
+    Call WriteViaLoader("2980","DB01298401005C0A3C7D919AC5AA24B8","D")
+    CleanCounter = CleanCounter + 1
+    PercentageClean = CleanCounter * 100 / 44
+    Call Sc.ProgressBox ("Cleaning Main Code..." & INT(PercentageClean) & "%.", CleanCounter, 44,"Cleaning card")
+    Call WriteViaLoader("2990","AB00EDAA2650AB00F5C35D080FEFC522","D")
+    Call WriteViaLoader("29A0","A064AB00DDC35D100FF58800ED2A8800","D")
+    Call WriteViaLoader("29B0","DD2C7210FD8E3EB272DD158824B02A72","D")
+    Call WriteViaLoader("29C0","1004E7F9C877202703757F2775EF2742","D")
+    Call WriteViaLoader("29D0","2A0275F727751F02731F02D3024D0402","D")
+    Call WriteViaLoader("29E0","0F034204024C0204F750113215D80298","D")
+    Call WriteViaLoader("29F0","2A347780270DD105D50E322A8E283A32","D")
+    Call WriteViaLoader("2A00","05000A77202703B50003AA0000764027","D")
+    Call WriteViaLoader("2A10","0ED0039A2AB81303D40315030206B99B","D")
+    Call WriteViaLoader("2A20","2A740827C370012ADA02C7D402770827","D")
+    CleanCounter = CleanCounter + 1
+    PercentageClean = CleanCounter * 100 / 44
+    Call Sc.ProgressBox ("Cleaning Main Code..." & INT(PercentageClean) & "%.", CleanCounter, 44,"Cleaning card")
+    Call WriteViaLoader("2A30","07882AA72A8E2A9575F7273215F75011","D")
+    Call WriteViaLoader("2A40","762027277780270DD105D50E32348E28","D")
+    Call WriteViaLoader("2A50","3A32050003AA00007640270AD0039A34","D")
+    Call WriteViaLoader("2A60","1303150302059B34740827C3700134DA","D")
+    Call WriteViaLoader("2A70","02CED11577082707882AB32A8E2A9598","D")
+    Call WriteViaLoader("2A80","342A7D0004020389FF45757F2775DF27","D")
+    Call WriteViaLoader("2A90","75BF27C4F9C59A2AAB00ED70012AC35D","D")
+    Call WriteViaLoader("2AA0","0C0FF38E00EDF9F76011F761118EE7AE","D")
+    Call WriteViaLoader("2AB0","8CE799F76211F763118EE7AE8CE7998E","D")
+    Call WriteViaLoader("2AC0","DCBB8CD5537702120225FE8CC89E0000","D")
+    CleanCounter = CleanCounter + 1
+    PercentageClean = CleanCounter * 100 / 44
+    Call Sc.ProgressBox ("Cleaning Main Code..." & INT(PercentageClean) & "%.", CleanCounter, 44,"Cleaning card")
+    Call WriteViaLoader("2EF8","A5A5A5A5A5A5A5A5","D")
+    Call WriteViaLoader("2F00","A5A5A5A500FFFFFF7601D001F98CDE3A","D")
+    Call WriteViaLoader("2F10","720504882ACE2A8EE6A0720C048824F4","D")
+    Call WriteViaLoader("2F20","2A8EE6A02202E377022701F9D5D08EE0","D")
+    Call WriteViaLoader("2F30","2F8824662E8824062C8EC5078822F22E","D")
+    Call WriteViaLoader("2F40","8CD8992D00F406E0938EE0F377102603","D")
+    Call WriteViaLoader("2F50","4224938CE0D47223038CC0C1062FAAFF","D")
+    Call WriteViaLoader("2F60","FC2DD80628B4B4C4D50BF4D9002A0EC8","D")
+    Call WriteViaLoader("2F70","322A8E2F8FC4D00EAA006043000E440E","D")
+    Call WriteViaLoader("2F80","0BC3D32A3D070FE2B4B4120BF932FE55","D")
+    Call WriteViaLoader("2F90","07AA24C043000EAA2658130EF97DFF60","D")
+    Call WriteViaLoader("2FA0","02038CD9E51217021D7202078EDA9932","D")
+    Call WriteViaLoader("2FB0","60CD5D030B10AA2AD01D6102060FE677","D")
+    CleanCounter = CleanCounter + 1
+    PercentageClean = CleanCounter * 100 / 44
+    Call Sc.ProgressBox ("Cleaning Main Code..." & INT(PercentageClean) & "%.", CleanCounter, 44,"Cleaning card")
+    Call WriteViaLoader("2FC0","0160E27480D3F98EDC9977022745C5AA","D")
+    Call WriteViaLoader("2FD0","0064AB00EDC35D0C0FF5AA297CAB00ED","D")
+    Call WriteViaLoader("2FE0","C35D100FF58829412A8800ED2C7210FD","D")
+    Call WriteViaLoader("2FF0","8E3EB2C5AA00EDD00BAA0064130BAB00","D")
+    Call WriteViaLoader("3000","64C35D0C0FEE8824F42A720C04726415","D")
+    Call WriteViaLoader("3010","8CDC54F9E288010030E9D50BC5AA24F4","D")
+    Call WriteViaLoader("3020","D009AA2AE4130944000BC35D0C0FEE12","D")
+    Call WriteViaLoader("3030","0B02032205E68CD00D225064AB00EDC3","D")
+    Call WriteViaLoader("3040","5D100FF58800DD2A8800ED2C7206FD8E","D")
+    Call WriteViaLoader("3050","3EB298EE3AD42AD429C4B4F975BFCF32","D")
+    CleanCounter = CleanCounter + 1
+    PercentageClean = CleanCounter * 100 / 44
+    Call Sc.ProgressBox ("Cleaning Main Code..." & INT(PercentageClean) & "%.", CleanCounter, 44,"Cleaning card")
+    Call WriteViaLoader("3060","BEAA3073D029AA3074D02A8EC37A9E2A","D")
+    Call WriteViaLoader("3070","8C3404C358CE77C7ECCFF8C358C358C3","D")
+    Call WriteViaLoader("3080","58C358C358C7FBC358C358C358C358C3","D")
+    Call WriteViaLoader("3090","58C358C358C358C358C358C7F5CF56C8","D")
+    Call WriteViaLoader("30A0","06C6A4CCC43EDCC358CF08C983C358C3","D")
+    Call WriteViaLoader("30B0","58C358D0EED0EE30143F20CE3F3710C6","D")
+    Call WriteViaLoader("30C0","E4C358C358CEAD3BA1C9A0CEB83722C8","D")
+    Call WriteViaLoader("30D0","A0C5498E311C9A2AD02B70012A9A2AD0","D")
+    Call WriteViaLoader("30E0","2C9E2C8ED27812088ED310D517120802","D")
+    Call WriteViaLoader("30F0","088E23CED0178ED3108CD25A7D87080F","D")
+    CleanCounter = CleanCounter + 1
+    PercentageClean = CleanCounter * 100 / 44
+    Call Sc.ProgressBox ("Cleaning Main Code..." & INT(PercentageClean) & "%.", CleanCounter, 44,"Cleaning card")
+    Call WriteViaLoader("3100","D200057D80080BF48A2ACE2D02020AF4","D")
+    Call WriteViaLoader("3110","CA2A270506032240E68CD24232085507","D")
+    Call WriteViaLoader("3120","5A0788312F2A4B012A4900298CD1B031","D")
+    Call WriteViaLoader("3130","90F0382023693280CF382023632329D2","D")
+    Call WriteViaLoader("3140","3810237C233D823800237CDFE1F03820","D")
+    Call WriteViaLoader("3150","2369DFE1823800","D")
+    Call WriteViaLoader("3159","23598238602369","D")
+    Call WriteViaLoader("3160","8E311C7D82080B258ED3AE770227058E","D")
+    Call WriteViaLoader("3170","D4079E194B17388CD3807D87080FE100","D")
+    Call WriteViaLoader("3180","0C7610B6032241E67D80080BED8CD36C","D")
+    CleanCounter = CleanCounter + 1
+    PercentageClean = CleanCounter * 100 / 44
+    Call Sc.ProgressBox ("Cleaning Main Code..." & INT(PercentageClean) & "%.", CleanCounter, 44,"Cleaning card")
+    Call WriteViaLoader("3190","220F8E32718824C83088009E32720206","D")
+    Call WriteViaLoader("31A0","EB4D609E060A4261244C9F2402020314","D")
+    Call WriteViaLoader("31B0","D39E4D609E060C4D629F0607426124D3","D")
+    Call WriteViaLoader("31C0","240001F9C5AA0063AB0090C35D0C0FF5","D")
+    Call WriteViaLoader("31D0","C5AA0090AB0070C35D0C0FF5AA2931AB","D")
+    Call WriteViaLoader("31E0","0090C35D100FF58829712A8800902C72","D")
+    Call WriteViaLoader("31F0","10FD8E3EB2C5AA0070D00EAA0090130E","D")
+    Call WriteViaLoader("3200","AB0090C35D100FEED72404C4D50BC5AA","D")
+    Call WriteViaLoader("3210","2EECD00EAA009043000E440E0BC35D0C","D")
+    CleanCounter = CleanCounter + 1
+    PercentageClean = CleanCounter * 100 / 44
+    Call Sc.ProgressBox ("Cleaning Main Code..." & INT(PercentageClean) & "%.", CleanCounter, 44,"Cleaning card")
+    Call WriteViaLoader("3220","0FED120B0202009B726315882EEC2A72","D")
+    Call WriteViaLoader("3230","0C04E7880060308824C832720206ED12","D")
+    Call WriteViaLoader("3240","17028022038E32714261FD98622A753F","D")
+    Call WriteViaLoader("3250","291260B7B7D0048E32717780FD0D8800","D")
+    Call WriteViaLoader("3260","6030982A32420406ED00D4726015E700","D")
+    Call WriteViaLoader("3270","CE42170BD0178ED3D54C170B420B17F9","D")
+    Call WriteViaLoader("3280","7440CF22038E3271126202042D040F01","D")
+    Call WriteViaLoader("3290","F98824E63088009E32720206EBF4CC9F","D")
+    Call WriteViaLoader("32A0","610A057D0162021206E68824CA30EFB0","D")
+    CleanCounter = CleanCounter + 1
+    PercentageClean = CleanCounter * 100 / 44
+    Call Sc.ProgressBox ("Cleaning Main Code..." & INT(PercentageClean) & "%.", CleanCounter, 44,"Cleaning card")
+    Call WriteViaLoader("32B0","02DE2507B34D006206D698619F326222","D")
+    Call WriteViaLoader("32C0","4CC702072231C7020222401D1706C172","D")
+    Call WriteViaLoader("32D0","0C04882EF82A8EE6A03262D1FFC70658","D")
+    Call WriteViaLoader("32E0","220C8E3271C5AA0060AB00DDC35D0C0F","D")
+    Call WriteViaLoader("32F0","F5AA297CAB00DDC35D100FF58829412A","D")
+    Call WriteViaLoader("3300","8800DD2C7208FD8E3EB2C5AA0060D00E","D")
+    Call WriteViaLoader("3310","AA00DD130EAB00DDC35D0C0FEE72DD15","D")
+    Call WriteViaLoader("3320","882EE02A720C04E7882DE02A8E337C88","D")
+    Call WriteViaLoader("3330","2E002A8E337C002BC7061A22118E3271","D")
+    CleanCounter = CleanCounter + 1
+    PercentageClean = CleanCounter * 100 / 44
+    Call Sc.ProgressBox ("Cleaning Main Code..." & INT(PercentageClean) & "%.", CleanCounter, 44,"Cleaning card")
+    Call WriteViaLoader("3340","88006030882AD332721106ED882E202A","D")
+    Call WriteViaLoader("3350","8E337C000E882E402A8E337C882E602A","D")
+    Call WriteViaLoader("3360","8E337C88009E308824E632720206ED12","D")
+    Call WriteViaLoader("3370","FF8824CA30EA75BFCF89FF1422208E32","D")
+    Call WriteViaLoader("3380","7188006030982A32722006EDF98824CA","D")
+    Call WriteViaLoader("3390","30EF2507F9B87260BE8E3537D4BE0025","D")
+    Call WriteViaLoader("33A0","12BE2D5C0BEF7640CFEB0019D7D78E33","D")
+    Call WriteViaLoader("33B0","8D2D030BEB000EC5B5AB00DAC35D260F","D")
+    CleanCounter = CleanCounter + 1
+    PercentageClean = CleanCounter * 100 / 44
+    Call Sc.ProgressBox ("Cleaning Main Code..." & INT(PercentageClean) & "%.", CleanCounter, 44,"Cleaning card")
+    Call WriteViaLoader("33C0","F812D706E722908CC38F52FF8E351F12","D")
+    Call WriteViaLoader("33D0","0B0239002C30010060C5AA0101AB0061","D")
+    Call WriteViaLoader("33E0","C33D600FF58824E63088009E32720206","D")
+    Call WriteViaLoader("33F0","EBF4CC9F6202D300088824CA30EFB002","D")
+    Call WriteViaLoader("3400","D48900AE768028F1F98CC27A5D0C06F9","D")
+    Call WriteViaLoader("3410","C5AA2951AB0100C35D100FF5882AD330","D")
+    Call WriteViaLoader("3420","EFD00BC5AA0063AB0100C33D0B0FF5C5","D")
+    Call WriteViaLoader("3430","AA0100AB0140C35D100FF58829612A88","D")
+    Call WriteViaLoader("3440","01002C7204FD8E3EB2223C8E3ECBD5DB","D")
+    CleanCounter = CleanCounter + 1
+    PercentageClean = CleanCounter * 100 / 44
+    Call Sc.ProgressBox ("Cleaning Main Code..." & INT(PercentageClean) & "%.", CleanCounter, 44,"Cleaning card")
+    Call WriteViaLoader("3450","32DBC2A801002C8EECA58EECA5C59A2C","D")
+    Call WriteViaLoader("3460","D009AA014013099B2CF4EB102CAB0140","D")
+    Call WriteViaLoader("3470","D32CC35D100FE7D3DB7D04DB0FD28801","D")
+    Call WriteViaLoader("3480","402C8EECA58EECA5226A8E3ECBD509C5","D")
+    Call WriteViaLoader("3490","AA0140D00BAA0148130BAB0140D00BA8","D")
+    Call WriteViaLoader("34A0","2ADC30EF130B440009C35D080FE21209","D")
+    Call WriteViaLoader("34B0","020D8EDED97701B8037217C689FF49C5","D")
+    Call WriteViaLoader("34C0","AA0100D00BA82DE030EF130BAB0100C3","D")
+    Call WriteViaLoader("34D0","5D400FECC5A82AD430EFAB00DDC35D08","D")
+    Call WriteViaLoader("34E0","0FF3882AD330EFC01260B7B76CD02488","D")
+    CleanCounter = CleanCounter + 1
+    PercentageClean = CleanCounter * 100 / 44
+    Call Sc.ProgressBox ("Cleaning Main Code..." & INT(PercentageClean) & "%.", CleanCounter, 44,"Cleaning card")
+    Call WriteViaLoader("34F0","00632A4B012AC53D240B059A2AAB00DD","D")
+    Call WriteViaLoader("3500","D32AC35D080FF08E0100C5AA00DDD00B","D")
+    Call WriteViaLoader("3510","AA00A0130BAB00A0C35D080FEE009DD5","D")
+    Call WriteViaLoader("3520","0BC5AA2EE0D00EAA2EF8130E44000BC3","D")
+    Call WriteViaLoader("3530","5D0C0FEE120BF98E3ED68A288B020788","D")
+    Call WriteViaLoader("3540","2F042A8EE68E8824CA30EFD01625072D","D")
+    Call WriteViaLoader("3550","03061C8E36A172600C7202128EE4098E","D")
+    Call WriteViaLoader("3560","E41A882E802A8E36C18E36A18901212D","D")
+    Call WriteViaLoader("3570","04061E8E36A1882E8030880100327260","D")
+    Call WriteViaLoader("3580","06EB72600C7202128EE41A8E36BD8900","D")
+    CleanCounter = CleanCounter + 1
+    PercentageClean = CleanCounter * 100 / 44
+    Call Sc.ProgressBox ("Cleaning Main Code..." & INT(PercentageClean) & "%.", CleanCounter, 44,"Cleaning card")
+    Call WriteViaLoader("3590","FF2D070259D5E9260102D9E98E36A188","D")
+    Call WriteViaLoader("35A0","29812A8EC4AEC542E9EA5D060B02D9EA","D")
+    Call WriteViaLoader("35B0","AA2EE015EAAB00DDC35D0C0FEA222D8E","D")
+    Call WriteViaLoader("35C0","3ECB8800DD2A22608EEBEF226A8E3ECB","D")
+    Call WriteViaLoader("35D0","C5AA0100AB0060C35D200FF572600C72","D")
+    Call WriteViaLoader("35E0","02128EE4098EE41A8E36BD8C36907248","D")
+    Call WriteViaLoader("35F0","948EED82D5DB32DB5D400B06A82DE02A","D")
+    Call WriteViaLoader("3600","00225D480B06A82A942A00185D500B06","D")
+    Call WriteViaLoader("3610","A82A942A000E5D510B06A82A832A0004","D")
+    Call WriteViaLoader("3620","A82DCF2A982A30EF8EEDA4C312950209","D")
+    CleanCounter = CleanCounter + 1
+    PercentageClean = CleanCounter * 100 / 44
+    Call Sc.ProgressBox ("Cleaning Main Code..." & INT(PercentageClean) & "%.", CleanCounter, 44,"Cleaning card")
+    Call WriteViaLoader("3630","5DB10FC4C88EEE89C4129606B9D1DB5D","D")
+    Call WriteViaLoader("3640","B10FB3C5AA0088AB00DDC35D0C0FF5AA","D")
+    Call WriteViaLoader("3650","297CAB00DDC35D100FF58829412A8800","D")
+    Call WriteViaLoader("3660","DD2C7208FD8E3EB2C5AA0088D00EAA00","D")
+    Call WriteViaLoader("3670","DD130EAB00DDC35D0C0FEE72DD15882E","D")
+    Call WriteViaLoader("3680","F82A720C04E78E351F020852028E3EA3","D")
+    Call WriteViaLoader("3690","1216B38824CA30EAB5882F042A8EE68E","D")
+    Call WriteViaLoader("36A0","F9882E202A726004C5982A349A34AB01","D")
+    Call WriteViaLoader("36B0","00700134C33D040FF38E36C4F9882E20","D")
+    Call WriteViaLoader("36C0","2A7260048801002C420422C59A2CAB00","D")
+    CleanCounter = CleanCounter + 1
+    PercentageClean = CleanCounter * 100 / 44
+    Call Sc.ProgressBox ("Cleaning Main Code..." & INT(PercentageClean) & "%.", CleanCounter, 44,"Cleaning card")
+    Call WriteViaLoader("36D0","6070012CC35D200FF388006030982A32","D")
+    Call WriteViaLoader("36E0","722006ED7C202204E2F92D080604C58E","D")
+    Call WriteViaLoader("36F0","3EA38CC3A3D002A6013DFC80351302F9","D")
+    Call WriteViaLoader("3700","7D54BE06087D400902032200E68CC1C9","D")
+    Call WriteViaLoader("3710","E2D0C18ED06A7260157240048826102A","D")
+    Call WriteViaLoader("3720","E7F9760112178ED06A770125058ECEFF","D")
+    Call WriteViaLoader("3730","00288ED04D8826102A7701101172400C","D")
+    Call WriteViaLoader("3740","8EE4098EE41A8801002A7601120DC59A","D")
+    Call WriteViaLoader("3750","2AE170012AC35D400FF5F998C3AB8837","D")
+    CleanCounter = CleanCounter + 1
+    PercentageClean = CleanCounter * 100 / 44
+    Call Sc.ProgressBox ("Cleaning Main Code..." & INT(PercentageClean) & "%.", CleanCounter, 44,"Cleaning card")
+    Call WriteViaLoader("3760","D22A8E379BC5AA0088E1C35D080FF7F9","D")
+    Call WriteViaLoader("3770","D50BF93203AB0164B81202AB016CB4F9","D")
+    Call WriteViaLoader("3780","2240522DAB0100C35D3F0FF81210AB01","D")
+    Call WriteViaLoader("3790","008826902A8E379F8C376576011014C5","D")
+    Call WriteViaLoader("37A0","9A2A7D5ABE0601B2AB00A4C370012A5D","D")
+    Call WriteViaLoader("37B0","080FED7248948EED827D44BE020D7D56","D")
+    Call WriteViaLoader("37C0","BE02088E37DA8E37DA00068E37F38E37","D")
+    Call WriteViaLoader("37D0","F3F9E4442502455414D4C5AA01008EED","D")
+    Call WriteViaLoader("37E0","A4C35D400FF5C5AA00A48EEDA4C35D08","D")
+    Call WriteViaLoader("37F0","0FF5F9C5A8010030EE8EEDA4C35D2D0F","D")
+    CleanCounter = CleanCounter + 1
+    PercentageClean = CleanCounter * 100 / 44
+    Call Sc.ProgressBox ("Cleaning Main Code..." & INT(PercentageClean) & "%.", CleanCounter, 44,"Cleaning card")
+    Call WriteViaLoader("3800","F3AA01008EEDA4C35D400FF5C5AA00A4","D")
+    Call WriteViaLoader("3810","8EEDA4C35D080FF5F9D513D50B7D36BE","D")
+    Call WriteViaLoader("3820","0201F972041E8E386622368E3CA000F2","D")
+    Call WriteViaLoader("3830","8EDC0A88006230EE272004302987D78A","D")
+    Call WriteViaLoader("3840","2ACE27010776401E03223EE68E3866F9","D")
+    Call WriteViaLoader("3850","302987D78A2ACE270203223DE6D51E74","D")
+    Call WriteViaLoader("3860","801E8E3866F97201D977801E037200D9","D")
+    Call WriteViaLoader("3870","8E39168E38B18838912A77801E048838","D")
+    Call WriteViaLoader("3880","A12AC59A2AAB00A0C370012A5D100FF3","D")
+    Call WriteViaLoader("3890","F950E75FA407240EC5A87738C1CBE7B6","D")
+    CleanCounter = CleanCounter + 1
+    PercentageClean = CleanCounter * 100 / 44
+    Call Sc.ProgressBox ("Cleaning Main Code..." & INT(PercentageClean) & "%.", CleanCounter, 44,"Cleaning card")
+    Call WriteViaLoader("38A0","63B3029E192FC4CF365AB16C722D1DB1","D")
+    Call WriteViaLoader("38B0","BEF70038F7003AF7803DFF5207F7083D","D")
+    Call WriteViaLoader("38C0","8E38D9C704FA8839012C77801E048839","D")
+    Call WriteViaLoader("38D0","0A2C8E38EE8E38D9F99A2AD0059A2E13","D")
+    Call WriteViaLoader("38E0","05A6013DFC213070012A70012EF99A2C","D")
+    Call WriteViaLoader("38F0","213270012C9A2C213470012C9A2C213D","D")
+    Call WriteViaLoader("3900","F902622C02403402442601642D016034","D")
+    Call WriteViaLoader("3910","01422F03403C121E25072704022504B2","D")
+    Call WriteViaLoader("3920","BC8826602A4B002A790029883F582E4B","D")
+    Call WriteViaLoader("3930","002E79002DF97410B6F9","D")
+    Call WriteViaLoader("393D","2240AB","D")
+    Call WriteViaLoader("3940","0100C35D400FF88E3ED6C5AA2688D024","D")
+    CleanCounter = CleanCounter + 1
+    PercentageClean = CleanCounter * 100 / 44
+    Call Sc.ProgressBox ("Cleaning Main Code..." & INT(PercentageClean) & "%.", CleanCounter, 44,"Cleaning card")
+    Call WriteViaLoader("3950","AA3F801324AB00A4C35D080FEE8E37B3","D")
+    Call WriteViaLoader("3960","C5D509E2D002AA00881302440009C35D","D")
+    Call WriteViaLoader("3970","080FF0120902BFF98E3ED67D40BE061A","D")
+    Call WriteViaLoader("3980","8824503088009032720406EB12901491","D")
+    Call WriteViaLoader("3990","020872020688009030E58E3A8375EFB6","D")
+    Call WriteViaLoader("39A0","8E3AE48E3F8872970A920A8EE7D1726A","D")
+    Call WriteViaLoader("39B0","0A920A520C8E3AFC7D67080601E25208","D")
+    Call WriteViaLoader("39C0","A6013DFC80358E3CA0C704F4C5AA00A0","D")
+    Call WriteViaLoader("39D0","2DFB0F022CFBAB007CC35D080FEF12D9","D")
+    Call WriteViaLoader("39E0","88E91F30B0020488EA3F3098302A72A3","D")
+    CleanCounter = CleanCounter + 1
+    PercentageClean = CleanCounter * 100 / 44
+    Call Sc.ProgressBox ("Cleaning Main Code..." & INT(PercentageClean) & "%.", CleanCounter, 44,"Cleaning card")
+    Call WriteViaLoader("39F0","0A920A12D98EE89F726A0A920AC5E2D0","D")
+    Call WriteViaLoader("3A00","07A8015C30EE1307AB0060C35D08020D","D")
+    Call WriteViaLoader("3A10","7D670802E95D050FE5D50700E4F7803D","D")
+    Call WriteViaLoader("3A20","FFC5F7083DAA0060A6013DFC2130C35D","D")
+    Call WriteViaLoader("3A30","070FF28839072C77801E048839102C8E","D")
+    Call WriteViaLoader("3A40","38EE1267A6013DFC2130C5A6013DFC80","D")
+    Call WriteViaLoader("3A50","35AB007CC35D080FF2982A3072A30A92","D")
+    Call WriteViaLoader("3A60","0A12D9D5038EE8D5726A0A920A7D0803","D")
+    Call WriteViaLoader("3A70","F406C27AB0021B77021E0552018E3EA3","D")
+    Call WriteViaLoader("3A80","8CDCDF5208A6013DFC80358E3C96C704","D")
+    CleanCounter = CleanCounter + 1
+    PercentageClean = CleanCounter * 100 / 44
+    Call Sc.ProgressBox ("Cleaning Main Code..." & INT(PercentageClean) & "%.", CleanCounter, 44,"Cleaning card")
+    Call WriteViaLoader("3A90","F4F97410B68800B02A88003B2E720207","D")
+    Call WriteViaLoader("3AA0","8EDBD87D40BE06D8F7803D88390A2CF7","D")
+    Call WriteViaLoader("3AB0","083D8E38EEF7283DC5AA00A0A6013DFC","D")
+    Call WriteViaLoader("3AC0","2130C35D070605F7243D00EDF7283D5D","D")
+    Call WriteViaLoader("3AD0","0F0FE68839132C8E38EE12AFA6013DFC","D")
+    Call WriteViaLoader("3AE0","2130009C8839042C77801E0488390D2C","D")
+    Call WriteViaLoader("3AF0","8E38EE12D8A6013DFC2130F9B58E3CA0","D")
+    Call WriteViaLoader("3B00","12D8C704F8F932117D60BE06068EFFBC","D")
+    Call WriteViaLoader("3B10","2317F912BE250F2D0A061112D402038C","D")
+    Call WriteViaLoader("3B20","FFB67620C1038CFF9E8CFFAE7D56BE02","D")
+    CleanCounter = CleanCounter + 1
+    PercentageClean = CleanCounter * 100 / 44
+    Call Sc.ProgressBox ("Cleaning Main Code..." & INT(PercentageClean) & "%.", CleanCounter, 44,"Cleaning card")
+    Call WriteViaLoader("3B30","F58CFFA67D60BE0605882E202AF912D4","D")
+    Call WriteViaLoader("3B40","02058825D02AF97620C1058825502AF9","D")
+    Call WriteViaLoader("3B50","8825902AF97D60BE061A8E338D2D0306","D")
+    Call WriteViaLoader("3B60","05882E7F2CF92D040605882E4F2CF988","D")
+    Call WriteViaLoader("3B70","007F2CF988264F2CF97D60BE061D8E33","D")
+    Call WriteViaLoader("3B80","8D2D030606F4CA2C2E4FF92D040606F4","D")
+    Call WriteViaLoader("3B90","CA2C2E1FF9F4CA2C005FF9F4CA2C260F","D")
+    Call WriteViaLoader("3BA0","F98E3ED67710B82FD508D5B87708D008","D")
+    Call WriteViaLoader("3BB0","7216087404B800517640B54D88017630","D")
+    CleanCounter = CleanCounter + 1
+    PercentageClean = CleanCounter * 100 / 44
+    Call Sc.ProgressBox ("Cleaning Main Code..." & INT(PercentageClean) & "%.", CleanCounter, 44,"Cleaning card")
+    Call WriteViaLoader("3BC0","8800A0327208068EE5B7D5A8D5A97401","D")
+    Call WriteViaLoader("3BD0","B88E3C74890096C5AA24F4D00BAA00A0","D")
+    Call WriteViaLoader("3BE0","43000BAA2AE4130BAB00A0C35D0C0FE8","D")
+    Call WriteViaLoader("3BF0","8EDED98EDF617D17C606037204B87708","D")
+    Call WriteViaLoader("3C00","B8037402D17601B80FC5B5AB00A0AB00","D")
+    Call WriteViaLoader("3C10","88C35D0A0FF50037C58801762CA6013D","D")
+    Call WriteViaLoader("3C20","FC80358E3CA0A8017630EE13D89B2C70","D")
+    Call WriteViaLoader("3C30","012CC35D0A0FE68801762CC59A2CAB00","D")
+    Call WriteViaLoader("3C40","A0AB0088B59B2CC370012C5D0A0FED77","D")
+    Call WriteViaLoader("3C50","40B7038E3D907601B604D5A8D5A98E3C","D")
+    CleanCounter = CleanCounter + 1
+    PercentageClean = CleanCounter * 100 / 44
+    Call Sc.ProgressBox ("Cleaning Main Code..." & INT(PercentageClean) & "%.", CleanCounter, 44,"Cleaning card")
+    Call WriteViaLoader("3C60","74C5AA0088AB00A0C35D080FF598D6C3","D")
+    Call WriteViaLoader("3C70","98A7D6F942B5AA12B82507D0AB32C734","D")
+    Call WriteViaLoader("3C80","C802057401D2D5084208ACC5AA00A0E1","D")
+    Call WriteViaLoader("3C90","C35D0D0FF7F9A6013DFC21308E3CA0F9","D")
+    Call WriteViaLoader("3CA0","B8C8D5DBD5DCD0D87B05DC32DBAA00A8","D")
+    Call WriteViaLoader("3CB0","1BD8AB00A8D0DAAA00A013DAAB00A013","D")
+    Call WriteViaLoader("3CC0","DC251FC0AA3CF2D0DA32DB5306AA00A8","D")
+    Call WriteViaLoader("3CD0","13DAAB00A8B0BDD0DA32DB5305AA00A0","D")
+    Call WriteViaLoader("3CE0","1CDAAB00A04300D8D3DB7D08DB0FB9C4","D")
+    Call WriteViaLoader("3CF0","B4F9BF12939242AFE7E3B2C6B89180B4","D")
+    CleanCounter = CleanCounter + 1
+    PercentageClean = CleanCounter * 100 / 44
+    Call Sc.ProgressBox ("Cleaning Main Code..." & INT(PercentageClean) & "%.", CleanCounter, 44,"Cleaning card")
+    Call WriteViaLoader("3D00","E8739EF75DFDA082F96F25177D0B5597","D")
+    Call WriteViaLoader("3D10","0C8022678EE06F74042522088EE06F8E","D")
+    Call WriteViaLoader("3D20","3A838E3AE48E3F8872970A920A8EE7D1","D")
+    Call WriteViaLoader("3D30","726A0A920A520A8E3AFC8839012C8E38","D")
+    Call WriteViaLoader("3D40","EEC5A6013DFC80358E3C9612D88EE06F","D")
+    Call WriteViaLoader("3D50","C35D080FEDF98EFA27B006F988006830","D")
+    Call WriteViaLoader("3D60","88245832720406EDC5AA2688D007AA3F","D")
+    Call WriteViaLoader("3D70","80430007AA00601307AB0060C35D080F","D")
+    Call WriteViaLoader("3D80","E87260158826902A720804E77420D1F9","D")
+    Call WriteViaLoader("3D90","882460308800ED32720406EB720407D5","D")
+    CleanCounter = CleanCounter + 1
+    PercentageClean = CleanCounter * 100 / 44
+    Call Sc.ProgressBox ("Cleaning Main Code..." & INT(PercentageClean) & "%.", CleanCounter, 44,"Cleaning card")
+    Call WriteViaLoader("3DA0","063206AA00A0D0045503AA00EDD00532","D")
+    Call WriteViaLoader("3DB0","06C35507AA00A04B0005C85503AA00ED","D")
+    Call WriteViaLoader("3DC0","D00932043C00553F8E3E084300051204","D")
+    Call WriteViaLoader("3DD0","1309BDB0BDC08E3E08BE1B05C4AB00A0","D")
+    Call WriteViaLoader("3DE0","C5D8F0AA00EDD002B0BFD003B4D80225","D")
+    Call WriteViaLoader("3DF0","80BE1403AB00EDC3770401E7B4D30677","D")
+    Call WriteViaLoader("3E00","08069ED7070498F98EFFB67D00D406F7","D")
+    Call WriteViaLoader("3E10","8CFF9E0012010125002008001E010124","D")
+    Call WriteViaLoader("3E20","100808001A0101240602080013010125","D")
+    Call WriteViaLoader("3E30","202008002D01012408040800D0010124","D")
+    CleanCounter = CleanCounter + 1
+    PercentageClean = CleanCounter * 100 / 44
+    Call Sc.ProgressBox ("Cleaning Main Code..." & INT(PercentageClean) & "%.", CleanCounter, 44,"Cleaning card")
+    Call WriteViaLoader("3E40","650108002E010124682008004E010124","D")
+    Call WriteViaLoader("3E50","5C04080058010124E0010800F3010124","D")
+    Call WriteViaLoader("3E60","A40408001901012464010800FE010124","D")
+    Call WriteViaLoader("3E70","0C04080041010121060408C9F4000000","D")
+    Call WriteViaLoader("3E80","45010124881C0800F8010120240908CA","D")
+    Call WriteViaLoader("3E90","360000CA750000CAB100000044010124","D")
+    Call WriteViaLoader("3EA0","E80C08B8A82AD02A9A2AB302038EE68E","D")
+    Call WriteViaLoader("3EB0","B4F9223C8E3ECB4204FED50E8EECA5D3","D")
+    Call WriteViaLoader("3EC0","0E4DFD0E0FF642FE04226AD00A920AF9","D")
+    Call WriteViaLoader("3ED0","8E3ED68CC1A47202058CC204E2C07604","D")
+    CleanCounter = CleanCounter + 1
+    PercentageClean = CleanCounter * 100 / 44
+    Call Sc.ProgressBox ("Cleaning Main Code..." & INT(PercentageClean) & "%.", CleanCounter, 44,"Cleaning card")
+    Call WriteViaLoader("3EE0","D10375BFD375F7CF8CC9597601CF1B2D","D")
+    Call WriteViaLoader("3EF0","7F06178E298C8EC24C8A2F04020A882E","D")
+    Call WriteViaLoader("3F00","202A72C0048EE6A0227F7D5EBE060E7D","D")
+    Call WriteViaLoader("3F10","01120609D31D7D081D060222018CC00B","D")
+    Call WriteViaLoader("3F20","770212108ED0EE8EDED97608B80375BF","D")
+    Call WriteViaLoader("3F30","B48CCC4E8CCC3675FBB48CD59FF4CA2C","D")
+    Call WriteViaLoader("3F40","CBB90603728646F9","D")
+    Call WriteViaLoader("3F58","12937D0406060375","D")
+    Call WriteViaLoader("3F60","1F938E2856D093F9","D")
+    Call WriteViaLoader("3F88","727B0252058E3FB8","D")
+    CleanCounter = CleanCounter + 1
+    PercentageClean = CleanCounter * 100 / 44
+    Call Sc.ProgressBox ("Cleaning Main Code..." & INT(PercentageClean) & "%.", CleanCounter, 44,"Cleaning card")
+    Call WriteViaLoader("3F90","722902000A520FAA00A0BCF008D0028E","D")
+    Call WriteViaLoader("3FA0","3FB3AA00A0823FDFC522C72306724B02","D")
+    Call WriteViaLoader("3FB0","4B02005203A40220AA00AA1B02AB00AA","D")
+    Call WriteViaLoader("3FC0","AA009FCAF3F91E72CB250299A866F0DA","D")
+    Call WriteViaLoader("3FD0","234B00F8F5A0ABA70005009FCAB9F952","D")
+    Call WriteViaLoader("3FE0","03AA00A0D002AA00AC4B0002AA3F9413","D")
+    Call WriteViaLoader("3FF0","022B5ABE236BAB00ACCAE6A3FD20F900","D")
+    Call WriteViaLoader("2465","0000","E")
+    Call WriteViaLoader("24B0","0000000000000000","D")
+    Call WriteViaLoader("24B8","0000000000000000","D")
+    CleanCounter = CleanCounter + 1
+    PercentageClean = CleanCounter * 100 / 44
+    Call Sc.ProgressBox ("Cleaning Main Code..." & INT(PercentageClean) & "%.", CleanCounter, 44,"Cleaning card")
+    Call WriteViaLoader("24D0","4855","E")
+    Call WriteViaLoader("24D3","560329","E")
+    Call WriteViaLoader("24DE","0000","D")
+    Call WriteViaLoader("2540","0000000000000000","D")
+    Call WriteViaLoader("2610","00000000000000000000000000000000","D")
+    Call WriteViaLoader("2620","00000000000000000000000000000000","D")
+    Call WriteViaLoader("2630","00000000000000000000000000000000","D")
+    Call WriteViaLoader("2640","00000000000000000000000000000000","D")
+    Call WriteViaLoader("24C8","0700","E")
+    CleanCounter = CleanCounter + 1
+    PercentageClean = CleanCounter * 100 / 44
+    Call Sc.ProgressBox ("Cleaning Main Code..." & INT(PercentageClean) & "%.", CleanCounter, 44,"Cleaning card")
+    Call WriteViaLoader("3C37","8801762C","D")
+    Call WriteViaLoader("33C7","8CC38F","D")
+    Call WriteViaLoader("384C","8E3866","D")
+    Call WriteViaLoader("2D16","C5AA24D8D002AA24C043","D")
+    Call WriteViaLoader("2D20","0002AA2658430002A6013DFC80351302","D")
+    Call WriteViaLoader("2D30","440024C35D030FDF12240603740428","D")
+    Call WriteViaLoader("24C8","0600","E")
+    Call WriteViaLoader("2D49","8C2024","D")
+    Call WriteViaLoader("2CEB","06","D")
+    Call WriteViaLoader("2901","8C305C","D")
+    CleanCounter = CleanCounter + 1
+    PercentageClean = CleanCounter * 100 / 44
+    Call Sc.ProgressBox ("Cleaning Main Code..." & INT(PercentageClean) & "%.", CleanCounter, 44,"Cleaning card")
+    Call WriteViaLoader("2932","0000000000000000000000","D")
+    Call WriteViaLoader("24C8","0000","E")
+    Call WriteViaLoader("270F","D513","D")
+    Call WriteViaLoader("370D","8CC1C9","D")
+    Call WriteViaLoader("2CD0","00000000000000000000000000000000","E")
+    Call WriteViaLoader("2CE0","00000000000000000000000000000000","E")
+    Call WriteViaLoader("2CF0","00000000000000000000000000000000","E")
+    Call WriteViaLoader("2D00","00000000000000000000000000000000","E")
+    Call WriteViaLoader("2D10","00000000000000000000000000000000","E")
+    CleanCounter = CleanCounter + 1
+    PercentageClean = CleanCounter * 100 / 44
+    Call Sc.ProgressBox ("Cleaning Main Code..." & INT(PercentageClean) & "%.", CleanCounter, 44,"Cleaning card")
+    Call WriteViaLoader("2D20","00000000000000000000000000000000","E")
+    Call WriteViaLoader("2D30","00000000000000000000000000000000","E")
+    Call WriteViaLoader("2D40","00000000000000000000000000000000","E")
+    Call WriteViaLoader("2D50","00000000000000000000000000000000","E")
+    Call WriteViaLoader("2D60","00000000000000000000000000000000","E")
+    Call WriteViaLoader("2D70","00000000000000000000000000000000","E")
+    Call WriteViaLoader("2D80","00000000000000000000000000000000","E")
+    Call WriteViaLoader("2D90","00000000000000000000000000000000","E")
+    Call WriteViaLoader("2DA0","00000000000000000000000000000000","E")
+    Call WriteViaLoader("2DB0","00000000000000","E")
+    CleanCounter = CleanCounter + 1
+    PercentageClean = CleanCounter * 100 / 44
+    Call Sc.ProgressBox ("Cleaning Main Code..." & INT(PercentageClean) & "%.", CleanCounter, 44,"Cleaning card")
+    Call WriteViaLoader("2DB7","000000000000000000","E")
+    Call WriteViaLoader("2DC0","01172F15FFFF01FF07FF504C45415345","E")
+    Call WriteViaLoader("2DD0","205354414E4420425900000000000000","E")
+    Call WriteViaLoader("24E6","0000","E")
+    Call WriteViaLoader("2AD3","00000000000000000000000000","E")
+    Call WriteViaLoader("2AE0","00000000","E")
+    Call WriteViaLoader("2DE0","00000000000000000000000000000000","E")
+    Call WriteViaLoader("2DF0","00000000000000000000000000000000","E")
+    Call WriteViaLoader("2E00","00000000000000000000000000000000","E")
+    Call WriteViaLoader("2E10","00000000000000000000000000000000","E")
+    Call WriteViaLoader("2E20","00000000000000000000000000000000","E")
+    Call WriteViaLoader("2E30","00000000000000000000000000000000","E")
+    CleanCounter = CleanCounter + 1
+    PercentageClean = CleanCounter * 100 / 44
+    Call Sc.ProgressBox ("Cleaning Main Code..." & INT(PercentageClean) & "%.", CleanCounter, 44,"Cleaning card")
+    Call WriteViaLoader("2E40","00000000000000000000000000000000","E")
+    Call WriteViaLoader("2E50","00000000000000000000000000000000","E")
+    Call WriteViaLoader("2E60","00000000000000000000000000000000","E")
+    Call WriteViaLoader("2E70","00000000000000000000000000000000","E")
+    Call WriteViaLoader("2E80","00000000000000000000000000000000","E")
+    Call WriteViaLoader("2E90","00000000000000000000000000000000","E")
+    Call WriteViaLoader("2EA0","00000000000000000000000000000000","E")
+    Call WriteViaLoader("2EB0","00000000000000000000000000000000","E")
+    Call WriteViaLoader("2EC0","00000000000000000000000000000000","E")
+    Call WriteViaLoader("2ED0","00000000000000000000000000000000","E")
+    CleanCounter = CleanCounter + 1
+    PercentageClean = CleanCounter * 100 / 44
+    Call Sc.ProgressBox ("Cleaning Main Code..." & INT(PercentageClean) & "%.", CleanCounter, 44,"Cleaning card")
+    Call WriteViaLoader("2EE0","5A5A5A5A5A5A5A5A5A5A5A5A","D")
+    Call WriteViaLoader("2EF8","A5A5A5A5A5A5A5A5A5A5A5A5","D")
+    Call WriteViaLoader("2AD0","000000","D")
+    CleanCounter = CleanCounter + 1
+    PercentageClean = CleanCounter * 100 / 44
+    Call Sc.ProgressBox ("Cleaning Complete..." & INT(PercentageClean) & "%.", CleanCounter, 44, "Cleaning card")
+    Call Part3()'Clean USW portion of code
+    Call Sc.ProgressBox ("", 0, 0, "")
+End Sub
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+Sub Part3()
+Dim CleanCounter, percentageclean
+    CleanCounter = 1
+    Sc.Write("A2")
+   If FirstBootload = 1 then
+    Call ExtractCardInfo()
+   End If
+    FirstBootload = 2
+    PercentageClean = CleanCounter * 100 / 23
+    Call WriteViaLoader("2024","000000000000000000000000","E")
+    Call WriteViaLoader("2030","00000000000000000000000000000000","E")
+    Call WriteViaLoader("2040","00000000000000000000000000000000","E")
+    Call WriteViaLoader("2050","00000000000000000000000000000000","E")
+    Call WriteViaLoader("2060","00000000000000000000000000000000","E")
+    Call WriteViaLoader("2070","00000000000000000000000000000000","E")
+    CleanCounter = CleanCounter + 1
+    PercentageClean = CleanCounter * 100 / 23
+    Call Sc.ProgressBox ("Cleaning Main Code..." & INT(PercentageClean) & "%.", CleanCounter, 23,"Cleaning card")
+    Call WriteViaLoader("2080","00000000000000000000000000000000","E")
+    Call WriteViaLoader("2090","00000000000000000000000000000000","E")
+    Call WriteViaLoader("20A0","00000000000000000000000000000000","E")
+    Call WriteViaLoader("20B0","00000000000000000000000000000000","E")
+    Call WriteViaLoader("20C0","00000000000000000000000000000000","E")
+    Call WriteViaLoader("20D0","00000000000000000000000000000000","E")
+    Call WriteViaLoader("20E0","00000000000000000000000000000000","E")
+    CleanCounter = CleanCounter + 1
+    PercentageClean = CleanCounter * 100 / 23
+    Call Sc.ProgressBox ("Cleaning Main Code..." & INT(PercentageClean) & "%.", CleanCounter, 23,"Cleaning card")
+    Call WriteViaLoader("20F0","00000000000000000000000000000000","E")
+    Call WriteViaLoader("2100","000000000000","E")
+    Call WriteViaLoader("2106","00000000000000000000","E")
+    Call WriteViaLoader("2110","00000000000000000000000000000000","E")
+    Call WriteViaLoader("2120","00000000000000000000000000000000","E")
+    Call WriteViaLoader("2130","00000000000000000000000000000000","E")
+    Call WriteViaLoader("2140","00000000000000000000000000000000","E")                              ' Rating
+    CleanCounter = CleanCounter + 1
+    PercentageClean = CleanCounter * 100 / 23
+    Call Sc.ProgressBox ("Cleaning Main Code..." & INT(PercentageClean) & "%.", CleanCounter, 23,"Cleaning card")
+    Call WriteViaLoader("2150","00000000000000000000000000000000","E")
+    Call WriteViaLoader("2160","00000000000000000000000000000000","E")
+    Call WriteViaLoader("2170","00000000000000000000000000000000","E")
+    Call WriteViaLoader("2180","00000000000000000000000000000000","E")
+    Call WriteViaLoader("2190","00000000000000000000000000000000","E")
+    Call WriteViaLoader("21A0","00000000000000000000000000000000","E")
+    Call WriteViaLoader("21B0","00000000000000000000000000000000","E")
+    Call WriteViaLoader("21C0","00000000000000000000000000000000","E")
+    CleanCounter = CleanCounter + 1
+    PercentageClean = CleanCounter * 100 / 23
+    Call Sc.ProgressBox ("Cleaning Main Code..." & INT(PercentageClean) & "%.", CleanCounter, 23,"Cleaning card")
+    Call WriteViaLoader("21D0","00000000000000000000000000000000","E")
+    Call WriteViaLoader("21E0","00000000000000000000000000000000","E")
+    Call WriteViaLoader("21F0","00000000000000000000000000000000","E")
+    Call WriteViaLoader("2200","00000000000000000000000000000000","E")
+    Call WriteViaLoader("2210","00000000000000000000000000000000","E")
+    Call WriteViaLoader("2220","00000000000000000000000000000000","E")
+    Call WriteViaLoader("2230","00000000000000000000000000000000","E")
+    Call WriteViaLoader("2240","00000000000000000000000000000000","E")
+    CleanCounter = CleanCounter + 1
+    PercentageClean = CleanCounter * 100 / 23
+    Call Sc.ProgressBox ("Cleaning Main Code..." & INT(PercentageClean) & "%.", CleanCounter, 23,"Cleaning card")
+    Call WriteViaLoader("2250","00000000000000000000000000000000","E")
+    Call WriteViaLoader("2260","00000000000000000000000000000000","E")
+    Call WriteViaLoader("2270","00000000000000000000000000000000","E")
+    Call WriteViaLoader("2280","00000000000000000000000000000000","E")
+    Call WriteViaLoader("2290","00000000000000000000000000000000","E")
+    Call WriteViaLoader("22A0","00000000000000000000000000000000","E")
+    Call WriteViaLoader("22B0","00000000000000000000000000000000","E")
+    Call WriteViaLoader("22C0","00000000000000000000000000000000","E")
+    CleanCounter = CleanCounter + 1
+    PercentageClean = CleanCounter * 100 / 23
+    Call Sc.ProgressBox ("Cleaning Main Code..." & INT(PercentageClean) & "%.", CleanCounter, 23,"Cleaning card")
+    Call WriteViaLoader("22D0","00000000000000000000000000000000","E")
+    Call WriteViaLoader("22E0","00000000000000000000000000000000","E")
+    Call WriteViaLoader("22F0","0000","E")
+    Call WriteViaLoader("2406","03E8","E")
+    Call WriteViaLoader("2408","00000000","E")
+    Call WriteViaLoader("240C","00000000","E")
+    Call WriteViaLoader("2410","0000000000000000","E")
+    Call WriteViaLoader("2418","0000000000010000","E")
+    CleanCounter = CleanCounter + 1
+    PercentageClean = CleanCounter * 100 / 23
+    Call Sc.ProgressBox ("Cleaning Main Code..." & INT(PercentageClean) & "%.", CleanCounter, 23,"Cleaning card")
+    Call WriteViaLoader("2420","00000000000000000000000100000000","E")
+    Call WriteViaLoader("2430","00000000000000000001000000000000","E")
+    Call WriteViaLoader("2440","00000000000000010000000000000000","E")
+    Call WriteViaLoader("2450","00000000","E")
+    Call WriteViaLoader("2454","0000000000000000","E")
+    Call WriteViaLoader("245C","00000000","E")
+    Call WriteViaLoader("2460","00000000","E")
+    CleanCounter = CleanCounter + 1
+    PercentageClean = CleanCounter * 100 / 23
+    Call Sc.ProgressBox ("Cleaning Main Code..." & INT(PercentageClean) & "%.", CleanCounter, 23,"Cleaning card")
+    Call WriteViaLoader("2464","09","E")
+    Call WriteViaLoader("2465","0000","E")
+    Call WriteViaLoader("2467","00","D")
+    Call WriteViaLoader("2468","18883629704FFF00","E")
+    Call WriteViaLoader("2470","18883629704FFF00","E")
+    Call WriteViaLoader("2478","18007139274FFF00","E")
+    Call WriteViaLoader("2480","18007139274FFF00","E")
+    Call WriteViaLoader("2488","0102000001020000","E")
+    CleanCounter = CleanCounter + 1
+    PercentageClean = CleanCounter * 100 / 23
+    Call Sc.ProgressBox ("Cleaning Main Code..." & INT(PercentageClean) & "%.", CleanCounter, 23,"Cleaning card")
+    Call WriteViaLoader("2490","01020000030400000102000001020000","E")
+    Call WriteViaLoader("24A0","01020000","E")
+    Call WriteViaLoader("24A4","00000000","E")
+    Call WriteViaLoader("24CA","000000000000","E")
+    Call WriteViaLoader("24E0","A6","E")
+    Call WriteViaLoader("24E1","01002B0017","D")
+    Call WriteViaLoader("24E8","0000000000000000","E")
+    Call WriteViaLoader("24F0","00000000","E")
+    CleanCounter = CleanCounter + 1
+    PercentageClean = CleanCounter * 100 / 23
+    Call Sc.ProgressBox ("Cleaning Main Code..." & INT(PercentageClean) & "%.", CleanCounter, 23,"Cleaning card")
+    Call WriteViaLoader("2500","00000000000000000000000000000000","E")
+    Call WriteViaLoader("2510","000000000000000000000000000000FF","E")
+    Call WriteViaLoader("2520","00000000000000000000000000000000","E")
+    Call WriteViaLoader("2530","00000000000000000000000000000000","E")
+    Call WriteViaLoader("2B00","00000000000000000000000000000000","E")
+    Call WriteViaLoader("2B10","00000000000000000000000000000000","E")
+    Call WriteViaLoader("2B20","00000000000000000000000000000000","E")
+    Call WriteViaLoader("2B30","00000000000000000000000000000000","E")
+    CleanCounter = CleanCounter + 1
+    PercentageClean = CleanCounter * 100 / 23
+    Call Sc.ProgressBox ("Cleaning Main Code..." & INT(PercentageClean) & "%.", CleanCounter, 23,"Cleaning card")
+    Call WriteViaLoader("2B40","00000000000000000000000000000000","E")
+    Call WriteViaLoader("2B50","00000000000000000000000000000000","E")
+    Call WriteViaLoader("2B60","00000000000000000000000000000000","E")
+    Call WriteViaLoader("2B70","00000000000000000000000000000000","E")
+    Call WriteViaLoader("2B80","00000000000000000000000000000000","E")
+    Call WriteViaLoader("2B90","00000000000000000000000000000000","E")
+    Call WriteViaLoader("2BA0","00000000000000000000000000000000","E")
+    Call WriteViaLoader("2BB0","00000000000000000000000000000000","E")
+     CleanCounter = CleanCounter + 1
+     PercentageClean = CleanCounter * 100 / 23
+    Call Sc.ProgressBox ("Cleaning Main Code..." & INT(PercentageClean) & "%.", CleanCounter, 23,"Cleaning card")
+    Call WriteViaLoader("2BC0","00000000000000000000000000000000","E")
+    Call WriteViaLoader("2BD0","00000000000000000000000000000000","E")
+    Call WriteViaLoader("2BE0","00000000000000000000000000000000","E")
+    Call WriteViaLoader("2BF0","00000000000000000000000000000000","E")
+    Call WriteViaLoader("2C00","00000000000000000000000000000000","E")
+    Call WriteViaLoader("2C10","00000000000000000000000000000000","E")
+    Call WriteViaLoader("2C20","00000000000000000000000000000000","E")
+    CleanCounter = CleanCounter + 1
+    PercentageClean = CleanCounter * 100 / 23
+    Call Sc.ProgressBox ("Cleaning Main Code..." & INT(PercentageClean) & "%.", CleanCounter, 23,"Cleaning card")
+    Call WriteViaLoader("2C30","00000000000000000000000000000000","E")
+    Call WriteViaLoader("2C40","00000000000000000000000000000000","E")
+    Call WriteViaLoader("2C50","00000000000000000000000000000000","E")
+    Call WriteViaLoader("2C60","00000000000000000000000000000000","E")
+    Call WriteViaLoader("2C70","00000000000000000000000000000000","E")
+    Call WriteViaLoader("2C80","00000000000000000000000000000000","E")
+    Call WriteViaLoader("2C90","00000000000000000000000000000000","E")
+    CleanCounter = CleanCounter + 1
+    PercentageClean = CleanCounter * 100 / 23
+    Call Sc.ProgressBox ("Cleaning Main Code..." & INT(PercentageClean) & "%.", CleanCounter, 23,"Cleaning card")
+    Call WriteViaLoader("2CA0","00000000000000000000000000000000","E")
+    Call WriteViaLoader("2CB0","00000000000000000000000000000000","E")
+    Call WriteViaLoader("2CC0","00000000000000000000000000000000","E")
+    Call WriteViaLoader("2CD0","5503AA013AD0DBD524882D482ED5E3F9","D")
+    Call WriteViaLoader("2CE0","21513C515063DE1E7D40BE0652F7803D","D")
+    Call WriteViaLoader("2CF0","FFFFC5F7083DAA2CE0A6013DFC2130C3","D")
+    Call WriteViaLoader("2D00","5D070FF28839072C8E38EEAA2CE0A601","D")
+    Call WriteViaLoader("2D10","3DFC2130D524C5AA24D8D002AA24C043","D")
+    CleanCounter = CleanCounter + 1
+    PercentageClean = CleanCounter * 100 / 23
+    Call Sc.ProgressBox ("Cleaning Main Code..." & INT(PercentageClean) & "%.", CleanCounter, 23,"Cleaning card")
+    Call WriteViaLoader("2D20","0002AA2658430002A6013DFC80351302","D")
+    Call WriteViaLoader("2D30","440024C35D030FDF122406037404288C","D")
+    Call WriteViaLoader("2D40","C1C9760428038CD5138C202422F2008B","D")
+    Call WriteViaLoader("2D50","23D500312698007A271103BD2CD00010","D")
+    Call WriteViaLoader("2D60","2CE800642D4C00402D8C002B2F080132","D")
+    Call WriteViaLoader("2D70","3039011E315907E1393D060B3F580010","D")
+    Call WriteViaLoader("2D80","3F8800773FFF00013FFF00017D08E306","D")
+    CleanCounter = CleanCounter + 1
+    PercentageClean = CleanCounter * 100 / 23
+    Call Sc.ProgressBox ("Cleaning Main Code..." & INT(PercentageClean) & "%.", CleanCounter, 23,"Cleaning card")
+    Call WriteViaLoader("2D90","0342DEDD7D10E3021DD3E370042EDEDD","D")
+    Call WriteViaLoader("2DA0","07EAC59A2EAB002970012EC35704F470","D")
+    Call WriteViaLoader("2DB0","FF2C70FC2EC3F9","D")
+    Call WriteViaLoader("370D","8C2CE8","D")
+    Call WriteViaLoader("270F","2D42","D")
+    Call WriteViaLoader("24C8","0600","E")
+    CleanCounter = CleanCounter + 1
+    PercentageClean = CleanCounter * 100 / 23
+    Call Sc.ProgressBox ("Cleaning Main Code..." & INT(PercentageClean) & "%.", CleanCounter, 23,"Cleaning card")
+    Call WriteViaLoader("2932","22C2B8227AB888305C43F9","D")
+    Call WriteViaLoader("2901","8C2932","D")
+    Call WriteViaLoader("2CEB","00","D")
+    Call WriteViaLoader("2D49","8CC27A","D")
+    Call WriteViaLoader("24C8","0700","E")
+    Call WriteViaLoader("2D16","77201E037420D28E3866","D")
+    Call WriteViaLoader("2D20","F97720D2067420B775DFD28CC38F8801","D")
+    CleanCounter = CleanCounter + 1
+    PercentageClean = CleanCounter * 100 / 23
+    Call Sc.ProgressBox ("Cleaning Main Code..." & INT(PercentageClean) & "%.", CleanCounter, 23,"Cleaning card")
+    Call WriteViaLoader("2D30","772C7720B7069A2C25BF9B2CD72CF9","D")
+    Call WriteViaLoader("384C","8C2D16","D")
+    Call WriteViaLoader("33C7","8C2D21","D")
+    Call WriteViaLoader("3C37","FF8E2D2E","D")
+    Call WriteViaLoader("24C8","0800","E")
+    Call WriteViaLoader("2DE0","A014EB90793ED0DDAF5F16258DB1F1D1","E")
+    Call WriteViaLoader("2DF0","86D257FB40D54C9CC085B574C7A221E9","E")
+    CleanCounter = CleanCounter + 1
+    PercentageClean = CleanCounter * 100 / 23
+    Call Sc.ProgressBox ("Cleaning Main Code..." & INT(PercentageClean) & "%.", CleanCounter, 23,"Cleaning card")
+    Call WriteViaLoader("2E00","3B6AA7A5A3E69FBA06663619D99A373B","E")
+    Call WriteViaLoader("2E10","25A0672E34D0D75098DDFAA08320059C","E")
+    Call WriteViaLoader("2E20","135033A93A589A37997B42E1C9F3E39F","E")
+    Call WriteViaLoader("2E30","EA3DBF1928F7CEDC18181C85FCFB9FC0","E")
+    Call WriteViaLoader("2E40","618A30F70354CED3A32E4E156C63D8F9","E")
+    Call WriteViaLoader("2E50","AFB1108A151046F13A4089133B22D57F","E")
+    Call WriteViaLoader("2E60","938A30D3F506A994BD0FF5AB05DE0FE9","E")
+    CleanCounter = CleanCounter + 1
+    PercentageClean = CleanCounter * 100 / 23
+    Call Sc.ProgressBox ("Cleaning Main Code..." & INT(PercentageClean) & "%.", CleanCounter, 23,"Cleaning card")
+    Call WriteViaLoader("2E70","378C6DF0E35BE0A10E9678C2A161D000","E")
+    Call WriteViaLoader("2E80","4314436DAE6C61EA588B35715B645AD5","E")
+    Call WriteViaLoader("2E90","B93B95CB48432B9FE839CD6F6F31193B","E")
+    Call WriteViaLoader("2EA0","56A8131E4D10225C796B1F1FE68448D0","E")
+    Call WriteViaLoader("2EB0","06B91F85B4A48ABCFE55F427C6DEDB8A","E")
+    Call WriteViaLoader("2EC0","228C0E9BA3D1CAEA5B536D191A1FDE6D","E")
+    Call WriteViaLoader("2ED0","AA9FDCE3C7233C6607463628D69C2500","E")
+    CleanCounter = CleanCounter + 1
+    PercentageClean = CleanCounter * 100 / 23
+    Call Sc.ProgressBox ("Cleaning Main Code..." & INT(PercentageClean) & "%.", CleanCounter, 23,"Cleaning card")
+    Call WriteViaLoader("2EE0","3AC78A87EB6EA8420DC8F077","D")
+    Call WriteViaLoader("2EF8","3AC78A87EB6EA8420DC8F077","D")
+    Call WriteViaLoader("2AD3","0167B0E3F472674726F97061E5","E")
+    Call WriteViaLoader("2AE0","BBC137A9","E")
+    Call WriteViaLoader("24E6","0006","E")
+    Call WriteViaLoader("2AD0","000000","D")
+    CleanCounter = CleanCounter + 1
+    PercentageClean = CleanCounter * 100 / 23
+    Call Sc.ProgressBox ("Cleaning Complete..." & INT(PercentageClean) & "%.", CleanCounter, 23, "Cleaning card")
+    Call Writealtee()        ' Clean USW portion of code
+    Call Sc.ProgressBox ("", 0, 0, "")
+End Sub
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+Sub WriteAltEE()
+Dim msg
+    Call Sc.ProgressBox ("Writing Alt-EE Fix Code...", 4, 6, "")
+    Sc.Write("25E2 9F 2B10 5220AA2B78AB015FCAF85260AA2B26AB004FCAF88C00508820002A8801602C52 00")
+    Sc.Read(&h02)
+    Call WDTMR()
+    Sc.Write("25E2 9F 2B30 20F75011F760139A2C9B2A70012A70012CCAF4F72211F723118F0014F72011F7 00")
+    Sc.Read(&h02)
+    Call WDTMR()
+    Sc.Write("25E2 9F 2B50 21118F000BF70013B4B47230518C01008800002E70012E7D2F2D09F8F7001172 00")
+    Sc.Read(&h02)
+    Call WDTMR()
+    'Call Sc.ProgressBox ("Writing Temporary Code...", 3, 6, "")
+    Sc.Write("25E2 9F 2B70 9004DA04FDF70011F900000000AA0000000000000000F300F3FFFFFFFFFFFFFF 00")
+    Sc.Read(&h02)
+    Call WDTMR()
+    Sc.Write("25E2 9F 2B90 FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF0000000000F300F3FFFFFFFFFFFFFF 00")
+    Sc.Read(&h02)
+    Call WDTMR()
+    Sc.Write("05 C2 41 2B10 00")
+    sc.delay(1000)
+    Sc.Read(&h02)
+    Sc.Write("05150E108000")'SET WDTMR
+    Sc.Read(&h03)
+    Call ClearScratchPad
+    'Sc.delay(200)
+    'msg = "Your card has been cleaned, virginized, updated, and alt-ee repaired."
+    'Call Sc.MsgBox(msg,vbExclamation,"Your card has been Supercleaned!")
+    Call Card_Reset
+End Sub
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+Sub ClearScratchPad
+    Call Sc.ProgressBox ("Clearing ScratchPad Area...", 6, 6, "")
+    Call WriteViaLoader("2B00","00000000000000000000000000000000","E")
+    Call WriteViaLoader("2B10","00000000000000000000000000000000","E")
+    Call WriteViaLoader("2B20","00000000000000000000000000000000","E")
+    Call WriteViaLoader("2B30","00000000000000000000000000000000","E")
+    Call WriteViaLoader("2B40","00000000000000000000000000000000","E")
+    Call WriteViaLoader("2B50","00000000000000000000000000000000","E")
+    Call WriteViaLoader("2B60","00000000000000000000000000000000","E")
+    Call WriteViaLoader("2B70","00000000000000000000000000000000","E")
+    Call WriteViaLoader("2B80","00000000000000000000000000000000","E")
+    Call WriteViaLoader("2B90","00000000000000000000000000000000","E")
+    Call WriteViaLoader("2BA0","00000000000000000000000000000000","E")
+    Call WriteViaLoader("2BB0","00000000000000000000000000000000","E")
+End Sub
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+Sub WDTMR()
+Dim RetValue
+    Sc.Write("05150E108000")    'SET WDTMR
+    Sc.Delay(80)
+    Sc.Read(&h02)
+    RetValue = Sc.GetByte(&h01)
+    Sc.Read(RetValue)
+End Sub
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+'=====================================================================================
+' UnlooperSettings
+' This subroutine uses WinExplorer 4.6's new Wx. object to automatically
+' configure all the WinExplorer settings for the user.
+
+Sub UnlooperSettings()
+    With Wx
+      .BaudRate=115200
+      .ResetBaudRate=115200
+      .Parity=0                  ' 0 = None, 1 = Odd, 2 = Even, 3 = Mark, 4 = Space
+      .StopBits=0                ' 0 = 1 stop bit, 1 = 1.5 stop bits, 2 = 2 stop bits
+      .DTRControl=0              ' Initial state of DTR  0 = off, 1 = on
+      .RTSControl=1              ' Initial state of RTS  0 = off, 1 = on
+      .ResetDelay=0              ' In microseconds
+      .ByteDelay=0               ' In microseconds
+      .RxByteTimeout=500         ' In milliseconds
+      .ResetMode=2               ' 0 = No Resets, 1 = ISO Reset (Expect a ATR), 2 = Device Reset (No ATR)
+      .ResetLine=1               ' 0 = Toggle RTS for Reset, 1 = Toggle DTR for Reset
+      .ByteConvention=1          ' 0 = Inverse, 1 = Direct
+      .FlushEchoByte=0           ' 0 = no flush, 1 = flush - A Phoenix interface will echo each byte transmitted.
+      .FlushBeforeWrite=0        ' 0 = no flush, 1 = flush - Flush the receive buffer before each write to strip off Null bytes.
+      .IgnoreTimeouts=1          ' 0 = Abort script on a receive timeout, 1 = Ignore all receive timeouts
+      .ResetAfterTimeout=0       ' 0 = Don't reset after a timeout, 1 = do a reset after a timeout  - Not used if "IgnoreTimeouts=0"
+      .LogTransactions=0         ' 0 = Don't log transactions, 1 = log transactions
+      .DisplayUSW=0              ' Display USW after script complete 0 = no, 1 = yes
+      .DisplayFuse=0             ' Display Fuse after script complete 0 = no, 1 = yes
+   End With
+End Sub

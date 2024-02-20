@@ -1,0 +1,122 @@
+' Rom 10- A23 & A21 Opener
+' Credit where credit is due
+' Thanks Penga, H00k, and many others.
+' Thanks to #echostar on uicn.net
+' Thanks to CC for keeping the info free
+' script by A.Friend
+
+const retry_constant = 10
+const initdelay=2000
+
+
+Sub Main ()
+sc.verbose = false
+ClearOutputWindow
+
+sc.print "Sending packet.1.." & vbcr & "=================" & vbcr
+sc.write("21C101A041")
+sc.print "Response from card: " & vbcr
+sc.delay(80)
+answer = read_answer()
+sc.print
+sc.delay(initdelay)
+
+sc.print "Sending packet.2.." & vbcr & "=================" & vbcr
+sc.write("210008A0CA000002C0000687")
+sc.print "Response from card: " & vbcr
+sc.delay(80)
+answer = read_answer()
+sc.print
+sc.delay(initdelay)
+
+sc.print "Sending packet.3.." & vbcr & "=================" & vbcr
+sc.write("21000DA0CA000000030000001010150050")
+sc.print "Response from card: " & vbcr
+sc.delay(80)
+answer = read_answer()
+sc.print
+sc.delay(initdelay)
+
+sc.print "Sending packet.4.." & vbcr & "=================" & vbcr
+sc.write("21000DA0CA000000030000001010150050")
+sc.print "Response from card: " & vbcr
+sc.delay(80)
+answer = read_answer()
+sc.print
+sc.delay(initdelay)
+
+sc.print "Sending packet.5.." & vbcr & "=================" & vbcr
+sc.write("210064A0CA00004D034B0038206F150CCD320C5AEA2D2D0CCD320C5AEA2D2D0CCD320C5AEA2D2D0CCD320C5AEA2D2D0CCD320C5AEA2D2D462DF670F1966715902789FF42D38BB50B00BFDC9852BBB70CCD320C5AEA2D2D0CCD320C5AEA2D2D0CCD320C5AEA2D2D70")
+sc.print "Response from card: " & vbcr
+sc.delay(80)
+answer = read_answer()
+sc.print
+sc.delay(initdelay)
+
+sc.print "Sending packet.6.." & vbcr & "=================" & vbcr
+sc.write("210008A0CA000002C0000687")
+sc.print "Response from card: " & vbcr
+sc.delay(80)
+answer = read_answer()
+sc.print
+sc.delay(initdelay)
+
+sc.print "Sending packet.7.." & vbcr & "=================" & vbcr
+sc.write("219200B3")
+sc.print "Response from card: " & vbcr
+sc.delay(80)
+answer = read_answer()
+sc.print
+sc.delay(initdelay)
+
+    wx.closeport
+    sc.delay(initdelay)
+    wx.openport
+
+
+sc.print
+sc.print "Card should now be unlocked! Open Nagraedit and try One Step Backup. Enjoy!" & vbcr
+sc.print
+sc.print "Note: If you still get Backdoor Reported Disable then run again." & vbcr
+sc.print
+End sub
+
+function read_answer()
+length = sc.bytesinbuffer
+sc.read(length)
+if length = 0 then
+    answer=""
+    sc.print("(No answer)")
+else
+    For X = 0 to length - 1
+        ThisByte = Hex(Sc.GetByte(X))
+        if Len(ThisByte) = 1 then ThisByte = "0" & ThisByte
+        Thisbyte = Thisbyte & " "
+        res = res & Thisbyte
+        Sc.Print(ThisByte)
+    Next
+end if
+Sc.Print
+read_answer = answer
+end function
+
+Wx.ResetDelay = 150
+Wx.ByteDelay = 0
+Wx.RxByteTimeout = 50
+Wx.CommPort = "com1:"
+Wx.BaudRate = 115200
+Wx.ResetBaudRate = 9600
+Wx.Parity = 1
+Wx.StopBits = 2
+Wx.DTRControl = 1
+Wx.RTSControl = 0
+Wx.ResetMode = 1
+Wx.ResetLine = 0
+Wx.ByteConvention = 0
+Wx.FlushEchoByte = 1
+Wx.FlushBeforeWrite = 1
+Wx.IgnoreTimeouts = 0
+Wx.ResetAfterTimeout = 0
+Wx.LogTransactions = 0
+Wx.DisplayUSW = 0
+Wx.DisplayFuse = 0

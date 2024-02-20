@@ -1,0 +1,690 @@
+'                  FOR P4 CARDS ONLY!!!!!!!!!!!!!!!!!!!!!
+' USE P4 2.0 FLASH ONLY...FOR THIS SCRIPT TO WORK AND YOUR SETTTING WILL BE P3
+' THE NEXT SCRIPT WILL BE CLEAN AND READ...AND THE BEST THING IS....ITS FREEWARE
+' THE GAME HAS STARTED....HAVE FUN...THE WAIT IS OVER...!!!!!!!!!!!!!!!!!!!!!!
+
+
+
+
+Option Explicit
+  Const VendorString = "PPV Wipe and Unmarry Script"
+
+  Const EEPROMLength = 8192
+
+  Const firstkeyaddr = &H04C0
+  Const secondkeyaddr = &H0658
+  Const S1block = &H0024
+  Const E1block = &H04BF
+  Const S2block = &H04C8
+  Const E2block = &H04DB
+  Const S3block = &H04E0
+  Const E3block = &H051E
+  Const S4block = &H0520
+  Const E4block = &H053F
+  Const S5block = &H0AD3
+  Const E5block = &H0EDE
+  Dim Key1(8)
+  Dim Key2(8)
+  Dim WKey(8)
+
+  Dim EEPROM(8192)
+  Dim EEPCounter
+  Dim ThisByte
+  Dim MenuPrompt
+  Dim Choice
+  Dim Choice1
+
+Sub Main()
+  Dim ErrorString
+
+  Sc.Verbose = true
+
+  If Sc.Version < 5.0 Then
+    ErrorString = "You need version 5.0 or greater of WinExplorer to run this script"
+    Sc.MsgBox ErrorString, vbCritical
+    Err.Raise 1050, , ErrorString
+  End If
+
+  Sc.Write ("90")
+  Sc.Delay(100)
+  If Sc.BytesInBuffer > 0 then
+    Sc.Read (04)
+  else
+    exit sub
+  end If
+
+  Do
+    MenuPrompt = "PPV Wipe and IRD UnMarry Script!" & vbCrLf
+    MenuPrompt = MenuPrompt & "" & vbCrLf & vbCrLf
+    MenuPrompt = MenuPrompt & "PLEASE NOTE:   NO SUBSCRIBED CARDS!" & vbCrLf
+    MenuPrompt = MenuPrompt & "I HOLD NO RESPONSIBILITY IF YOU LOOP OR DAMAGE YOUR CARD USING THIS SCRIPT." & vbCrLf & vbCrLf
+    MenuPrompt = MenuPrompt & "Quick synopsis:" & vbCrLf
+    MenuPrompt = MenuPrompt & " -- PPV Wipe:  Cleans the area on the card where PPV data is stored." & vbCrLf
+    MenuPrompt = MenuPrompt & " -- IRD UnMarry:  Will clean out the IRD bytes from a card." & vbCrLf
+    MenuPrompt = MenuPrompt & " -- Both:  Will clean both the PPV area as well as the IRD from a card" & vbCrLf
+    MenuPrompt = MenuPrompt & " -- Clone:  Will read the contents of card A into memory, wipe the PPV," & vbCrLf
+    MenuPrompt = MenuPrompt & "                 unmarry it from the IRD, and write the new EEPROM to card B" & vbCrLf
+    MenuPrompt = MenuPrompt & "                 NOTE:  Card A will *not* be modified." & vbCrLf
+    MenuPrompt = MenuPrompt & "" & vbCrLf
+    MenuPrompt = MenuPrompt & "Please choose from the following menu choices:" & vbCrLf
+    Choice = Sc.ButtonBox(MenuPrompt, 0, VendorString, "PPV Wipe", "IRD UnMarry", "Both", "Clone", "Exit")
+
+
+
+  Select Case Choice
+  Case "1"
+    Call LoadBootStrap()
+    Call ReadCard()
+    Call ROMCrypt()
+    Call WipePPV()
+    Call RomCrypt()
+    Call LoadBootStrap()
+    Call WriteCard()
+  Case "2"
+    Call LoadBootStrap()
+    Call ReadCard()
+    Call ROMCrypt()
+    Call UnmarryIRD()
+    Call ROMCrypt()
+    Call LoadBootStrap()
+    Call WriteCard()
+  Case "3"
+    Call LoadBootStrap()
+    Call ReadCard()
+    Call ROMCrypt()
+    Call UnmarryIRD()
+    Call WipePPV()
+    Call ROMCrypt()
+    Call WriteCard()
+  Case "4"
+    Call LoadBootStrap()
+    Call ReadCard()
+    Call ROMCrypt()
+    Call UnmarryIRD()
+    Call WipePPV()
+    Call ROMCrypt()
+    Choice1 = Sc.ButtonBox("Please insert card to apply clone image to...", 0, VendorString, "OK", "Cancel")
+    If Choice1 = "1" Then
+      Call LoadBootStrap()
+      Call WriteCard()
+    End If
+  Case "5"
+    Exit Sub
+  End Select
+  Loop While True = True
+
+end sub
+
+Sub WipePPV()
+  For ThisByte=36 to 258
+    EEPROM(ThisByte) = &h00
+  Next
+End Sub
+
+Sub UnmarryIRD()
+  EEPROM(1120) = &h00
+  EEPROM(1121) = &h00
+  EEPROM(1122) = &h00
+  EEPROM(1123) = &h01
+End Sub
+
+' ********************************************
+' * LoadBootStrap()
+' ********************************************
+Sub LoadBootStrap()
+  Dim RetValue
+  Dim GotInput
+  Dim DAC
+  Dim ATRDAC
+  Dim Delay
+  Dim Counter
+  Dim Counter2
+  Dim Counter3
+  Dim Byte1
+  Dim Byte2
+  Dim Byte3
+  Dim Byte4
+  Dim Byte5
+  Dim Byte6
+  Dim Byte7
+  Dim Byte8
+  Dim Byte9
+  Dim XORedByte4
+  Dim XORedByte5
+  Dim XORedByte6
+  Dim XORedByte7
+  Dim XORedByte8
+  Dim XORedByte9
+
+  Counter = 0
+  Counter2 = 0
+  Counter3 = 0
+  ATRDAC = &h95
+  DAC = &h8C
+  Delay = &h1A
+
+  Do
+    Call IsCardPresent()
+    Sc.Write("A1")
+    GotInput = False
+    If Counter = 12 then
+      Counter = 0
+      DAC = &h8C
+      Delay = &h1A
+    end if
+    If Counter = 1 then
+      DAC = &h8C
+      Delay = &h8E
+    end if
+    If Counter = 2 then
+      DAC = &h8A
+      Delay = &h1A
+    end if
+    If Counter = 3 then
+      DAC = &h8A
+      Delay = &h8E
+    end if
+    If Counter = 4 then
+      DAC = &h88
+      Delay = &h1A
+    end if
+    If Counter = 5 then
+      DAC = &h88
+      Delay = &h8E
+    end if
+    If Counter = 6 then
+      DAC = &h86
+      Delay = &h1A
+    end if
+    If Counter = 7 then
+      DAC = &h86
+      Delay = &h8E
+    end if
+    If Counter = 8 then
+      DAC = &h84
+      Delay = &h1A
+    end If
+    If Counter = 9 then
+      DAC = &h84
+      Delay = &h8E
+    end if
+    If Counter = 10 then
+      DAC = &h82
+      Delay = &h1A
+    end if
+    If Counter = 11 then
+      DAC = &h82
+      Delay = &h8E
+    Counter2 = Counter2 + 1
+    end if
+    If Counter2 = 5 then
+      Counter2 = 0
+      ATRDAC = &h70
+    end if
+    If Counter2 = 2 then
+      ATRDAC = &h78
+      end if
+    If Counter2 = 3 then
+      ATRDAC = &h80
+      end if
+    If Counter2 = 4 then
+      ATRDAC = &h88
+    end if
+    Call Sc.ProgressBox ("Glitching...    ATR DAC:        " & HexString(ATRDAC,2) & vbcr & "                                  DAC:        " & HexString(DAC,2) & vbcr & "                                Delay:        " & HexString(Delay,2), 1, 999, VendorString)
+    Do
+      If Counter3 = 40 then
+        ATRDAC = &h70
+        Counter = 0
+      end if
+      If Counter3 = 10 then
+        ATRDAC = &h78
+      end if
+      If Counter3 = 20 then
+        ATRDAC = &h80
+      end if
+      If Counter3 = 30 then
+        ATRDAC = &h88
+      end if
+      Sc.Write("B0")
+      Sc.Write(HexString(ATRDAC,2))
+      Sc.Write("06100E10018500")
+      Sc.Delay(350)
+      Sc.Read(&h02)
+      RetValue = Sc.GetByte(&h01)
+      Sc.Read (RetValue)
+      Sc.Write("0B100E03018920004209BF00")
+      Sc.Delay(50)
+      Sc.Read(&h02)
+      RetValue = Sc.GetByte(&h01)
+      If RetValue = &h46 then
+        Sc.Read(RetValue)
+        Byte4 = Sc.GetByte(61)
+        Byte5 = Sc.GetByte(62)
+        Byte6 = Sc.GetByte(63)
+        Byte7 = Sc.GetByte(64)
+        Byte8 = Sc.GetByte(65)
+        GotInput = True
+      Else
+        Sc.Read(RetValue)
+        GotInput = False
+        Counter3 = Counter3 + 1
+      end if
+    Loop Until GotInput = True
+    GotInput = False
+    Sc.Write("02BF00")
+    Sc.Delay(80)
+    Sc.Read(&h02)
+    RetValue = Sc.GetByte(&h01)
+    Sc.Read (RetValue)
+    Sc.Write("02BF00")
+    Sc.Delay(80)
+    Sc.Read(&h02)
+    RetValue = Sc.GetByte(&h01)
+    If RetValue = &h40 then
+      Sc.Read (RetValue)
+      Byte1 = Sc.GetByte(44)
+      Byte2 = Sc.GetByte(45)
+      Byte3 = Sc.GetByte(46)
+      Byte9 = Byte1
+    else
+      Sc.Read (RetValue)
+    end if
+    Sc.Write("02BF00")
+    Sc.Delay(80)
+    Sc.Read(&h02)
+    RetValue = Sc.GetByte(&h01)
+    Sc.Read (RetValue)
+    Sc.Write("028700")
+    Sc.Delay(80)
+    Sc.Read(&h02)
+    RetValue = Sc.GetByte(&h01)
+    Sc.Read (RetValue)
+    Sc.Write("B0")
+    Sc.Write(HexString(DAC,2))
+    Sc.Write("0F1AC4485E000A01822000230C"& HexString(Delay,2) & "8100")
+    Sc.Delay(80)
+    Sc.Read(&h02)
+    RetValue = Sc.GetByte(&h01)
+    Sc.Read (RetValue)
+    Sc.Write("0915C4484C0000098000")
+    Sc.Delay(80)
+    Sc.Read(&h02)
+    RetValue = Sc.GetByte(&h01)
+    Sc.Read (RetValue)
+    XORedByte4 = HexString(Byte4 XOR &HC4, 2)
+    XORedByte5 = HexString(Byte5 XOR &H0F, 2)
+    XORedByte6 = HexString(Byte6 XOR &HC0, 2)
+    XORedByte7 = HexString(Byte7 XOR &HDC, 2)
+    XORedByte8 = HexString(Byte8 XOR &HC4, 2)
+    XORedByte9 = HexString(Byte9 XOR &H26, 2)
+    Sc.Write("0CC9" & HexString(Byte1,2) & HexString(Byte2,2) & HexString(Byte3,2) & XORedByte4 & XORedByte5 & XORedByte6 & XORedByte7 & XORedByte8 & XORedByte9 & "0000")
+    Sc.Delay(100)
+    If Sc.BytesInBuffer > 0 then
+      Sc.Read(&h02)
+    else
+    end if
+    Sc.Write("34F00000000069FFFFFFFF523FFD2284E172400772FF14C5E2AB0100C3DA07F88C0100000000000000000000000000000000008000")
+    Sc.Delay(80)
+    Sc.Read(&h02)
+    If Sc.GetByte(&h0) = &h34 then
+      If Sc.GetByte(&h01) = &h01 then
+        Sc.Read(&h01)
+        If Sc.GetByte(&h0) = &h84 then
+          GotInput = True
+        else
+          GotInput = False
+        End if
+      End if
+    End if
+    Counter = Counter + 1
+  Loop Until GotInput = True
+  Sc.Write("42FF225272FF14E1E2D007E2D029E2D02A77800718753F07D307D807C5E2AB0060C3DA07F8726015D404E700D57640070DD3078ECEFB70012ADA07F700C49E2A00FA00")
+  Sc.Delay(80)
+  Sc.Read(&h02)
+  Call Sc.ProgressBox ("", 0, 0, "")
+
+End Sub
+' ********************************************
+' * END LoadBootstrap()
+' ********************************************
+
+
+' ********************************************
+' * ReadCard()
+' ********************************************
+Sub ReadCard()
+    Dim Byte1A
+    Dim Byte2A
+    Dim Byte3A
+    Dim Byte4A
+    Dim Byte5A
+    Dim Byte6A
+    Dim Byte7A
+    Dim Byte8A
+    Dim Byte1B
+    Dim Byte2B
+    Dim Byte3B
+    Dim Byte4B
+    Dim Byte5B
+    Dim Byte6B
+    Dim Byte7B
+    Dim Byte8B
+    Dim XORedByte1
+    Dim XORedByte2
+    Dim XORedByte3
+    Dim XORedByte4
+    Dim XORedByte5
+    Dim XORedByte6
+    Dim XORedByte7
+    Dim XORedByte8
+    Dim EPROMKey
+    Dim IRDKey
+    Dim EPROM
+    Dim ThisByte
+    Dim Address
+    Dim RetValue
+
+    Address = 8192
+
+Sc.Write("A2")
+
+
+
+Call WDTMR()
+Call Sc.ProgressBox ("Extracting EEPROM Keys...", 4, 13, VendorString)
+Sc.Write("06C20724C08800")
+Sc.Read(&h02)
+        RetValue = Sc.GetByte(&h01)
+        Sc.Read(RetValue)
+        Byte1A = Sc.GetByte(0)
+        Byte2A = Sc.GetByte(1)
+        Byte3A = Sc.GetByte(2)
+        Byte4A = Sc.GetByte(3)
+        Byte5A = Sc.GetByte(4)
+        Byte6A = Sc.GetByte(5)
+        Byte7A = Sc.GetByte(6)
+        Byte8A = Sc.GetByte(7)
+Call Sc.ProgressBox ("Extracting EEPROM Keys...", 5, 13, VendorString)
+Sc.Write("06C20726588800")
+Sc.Read(&h02)
+        RetValue = Sc.GetByte(&h01)
+        Sc.Read(RetValue)
+        Byte1B = Sc.GetByte(0)
+        Byte2B = Sc.GetByte(1)
+        Byte3B = Sc.GetByte(2)
+        Byte4B = Sc.GetByte(3)
+        Byte5B = Sc.GetByte(4)
+        Byte6B = Sc.GetByte(5)
+        Byte7B = Sc.GetByte(6)
+        Byte8B = Sc.GetByte(7)
+
+XORedByte1 = HexString(Byte1A XOR Byte1B, 2)
+XORedByte2 = HexString(Byte2A XOR Byte2B, 2)
+XORedByte3 = HexString(Byte3A XOR Byte3B, 2)
+XORedByte4 = HexString(Byte4A XOR Byte4B, 2)
+XORedByte5 = HexString(Byte5A XOR Byte5B, 2)
+XORedByte6 = HexString(Byte6A XOR Byte6B, 2)
+XORedByte7 = HexString(Byte7A XOR Byte7B, 2)
+XORedByte8 = HexString(Byte8A XOR Byte8B, 2)
+
+IRDKey = XORedByte5 & XORedByte6 & XORedByte7 & XORedByte8
+
+Call Sc.ProgressBox ("Cleaning IRD...", 1, 999, VendorString)
+Sc.Write("09C68324A4" & IRDKey & "00")
+Sc.Read(&h02)
+EEPCounter = 0
+Do
+
+Call WDTMR()
+
+Sc.Write("06C23F" & HexString(Address,4) & "BF00")
+
+Sc.Read(&h02)
+
+        Sc.Read (&h40)
+Call Sc.ProgressBox ("Reading EEPROM memory...", EPROM, 128, VendorString)
+
+EPROM = EPROM + 1
+Address = Address + 64
+ThisByte = ""
+For ThisByte = 0 to 63
+            EEPROM(EEPCounter) = Sc.GetByte(ThisByte)
+            EEPCounter = EEPCounter + 1
+            next
+loop until EPROM = 128
+
+Sc.Write("A0")
+Sc.Write("020200")
+Sc.Delay(100)
+Sc.Read(&h02)
+
+Call Sc.ProgressBox ("", 0, 0, "")
+
+End Sub
+' ********************************************
+' * End ReadCard()
+' ********************************************
+
+
+
+' ********************************************
+' * WriteCard()
+' ********************************************
+Sub WriteCard()
+    Dim EPROM
+    Dim ThisByte
+    Dim Address
+    Dim RetValue
+    Dim Location
+    Dim EPROMBytes
+    Dim EPROMBytes2
+
+    Address = 8224
+    Location = 32
+
+
+  Sc.Write("A2")
+  Call WDTMR()
+  EPROMBytes = ""
+  For ThisByte = 20 to (22) - 1
+   EPROMBytes = EPROMBytes & HexString(EEPROM(ThisByte), 2)
+  Next
+  Sc.Write("07C4812014" & EPROMBytes & "00")
+  Sc.Read(&h02)
+'  Sc.Print "2014: " & EPROMBytes & vbcr
+  Call Sc.ProgressBox ("Writing EEPROM memory..." & vbcr & "2014:  " & EPROMBytes, EPROM, 255, VendorString)
+  Do
+    Call WDTMR()
+    EPROMBytes = ""
+    For ThisByte = Location to (Location + 16) - 1
+      EPROMBytes = EPROMBytes & HexString(EEPROM(ThisByte), 2)
+    Next
+    EPROMBytes2 = ""
+    For ThisByte = (Location + 16) to (Location + 32) - 1
+      EPROMBytes2 = EPROMBytes2 & HexString(EEPROM(ThisByte), 2)
+    Next
+    Sc.Write("25E29F" & HexString(Address,4) & EPROMBytes & EPROMBytes2 & "00")
+    Sc.Read(&h02)
+'    Sc.Print HexString(Address,4) & ": " & EPROMBytes & EPROMBytes2 & vbcr
+    Call Sc.ProgressBox ("Writing EEPROM memory..." & vbcr & HexString(Address,4) & ":  " & EPROMBytes & vbcr & HexString(Address + 16,2) & ":  " & EPROMBytes2, EPROM, 255, VendorString)
+    EPROM = EPROM + 1
+    Address = Address + 32
+    Location = Location + 32
+  Loop until EPROM = 255
+  Sc.Write("A0")
+  Sc.Write("020200")
+  Sc.Delay(100)
+  Sc.Read(&h02)
+  Call Sc.ProgressBox ("", 0, 0, "")
+
+End Sub
+' ********************************************
+' * End WriteCard()
+' ********************************************
+
+
+' ********************************************
+' * IsCardPresent()
+' ********************************************
+Sub IsCardPresent()
+  Dim RetValue
+  Dim GotInput
+  Do
+    Sc.Write("A0")
+    Sc.Write("80")
+    Sc.Delay(100)
+    If Sc.BytesInBuffer > 0 then
+      Sc.Read(&h01)
+      RetValue = Sc.GetByte(0)
+    end if
+
+    If RetValue = &h0 then
+      Call Sc.ProgressBox ("Please insert a valid HU card...", 1, 999, VendorString)
+      GotInput = False
+    else
+      If RetValue = &hFF then
+        GotInput = True
+      else
+        If RetValue <> &h0 or RetValue <> &hFF then
+          Sc.Write("A0")
+          Sc.Write("020200")
+          Sc.Delay(100)
+          If Sc.BytesInBuffer > 1 then
+            Sc.Read(&h02)
+            GotInput = False
+          Else
+            GotInput = False
+          End if
+        End if
+      End if
+    End if
+  Loop Until GotInput = True
+End Sub
+' ********************************************
+' * End IsCardPresent()
+' ********************************************
+
+' ********************************************
+' * HexString(Number, Length)
+' ********************************************
+Function HexString(Number,Length)
+  ' This function takes 2 arguments, a number and a length.  It converts the decimal
+  ' number given by the first argument to a Hexidecimal string with its length
+  ' equal to the number of digits given by the second argument
+  Dim RetVal
+  Dim CurLen
+  RetVal=Hex(Number)
+  CurLen=Len(RetVal)
+  If CurLen<Length Then
+    RetVal=String(Length-CurLen,"0") & RetVal
+  End If
+  HexString=RetVal
+End Function
+' ********************************************
+' * End HexString()
+' ********************************************
+
+
+' ********************************************
+' * XorValue(addr)
+' ********************************************
+Function XorValue(addr)
+Dim k
+
+k=right(hex(addr),1)
+Select Case k
+Case "0": XorValue = Wkey(1)
+Case "1": XorValue = Wkey(2)
+Case "2": XorValue = Wkey(3)
+Case "3": XorValue = Wkey(4)
+Case "4": XorValue = Wkey(5)
+Case "5": XorValue = Wkey(6)
+Case "6": XorValue = Wkey(7)
+Case "7": XorValue = Wkey(8)
+Case "8": XorValue = Wkey(1)
+Case "9": XorValue = Wkey(2)
+Case "A": XorValue = Wkey(3)
+Case "B": XorValue = Wkey(4)
+Case "C": XorValue = Wkey(5)
+Case "D": XorValue = Wkey(6)
+Case "E": XorValue = Wkey(7)
+Case "F": XorValue = Wkey(8)
+End Select
+End Function
+' ********************************************
+' * End XorValue()
+' ********************************************
+
+
+' ********************************************
+' * WDTMR()
+' ********************************************
+Sub WDTMR()
+  Dim RetValue
+  Sc.Write("05150E108000")
+  Sc.Read(&h02)
+  RetValue = Sc.GetByte(&h01)
+  Sc.Read(RetValue)
+end Sub
+' ********************************************
+' * End WDTMR()
+' ********************************************
+
+' ********************************************
+' * RomCrypt()
+' ********************************************
+Sub ROMCrypt()
+
+  Dim TmpStr
+  Dim j
+  TmpStr = ""
+  j = 0
+  For ThisByte = firstkeyaddr to (firstkeyaddr + 8) - 1
+  TmpStr = TmpStr & HexString(EEPROM(ThisByte), 2) & " "
+  j = j + 1
+  key1(j) = EEPROM(ThisByte)
+  Next
+  Sc.Print "Key1: " & TmpStr & vbCr
+  TmpStr = ""
+  j = 0
+  For ThisByte = secondkeyaddr to (secondkeyaddr + 8) - 1
+  TmpStr = TmpStr & HexString(EEPROM(ThisByte), 2) & " "
+  j = j + 1
+  key2(j) = EEPROM(ThisByte)
+  Next
+  Sc.Print "Key2: " & TmpStr & vbCr
+  TmpStr = ""
+  For ThisByte = 1 to 8
+  Wkey(ThisByte) = key1(ThisByte) Xor key2(ThisByte)
+  TmpStr = TmpStr & HexString(Wkey(ThisByte), 2) & " "
+  Next
+  Sc.Print "WKey: " & TmpStr & vbCr
+  For ThisByte = 1 to EEPROMLength
+    Select Case ThisByte
+    Case S1block:
+      For j = S1block to E1block
+        EEPROM(j) = EEPROM(j) Xor XorValue(j)
+      Next
+    Case S2block:
+      For j = S2block to E2block
+        EEPROM(j) = EEPROM(j) Xor XorValue(j)
+      Next
+    Case S3block:
+      For j = S3block to E3block
+        EEPROM(j) = EEPROM(j) Xor XorValue(j)
+      Next
+    Case S4block:
+      For j = S4block to E4block
+        EEPROM(j) = EEPROM(j) Xor XorValue(j)
+      Next
+    Case S5block:
+      For j = S5block to E5block
+        EEPROM(j) = EEPROM(j) Xor XorValue(j)
+      Next
+    End Select
+  Next
+
+End Sub
+' ********************************************
+' * End RomCrypt()
+' ********************************************

@@ -1,0 +1,798 @@
+' ===================
+' === TurboAUX3.0 ===
+' ===================
+'
+' by aol6945 and RAM9999
+'
+' This script transforms your H card into an Aux card for use with PGM's
+' sle44 emulator, v3.0.  The method used to place the Aux code on the card is
+' much faster than applying the code with sle44a_p.exe.  The method used is
+' a new method called TurboLoader.  TurboLoader uses a programmer to write
+' to the card, but does so at close to the speed of an unlooper.  This script
+' will take only about 10 seconds to apply the Aux 3.0 code.
+'
+' Requirements:
+' - H card with USW from 26 to 63.  Does not have to be clean, but must not have
+'   the 48 hole blocked (USW 61 and below) or must not have Cmd EF blocked (USW
+'   62 and above).  The card will be cleaned during installation.
+' - If you're using the script to remove the Aux 3.0 code (i.e. turn the Aux 3.0 
+'   card back into an H card) you MUST disable Transaction Logging in the
+'   WinExplorer "Program Properties".
+'
+' Notes:
+' - When the script is completed turning your H card into an Aux 3.0 card, you
+'   will receive a "Timeout from 2A command" at the end of the script.  This is
+'   normal, and is because the Aux 3.0 card will not respond to normal H card
+'   commands, including 2A.
+' - It bears repeating: When using the script to remove the Aux 3.0 code, you
+'   MUST disable Transaction Logging in the WinExplorer "Program Properties".
+' - The TurboLoader used in this script is timing-critical.  There are some
+'   programmers that may have problems with the TurboLoader, including some
+'   dual-mode Programmer/Unloopers.  Use a real Phoenix-style programmer if
+'   one of these gives you problems.  Also, there are some computer mother-
+'   boards whose serial ports are not optimized enough to send/receive bytes
+'   in the Windows OS as fast as the TurboLoader wishes to operate.
+'   Regrettably, you will need to try the script on a different computer if
+'   your motherboard falls into this category, or will need to use a high-
+'   speed serial card.
+'
+' ============================================================================
+
+Option Explicit
+
+Const VersionString = "TurboAUX3.0"
+
+Dim ErrorString
+Dim CurrentUSW
+Dim MsgString
+
+' TurboLoader
+Dim EEPROM(4096)
+Dim OriginalEEPROM(4096)
+Dim BootstrapLoaded
+Dim BootstrapControl
+
+Sub Main()
+
+    Dim MenuChoice
+    Dim PromptString
+
+    '*** Setup environment
+    ' Verify WinExplorer version and set ByteDelay
+    Call SetupWinExplorer()
+
+    Do
+
+        PromptString = "=================> " & VersionString & " <=================" & vbCrLf & vbCrLf
+        MenuChoice = Sc.ButtonBox(PromptString, , VersionString, "AUX", "De-AUX", "Exit")
+
+        Select Case MenuChoice
+            Case 1
+                ' AUX the card
+                Call AUX30()
+            Case 2
+                ' De-AUX the card
+                Call DeAUX()
+        End Select
+
+    Loop Until MenuChoice = 3
+
+End Sub
+
+Sub AUX30()
+
+    If IsAuxCard() Then
+           If Sc.MsgBox("This card appears to already be an Aux card." & vbCrLf & vbCrLf & _
+                      "You can attempt to continue, but the response that indicates" & vbCrLf & _
+                      "this is an Aux card was received." & vbCrLf & vbCrLf & _
+                      "Do you want to continue even though this card appears to already" & vbCrLf & _
+                      "be an Aux card?", _
+                      vbQuestion + vbYesNo + vbDefaultButton2, "Already an Aux card") = vbNo Then
+                Exit Sub
+           End If
+    
+    End If
+
+    If Not VerifyCurrentUSW(26,63) Then
+        Exit Sub
+    End If
+    
+    ' Install bootstrap and transfer control
+    If CurrentUSW < 62 Then
+        Call InstallBootstrapVia48()
+    Else
+        Call InstallBootstrapViaEF()
+        Call TransferControlToBootstrap()
+    End If
+
+    ' Read current EEPROM contents into memory
+    Call ReadEEPROMViaBootstrap(EEPROM)
+    Call CopyArray(EEPROM, OriginalEEPROM)
+
+    ' AUX EEPROM
+    Call AUXEEPROM(EEPROM)
+
+    ' Write auxed EEPROM back to card and exit/cleanup bootstrap
+    Call WriteEEPROMViaBootstrap(EEPROM)
+    Call ExitBootstrapCleanUp(EEPROM)
+
+    If IsAuxCard() Then
+        Call Sc.MsgBox("Card successfully AUX'ed" & vbCrLf & vbCrLf & _
+            "Remember, in order to DeAUX you must disable Transaction Logging" & vbCrLf & _
+            "in WinExplorer under Configure/Program Parameters/Program Settings", _
+            vbOkOnly, VersionString & " - Successfully AUX'ed") 
+    Else
+        Call Sc.MsgBox("Card was not successfully AUX'ed" & vbCrLf & vbCrLf & _
+            "Make sure card is not already an AUX card and that it is clean" & vbCrLf & _
+            "at a USW between 26 and 63", _
+            vbExclamation + vbOkOnly, VersionString & " - AUX failed")    
+    End If
+
+
+End Sub
+
+Function GetUSW()
+
+    Dim Oldstate
+
+    Sc.Reset
+
+    Oldstate = Sc.Verbose
+    Sc.Verbose = False
+
+    Sc.Write ("48 2B 00 00 80")
+    Sc.Read (131)
+
+    GetUSW = (Sc.GetByte(29) * &H100) + Sc.GetByte(30)
+
+    Sc.Verbose = Oldstate
+End Function
+
+Sub SetupWinExplorer()
+    If Sc.Version < 4.4 Then
+        ErrorString = "You need version 4.4 or greater of WinExplorer to run this script"
+        Sc.MsgBox ErrorString, vbCritical, VersionString
+        Err.Raise 1050, , ErrorString
+    End If
+
+    ' Make sure we are set to 700ms byte delay
+    Sc.ByteDelay = 70000
+End Sub
+
+Function VerifyCurrentUSW(MinUSW, MaxUSW)
+
+    CurrentUSW = GetUSW() ' Get current USW from card
+
+    If CurrentUSW < MinUSW or CurrentUSW > MaxUSW Then
+        MsgString = "Current USW is " & CurrentUSW & vbCrLf & vbCrLf
+        MsgString = MsgString & "USW must be between " & MinUSW & " and " & MaxUSW 
+        MsgString = MsgString & "to perform this operation." & vbCrLf
+
+        Sc.MsgBox MsgString, vbOkOnly + vbCritical, VersionString
+        VerifyCurrentUSW = False
+    Else
+        VerifyCurrentUSW = True
+    End If
+
+End Function
+
+Function Hex2Dec(HexNumber)
+    Dim DecimalValue
+    Dim DigitCount
+    Dim Digit
+    Dim HexDigit
+
+
+    HexNumber = Replace(UCase(HexNumber), " ", "")
+    DigitCount = Len(HexNumber)
+
+    For Digit = 1 To DigitCount
+
+        HexDigit = Mid(HexNumber, Digit, 1)
+        If Asc(HexDigit) < 58 Then
+            DecimalValue = HexDigit * 16 ^ (DigitCount - Digit)
+        Else
+            DecimalValue = (Asc(HexDigit) - 55) * 16 ^ (DigitCount - Digit)
+        End If
+        Hex2Dec = Hex2Dec + DecimalValue
+    Next
+
+End Function
+
+Sub AUXEEPROM(EEPROM)
+    Call WriteToEEPROMArray(EEPROM, "8020", "00FF440D01031220C278801D7E108484")
+    Call WriteToEEPROMArray(EEPROM, "8030", "DEFC22112CDFFC2202068AD22B0205F9")
+    Call WriteToEEPROMArray(EEPROM, "8040", "0205F702072302894E7581EF1138F532")
+    Call WriteToEEPROMArray(EEPROM, "8050", "1138F5331138F5341138F5391138F53A")
+    Call WriteToEEPROMArray(EEPROM, "8060", "E533601B7848FFE534B4F10878118507")
+    Call WriteToEEPROMArray(EEPROM, "8070", "10E4F5331138B878005002F608DFF5E5")
+    Call WriteToEEPROMArray(EEPROM, "8080", "3260443078C314600B14600B14600280")
+    Call WriteToEEPROMArray(EEPROM, "8090", "B80281AE02817CE53920E003753F00E5")
+    Call WriteToEEPROMArray(EEPROM, "80A0", "33601CFF253F40E7B4400050E2F5F074")
+    Call WriteToEEPROMArray(EEPROM, "80B0", "A0253FF985F03F7848E6F70809DFFAE5")
+    Call WriteToEEPROMArray(EEPROM, "80C0", "3920E731028049754000751000853A3E")
+    Call WriteToEEPROMArray(EEPROM, "80D0", "7421113B7420113BE5336012B4290050")
+    Call WriteToEEPROMArray(EEPROM, "80E0", "0DF540FF79787848E6F70809DFFAD278")
+    Call WriteToEEPROMArray(EEPROM, "80F0", "E4114080CFE534B4F14AE5786009FF78")
+    Call WriteToEEPROMArray(EEPROM, "8100", "79E608113BDFFAE4113BE53A60023155")
+    Call WriteToEEPROMArray(EEPROM, "8110", "7424113B753C17315DE5106009FF7811")
+    Call WriteToEEPROMArray(EEPROM, "8120", "E608113BDFFAE53930E51731471138F8")
+    Call WriteToEEPROMArray(EEPROM, "8130", "7405113BE8113BAF3E1133753C13316C")
+    Call WriteToEEPROMArray(EEPROM, "8140", "80023147028049E4113B7F0578E0E611")
+    Call WriteToEEPROMArray(EEPROM, "8150", "4008DFFA22FF11401138DFFC227F0578")
+    Call WriteToEEPROMArray(EEPROM, "8160", "E0E53C113B1138F608DFF622E4113B7F")
+    Call WriteToEEPROMArray(EEPROM, "8170", "05E53C113B11381140DFF6229080007F")
+    Call WriteToEEPROMArray(EEPROM, "8180", "287C0131A5E47C037F081140DFFCDCFA")
+    Call WriteToEEPROMArray(EEPROM, "8190", "9080437F067C0131A59082367FCA7C0E")
+    Call WriteToEEPROMArray(EEPROM, "81A0", "31A5028049E01140A3DFFADCF8229082")
+    Call WriteToEEPROMArray(EEPROM, "81B0", "3479A1774E1977897F0212057C0209A7")
+    Call WriteToEEPROMArray(EEPROM, "81C0", "00000000000000000000000000000000")
+    Call WriteToEEPROMArray(EEPROM, "81D0", "00000000000000000000000000000000")
+    Call WriteToEEPROMArray(EEPROM, "81E0", "00000000000000000000000000000000")
+    Call WriteToEEPROMArray(EEPROM, "81F0", "00000000000000000000000000000000")
+    Call WriteToEEPROMArray(EEPROM, "8200", "00000000000000000000000000000000")
+    Call WriteToEEPROMArray(EEPROM, "8210", "00000000000000000000000000000000")
+    Call WriteToEEPROMArray(EEPROM, "8220", "00000000000000000000000000000000")
+    Call WriteToEEPROMArray(EEPROM, "8230", "0207230280280289E8028FC60289E102")
+    Call WriteToEEPROMArray(EEPROM, "8240", "8FD60205E9028AB4028BA5028F19021C")
+    Call WriteToEEPROMArray(EEPROM, "8250", "B4028D96028CF2028AB0028C22021D28")
+    Call WriteToEEPROMArray(EEPROM, "8260", "021EA3020D25028E6C0210A6028D8502")
+    Call WriteToEEPROMArray(EEPROM, "8270", "8CBF021462028E92021B31028D03028F")
+    Call WriteToEEPROMArray(EEPROM, "8280", "BC028972028D96028FB0042200040103")
+    Call WriteToEEPROMArray(EEPROM, "8290", "00000B02FF0305000000000402041202")
+    Call WriteToEEPROMArray(EEPROM, "82A0", "01FF07FF0301040300FF080000000000")
+    Call WriteToEEPROMArray(EEPROM, "82B0", "0000010D07080102040408FF00040303")
+    Call WriteToEEPROMArray(EEPROM, "82C0", "FF0000FF000000FFFF02000200050202")
+    Call WriteToEEPROMArray(EEPROM, "82D0", "0405FF0100020504FFFF0414FFFFFF00")
+    Call WriteToEEPROMArray(EEPROM, "82E0", "FFFFFF0000FFFFFFFFFFFFFF63297C44")
+    Call WriteToEEPROMArray(EEPROM, "82F0", "98C52FD5279394741C7B64FF")
+    Call WriteToEEPROMArray(EEPROM, "836C", "4855545602004833")
+    Call WriteToEEPROMArray(EEPROM, "837C", "9501288FFFFFFF0018003282427FFF00")
+    Call WriteToEEPROMArray(EEPROM, "838C", "18005315602FFF0018006313201FFF00")
+    Call WriteToEEPROMArray(EEPROM, "839C", "01020101010201010102010103040000")
+    Call WriteToEEPROMArray(EEPROM, "83AC", "01020101000000000000000000000000")
+    Call WriteToEEPROMArray(EEPROM, "83BC", "00000000000000000000000000000000")
+    Call WriteToEEPROMArray(EEPROM, "83CC", "00000000000000000000000000000000")
+    Call WriteToEEPROMArray(EEPROM, "83DC", "00000000000000000000000000000000")
+    Call WriteToEEPROMArray(EEPROM, "83EC", "00000000000000000000000000000000")
+    Call WriteToEEPROMArray(EEPROM, "83FC", "00000000000000000000001C00000000")
+    Call WriteToEEPROMArray(EEPROM, "840C", "00000000000000000000010000000000")
+    Call WriteToEEPROMArray(EEPROM, "841C", "080009010000000BFFFFFFFF00000000")
+    Call WriteToEEPROMArray(EEPROM, "842C", "FFFFFF00010203040000000000000000")
+    Call WriteToEEPROMArray(EEPROM, "843C", "00001304000000000000000000000000")
+    Call WriteToEEPROMArray(EEPROM, "844C", "00000000000000000000000000000000")
+    Call WriteToEEPROMArray(EEPROM, "845C", "00000000A876B8E8002205E3")
+    Call WriteToEEPROMArray(EEPROM, "84F8", "00021CC100000000000000007D37D051")
+    Call WriteToEEPROMArray(EEPROM, "8508", "5A4CB8BA6C0B65A3B0144B1C4E445220")
+    Call WriteToEEPROMArray(EEPROM, "8518", "5445414DD4CC171929DE8D59634E95CC")
+    Call WriteToEEPROMArray(EEPROM, "8528", "023D0000DD289779438A71801227C692")
+    Call WriteToEEPROMArray(EEPROM, "8538", "022D000058A3A43AF647066EC21893F9")
+    Call WriteToEEPROMArray(EEPROM, "8548", "79CD95C00555958575653500434784F9")
+    Call WriteToEEPROMArray(EEPROM, "8558", "FDCF949E864500002222222222222200")
+    Call WriteToEEPROMArray(EEPROM, "8568", "01000000121C6CE4121C6C7576D379D3")
+    Call WriteToEEPROMArray(EEPROM, "8578", "770074AAC0E07485C0E0B1AFCDB1AFFF")
+    Call WriteToEEPROMArray(EEPROM, "8588", "FC91F9EDB4AA004018800C98848008B4")
+    Call WriteToEEPROMArray(EEPROM, "8598", "C6028003B4BB0AC0057485C0E0798078")
+    Call WriteToEEPROMArray(EEPROM, "85A8", "8022128D9680CB12067E028D96802B80")
+    Call WriteToEEPROMArray(EEPROM, "85B8", "25804280410285600286352286870286")
+    Call WriteToEEPROMArray(EEPROM, "85C8", "C60286F6028745028F79028F80E6F583")
+    Call WriteToEEPROMArray(EEPROM, "85D8", "08E6F5820822D2738002C273B1D55382")
+    Call WriteToEEPROMArray(EEPROM, "85E8", "F886057908E493307303120035128D96")
+    Call WriteToEEPROMArray(EEPROM, "85F8", "A3D9F2DDEE2215811581E4F544849160")
+    Call WriteToEEPROMArray(EEPROM, "8608", "305F055003F605762279D3E709B40001")
+    Call WriteToEEPROMArray(EEPROM, "8618", "22B4FF0DE70987059087B31287850980")
+    Call WriteToEEPROMArray(EEPROM, "8628", "EAFF87830987820912057C80DE90855C")
+    Call WriteToEEPROMArray(EEPROM, "8638", "E0FAA3E0FB4A6004C003C00222908406")
+    Call WriteToEEPROMArray(EEPROM, "8648", "E0F874019304700108C3798197702EE8")
+    Call WriteToEEPROMArray(EEPROM, "8658", "19977029028F6022600E7982E7648570")
+    Call WriteToEEPROMArray(EEPROM, "8668", "1C09E7C394415015028FF18479827A06")
+    Call WriteToEEPROMArray(EEPROM, "8678", "E7D10609DAFA9084067980D1E1E4227F")
+    Call WriteToEEPROMArray(EEPROM, "8688", "0475F0041287E79086B27980E7FA93CA")
+    Call WriteToEEPROMArray(EEPROM, "8698", "0493FBE5186A700EE5196B70090909E7")
+    Call WriteToEEPROMArray(EEPROM, "86A8", "C0E019E7C0E07983E7229ED574B838BE")
+    Call WriteToEEPROMArray(EEPROM, "86B8", "AC6E8FCEF2AC4E4938BFC15358C67F0B")
+    Call WriteToEEPROMArray(EEPROM, "86C8", "1287E7758385798887827810E046701C")
+    Call WriteToEEPROMArray(EEPROM, "86D8", "A308B818F7E07014097402D106E583D1")
+    Call WriteToEEPROMArray(EEPROM, "86E8", "06E582D106E7D10609E7D106E4227881")
+    Call WriteToEEPROMArray(EEPROM, "86F8", "E6F9FB90885B08E07A0833C6400530E7")
+    Call WriteToEEPROMArray(EEPROM, "8708", "05803830E73523C6D9028005DAECA380")
+    Call WriteToEEPROMArray(EEPROM, "8718", "E590885E788086F07403D42582F58274")
+    Call WriteToEEPROMArray(EEPROM, "8728", "0CD106E583D106E582D1067985EBD106")
+    Call WriteToEEPROMArray(EEPROM, "8738", "E7D10609E7D10609B98DF2E422788875")
+    Call WriteToEEPROMArray(EEPROM, "8748", "B38886F07403D4245EF8E2C00090888E")
+    Call WriteToEEPROMArray(EEPROM, "8758", "142323232582F582500205837888E0F6")
+    Call WriteToEEPROMArray(EEPROM, "8768", "08A3B890F97F101287E7D00008E27918")
+    Call WriteToEEPROMArray(EEPROM, "8778", "47128D9608E2094722908792E77374FF")
+    Call WriteToEEPROMArray(EEPROM, "8788", "D106E7D10609E7D10622E58022E58122")
+    Call WriteToEEPROMArray(EEPROM, "8798", "E58222E583224E44432D3936E59022E5")
+    Call WriteToEEPROMArray(EEPROM, "87A8", "9922E5A022E5E022E5F0228D80228DA0")
+    Call WriteToEEPROMArray(EEPROM, "87B8", "228DA8228DB0228DB3228DB8228DBD22")
+    Call WriteToEEPROMArray(EEPROM, "87C8", "8DC6228DC7228DD0228DE0228DF02254")
+    Call WriteToEEPROMArray(EEPROM, "87D8", "92F587C0BBA82AD1461C693DEF730E78")
+    Call WriteToEEPROMArray(EEPROM, "87E8", "807910E6F70908DFFA8003A70109B920")
+    Call WriteToEEPROMArray(EEPROM, "87F8", "FA7F067B007879E41149740B11497407")
+    Call WriteToEEPROMArray(EEPROM, "8808", "11499087D7E57B93540FFDE57EC31392")
+    Call WriteToEEPROMArray(EEPROM, "8818", "E393D6540F2D540FAC796204E57C93D6")
+    Call WriteToEEPROMArray(EEPROM, "8828", "540FFDE57DC31392E393540F6D257A54")
+    Call WriteToEEPROMArray(EEPROM, "8838", "0FD64CFD74102BF9A7050BBB10B7DFB3")
+    Call WriteToEEPROMArray(EEPROM, "8848", "222B540F2410F9E7540FF608E7D6540F")
+    Call WriteToEEPROMArray(EEPROM, "8858", "F60822FA37F800000000000000000000")
+    Call WriteToEEPROMArray(EEPROM, "8868", "00000000000000000000000000000000")
+    Call WriteToEEPROMArray(EEPROM, "8878", "00000000000000000000000000000000")
+    Call WriteToEEPROMArray(EEPROM, "8888", "0000000000000F20D502540745F0F8DF")
+    Call WriteToEEPROMArray(EEPROM, "8898", "EF227F107810814670F708DFF9226BF1")
+    Call WriteToEEPROMArray(EEPROM, "88A8", "EDD1FAEC4870DB4185069FB9BEAA62C7")
+    Call WriteToEEPROMArray(EEPROM, "88B8", "06D3A5B31C4A9A1E49F51DC05121ECC7")
+    Call WriteToEEPROMArray(EEPROM, "88C8", "F48780BFD041525C819214C289364DC9")
+    Call WriteToEEPROMArray(EEPROM, "88D8", "312AB353BB7CCE3C958FE28538DD7389")
+    Call WriteToEEPROMArray(EEPROM, "88E8", "3FB7E644C0FD055BB2F5DC16B3FEFD17")
+    Call WriteToEEPROMArray(EEPROM, "88F8", "96A3272D298DFEBB20FF670FAD3922D4")
+    Call WriteToEEPROMArray(EEPROM, "8908", "8F893E1B2A8C97FBD37AD3F44B6267D7")
+    Call WriteToEEPROMArray(EEPROM, "8918", "97B1E06824FD3597A1AB9FFB51742500")
+    Call WriteToEEPROMArray(EEPROM, "8928", "1D93F1FA275E51898A63E7D84B21E31F")
+    Call WriteToEEPROMArray(EEPROM, "8938", "583F2D5FC892DB78AF381CD02CD5CF11")
+    Call WriteToEEPROMArray(EEPROM, "8948", "940E2486CD907581E7A23792769084F8")
+    Call WriteToEEPROMArray(EEPROM, "8958", "E0F577D2701206E41206787421F14B74")
+    Call WriteToEEPROMArray(EEPROM, "8968", "2045777151E531B42603020D1DB45402")
+    Call WriteToEEPROMArray(EEPROM, "8978", "800878BF760008B8CEFAB4381B853220")
+    Call WriteToEEPROMArray(EEPROM, "8988", "200715C208301810B1001211B66004D2")
+    Call WriteToEEPROMArray(EEPROM, "8998", "0874137F3502091AB44403853475B44C")
+    Call WriteToEEPROMArray(EEPROM, "89A8", "12B10012107C9084FC1218AEC235C208")
+    Call WriteToEEPROMArray(EEPROM, "89B8", "0209CEB47F004003753300303718B45C")
+    Call WriteToEEPROMArray(EEPROM, "89C8", "0DB1007410B100740C7F02020A72B45E")
+    Call WriteToEEPROMArray(EEPROM, "89D8", "05B10002096B020796E53130E40F8028")
+    Call WriteToEEPROMArray(EEPROM, "89E8", "307107C271E4D22B715102068AF1ADF5")
+    Call WriteToEEPROMArray(EEPROM, "89F8", "3D916179807F4090832C12057C7980E4")
+    Call WriteToEEPROMArray(EEPROM, "8A08", "F709B9C0FB028A55E53320E017916130")
+    Call WriteToEEPROMArray(EEPROM, "8A18", "0803020967C20851604004D2088011E5")
+    Call WriteToEEPROMArray(EEPROM, "8A28", "3230E00C12124DC208E53320E03FD209")
+    Call WriteToEEPROMArray(EEPROM, "8A38", "798090832CE532A2E0920AE4200805E7")
+    Call WriteToEEPROMArray(EEPROM, "8A48", "200A01E0B100A309B9C0F0D256E52654")
+    Call WriteToEEPROMArray(EEPROM, "8A58", "6CF526C254020D1D7980908468E047F7")
+    Call WriteToEEPROMArray(EEPROM, "8A68", "09A3B988F89084687980028B8D857F5B")
+    Call WriteToEEPROMArray(EEPROM, "8A78", "852F5C908514519C7961E7B10009B969")
+    Call WriteToEEPROMArray(EEPROM, "8A88", "F980CA79AD774009B9C0FA90832451A3")
+    Call WriteToEEPROMArray(EEPROM, "8A98", "153180E4E53220E00CB1797855E493F6")
+    Call WriteToEEPROMArray(EEPROM, "8AA8", "A308B85DF8020F687E06807279807DFF")
+    Call WriteToEEPROMArray(EEPROM, "8AB8", "E53130E407B4363CA74E7DFBD2907425")
+    Call WriteToEEPROMArray(EEPROM, "8AC8", "5D715174214577715175B385784CE790")
+    Call WriteToEEPROMArray(EEPROM, "8AD8", "851C30E60390852C7907714BD9FC7906")
+    Call WriteToEEPROMArray(EEPROM, "8AE8", "714AD9FCE0F57874255D715174264577")
+    Call WriteToEEPROMArray(EEPROM, "8AF8", "7151D271B196E4F54FF550E5317980B4")
+    Call WriteToEEPROMArray(EEPROM, "8B08", "5E02801CB438028017B43609E54E54C0")
+    Call WriteToEEPROMArray(EEPROM, "8B18", "4424CE8009874EB456067E077C808E4E")
+    Call WriteToEEPROMArray(EEPROM, "8B28", "7154E53120E3097951E0F7A309B959F9")
+    Call WriteToEEPROMArray(EEPROM, "8B38", "C270E4F559F55AF55DF52DF56DF56EC2")
+    Call WriteToEEPROMArray(EEPROM, "8B48", "0A2208E25D7151E0A30205F99082ECE5")
+    Call WriteToEEPROMArray(EEPROM, "8B58", "4E540FB40800500AD6032582F5825002")
+    Call WriteToEEPROMArray(EEPROM, "8B68", "058322E531B442D9E54E30E0077154E5")
+    Call WriteToEEPROMArray(EEPROM, "8B78", "82B4F401227980E0F709A3B988F9C3E5")
+    Call WriteToEEPROMArray(EEPROM, "8B88", "829410F5827F0802057C7A05D2907417")
+    Call WriteToEEPROMArray(EEPROM, "8B98", "5DD22B715112068AB196DAF022E55070")
+    Call WriteToEEPROMArray(EEPROM, "8BA8", "FEF150D29074357151E5787151742571")
+    Call WriteToEEPROMArray(EEPROM, "8BB8", "51742245777151740571517851E67151")
+    Call WriteToEEPROMArray(EEPROM, "8BC8", "D27178CE79BFF1AD47F60908B8D3F7D2")
+    Call WriteToEEPROMArray(EEPROM, "8BD8", "54785179CEE4B196B196E7C3966002C2")
+    Call WriteToEEPROMArray(EEPROM, "8BE8", "54E60809B856EF305416C0E0716BD0E0")
+    Call WriteToEEPROMArray(EEPROM, "8BF8", "F145B196DFFC305406204703028F7022")
+    Call WriteToEEPROMArray(EEPROM, "8C08", "C232C25FD25322E532B40BB679A6B702")
+    Call WriteToEEPROMArray(EEPROM, "8C18", "B179A377FC09770180A87435B575E878")
+    Call WriteToEEPROMArray(EEPROM, "8C28", "807984E7F60908B9B1F9E7F57579AD77")
+    Call WriteToEEPROMArray(EEPROM, "8C38", "4009B9C0FA90831C51A37961D254E575")
+    Call WriteToEEPROMArray(EEPROM, "8C48", "8002F1AD476002C25409B969F578AC79")
+    Call WriteToEEPROMArray(EEPROM, "8C58", "B0E6F71918B983F922C2087961E4F709")
+    Call WriteToEEPROMArray(EEPROM, "8C68", "B96AFB7F4078BFF67961908468E047F7")
+    Call WriteToEEPROMArray(EEPROM, "8C78", "A309B969F87961873B09E7B53B028008")
+    Call WriteToEEPROMArray(EEPROM, "8C88", "5006E719F709A73B09B969EB79629084")
+    Call WriteToEEPROMArray(EEPROM, "8C98", "70E019270947232323F7A309B96AF279")
+    Call WriteToEEPROMArray(EEPROM, "8CA8", "61F718DFC2798090832CE0C3976002D2")
+    Call WriteToEEPROMArray(EEPROM, "8CB8", "08A309B9C0F422E544B4600302861120")
+    Call WriteToEEPROMArray(EEPROM, "8CC8", "1A030215EBB418067880B6FF0122B40B")
+    Call WriteToEEPROMArray(EEPROM, "8CD8", "087F0E908452021713B466E6788074C0")
+    Call WriteToEEPROMArray(EEPROM, "8CE8", "56F69084F87F0102057A9084687F04EF")
+    Call WriteToEEPROMArray(EEPROM, "8CF8", "93B100DFFA020A250205F7121BFA303B")
+    Call WriteToEEPROMArray(EEPROM, "8D08", "02D231B16678C47951C746F7F60809B9")
+    Call WriteToEEPROMArray(EEPROM, "8D18", "5BF720381090832C795178C4E0F7F6A3")
+    Call WriteToEEPROMArray(EEPROM, "8D28", "0809B95BF7306602D1B5205005E4F559")
+    Call WriteToEEPROMArray(EEPROM, "8D38", "F55A7951E7B100F709B95BF878C47951")
+    Call WriteToEEPROMArray(EEPROM, "8D48", "E6F70809B959F9E529B100E5275407B1")
+    Call WriteToEEPROMArray(EEPROM, "8D58", "00E545B40501E4D216B100020D1D7A05")
+    Call WriteToEEPROMArray(EEPROM, "8D68", "C270D22B74131205F912068AB196DAF2")
+    Call WriteToEEPROMArray(EEPROM, "8D78", "2230160885577F85582FC21622E531B4")
+    Call WriteToEEPROMArray(EEPROM, "8D88", "360A74011205F9E5201205F9E520F571")
+    Call WriteToEEPROMArray(EEPROM, "8D98", "B17930700122D2D3C083C082C0B3F572")
+    Call WriteToEEPROMArray(EEPROM, "8DA8", "7859306801087B05E57223F5722608B8")
+    Call WriteToEEPROMArray(EEPROM, "8DB8", "5B02785146F608B85B027851DBEA9085")
+    Call WriteToEEPROMArray(EEPROM, "8DC8", "03E531B444028009854E202007039085")
+    Call WriteToEEPROMArray(EEPROM, "8DD8", "3BE57181700875B3857800E25408255D")
+    Call WriteToEEPROMArray(EEPROM, "8DE8", "93F573D15D2451F570F8E573F456F572")
+    Call WriteToEEPROMArray(EEPROM, "8DF8", "E573D1602451F55EF8E655734572C0E0")
+    Call WriteToEEPROMArray(EEPROM, "8E08", "E52D2451F8D0E066F6F572A870E6C313")
+    Call WriteToEEPROMArray(EEPROM, "8E18", "787246F56FF5F0D425F034F6543F7002")
+    Call WriteToEEPROMArray(EEPROM, "8E28", "056FE56F540F93F573E56FD6540F93C3")
+    Call WriteToEEPROMArray(EEPROM, "8E38", "3573F404A85E26F6257213A87046F605")
+    Call WriteToEEPROMArray(EEPROM, "8E48", "5D535D0F7401D160F52DD0B3D082D083")
+    Call WriteToEEPROMArray(EEPROM, "8E58", "E571C2D3220303035407252DB40A0040")
+    Call WriteToEEPROMArray(EEPROM, "8E68", "02940A22300903028A8B740C1210A1E5")
+    Call WriteToEEPROMArray(EEPROM, "8E78", "31B436047DFB7192D20A7951E4B196B1")
+    Call WriteToEEPROMArray(EEPROM, "8E88", "96E71210A109B956F4221211B670FAD2")
+    Call WriteToEEPROMArray(EEPROM, "8E98", "3590831C7980E047F7A309B988F87F08")
+    Call WriteToEEPROMArray(EEPROM, "8EA8", "12057A9083BC7F04798802057C9084FC")
+    Call WriteToEEPROMArray(EEPROM, "8EB8", "7836E0F608A3B83AF9E53D9011C330E4")
+    Call WriteToEEPROMArray(EEPROM, "8EC8", "039011C37F047E00EE0454072451F8EE")
+    Call WriteToEEPROMArray(EEPROM, "8ED8", "54032436F9E726F6EE0454032436F9E7")
+    Call WriteToEEPROMArray(EEPROM, "8EE8", "FDEE2451F9E7C39D543F9346F6E76D03")
+    Call WriteToEEPROMArray(EEPROM, "8EF8", "03543F932326F6E536337C037837E633")
+    Call WriteToEEPROMArray(EEPROM, "8F08", "F608DCFAE53633F5360EEEB408BADFB6")
+    Call WriteToEEPROMArray(EEPROM, "8F18", "22B40C0C74241205F9740C307602D237")
+    Call WriteToEEPROMArray(EEPROM, "8F28", "B4600302856CB40909E5285480121348")
+    Call WriteToEEPROMArray(EEPROM, "8F38", "7409B44803854C4FB4575A8061AF3163")
+    Call WriteToEEPROMArray(EEPROM, "8F48", "076022F5500205F9305103854F4C5332")
+    Call WriteToEEPROMArray(EEPROM, "8F58", "1FC2707DFF028B92E54E24FE540C0286")
+    Call WriteToEEPROMArray(EEPROM, "8F68", "60D271E544121CF1E54C244140330215")
+    Call WriteToEEPROMArray(EEPROM, "8F78", "BFE7543FF7028781AF34121CEAB16304")
+    Call WriteToEEPROMArray(EEPROM, "8F88", "D20079BFAD03F1AD300002F709DC0280")
+    Call WriteToEEPROMArray(EEPROM, "8F98", "0DDDF380E3B4660A121C961213F27544")
+    Call WriteToEEPROMArray(EEPROM, "8FA8", "0022021C9602067E78BF7980E7F60809")
+    Call WriteToEEPROMArray(EEPROM, "8FB8", "B8CEF922E4F529F527C257020DC7C000")
+    Call WriteToEEPROMArray(EEPROM, "8FC8", "A831B856048C00F60CD0000205FF9012")
+    Call WriteToEEPROMArray(EEPROM, "8FD8", "03E531B44402800DB456028008E53D20")
+    Call WriteToEEPROMArray(EEPROM, "8FE8", "E4039011C3E53F932279811CECFA24FD")
+    Call WriteToEEPROMArray(EEPROM, "8FF8", "028679FFFFFFFFFF")
+
+
+End Sub
+
+Sub WriteToEEPROMArray(EEPROM, Address, Bytes)
+
+    Dim nOffset, nByteCount, nCount
+
+    Address = Replace(Address, " ", "")
+    Bytes = Replace(Bytes, " ", "")
+
+    nOffset = Hex2Dec(Address) - Hex2Dec("8000")
+    nByteCount = Len(Bytes) / 2
+
+    For nCount = 0 to nByteCount - 1
+        EEPROM(nOffset + nCount) = Hex2Dec(Mid(Bytes, (nCount * 2) + 1, 2))
+    Next
+
+End Sub
+
+Sub InstallBootstrapViaEF()
+    Dim Bootstrap
+    Dim ToWrite
+    If BootstrapLoaded=False Then
+        Call Sc.ProgressBox("Writing TurboLoader Bootstrap [Setup 1]",1,16,VersionString+" - TurboLoader")
+        Bootstrap="FF793D7A03311B10E70CFF853D83853E8212078A80EBFAFF7940311BE53DF583853E82600F794012057C80D50912068AF7DAF9229088EE898122"
+        ToWrite="4842000049"
+        Sc.Write(ToWrite)
+        Sc.Read(&H1)
+        ToWrite="09100000"
+        ToWrite=ToWrite+"30"
+        ToWrite=ToWrite+"0201"
+        ToWrite=ToWrite+"EF3A"
+        ToWrite=ToWrite+Bootstrap
+        ToWrite=ToWrite+"0C637368E9A2"
+        Sc.Write(ToWrite)
+        Sc.Read(&H2)
+        BootstrapLoaded=True
+    End If
+End Sub
+
+Sub InstallBootstrapVia48()
+    Dim Bootstrap
+    Dim ToWrite
+    If BootstrapLoaded=False Then
+        Call Sc.ProgressBox("Writing and Activating TurboLoader Bootstrap [Setup 1 and 2]",1,16,VersionString+" - TurboLoader")
+        Bootstrap="FF793D7A03311B10E70CFF853D83853E8212078A80EBFAFF7940311BE53DF583853E82600F794012057C80D50912068AF7DAF9229088EE898122"
+        ToWrite="4840209699"
+        Sc.Write(ToWrite)
+        Sc.Read(&H1)
+        ToWrite="09100000"
+        ToWrite=ToWrite+"30"
+        ToWrite=ToWrite+"0B14004545110000"
+        ToWrite=ToWrite+"0045FF0000000012"
+        ToWrite=ToWrite+"000000000045D885"
+        ToWrite=ToWrite+"32003200E906A002"
+        ToWrite=ToWrite+"55060280483045FF"
+        ToWrite=ToWrite+"00000000"
+        ToWrite=ToWrite+"0CFBCB7BE560"
+        Sc.Write(ToWrite)
+        Sc.Delay(200)
+        ToWrite=Bootstrap
+        ToWrite=ToWrite+"EF88A03A50116A11"
+        ToWrite=ToWrite+"C31C5F025506"
+        ToWrite=ToWrite+"0000000000000000"
+        ToWrite=ToWrite+"0000000000000000"
+        ToWrite=ToWrite+"0000000000000000"
+        ToWrite=ToWrite+"330288EE"
+        Sc.Write(ToWrite)
+        Sc.Delay(200)
+        Sc.ByteDelay=0
+        BootstrapLoaded=True
+        BootstrapControl=True
+    End If
+End Sub
+
+
+Sub TransferControlToBootstrap()
+    Dim ToWrite
+    If (BootstrapLoaded=True And BootstrapControl=False) Then
+        Call Sc.ProgressBox("Activating TurboLoader Bootstrap [Setup 2]",1,16,VersionString+" - TurboLoader")
+        ToWrite="4842000005"
+        Sc.Write(ToWrite)
+        Sc.Read(01)
+        ToWrite="30"
+        ToWrite=ToWrite+"60CF01FF"
+        Sc.Write(ToWrite)
+        Sc.ByteDelay=0
+        BootstrapControl=True
+    End If
+End Sub
+
+Sub ReadViaBootstrap(Length,Address,Ary,AryStart)
+    Dim ToWrite
+    Dim i
+    If BootstrapControl=False Then Exit Sub
+    Address=Replace(Address," ","")
+    ToWrite=Address+HexString(Length Mod &H100,2)
+    If Length=&H00 Then Length=&H100
+    Sc.Write(ToWrite)
+    Sc.Read(Length)
+    For i=0 to Length-1
+        Ary(i+AryStart)=Sc.GetByte(i)
+    Next
+End Sub
+
+Sub ReadEEPROMViaBootstrap(EEPROM)
+    Dim i,j
+    If BootstrapControl=False Then Exit Sub
+    For i=&H80 to &H8F
+        j=(i-&H80)*&H100
+        Call Sc.ProgressBox("Reading EEPROM ... "+CStr(j)+" Bytes of 4096",i-&H7F,&H10,VersionString+" - TurboLoader")
+        Call ReadViaBootstrap(&H00,HexString(i,2)+"00",EEPROM,(i-&H80)*&H100)
+    Next
+    Randomize
+    For i=&H08EE to &H094D
+        EEPROM(i)=Int(Rnd*&H100)
+    Next
+    Call Sc.ProgressBox("",0,0,"")
+End Sub
+
+Sub WriteViaBootstrap(AddrStr,DataStr)
+    Dim NumBytes
+    Dim ToWrite
+    If BootstrapControl=False Then Exit Sub
+    AddrStr=Replace(AddrStr," ","")
+    DataStr=Replace(DataStr," ","")
+    NumBytes=Len(DataStr)\2
+    If NumBytes<128 Then
+        NumBytes=NumBytes+128
+    Else
+        Exit Sub
+    End If
+    ToWrite=AddrStr+HexString(NumBytes Mod &H100,2)+DataStr
+    Sc.Write(ToWrite)
+    Sc.Delay(10+(NumBytes-128)*4)
+End Sub
+
+Sub WriteEEPROMViaBootstrap(EEPROMToWrite)
+    Const BytesToWriteLimit=127
+    Dim EEPROM(4096)
+    Dim Changes(2048)
+    Dim i,j,k
+    Dim NumChanges
+    Dim BytesToWrite
+    If BootstrapControl=False Then Exit Sub
+	Call CopyArray(OriginalEEPROM, EEPROM)
+
+    NumChanges=-1
+    BytesToWrite=0
+    For i=&H0020 to &H08ED
+        If (EEPROM(i)<>EEPROMToWrite(i)) Then
+            If BytesToWrite=0 Then
+                NumChanges=NumChanges+1
+                BytesToWrite=BytesToWrite+1
+                Changes(NumChanges)=HexString(Int(i/&H100)+&H80,2)+HexString((i Mod &H100),2)+"XX"+HexString(EEPROMToWrite(i),2)
+            Else
+                BytesToWrite=BytesToWrite+1
+                Changes(NumChanges)=Changes(NumChanges)+HexString(EEPROMToWrite(i),2)
+                If BytesToWrite=BytesToWriteLimit Then BytesToWrite=0
+            End If
+        Else
+            If BytesToWrite<>0 Then BytesToWrite=0
+        End If
+    Next
+    BytesToWrite=0
+    For i=&H094E to &H0FFF
+        If (EEPROM(i)<>EEPROMToWrite(i)) Then
+            If BytesToWrite=0 Then
+                NumChanges=NumChanges+1
+                BytesToWrite=BytesToWrite+1
+                Changes(NumChanges)=HexString(Int(i/&H100)+&H80,2)+HexString((i Mod &H100),2)+"XX"+HexString(EEPROMToWrite(i),2)
+            Else
+                BytesToWrite=BytesToWrite+1
+                Changes(NumChanges)=Changes(NumChanges)+HexString(EEPROMToWrite(i),2)
+                If BytesToWrite=BytesToWriteLimit Then BytesToWrite=0
+            End If
+        Else
+            If BytesToWrite<>0 Then BytesToWrite=0
+        End If
+    Next
+    BytesToWrite=0
+    j=0
+    If NumChanges>=0 Then
+        For i=0 to NumChanges
+            j=(Len(Changes(i))\2)-3
+            BytesToWrite=BytesToWrite+j
+            Changes(i)=Replace(Changes(i),"XX",HexString(j,2))
+        Next
+        j=0
+        For i=0 to NumChanges
+            j=j+Hex2Dec(Mid(Changes(i),5,2))
+            Call Sc.ProgressBox("Writing EEPROM ... "+CStr(j)+" Bytes of "+CStr(BytesToWrite),j,BytesToWrite,VersionString+" - TurboLoader")
+            Call WriteViaBootstrap(Mid(Changes(i),1,4),Right(Changes(i),Len(Changes(i))-6))
+        Next
+        Call Sc.ProgressBox("",0,0,"")
+    End If
+End Sub
+
+
+Sub ExitBootstrap()
+    Dim ToWrite
+    If BootstrapControl=False Then Exit Sub
+    ToWrite="1D0D"
+    Call WriteViaBootstrap("0000",ToWrite)
+    Sc.ByteDelay=70000
+    Sc.Read(2)
+    BootstrapControl=False
+End Sub
+
+Sub ExitBootstrapCleanUp(EEPROM)
+    Dim ToWrite
+    Dim EraseBootstrap
+    Dim i
+    If BootstrapControl=False Then Exit Sub
+    EraseBootstrap=""
+    For i=&H08EE to &H094D
+        EraseBootstrap=EraseBootstrap+HexString(EEPROM(i),2)
+    Next
+    ToWrite=EraseBootstrap+"1D0D40605011"
+    Call Sc.ProgressBox("Erasing TurboLoader Bootstrap",1,1,VersionString+" - TurboLoader")
+    Call WriteViaBootstrap("0000",ToWrite)
+    Sc.ByteDelay=70000
+    Sc.Read(2)
+    Call Sc.ProgressBox("",0,0,"")
+    BootstrapControl=False
+    BootstrapLoaded=False
+End Sub
+
+Function HexString(Number,Length)
+    ' This function takes 2 arguments, a number and a length.  It converts the decimal
+    ' number given by the first argument to a Hexidecimal string with its length
+    ' equal to the number of digits given by the second argument
+    Dim RetVal
+    Dim CurLen
+    RetVal=Hex(Number)
+    CurLen=Len(RetVal)
+    If CurLen<Length Then
+        RetVal=String(Length-CurLen,"0") & RetVal
+    End If
+    HexString=RetVal
+End Function
+
+Sub CopyArray(Source, Destination)
+    Dim Index
+    For Index = 0 to UBound(Source)
+        Destination(Index) = Source(Index)
+    Next
+End Sub
+
+Function IsAuxCard()
+    Sc.Verbose = False
+    Call Sc.Reset()
+    Call Sc.Write("00001F0000")
+    Call Sc.DebugBufferStuff("9000")
+    Call Sc.Delay(100)
+    If (Sc.BytesInBuffer = 2) Then
+        Call Sc.Read(2)
+        IsAuxCard = False
+    Else
+        Call Sc.Read(1)
+        IsAuxCard = True
+    End If
+    Sc.Reset
+    Sc.Verbose = True
+End Function
+
+Sub DeAUX()
+   Call Sc.Flush()
+   If Not IsAuxCard() Then
+           If Sc.MsgBox("This card does not appear to be an Aux card." & vbCrLf & vbCrLf & _
+                      "You can attempt to continue, but the response that indicates" & vbCrLf & _
+                      "this is an Aux card was not received." & vbCrLf & vbCrLf & _
+                      "Do you want to continue even though this card does not appear" & vbCrLf & _
+                      "to be an Aux card?", _
+                      vbQuestion + vbYesNo + vbDefaultButton2, "Not an Aux card") = vbNo Then
+                Exit Sub
+           End If
+    End If
+
+    Call Sc.ProgressBox(vbCrLf & "Sending remove command...", 1, 6, VersionString & " - DeAUX")
+    Sc.Verbose = False
+    Call Sc.Write("00001F0000")    
+    Call Sc.Read(1)
+    Call Sc.Delay(200)    
+    Call Sc.Write("0300000000")
+    Call Sc.Delay(1000)
+    Call Sc.ProgressBox(vbCrLf & "Waiting for remove command to finish...", 2, 6)
+    Call Sc.Delay(3000)
+    Call Sc.Flush()
+    Call Sc.ProgressBox(vbCrLf & "Resetting USW to 28...", 3, 6)
+    Call WriteE3(2, "8406", "001C")
+    Call Sc.ProgressBox(vbCrLf & "Closing E3 Hole...", 4, 6)
+    Call WriteE3(1, "85 91", "90")
+
+    Call Sc.ProgressBox(vbCrLf & "Checking to see if H-card commands work again...", 5, 6)
+
+    If (Not IsAuxCard() And GetUSW() > 0) Then
+        Call Sc.Delay(500)
+        Call Sc.ProgressBox(vbCrLf & "Success!", 6, 6)
+        Call Sc.Delay(1000)
+        Call Sc.ProgressBox("", 0, 0)
+
+        Call Sc.MsgBox("Removal of the Aux card code and restoration of regular" & vbCrLf & _
+                  "H-card command processing appears successful." & vbCrLf & vbCrLf & _
+                  "Make sure to remember to turn on the 'Log Transactions'" & vbCrLf & _
+                  "option since having it off prevents scripts from logging" & vbCrLf & _
+                  "information." & vbCrLf, _
+                  0, "Removal complete!")
+    Else
+        Call Sc.ProgressBox("", 0, 0)
+        Call Sc.MsgBox("An attempt to execute a regular H-card command failed!" & vbCrLf & vbCrLf & _
+                  "You may want to try running the script again.", _
+                  vbCritical + vbOkOnly, "Error during remove")
+        
+    End If
+    
+End Sub
+
+Sub WriteE3(Bytes, AddrStr, DataStr)
+
+    Dim BytesStr
+    Dim Len1
+    Dim Len1Str
+    Dim Len2
+    Dim Len2Str
+    Dim ToWrite
+
+    If Bytes < &H10 Then
+        BytesStr = "0" & Hex(Bytes)
+    Else
+        BytesStr = Hex(Bytes)
+    End If
+
+    Len1 = &HD + Bytes
+    If Len1 < &H10 Then
+        Len1Str = "0" & Hex(Len1)
+    Else
+        Len1Str = Hex(Len1)
+    End If
+
+    Len2 = &H4 + Bytes
+    If Len2 < &H10 Then
+        Len2Str = "0" & Hex(Len2)
+    Else
+        Len2Str = Hex(Len2)
+    End If
+
+    ' Write an update using the E3 hole
+    ToWrite = "48 40 00 00 " & Len1Str
+    Sc.Write (ToWrite)
+    Sc.Read (&H1)
+    ToWrite = "60 D5 02 85 8E E3 " & Len2Str & " " & BytesStr & " " & AddrStr & " " & DataStr & " 00 BB 00"
+    Sc.Write (ToWrite)
+    Sc.Read (&H2)
+End Sub
+

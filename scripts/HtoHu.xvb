@@ -1,0 +1,89 @@
+' H CAM ZKT to HU
+' Anonymous 12/2/2001
+'
+' Set WinExplorer to Unlooper Settings (doesn't use any hardware)
+'----------------------------------------------------------------
+Option Explicit
+
+Dim CAMID, ZKT1, ZKT2
+
+Const fsoOpenRead = 0
+Const fsoSEEK_SET = 0
+Const fsoSEEK_END = 2
+
+Sub Main()
+    If ReadBIN() Then
+        WriteHex
+    End If
+End Sub
+
+Function ReadBIN()
+    Dim Filename, FileSize, InFile, Bytenum
+    Filename = Fs.FileOpenDialog("Bin Files (*.bin)|*.bin", "Please select a valid HU Eprom (*.bin) file", "Default.bin")
+    If Filename <> "" Then
+        If Fs.FileExists(FileName) = 0 Then
+            Sc.MsgBox ("The file does not exist")
+        Else
+            InFile = Fs.FileOpen(FileName, fsoOpenRead)
+        End If
+    End If
+    FileSize = Fs.FileSeek(InFile, 0, fsoSEEK_END)
+    If FileSize <> "4096" Then
+        Sc.MsgBox ("This file is NOT a valid H bin file" & vbCr & "or the bin file you are trying to open" & vbCr & "is being used by another program")
+        ReadBIN = False
+        Exit Function
+    End If
+    Call Fs.FileSeek(InFile, &H374, fsoSEEK_SET)
+    For Bytenum = 1 To 5
+        CAMID = CAMID & Right("0" & Hex(Fs.FileGetc(InFile)), 2)
+    Next
+    Call Fs.FileSeek(InFile, &H478, fsoSEEK_SET)
+    For Bytenum = 1 to 64
+        ZKT1 = ZKT1 & Right("0" & Hex(Fs.FileGetc(InFile)), 2)
+    Next
+    For Bytenum = 1 to 64
+        ZKT2 = ZKT2 & Right("0" & Hex(Fs.FileGetc(InFile)), 2)
+    Next
+    Fs.FileClose(InFile)
+    ReadBIN = True
+End Function
+
+Sub WriteHex()
+    Dim FileName,OutFile
+    FileName = Fs.FileSaveDialog("Hex Files (*.hex)|*.hex", "Enter a name for the hex file", "HCAMZKT.hex")
+    If FileName <> "" Then
+        OutFile = Fs.FileCreate(FileName)
+    End If
+    WriteLine Outfile, "#Extreme Hex"
+    WriteLine Outfile, "# HU CAM/ZKT Patch for CAM ID#: " & Right("000000000000" & CLng("&H" & Left(CAMID, 8)) & "X", 12)
+    WriteLine Outfile, IMGChecksum("::0424D800" & Left(CAMID, 8))
+    WriteLine Outfile, IMGChecksum(":0124DC00" & Right(CAMID, 2))
+    WriteLine Outfile, IMGChecksum(":20255000" & Left(ZKT1,64))
+    WriteLine Outfile, IMGChecksum(":20257000" & Right(ZKT1,64))
+    WriteLine Outfile, IMGChecksum(":20259000" & Left(ZKT2,64))
+    WriteLine Outfile, IMGChecksum(":2025B000" & Right(ZKT2,64))
+    WriteLine Outfile, ":00000001FF"
+    Fs.FileClose(OutFile)
+    Sc.Print "HU CAM/ZKT Patch for CAM ID#: " & Right("000000000000" & CLng("&H" & Left(CAMID, 8)) & "X", 12) & vbCr
+    Sc.Print "written to " & Filename & vbCr
+End Sub
+
+Function IMGChecksum(IMGLine)
+    Dim Temp, Checksum, Count
+    Temp = Replace(IMGLine, ":", "")
+    Do While Len(Temp) > 0
+        Checksum = Checksum + CLng("&H" & Left(Temp, 2))
+        Temp = Mid(Temp, 3)
+    Loop
+    Checksum = &H100 - (CLng(Checksum) And &HFF)
+    IMGChecksum = IMGLine & Right("0" & Hex(Checksum), 2)
+End Function
+
+Sub WriteLine(FileHandle, Line)
+    Dim Bytenum
+    For Bytenum = 1 to Len(Line)
+        Call Fs.FilePutc(FileHandle, Asc(Mid(Line, Bytenum, 1)))
+    Next
+    Call Fs.FilePutc(FileHandle, Asc(vbCr))
+    Call Fs.FilePutc(FileHandle, Asc(vbLf))
+End Sub

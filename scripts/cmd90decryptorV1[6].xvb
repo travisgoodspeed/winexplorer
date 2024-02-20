@@ -1,0 +1,1516 @@
+'
+'    Cmd90 Packet Decryptor 
+'  released November 11,2003
+'        making use of
+' VMU's CMD90-Decryption-Slave 
+'      code ( RIP VMU )
+'
+' - insert a VALID HU card (not looped) 
+'   into your unlooper (flashed with UL4S)
+' - open this script in WinExplorer by Dexter, and Run Script
+' - Click [SLAVE CARD] to add the decryptor code
+' - Open your Scientific Calculator in Windows 
+' - Click [SEND PACKET] and...
+' - you will be asked to enter :
+'	- Packet Header with NO SPACES ( ie: 48000031 )
+'	- The Packet Length + 71h ( ie: 31h + 71h = A2 )
+'	- The Packet Body with NO SPACES ( ie: 902F40037597 etc... )
+' - Click [CLEAN CARD] to erase the slave code
+' I take no credit for this script. If it weren't for AOL commenting
+' his TurboUnloop, I would not have learned enough to make this 
+' available. Nor do I accept any responsibility for your use of it.  
+'
+' It is for educational purposes only, and does NOT program your 
+' HU card with anything that you can watch TV with.
+'
+' Thanks to the help from the people at http://www.dsshelper.com
+' maybe someone else will learn more, and submit something as well.
+'
+' DiSiSme
+'
+'
+Option Explicit
+    Const dss_DefaultButton1 = 0
+    Const dss_DefaultButton2 = 256
+    Const dss_DefaultButton3 = 512
+    Const fsoError = -1
+    Const fsoOpenRead = 0
+    Const fsoOpenWrite = 1
+    Const fsoOpenReadWrite = 2
+    Const fsoSEEK_SET = 0
+    Const fsoSEEK_CUR = 1
+    Const fsoSEEK_END = 2
+    Const FileFilter = "All Eprom Files (*.bin, *.crd)|*.bin;*.crd;|Bin Files (*.bin)|*.bin|Crd Files (*.crd)|*.crd|All (*.*)|*.*"
+    Const ScriptName="cmd90decryptor"
+    Const ScriptVer="v1.0"
+    Dim OutFile
+    Dim InFile
+    Dim HUBinFile
+    Dim ZipCode
+    Dim Guide
+    Dim HexZipCode1
+    Dim HexZipCode2
+    Dim HexZipCode3
+    Dim HexTimeZone
+    Dim DefaultTZButton
+    Dim DefaultDaylightButton
+    Dim TimeZone
+    Dim Daylight
+    Dim CodeProtection
+    Dim GPPLen,GPRLen 
+    Dim GPR(70)  
+    Dim INS42
+    Dim PKTLen
+    Dim RECLen
+
+Sub Main()
+    Dim ErrorString
+    Dim MenuPrompt
+    Dim RetVal
+    Dim GotInput
+    Dim Version
+    Dim Password
+    Dim USWHex
+    Dim Choice
+    Dim RWChoice
+    Dim RSChoice
+    Dim WSChoice
+    Dim UTILChoice
+
+    Sc.Verbose = 0
+
+	If Sc.Version < 4.5 Then
+	ErrorString = "You need version 4.5 or greater of WinExplorer to run this script"
+	Sc.MsgBox ErrorString, vbCritical
+	Err.Raise 1050, , ErrorString
+	End If
+
+	Call UnlooperSettings()
+
+   Do 
+    MenuPrompt = vbTab &  vbTab &  vbTab &"cmd90 Decryptor Script" & vbCrLf & vbCrLf
+    MenuPrompt = MenuPrompt &  vbTab & vbTab &"	- Turn an HU into a Slave Card " & vbCrLf
+    MenuPrompt = MenuPrompt &  vbTab & vbTab &"	- Send a cmd90 for it to decrypt " & vbCrLf
+    MenuPrompt = MenuPrompt &  vbTab & vbTab &"	- Clean the Slave Code off the HU " & vbCrLf
+    MenuPrompt = MenuPrompt &  vbTab & vbTab &"	- Exit the program " & vbCrLf
+    Choice = Sc.ButtonBox(MenuPrompt, 0, ScriptName+" "+ScriptVer, "SLAVE CARD", "SEND PACKET", "CLEAN CARD", "Exit")
+    Select Case Choice
+	Case "1"
+		If VerifyUnlooper=0 Then	' check that the unlooper is hooked up
+		Exit Sub
+		Else
+	            Call LoadBootStrap()	' {
+	            Call CleanCardNoExit()	' Boot the card, clean and add the slave code
+	            Call WriteActivatingCode()	' }
+        	End If
+
+	Case "2"
+	            Call SendPacket()		' Send the packet to be decrypted
+
+	Case "3"
+	            Call LoadBootStrap()
+	            Call CleanCard()		' clean the card back to virgin status
+
+    Sc.Print(vbCr &vbCr & "Your Card is now cleaned ....  " & vbCr & vbCr)
+
+	Case "4"
+		Exit Sub
+    Case Else
+        MenuPrompt = "Invalid Input!" & vbCrLf
+    End Select
+    Loop While True = True
+     
+End Sub
+
+Sub SendPacket()
+    Dim ToWrite
+    Dim INS42
+    Dim Packet1
+    Dim Packet2
+    Dim PKTLen
+    Dim PaktLen
+    Dim RecLen
+    Dim RetVal2
+    Dim RetValue
+    
+    ' The below prompts the user for the cmd90 packet he/she wishes to decrypt
+
+    RetVal2 = Sc.InputBox("Enter the PACKET LENGTH BYTE *xx*.. ie: 48 42 00 00 xx", "INS42 INPUT", "1f")    
+
+        if len(RetVal2) <> 2 then
+            GotInput = false
+        else
+          INS42 = UCase(RetVal2)
+'    Sc.Print(vbCr & "Packet Header is.... > 48 42 00 00 " & INS42 & vbCr)
+	  RECLen = Hexstring(Hex2Dec(INS42)+Hex2Dec(71),2)
+'    Sc.Print(vbCr & "Receive Byte Length > " & RECLen & vbCr)
+	  PKTLen = Hexstring(Hex2Dec(INS42)+Hex2Dec(40)+Hex2Dec(80)-Hex2Dec(01),2)
+'    Sc.Print(vbCr & "Packet Length is.... > " & PKTLen & vbCr & vbCr)
+        End If
+
+
+    Packet1 = Sc.InputBox("Paste the FIRST 40h (64d) bytes of the cmd90 packet here... the rest, if any, will go into the next box", "PACKET INPUT", "90  1d  40  03  75  fe  a3  35  83  d8  a2  c4  90  67  9b  3f  41  2e  82  22  c5  54  08  9d  e2  a1  9c  30  58  6f  85")
+    Packet1 = Replace(UCase(Packet1), " ", "")
+    Packet2 = Sc.InputBox("Paste the REMAINING bytes, if any, of the cmd90 packet here... otherwise, just click the OK button....", "PACKET INPUT", "")
+    Packet2 = Replace(UCase(Packet2), " ", "")
+    
+    Sc.Print(vbCr & "Getting the ATR responce ....  " & vbCr & vbCr)
+    
+    Sc.Verbose = true 
+
+	Call GetATR()				' have to get an ATR for the card to accept the packet
+
+    Sc.Print(vbCr & "Sending the Packet Header .... " & vbCr & vbCr)
+
+    ToWrite="1A0E80C448420000"&INS42
+    ToWrite=ToWrite+"80"
+    SendGP(ToWrite)				' send the header command (48 00 00 31)
+    
+    Sc.Print(vbCr & "Sending the Encrypted Packet .... " & vbCr & vbCr)
+
+    If Hex2Dec(INS42) > 64 Then
+
+    	PKTLen = Hexstring(Hex2Dec(PKTLen)-64,2)
+    	Sc.Write("440E80FF"&Packet1&"00")
+    	Sc.Read(&h02)
+	    If Hex2Dec(RECLen) > 191 Then
+		RECLen = Hexstring(Hex2Dec(RECLen)-64,2)
+	    ToWrite="0E80"&PKTLen&Packet2&"BF"
+	    Else
+	    ToWrite="0E80"&PKTLen&Packet2&RECLen
+	    SendGP(ToWrite)    
+	    ToWrite="81"
+	    SendGP(ToWrite)
+
+	    Sc.Print(vbCr & vbCr & "Received the Packet Responce... Done " & vbCr)
+
+	    Verbose = False
+	    Exit Sub
+	    End If
+	Sc.Print(vbCr & "Receiving the Decrypted Packet .... " & vbCr & vbCr)
+	SendGP(ToWrite)    
+	ToWrite=RECLen				' get the "packet accepted" response (90 00)
+	SendGP(ToWrite)
+	Sc.Print(vbCr & "Received all of the Decrypted Packet .... " & vbCr & vbCr)
+
+    Else
+
+    ToWrite="0E80"&PKTLen&Packet1&RECLen	' send the body of the cmd90 packet
+    Sc.Print(vbCr & "Receiving the Decrypted Packet .... " & vbCr & vbCr)
+    SendGP(ToWrite)
+    Sc.Print(vbCr & "Received all of the Decrypted Packet .... " & vbCr & vbCr)
+
+    End If
+       
+    ToWrite="81"
+    SendGP(ToWrite)
+
+    Sc.Print(vbCr & vbCr & "Received the Packet Responce... Done " & vbCr)
+
+Verbose = False
+
+End Sub
+
+Sub LoadBootStrap()			' this bootstrap was "tweaked" for my loader/computer
+					' if it doesn't work for you... adjust the setings.
+
+    Dim RetValue
+    Dim GotInput
+    Dim Counter
+    Dim RdWriGl
+    Dim Attempts
+    Dim DAC4C
+    Dim DAC
+    Dim Delaye
+    Dim Read
+    Dim Glrngchoice
+
+
+    Attempts = 0
+    Counter  = 1
+    RdWriGl = 0
+        DAC = &hA0
+    Delaye  = &h11
+        DAC4C = &h95
+
+    Call IsCardPresent()
+
+'Verbose = True
+
+Do
+    RdWriGl = RdWriGl + 1
+    Sc.Write("A1")
+    GotInput = False
+
+    If Counter = 1 Then
+        Read = "48"
+    End If
+    If Counter = 21 Then
+        Read = "4C"
+    End If
+    If Counter = 41 Then
+        Read = "48"
+    End If
+    If Counter = 61 Then
+        Read = "4C"
+    End If
+    If Counter = 81 Then
+        Read = "2E"
+    End If
+    If Counter = 91 Then
+  	Counter = 1
+	Read = "48"
+    End If
+
+
+    DAC = INT(RND * &h21) + &h80         ' 80 - A0 hex
+
+    Delaye  = INT(RND * &h04) + &h10     ' 09 - 13 hex
+
+    DAC4C = INT(RND * &h11) + &h90       ' 90 - 9D hex
+
+
+    Call Sc.ProgressBox ("Glitching..." & vbtab &"DAC:"& vbtab & HexString(DAC,2) & vbtab & vbtab & "DAC4C:"& vbtab & HexString(DAC4C,2) & vbcr & "using INS" & Read & vbtab & "Delay:" &vbtab & HexString(Delaye,2) & vbtab & vbtab &  "Glitch # " & RdWriGl, 2, 20, "Script will cycle through each of the INS glitchs 48,4C,2E...")
+
+    Sc.Write("06100E10019300")
+    Sc.Delay(80)
+    Sc.Read(&h02)
+    RetValue = Sc.GetByte(&h01)
+    Sc.Read (RetValue)
+
+    Sc.Write("B0")
+    Sc.Write(HexString(DAC,2))
+    If read = "48" then
+        'INS 48
+        Sc.Write("0B 15 C4 48 48 FF 56 B9 70 C9 08 00")
+    end if
+    If read = "4C" then
+        'INS 4C
+        Sc.Write("0B 15 C4 48 4C FF 56 B9 70 CB 08 00")
+    end if
+    If read = "2E" then
+        'INS 2E
+        Sc.Write("0B 15 C4 48 2E FF 56 B9 70 CA 08 00")
+    end if
+    Sc.Delay(140)
+    If Sc.BytesInBuffer > 0 Then
+        Sc.Read(&h02)
+        RetValue = Sc.GetByte(&h01)
+        Sc.Read (RetValue)
+    End If
+    Sc.Write("B0")
+    Sc.Write(HexString(DAC4C,2))
+    Sc.Write("32EF0000000069FFFFFFFF523FFD2284E172400772FF14C5E2AB0100C3DA07F88C010000000000000000000000000000000000")
+    Sc.Delay(80)
+    Sc.Read(&h02)
+    Sc.Write("09 15 C0 00 20 00 " & (HexString(Delaye,2)) & " 09 80 00")
+    Sc.Delay(80)
+    Sc.Read(&h02)
+    If Sc.GetByte(&h0) = &h09 Then
+        If Sc.GetByte(&h01) = &h01 Then
+            Sc.Read(&h01)
+            If Sc.GetByte(&h0) = &h84 Then
+                GotInput = True
+            Else
+                GotInput = False
+            End If
+        End If
+    End If
+    Counter = Counter + 1
+    Attempts = Attempts + 1
+Loop Until GotInput = True
+
+Verbose = False
+
+Sc.Write("42FF225272FF14E1E2D007E2D029E2D02A77800718753F07D307D807C5E2AB0060C3DA07F8726015D404E700D57640070DD3078ECEFB70012ADA07F700C49E2A00FA00")
+    Sc.Delay(80)
+    Sc.Read(&h02)
+
+    Sc.Print VbCr & VbCr &"After " & attempts & " glitches to the card, BootStrap is now loaded !!!" & VbCr & "=================================================================="
+    Sc.Print VbCr & "using ins: " & read & VbCr & "DAC:       " & (HexString(DAC,2)) & VbCr & "Delay:     " & (HexString(Delaye,2)) & VbCr & "DAC4C:     " & (HexString(DAC4C,2)) & VbCr
+
+    Call Sc.ProgressBox ("", 0, 0, "")
+
+End Sub
+
+Sub IsCardPresent()
+    Dim RetValue
+    Dim GotInput
+
+
+    Do
+Sc.Write("A0")                ' turn the LED off
+Sc.Write("80")                ' Is card present?
+Sc.Delay(100)
+If Sc.BytesInBuffer > 0 then
+Sc.Read(&h01)
+RetValue = Sc.GetByte(0)
+end if
+
+If RetValue = &h0 then
+Call Sc.ProgressBox ("*** Please insert your card... ***", 1, 999, "cmd90 Decryptor")
+GotInput = False
+else
+If RetValue = &hFF then
+GotInput = True
+else
+If RetValue <> &h0 or RetValue <> &hFF then
+Sc.Write("A0")                ' turn the LED off
+Sc.Write("020200")
+Sc.Delay(100)
+If Sc.BytesInBuffer > 1 then
+Sc.Read(&h02)
+GotInput = False
+else
+GotInput = False
+end if
+end if
+End if
+End if
+Loop Until GotInput = True
+
+Call Sc.ProgressBox ("", 0, 0, "")
+
+end sub
+
+Sub CleanCard()
+    Dim Byte1A
+    Dim Byte2A
+    Dim Byte3A
+    Dim Byte4A
+    Dim Byte5A
+    Dim Byte6A
+    Dim Byte7A
+    Dim Byte8A
+    Dim Byte1B
+    Dim Byte2B
+    Dim Byte3B
+    Dim Byte4B
+    Dim Byte5B
+    Dim Byte6B
+    Dim Byte7B
+    Dim Byte8B
+    Dim XORedByte1
+    Dim XORedByte2
+    Dim XORedByte3
+    Dim XORedByte4
+    Dim XORedByte5
+    Dim XORedByte6
+    Dim XORedByte7
+    Dim XORedByte8
+    Dim GuideByte1
+    Dim GuideByte2
+    Dim GuideByte3
+    Dim GuideByte4
+    Dim GuideByte5
+    Dim GuideByte6
+    Dim GuideByte7
+    Dim GuideByte8
+    Dim GuideByte9
+    Dim GuideByte10
+    Dim GuideByte11
+    Dim GuideByte12
+    Dim GuideByte13
+    Dim GuideByte14
+    Dim GuideByte15
+    Dim GuideByte16
+    Dim GuideByte17
+    Dim GuideByte18
+    Dim RetValue
+    Dim EPROMKey
+    Dim IRDKey
+    Dim GuideByteKey
+
+Sc.Write("A2")
+Call WDTMR()
+Call WriteThruBootStrap("28CB", "8C29C4", "Cleaning Intercept 1...", 1, 30)'Ver 1 and 2 of HU3M write protection
+Call WriteThruBootStrap("29C4", "C87720", "", "", "")
+Call WriteThruBootStrap("2000", "0000", "Cleaning Main Code...", 1, 30)
+Call WriteThruBootStrap("283A", "D1FEFE", "Cleaning Intercept 2...", 2, 30)'Ver 1 and 2 of HU3M
+Call WriteThruBootStrap("3830", "8EDC0A", "Cleaning Intercept 3...", 3, 30)'Ver 2 of HU3M
+Call Sc.ProgressBox ("Extracting EPROM Keys...", 4, 30,ScriptName+" "+ScriptVer)
+Sc.Write("06C20724C08800")
+Sc.Read(&h02)
+        RetValue = Sc.GetByte(&h01)
+        Sc.Read(RetValue)
+        Byte1A = Sc.GetByte(0)
+        Byte2A = Sc.GetByte(1)
+        Byte3A = Sc.GetByte(2)
+        Byte4A = Sc.GetByte(3)
+        Byte5A = Sc.GetByte(4)
+        Byte6A = Sc.GetByte(5)
+        Byte7A = Sc.GetByte(6)
+        Byte8A = Sc.GetByte(7)
+Call Sc.ProgressBox ("Extracting EPROM Keys...", 5, 30,ScriptName+" "+ScriptVer)
+Sc.Write("06C20726588800")
+Sc.Read(&h02)
+        RetValue = Sc.GetByte(&h01)
+        Sc.Read(RetValue)
+        Byte1B = Sc.GetByte(0)
+        Byte2B = Sc.GetByte(1)
+        Byte3B = Sc.GetByte(2)
+        Byte4B = Sc.GetByte(3)
+        Byte5B = Sc.GetByte(4)
+        Byte6B = Sc.GetByte(5)
+        Byte7B = Sc.GetByte(6)
+        Byte8B = Sc.GetByte(7)
+
+XORedByte1 = HexString(Byte1A XOR Byte1B, 2)
+XORedByte2 = HexString(Byte2A XOR Byte2B, 2)
+XORedByte3 = HexString(Byte3A XOR Byte3B, 2)
+XORedByte4 = HexString(Byte4A XOR Byte4B, 2)
+XORedByte5 = HexString(Byte5A XOR Byte5B, 2)
+XORedByte6 = HexString(Byte6A XOR Byte6B, 2)
+XORedByte7 = HexString(Byte7A XOR Byte7B, 2)
+XORedByte8 = HexString(Byte8A XOR Byte8B, 2)
+GuideByte1 = XORedByte1
+GuideByte2 = HexString(Hex2Dec(XORedByte2) XOR &hFF, 2)
+GuideByte3 = HexString(Hex2Dec(XORedByte3) XOR &hFF, 2)
+GuideByte4 = HexString(Hex2Dec(XORedByte4) XOR &hFF, 2)
+GuideByte5 = HexString(Hex2Dec(XORedByte5) XOR &hFF, 2)
+GuideByte6 = HexString(Hex2Dec(XORedByte6) XOR &hFF, 2)
+GuideByte7 = HexString(Hex2Dec(XORedByte7) XOR &hFF, 2)
+GuideByte8 = HexString(Hex2Dec(XORedByte8) XOR &hFF, 2)
+GuideByte9 = HexString(Hex2Dec(XORedByte1) XOR &hFF, 2)
+GuideByte10 = HexString(Hex2Dec(XORedByte2) XOR &hFF, 2)
+GuideByte11 = HexString(Hex2Dec(XORedByte3) XOR &hFF, 2)
+GuideByte12 = HexString(Hex2Dec(XORedByte4) XOR &hFF, 2)
+GuideByte13 = HexString(Hex2Dec(XORedByte5) XOR &hFF, 2)
+GuideByte14 = HexString(Hex2Dec(XORedByte6) XOR &hFF, 2)
+GuideByte15 = HexString(Hex2Dec(XORedByte7) XOR &hFF, 2)
+GuideByte16 = HexString(Hex2Dec(XORedByte8) XOR &hFF, 2)
+GuideByte17 = HexString(Hex2Dec(XORedByte1) XOR &hFF, 2)
+GuideByte18 = HexString(Hex2Dec(XORedByte2) XOR &hFF, 2)
+
+GuideByteKey = GuideByte1 & GuideByte2 & GuideByte3 & GuideByte4 & GuideByte5 & GuideByte6 & GuideByte7 & GuideByte8 & GuideByte9 & GuideByte10 & GuideByte11 & GuideByte12 & GuideByte13 & GuideByte14 & GuideByte15 & GuideByte16 & GuideByte17 & GuideByte18
+
+
+IRDKey = XORedByte5 & XORedByte6 & XORedByte7 & XORedByte8
+EPROMKey = XORedByte1 & XORedByte2 & XORedByte3 & XORedByte4 & XORedByte5 & XORedByte6 & XORedByte7 & XORedByte8
+
+Call WriteThruBootStrap("2014", "20DF", "Writing Fuse Byte...", 6, 30)
+Call WriteThruBootStrap("24A4", IRDKey, "Cleaning IRD...", 7, 30)
+Call WriteThruBootStrap("2510", GuideByte17 & GuideByte18 & XORedByte3 & XORedByte4 & XORedByte5 & XORedByte6 & XORedByte7 & XORedByte8 & EPROMKey, "Cleaning GuideByte...", 8, 30)
+Call WriteThruBootStrap("2500", GuideByteKey, "Cleaning GuideByte...", 8, 30)
+
+Call WriteThruBootStrap("22F2", "2210E37702270C8EE2B67610280575FC67D56A8CDCE712608EDB7E7D0029020B", "Cleaning Main Code...", 9, 30)
+Call WriteThruBootStrap("2312", "982A30EF1D6102038CD4B5F97D40BE060375FED28CD15C40010017C5AA0060AB", "", "", "")
+Call WriteThruBootStrap("2332", "0101C33D170FF5748028F98800603088003B327202068EE5ADF9726015882ACE", "", "", "")
+Call WriteThruBootStrap("2352", "2A720204E700098A2ACFB34D006102EAF912088E3C96F9C5AA2AF8D024AA3F50", "", "", "")
+Call WriteThruBootStrap("2372", "13248E3C96C35D080FEEF9", "", "", "")
+Call WriteThruBootStrap("23B3", "982A30EF70012A8E3C96C704EDD70904E0D5088827052A8ED1B0F98ED21D8E", "", "", "")
+Call WriteThruBootStrap("23D2", "3C96F9C58E23F5F4CC2E2A0F0C8E23F5F4CC2A2E0F07223FE6D32CD32CC35D0C", "", "", "")
+Call WriteThruBootStrap("23F2", "0FE2F99A2CD02DD32C9A2CD02ED32CF9FFFFFFFF", "", "", "")
+Call WriteThruBootStrap("2406", XORedByte7 & XORedByte8 & XORedByte1 & XORedByte2 & XORedByte3 & XORedByte4 & XORedByte5 & XORedByte6 & XORedByte7 & XORedByte8, "", "", "")' spending limit and password
+Call WriteThruBootStrap("2464", XORedByte5 & XORedByte6 & XORedByte7, "", "", "")' ATR 00 to 25 fix and ratings
+Call WriteThruBootStrap("24C8", EPROMKey, "", "", "")' block of 00s for USW
+Call WriteThruBootStrap("24E0", XORedByte1, "", "", "")'time zone
+Call WriteThruBootStrap("2690", "0000000000000000B3B8BDC2C7C7C7C7C7C7C7C7C7B3B3B3B3B3CCD1D1D1D1D1", "Cleaning Main Code...", 10, 30)
+Call WriteThruBootStrap("26B0", "D1D6DB06C9DC3E1306C9DC3E2B08C9DC3E4306C9DC3E6301C9DC3E7B04C9DC3E", "", "", "")
+Call WriteThruBootStrap("26D0", "7F01C9DC3E8F01C9DC3E9303C9DC3E97FFC8A0CE0D16F082AC8602C081580703", "", "", "")
+Call WriteThruBootStrap("26F0", "0000FF40000000000000000000000000DFE1F01A00DFE1003800DF83043800D5", "", "", "")
+Call WriteThruBootStrap("2710", "13011800D912031800D597001820D59B001820DAE50B1800D8B1812820D7AF82", "", "", "")
+Call WriteThruBootStrap("2730", "3800385003D000289E051C00DFE1023800DABE122860D7B30328E0D6A1012860", "", "", "")
+Call WriteThruBootStrap("2750", "DFE2002860D7F3822860D4110828E0D883003800DF7F00380028C50D28E0DEBA", "", "", "")
+Call WriteThruBootStrap("2770", "0228E0D834042860D8B8082860D8DE003800D8D7043800D90B033800D93B2338", "", "", "")
+Call WriteThruBootStrap("2790", "00D9CEF03800DAB7003860DAD0003820DAD4023860DB16043800D42A052860DB", "", "", "")
+Call WriteThruBootStrap("27B0", "2800181022F2F01800DFF0042860DD808D28E0D9CEF03800DB4C853860DFE101", "", "", "")
+Call WriteThruBootStrap("27D0", "180028A1883C002308E12860D5E7821800D667842860DB9FD52860E002822860", "Cleaning Main Code...", 11, 30)
+Call WriteThruBootStrap("27F0", "DBD0813800D809D29000DFE1F09000383003F000D9608628E02FC79028A02F10", "", "", "")
+Call WriteThruBootStrap("2810", "8028A02ABF89D000DB4C8528E02F088428E0DE458C28E0DE548628E05507AA24", "", "", "")
+Call WriteThruBootStrap("2830", "B843000EAA2650130EF9D1FEFEAAFFFD8E3F3D2DF78C2F5C8E3F5812399B3012", "", "", "")
+Call WriteThruBootStrap("2850", "3AF4EB0130F9B8C8D829D82AC5AA2AF0D007AA3F481307AB00DDC35D080FEE22", "", "", "")
+Call WriteThruBootStrap("2870", "A064AB00DDC35D100FF5C59A30AB00ED700130C33D060FF38C3039008CC2988C", "", "", "")
+Call WriteThruBootStrap("2890", "C0EC8C3EEB8C3B068C3B348C38198C39788CC27A8C3C968C393A8CE0748C2F43", "", "", "")
+Call WriteThruBootStrap("28B0", "8C37008CE30E8C3D128C37808C37708CE0438C3C968C3D568CD6B28C29C48C2F", "", "", "")
+Call WriteThruBootStrap("28D0", "568C31818C3F378C2AC58C3B558C3B798C36EA8CC4308C33B78C2F9D8CD6F68C", "", "", "")
+Call WriteThruBootStrap("28F0", "31038CD3438C36F58C231E8C37738C3ED08C305C8CEC9C8C37728C377220203F", "", "", "")
+Call WriteThruBootStrap("2910", "EF00000000000000000000000000000000000000000000000000000000000000", "", "", "")
+Call WriteThruBootStrap("2930", "000000000000000000000000005CDA5EFA8F6152EA1CFED0C6043DA97745BB98", "Cleaning Main Code...", 13, 30)
+Call WriteThruBootStrap("2950", "231803ECF766BD3570C1DF224A8EA4599B94A5B8FF490C27663B80DE52CD7AE1", "", "", "")
+Call WriteThruBootStrap("2970", "134DAAF79438C92552BC617F8016EE03DB01298401005C0A3C7D919AC5AA24B8", "", "", "")
+Call WriteThruBootStrap("2990", "AB00EDAA2650AB00F5C35D080FEFC522A064AB00DDC35D100FF58800ED2A8800", "", "", "")
+Call WriteThruBootStrap("29B0", "DD2C7210FD8E3EB272DD158824B02A721004E7F9C877202703757F2775EF2742", "", "", "")
+Call WriteThruBootStrap("29D0", "2A0275F727751F02731F02D3024D04020F034204024C0204F750113215D80298", "", "", "")
+Call WriteThruBootStrap("29F0", "2A347780270DD105D50E322A8E283A3205000A77202703B50003AA0000764027", "", "", "")
+Call WriteThruBootStrap("2A10", "0ED0039A2AB81303D40315030206B99B2A740827C370012ADA02C7D402770827", "", "", "")
+Call WriteThruBootStrap("2A30", "07882AA72A8E2A9575F7273215F75011762027277780270DD105D50E32348E28", "", "", "")
+Call WriteThruBootStrap("2A50", "3A32050003AA00007640270AD0039A341303150302059B34740827C3700134DA", "", "", "")
+Call WriteThruBootStrap("2A70", "02CED11577082707882AB32A8E2A9598342A7D0004020389FF45757F2775DF27", "", "", "")
+Call WriteThruBootStrap("2A90", "75BF27C4F9C59A2AAB00ED70012AC35D0C0FF38E00EDF9F76011F761118EE7AE", "", "", "")
+Call WriteThruBootStrap("2AB0", "8CE799F76211F763118EE7AE8CE7998EDCBB8CD5537702120225FE8CC89E0000", "", "", "")
+Call WriteThruBootStrap("2EF8", "A5A5A5A5A5A5A5A5A5A5A5A500FFFFFF7601D001F98CDE3A720504882ACE2A8E", "", "", "")
+Call WriteThruBootStrap("2F18", "E6A0720C048824F42A8EE6A02202E377022701F9D5D08EE02F8824662E882406", "", "", "")
+Call WriteThruBootStrap("2F38", "2C8EC5078822F22E8CD8992D00F406E0938EE0F3771026034224938CE0D47223", "", "", "")
+Call WriteThruBootStrap("2F58", "038CC0C1062FAAFFFC2DD80628B4B4C4D50BF4D9002A0EC8322A8E2F8FC4D00E", "", "", "")
+Call WriteThruBootStrap("2F78", "AA006043000E440E0BC3D32A3D070FE2B4B4120BF932FE5507AA24C043000EAA", "", "", "")
+Call WriteThruBootStrap("2F98", "2658130EF97DFF6002038CD9E51217021D7202078EDA993260CD5D030B10AA2A", "", "", "")
+Call WriteThruBootStrap("2FB8", "D01D6102060FE6770160E27480D3F98EDC9977022745C5AA0064AB00EDC35D0C", "", "", "")
+Call WriteThruBootStrap("2FD8", "0FF5AA297CAB00EDC35D100FF58829412A8800ED2C7210FD8E3EB2C5AA00EDD0", "", "", "")
+Call WriteThruBootStrap("2FF8", "0BAA0064130BAB0064C35D0C0FEE8824F42A720C047264158CDC54F9E2880100", "Cleaning Main Code...", 14, 30)
+Call WriteThruBootStrap("3018", "30E9D50BC5AA24F4D009AA2AE4130944000BC35D0C0FEE120B02032205E68CD0", "", "", "")
+Call WriteThruBootStrap("3038", "0D225064AB00EDC35D100FF58800DD2A8800ED2C7206FD8E3EB298EE3AD42AD4", "", "", "")
+Call WriteThruBootStrap("3058", "29C4B4F975BFCF32BEAA3073D029AA3074D02A8EC37A9E2A8C3404C358CE77C7", "", "", "")
+Call WriteThruBootStrap("3078", "ECCFF8C358C358C358C358C358C7FBC358C358C358C358C358C358C358C358C3", "", "", "")
+Call WriteThruBootStrap("3098", "58C358C7F5CF56C806C6A4CCC43EDCC358CF08C983C358C358C358D0EED0EE30", "", "", "")
+Call WriteThruBootStrap("30B8", "143F20CE3F3710C6E4C358C358CEAD3BA1C9A0CEB83722C8A0C5498E311C9A2A", "", "", "")
+Call WriteThruBootStrap("30D8", "D02B70012A9A2AD02C9E2C8ED27812088ED310D517120802088E23CED0178ED3", "", "", "")
+Call WriteThruBootStrap("30F8", "108CD25A7D87080FD200057D80080BF48A2ACE2D02020AF4CA2A270506032240", "", "", "")
+Call WriteThruBootStrap("3118", "E68CD242320855075A0788312F2A4B012A4900298CD1B03190F0382023693280", "", "", "")
+Call WriteThruBootStrap("3138", "CF382023632329D23810237C233D823800237CDFE1F038202369DFE1823800", "", "", "")
+Call WriteThruBootStrap("3159", "235982386023698E311C7D82080B258ED3AE770227058ED4079E194B17388C", "", "", "")
+Call WriteThruBootStrap("3178", "D3807D87080FE1000C7610B6032241E67D80080BED8CD36C220F8E32718824C8", "", "", "")
+Call WriteThruBootStrap("3198", "3088009E32720206EB4D609E060A4261244C9F2402020314D39E4D609E060C4D", "", "", "")
+Call WriteThruBootStrap("31B8", "629F0607426124D3240001F9C5AA0063AB0090C35D0C0FF5C5AA0090AB0070C3", "", "", "")
+Call WriteThruBootStrap("31D8", "5D0C0FF5AA2931AB0090C35D100FF58829712A8800902C7210FD8E3EB2C5AA00", "", "", "")
+Call WriteThruBootStrap("31F8", "70D00EAA0090130EAB0090C35D100FEED72404C4D50BC5AA2EECD00EAA009043", "", "", "")
+Call WriteThruBootStrap("3218", "000E440E0BC35D0C0FED120B0202009B726315882EEC2A720C04E78800603088", "", "", "")
+Call WriteThruBootStrap("3238", "24C832720206ED1217028022038E32714261FD98622A753F291260B7B7D0048E", "Cleaning Main Code...", 15, 30)
+Call WriteThruBootStrap("3258", "32717780FD0D88006030982A32420406ED00D4726015E700CE42170BD0178ED3", "", "", "")
+Call WriteThruBootStrap("3278", "D54C170B420B17F97440CF22038E3271126202042D040F01F98824E63088009E", "", "", "")
+Call WriteThruBootStrap("3298", "32720206EBF4CC9F610A057D0162021206E68824CA30EFB002DE2507B34D0062", "", "", "")
+Call WriteThruBootStrap("32B8", "06D698619F3262224CC702072231C7020222401D1706C1720C04882EF82A8EE6", "", "", "")
+Call WriteThruBootStrap("32D8", "A03262D1FFC70658220C8E3271C5AA0060AB00DDC35D0C0FF5AA297CAB00DDC3", "", "", "")
+Call WriteThruBootStrap("32F8", "5D100FF58829412A8800DD2C7208FD8E3EB2C5AA0060D00EAA00DD130EAB00DD", "", "", "")
+Call WriteThruBootStrap("3318", "C35D0C0FEE72DD15882EE02A720C04E7882DE02A8E337C882E002A8E337C002B", "", "", "")
+Call WriteThruBootStrap("3338", "C7061A22118E327188006030882AD332721106ED882E202A8E337C000E882E40", "", "", "")
+Call WriteThruBootStrap("3358", "2A8E337C882E602A8E337C88009E308824E632720206ED12FF8824CA30EA75BF", "", "", "")
+Call WriteThruBootStrap("3378", "CF89FF1422208E327188006030982A32722006EDF98824CA30EF2507F9B87260", "", "", "")
+Call WriteThruBootStrap("3398", "BE8E3537D4BE002512BE2D5C0BEF7640CFEB0019D7D78E338D2D030BEB000EC5", "", "", "")
+Call WriteThruBootStrap("33B8", "B5AB00DAC35D260FF812D706E722908CC38F52FF8E351F120B0239002C300100", "", "", "")
+Call WriteThruBootStrap("33D8", "60C5AA0101AB0061C33D600FF58824E63088009E32720206EBF4CC9F6202D300", "", "", "")
+Call WriteThruBootStrap("33F8", "088824CA30EFB002D48900AE768028F1F98CC27A5D0C06F9C5AA2951AB0100C3", "", "", "")
+Call WriteThruBootStrap("3418", "5D100FF5882AD330EFD00BC5AA0063AB0100C33D0B0FF5C5AA0100AB0140C35D", "", "", "")
+Call WriteThruBootStrap("3438", "100FF58829612A8801002C7204FD8E3EB2223C8E3ECBD5DB32DBC2A801002C8E", "", "", "")
+Call WriteThruBootStrap("3458", "ECA58EECA5C59A2CD009AA014013099B2CF4EB102CAB0140D32CC35D100FE7D3", "", "", "")
+Call WriteThruBootStrap("3478", "DB7D04DB0FD28801402C8EECA58EECA5226A8E3ECBD509C5AA0140D00BAA0148", "", "", "")
+Call WriteThruBootStrap("3498", "130BAB0140D00BA82ADC30EF130B440009C35D080FE21209020D8EDED97701B8", "Cleaning Main Code...", 16, 30)
+Call WriteThruBootStrap("34B8", "037217C689FF49C5AA0100D00BA82DE030EF130BAB0100C35D400FECC5A82AD4", "", "", "")
+Call WriteThruBootStrap("34D8", "30EFAB00DDC35D080FF3882AD330EFC01260B7B76CD0248800632A4B012AC53D", "", "", "")
+Call WriteThruBootStrap("34F8", "240B059A2AAB00DDD32AC35D080FF08E0100C5AA00DDD00BAA00A0130BAB00A0", "", "", "")
+Call WriteThruBootStrap("3518", "C35D080FEE009DD50BC5AA2EE0D00EAA2EF8130E44000BC35D0C0FEE120BF98E", "", "", "")
+Call WriteThruBootStrap("3538", "3ED68A288B0207882F042A8EE68E8824CA30EFD01625072D03061C8E36A17260", "", "", "")
+Call WriteThruBootStrap("3558", "0C7202128EE4098EE41A882E802A8E36C18E36A18901212D04061E8E36A1882E", "", "", "")
+Call WriteThruBootStrap("3578", "803088010032726006EB72600C7202128EE41A8E36BD8900FF2D070259D5E926", "", "", "")
+Call WriteThruBootStrap("3598", "0102D9E98E36A18829812A8EC4AEC542E9EA5D060B02D9EAAA2EE015EAAB00DD", "", "", "")
+Call WriteThruBootStrap("35B8", "C35D0C0FEA222D8E3ECB8800DD2A22608EEBEF226A8E3ECBC5AA0100AB0060C3", "", "", "")
+Call WriteThruBootStrap("35D8", "5D200FF572600C7202128EE4098EE41A8E36BD8C36907248948EED82D5DB32DB", "", "", "")
+Call WriteThruBootStrap("35F8", "5D400B06A82DE02A00225D480B06A82A942A00185D500B06A82A942A000E5D51", "", "", "")
+Call WriteThruBootStrap("3618", "0B06A82A832A0004A82DCF2A982A30EF8EEDA4C3129502095DB10FC4C88EEE89", "", "", "")
+Call WriteThruBootStrap("3638", "C4129606B9D1DB5DB10FB3C5AA0088AB00DDC35D0C0FF5AA297CAB00DDC35D10", "", "", "")
+Call WriteThruBootStrap("3658", "0FF58829412A8800DD2C7208FD8E3EB2C5AA0088D00EAA00DD130EAB00DDC35D", "", "", "")
+Call WriteThruBootStrap("3678", "0C0FEE72DD15882EF82A720C04E78E351F020852028E3EA31216B38824CA30EA", "", "", "")
+Call WriteThruBootStrap("3698", "B5882F042A8EE68EF9882E202A726004C5982A349A34AB0100700134C33D040F", "", "", "")
+Call WriteThruBootStrap("36B8", "F38E36C4F9882E202A7260048801002C420422C59A2CAB006070012CC35D200F", "", "", "")
+Call WriteThruBootStrap("36D8", "F388006030982A32722006ED7C202204E2F92D080604C58E3EA38CC3A3D002A6", "Cleaning Main Code...", 17, 30)
+Call WriteThruBootStrap("36F8", "013DFC80351302F97D54BE06087D400902032200E68CC1C9E2D0C18ED06A7260", "", "", "")
+Call WriteThruBootStrap("3718", "157240048826102AE7F9760112178ED06A770125058ECEFF00288ED04D882610", "", "", "")
+Call WriteThruBootStrap("3738", "2A7701101172400C8EE4098EE41A8801002A7601120DC59A2AE170012AC35D40", "", "", "")
+Call WriteThruBootStrap("3758", "0FF5F998C3AB8837D22A8E379BC5AA0088E1C35D080FF7F9D50BF93203AB0164", "", "", "")
+Call WriteThruBootStrap("3778", "B81202AB016CB4F92240522DAB0100C35D3F0FF81210AB01008826902A8E379F", "", "", "")
+Call WriteThruBootStrap("3798", "8C376576011014C59A2A7D5ABE0601B2AB00A4C370012A5D080FED7248948EED", "", "", "")
+Call WriteThruBootStrap("37B8", "827D44BE020D7D56BE02088E37DA8E37DA00068E37F38E37F3F9E44425024554", "", "", "")
+Call WriteThruBootStrap("37D8", "14D4C5AA01008EEDA4C35D400FF5C5AA00A48EEDA4C35D080FF5F9C5A8010030", "", "", "")
+Call WriteThruBootStrap("37F8", "EE8EEDA4C35D2D0FF3AA01008EEDA4C35D400FF5C5AA00A48EEDA4C35D080FF5", "", "", "")
+Call WriteThruBootStrap("3818", "F9D513D50B7D36BE0201F972041E8E386622368E3CA000F28EDC0A88006230EE", "", "", "")
+Call WriteThruBootStrap("3838", "272004302987D78A2ACE27010776401E03223EE68E3866F9302987D78A2ACE27", "", "", "")
+Call WriteThruBootStrap("3858", "0203223DE6D51E74801E8E3866F97201D977801E037200D98E39168E38B18838", "", "", "")
+Call WriteThruBootStrap("3878", "912A77801E048838A12AC59A2AAB00A0C370012A5D100FF3F950E75FA407240E", "", "", "")
+Call WriteThruBootStrap("3898", "C5A87738C1CBE7B663B3029E192FC4CF365AB16C722D1DB1BEF70038F7003AF7", "", "", "")
+Call WriteThruBootStrap("38B8", "803DFF5207F7083D8E38D9C704FA8839012C77801E0488390A2C8E38EE8E38D9", "", "", "")
+Call WriteThruBootStrap("38D8", "F99A2AD0059A2E1305A6013DFC213070012A70012EF99A2C213270012C9A2C21", "", "", "")
+Call WriteThruBootStrap("38F8", "3470012C9A2C213DF902622C02403402442601642D01603401422F03403C121E", "Cleaning Main Code...", 18, 30)
+Call WriteThruBootStrap("3918", "25072704022504B2BC8826602A4B002A790029883F582E4B002E79002DF97410", "", "", "")
+Call WriteThruBootStrap("3938", "B6F9", "", "", "")
+Call WriteThruBootStrap("393D", "2240AB0100C35D400FF88E3ED6C5AA2688D024AA3F801324AB00A4", "", "", "")
+Call WriteThruBootStrap("3958", "C35D080FEE8E37B3C5D509E2D002AA00881302440009C35D080FF0120902BFF9", "", "", "")
+Call WriteThruBootStrap("3978", "8E3ED67D40BE061A8824503088009032720406EB129014910208720206880090", "", "", "")
+Call WriteThruBootStrap("3998", "30E58E3A8375EFB68E3AE48E3F8872970A920A8EE7D1726A0A920A520C8E3AFC", "", "", "")
+Call WriteThruBootStrap("39B8", "7D67080601E25208A6013DFC80358E3CA0C704F4C5AA00A02DFB0F022CFBAB00", "", "", "")
+Call WriteThruBootStrap("39D8", "7CC35D080FEF12D988E91F30B0020488EA3F3098302A72A30A920A12D98EE89F", "", "", "")
+Call WriteThruBootStrap("39F8", "726A0A920AC5E2D007A8015C30EE1307AB0060C35D08020D7D670802E95D050F", "", "", "")
+Call WriteThruBootStrap("3A18", "E5D50700E4F7803DFFC5F7083DAA0060A6013DFC2130C35D070FF28839072C77", "", "", "")
+Call WriteThruBootStrap("3A38", "801E048839102C8E38EE1267A6013DFC2130C5A6013DFC8035AB007CC35D080F", "", "", "")
+Call WriteThruBootStrap("3A58", "F2982A3072A30A920A12D9D5038EE8D5726A0A920A7D0803F406C27AB0021B77", "", "", "")
+Call WriteThruBootStrap("3A78", "021E0552018E3EA38CDCDF5208A6013DFC80358E3C96C704F4F97410B68800B0", "", "", "")
+Call WriteThruBootStrap("3A98", "2A88003B2E7202078EDBD87D40BE06D8F7803D88390A2CF7083D8E38EEF7283D", "", "", "")
+Call WriteThruBootStrap("3AB8", "C5AA00A0A6013DFC2130C35D070605F7243D00EDF7283D5D0F0FE68839132C8E", "", "", "")
+Call WriteThruBootStrap("3AD8", "38EE12AFA6013DFC2130009C8839042C77801E0488390D2C8E38EE12D8A6013D", "", "", "")
+Call WriteThruBootStrap("3AF8", "FC2130F9B58E3CA012D8C704F8F932117D60BE06068EFFBC2317F912BE250F2D", "", "", "")
+Call WriteThruBootStrap("3B18", "0A061112D402038CFFB67620C1038CFF9E8CFFAE7D56BE02F58CFFA67D60BE06", "", "", "")
+Call WriteThruBootStrap("3B38", "05882E202AF912D402058825D02AF97620C1058825502AF98825902AF97D60BE", "Cleaning Main Code...", 19, 30)
+Call WriteThruBootStrap("3B58", "061A8E338D2D030605882E7F2CF92D040605882E4F2CF988007F2CF988264F2C", "", "", "")
+Call WriteThruBootStrap("3B78", "F97D60BE061D8E338D2D030606F4CA2C2E4FF92D040606F4CA2C2E1FF9F4CA2C", "", "", "")
+Call WriteThruBootStrap("3B98", "005FF9F4CA2C260FF98E3ED67710B82FD508D5B87708D0087216087404B80051", "", "", "")
+Call WriteThruBootStrap("3BB8", "7640B54D880176308800A0327208068EE5B7D5A8D5A97401B88E3C74890096C5", "", "", "")
+Call WriteThruBootStrap("3BD8", "AA24F4D00BAA00A043000BAA2AE4130BAB00A0C35D0C0FE88EDED98EDF617D17", "", "", "")
+Call WriteThruBootStrap("3BF8", "C606037204B87708B8037402D17601B80FC5B5AB00A0AB0088C35D0A0FF50037", "", "", "")
+Call WriteThruBootStrap("3C18", "C58801762CA6013DFC80358E3CA0A8017630EE13D89B2C70012CC35D0A0FE688", "", "", "")
+Call WriteThruBootStrap("3C38", "01762CC59A2CAB00A0AB0088B59B2CC370012C5D0A0FED7740B7038E3D907601", "", "", "")
+Call WriteThruBootStrap("3C58", "B604D5A8D5A98E3C74C5AA0088AB00A0C35D080FF598D6C398A7D6F942B5AA12", "", "", "")
+Call WriteThruBootStrap("3C78", "B82507D0AB32C734C802057401D2D5084208ACC5AA00A0E1C35D0D0FF7F9A601", "", "", "")
+Call WriteThruBootStrap("3C98", "3DFC21308E3CA0F9B8C8D5DBD5DCD0D87B05DC32DBAA00A81BD8AB00A8D0DAAA", "", "", "")
+Call WriteThruBootStrap("3CB8", "00A013DAAB00A013DC251FC0AA3CF2D0DA32DB5306AA00A813DAAB00A8B0BDD0", "", "", "")
+Call WriteThruBootStrap("3CD8", "DA32DB5305AA00A01CDAAB00A04300D8D3DB7D08DB0FB9C4B4F9BF12939242AF", "", "", "")
+Call WriteThruBootStrap("3CF8", "E7E3B2C6B89180B4E8739EF75DFDA082F96F25177D0B55970C8022678EE06F74", "", "", "")
+Call WriteThruBootStrap("3D18", "042522088EE06F8E3A838E3AE48E3F8872970A920A8EE7D1726A0A920A520A8E", "", "", "")
+Call WriteThruBootStrap("3D38", "3AFC8839012C8E38EEC5A6013DFC80358E3C9612D88EE06FC35D080FEDF98EFA", "", "", "")
+Call WriteThruBootStrap("3D58", "27B006F98800683088245832720406EDC5AA2688D007AA3F80430007AA006013", "", "", "")
+Call WriteThruBootStrap("3D78", "07AB0060C35D080FE87260158826902A720804E77420D1F9882460308800ED32", "", "", "")
+Call WriteThruBootStrap("3D98", "720406EB720407D5063206AA00A0D0045503AA00EDD0053206C35507AA00A04B", "", "", "")
+Call WriteThruBootStrap("3DB8", "0005C85503AA00EDD00932043C00553F8E3E0843000512041309BDB0BDC08E3E", "Cleaning Main Code...", 20, 30)
+Call WriteThruBootStrap("3DD8", "08BE1B05C4AB00A0C5D8F0AA00EDD002B0BFD003B4D8022580BE1403AB00EDC3", "", "", "")
+Call WriteThruBootStrap("3DF8", "770401E7B4D3067708069ED7070498F98EFFB67D00D406F78CFF9E0012010125", "", "", "")
+Call WriteThruBootStrap("3E18", "002008001E010124100808001A0101240602080013010125202008002D010124", "", "", "")
+Call WriteThruBootStrap("3E38", "08040800D0010124650108002E010124682008004E0101245C04080058010124", "", "", "")
+Call WriteThruBootStrap("3E58", "E0010800F3010124A40408001901012464010800FE0101240C04080041010121", "", "", "")
+Call WriteThruBootStrap("3E78", "060408C9F400000045010124881C0800F8010120240908CA360000CA750000CA", "", "", "")
+Call WriteThruBootStrap("3E98", "B100000044010124E80C08B8A82AD02A9A2AB302038EE68EB4F9223C8E3ECB42", "", "", "")
+Call WriteThruBootStrap("3EB8", "04FED50E8EECA5D30E4DFD0E0FF642FE04226AD00A920AF98E3ED68CC1A47202", "", "", "")
+Call WriteThruBootStrap("3ED8", "058CC204E2C07604D10375BFD375F7CF8CC9597601CF1B2D7F06178E298C8EC2", "", "", "")
+Call WriteThruBootStrap("3EF8", "4C8A2F04020A882E202A72C0048EE6A0227F7D5EBE060E7D01120609D31D7D08", "", "", "")
+Call WriteThruBootStrap("3F18", "1D060222018CC00B770212108ED0EE8EDED97608B80375BFB48CCC4E8CCC3675", "", "", "")
+Call WriteThruBootStrap("3F38", "FBB48CD59FF4CA2CCBB90603728646F9", "", "", "")
+Call WriteThruBootStrap("3F58", "12937D04060603751F938E2856D093F9", "", "", "")
+Call WriteThruBootStrap("3F88", "727B0252058E3FB8722902000A520FAA00A0BCF008D0028E3FB3AA00A0823FDF", "", "", "")
+Call WriteThruBootStrap("3FA8", "C522C72306724B024B02005203A40220AA00AA1B02AB00AAAA009FCAF3F91E72", "", "", "")
+Call WriteThruBootStrap("3FC8", "CB250299A866F0DA234B00F8F5A0ABA70005009FCAB9F95203AA00A0D002AA00", "", "", "")
+Call WriteThruBootStrap("3FE8", "AC4B0002AA3F9413022B5ABE236BAB00ACCAE6A3FD20F900", "Cleaning Main Code...", 21, 30)
+
+Call WriteThruBootStrap("2024", IRDKey & EPROMKey, "Cleaning blank areas...", 22, 30)
+Call WriteThruBootStrap("2030", EPROMKey & EPROMKey & EPROMKey & EPROMKey, "", "", "")
+Call WriteThruBootStrap("2050", EPROMKey & EPROMKey & EPROMKey & EPROMKey, "", "", "")
+Call WriteThruBootStrap("2070", EPROMKey & EPROMKey & EPROMKey & EPROMKey, "", "", "")
+Call WriteThruBootStrap("2090", EPROMKey & EPROMKey & EPROMKey & EPROMKey, "", "", "")
+Call WriteThruBootStrap("20B0", EPROMKey & EPROMKey & EPROMKey & EPROMKey, "Cleaning blank areas...", 23, 30)
+Call WriteThruBootStrap("20D0", EPROMKey & EPROMKey & EPROMKey & EPROMKey, "", "", "")
+Call WriteThruBootStrap("20F0", EPROMKey & EPROMKey & EPROMKey & EPROMKey, "", "", "")
+Call WriteThruBootStrap("2110", EPROMKey & EPROMKey & EPROMKey & EPROMKey, "", "", "")
+Call WriteThruBootStrap("2130", EPROMKey & EPROMKey & EPROMKey & EPROMKey, "", "", "")
+Call WriteThruBootStrap("2150", EPROMKey & EPROMKey & EPROMKey & EPROMKey, "", "", "")
+Call WriteThruBootStrap("2170", EPROMKey & EPROMKey & EPROMKey & EPROMKey, "", "", "")
+Call WriteThruBootStrap("2190", EPROMKey & EPROMKey & EPROMKey & EPROMKey, "Cleaning blank areas...", 24, 30)
+Call WriteThruBootStrap("21B0", EPROMKey & EPROMKey & EPROMKey & EPROMKey, "", "", "")
+Call WriteThruBootStrap("21D0", EPROMKey & EPROMKey & EPROMKey & EPROMKey, "", "", "")
+Call WriteThruBootStrap("21F0", EPROMKey & EPROMKey & EPROMKey & EPROMKey, "", "", "")
+Call WriteThruBootStrap("2210", EPROMKey & EPROMKey & EPROMKey & EPROMKey, "", "", "")
+Call WriteThruBootStrap("2230", EPROMKey & EPROMKey & EPROMKey & EPROMKey, "", "", "")
+Call WriteThruBootStrap("2250", EPROMKey & EPROMKey & EPROMKey & EPROMKey, "", "", "")
+Call WriteThruBootStrap("2270", EPROMKey & EPROMKey & EPROMKey & EPROMKey, "", "", "")
+Call WriteThruBootStrap("2290", EPROMKey & EPROMKey & EPROMKey & EPROMKey, "Cleaning blank areas...", 25, 30)
+Call WriteThruBootStrap("22B0", EPROMKey & EPROMKey & EPROMKey & EPROMKey, "", "", "")
+Call WriteThruBootStrap("22D0", EPROMKey & EPROMKey & EPROMKey & EPROMKey, "", "", "")
+Call WriteThruBootStrap("22 F0", XORedByte1 & XORedByte2, "", "", "")
+'------------------------------------------------------------------------
+Call WriteThruBootStrap("2B00", EPROMKey & EPROMKey & EPROMKey & EPROMKey, "", "", "")
+Call WriteThruBootStrap("2B20", EPROMKey & EPROMKey & EPROMKey & EPROMKey, "", "", "")
+Call WriteThruBootStrap("2B40", EPROMKey & EPROMKey & EPROMKey & EPROMKey, "", "", "")
+Call WriteThruBootStrap("2B60", EPROMKey & EPROMKey & EPROMKey & EPROMKey, "Cleaning blank areas...", 26, 30)
+Call WriteThruBootStrap("2B80", EPROMKey & EPROMKey & EPROMKey & EPROMKey, "", "", "")
+Call WriteThruBootStrap("2BA0", EPROMKey & EPROMKey & EPROMKey & EPROMKey, "", "", "")
+Call WriteThruBootStrap("2BC0", EPROMKey & EPROMKey & EPROMKey & EPROMKey, "", "", "")
+Call WriteThruBootStrap("2BE0", EPROMKey & EPROMKey & EPROMKey & EPROMKey, "", "", "")
+Call WriteThruBootStrap("2C00", EPROMKey & EPROMKey & EPROMKey & EPROMKey, "", "", "")
+Call WriteThruBootStrap("2C20", EPROMKey & EPROMKey & EPROMKey & EPROMKey, "", "", "")
+Call WriteThruBootStrap("2C40", EPROMKey & EPROMKey & EPROMKey & EPROMKey, "", "", "")
+Call WriteThruBootStrap("2C60", EPROMKey & EPROMKey & EPROMKey & EPROMKey, "Cleaning blank areas...", 27, 30)
+Call WriteThruBootStrap("2C80", EPROMKey & EPROMKey & EPROMKey & EPROMKey, "", "", "")
+Call WriteThruBootStrap("2CA0", EPROMKey & EPROMKey & EPROMKey & EPROMKey, "", "", "")
+Call WriteThruBootStrap("2CC0", EPROMKey & EPROMKey & EPROMKey & EPROMKey, "", "", "")
+Call WriteThruBootStrap("2CE0", EPROMKey & EPROMKey & EPROMKey & EPROMKey, "", "", "")
+Call WriteThruBootStrap("2D00", EPROMKey & EPROMKey & EPROMKey & EPROMKey, "", "", "")
+Call WriteThruBootStrap("2D20", EPROMKey & EPROMKey & EPROMKey & EPROMKey, "", "", "")
+Call WriteThruBootStrap("2D40", EPROMKey & EPROMKey & EPROMKey & EPROMKey, "", "", "")
+Call WriteThruBootStrap("2D60", EPROMKey & EPROMKey & EPROMKey & EPROMKey, "", "", "")
+Call WriteThruBootStrap("2D80", EPROMKey & EPROMKey & EPROMKey & EPROMKey, "", "", "")
+Call WriteThruBootStrap("2DA0", EPROMKey & EPROMKey & EPROMKey & EPROMKey, "Cleaning blank areas...", 28, 30)
+Call WriteThruBootStrap("2DE0", EPROMKey & EPROMKey & EPROMKey & EPROMKey, "", "", "")
+Call WriteThruBootStrap("2E00", EPROMKey & EPROMKey & EPROMKey & EPROMKey, "", "", "")
+Call WriteThruBootStrap("2E20", EPROMKey & EPROMKey & EPROMKey & EPROMKey, "", "", "")
+Call WriteThruBootStrap("2E40", EPROMKey & EPROMKey & EPROMKey & EPROMKey, "", "", "")
+Call WriteThruBootStrap("2E60", EPROMKey & EPROMKey & EPROMKey & EPROMKey, "", "", "")
+Call WriteThruBootStrap("2E80", EPROMKey & EPROMKey & EPROMKey & EPROMKey, "", "", "")
+Call WriteThruBootStrap("2EA0", EPROMKey & EPROMKey & EPROMKey & EPROMKey, "", "", "")
+Call WriteThruBootStrap("2EC0", EPROMKey & EPROMKey & EPROMKey & EPROMKey, "Cleaning blank areas...", 29, 30)
+
+
+Sc.Write("A0")                ' turn the LED off
+Sc.Write("020200")
+Sc.Delay(100)
+Sc.Read(&h02)
+
+Call Sc.ProgressBox ("", 0, 0, "")
+
+end sub
+
+Sub WriteThruBootStrap(Address, Bytes, Note, CurrentNumber, TotalNumber)
+'Write Thru Boot Strap routine enables easy writing to the card
+'after boot strap is loaded by providing the ability to specify
+'a note for ProgressBox and it's counters, address location
+'and the actual bytes to write. Bytes to write must NOT
+'contain spaces so that they can be automatically calculated.
+'You may write up to 64 bytes at one time.
+'Example with a note:
+'Call WriteThruBootStrap("2080", "FFFFFFFF", "Writing to EPROM..., 1, 1)
+'Example without a note:
+'Call WriteThruBootStrap("2080", "FFFFFFFF", "", "", "")
+    Dim DecNumberOfBytesInGlitchPacket
+    Dim HexNumberOfBytesInGlitchPacket
+    Dim HexNumberOfBytesToTransmit
+    Dim HexNumberOfBytesToWrite
+
+    DecNumberOfBytesInGlitchPacket = 9 + (Len(Bytes))/2
+    If DecNumberOfBytesInGlitchPacket < &h10 Then
+        HexNumberOfBytesInGlitchPacket = "0" & Hex(DecNumberOfBytesInGlitchPacket)
+    Else
+        HexNumberOfBytesInGlitchPacket = Hex(DecNumberOfBytesInGlitchPacket)
+    End If
+    HexNumberOfBytesToWrite = Hex(118 + DecNumberOfBytesInGlitchPacket)
+    HexNumberOfBytesToTransmit = Hex(182 + DecNumberOfBytesInGlitchPacket)
+    If Note <> "" or CurrentNumber <> "" or TotalNumber <> "" then
+    Call Sc.ProgressBox (Note, CurrentNumber, TotalNumber, ScriptName+" "+ScriptVer)
+    else
+    end if
+Sc.Write(HexNumberOfBytesInGlitchPacket & "C2" & HexNumberOfBytesToWrite & Address & HexNumberOfBytesToTransmit & Bytes & "0EFF8000")
+Sc.Read(&h03)
+End Sub
+
+Sub WriteActivatingCode()
+    Dim Byte1A
+    Dim Byte2A
+    Dim Byte3A
+    Dim Byte4A
+    Dim Byte5A
+    Dim Byte6A
+    Dim Byte7A
+    Dim Byte8A
+    Dim Byte1B
+    Dim Byte2B
+    Dim Byte3B
+    Dim Byte4B
+    Dim Byte5B
+    Dim Byte6B
+    Dim Byte7B
+    Dim Byte8B
+    Dim Key12Byte
+    Dim Key12Byte1
+    Dim Key12Byte2
+    Dim Key12Byte3
+    Dim Key12Byte4
+    Dim Key12Byte5
+    Dim Key12Byte6
+    Dim Key12Byte7
+    Dim Key12Byte8
+    Dim Key12Byte9
+    Dim Key12Byte10
+    Dim Key12Byte11
+    Dim Key12Byte12
+    Dim XORedByte1
+    Dim XORedByte2
+    Dim XORedByte3
+    Dim XORedByte4
+    Dim XORedByte5
+    Dim XORedByte6
+    Dim XORedByte7
+    Dim XORedByte8
+    Dim EPROMKey
+    Dim IRDKey
+    Dim EPROM
+    Dim ThisByte
+    Dim Address
+    Dim RetValue
+    Dim GuideByteKey
+    Dim GuideByte
+    Dim XORedHexZipCode
+    Dim XORedHexZipCode1
+    Dim XORedHexZipCode2
+    Dim XORedHexZipCode3
+    Dim XORedHexTimeZone
+
+Sc.Write("A2")
+
+'Call WDTMR()
+Call Sc.ProgressBox ("Extracting EPROM Keys...", 1, 5,ScriptName+" "+ScriptVer)
+Sc.Write("06C20724C08800")
+Sc.Read(&h02)
+        RetValue = Sc.GetByte(&h01)
+        Sc.Read(RetValue)
+        Byte1A = Sc.GetByte(0)
+        Byte2A = Sc.GetByte(1)
+        Byte3A = Sc.GetByte(2)
+        Byte4A = Sc.GetByte(3)
+        Byte5A = Sc.GetByte(4)
+        Byte6A = Sc.GetByte(5)
+        Byte7A = Sc.GetByte(6)
+        Byte8A = Sc.GetByte(7)
+Call Sc.ProgressBox ("Extracting EPROM Keys...", 2, 5,ScriptName+" "+ScriptVer)
+Sc.Write("06C20726588800")
+Sc.Read(&h02)
+        RetValue = Sc.GetByte(&h01)
+        Sc.Read(RetValue)
+        Byte1B = Sc.GetByte(0)
+        Byte2B = Sc.GetByte(1)
+        Byte3B = Sc.GetByte(2)
+        Byte4B = Sc.GetByte(3)
+        Byte5B = Sc.GetByte(4)
+        Byte6B = Sc.GetByte(5)
+        Byte7B = Sc.GetByte(6)
+        Byte8B = Sc.GetByte(7)
+Call Sc.ProgressBox ("Extracting EPROM Keys...", 3, 5,ScriptName+" "+ScriptVer)
+Sc.Write("06C20B2AE48C00")
+Sc.Read(&h02)
+        RetValue = Sc.GetByte(&h01)
+        Sc.Read(RetValue)
+        Key12Byte1 = Sc.GetByte(&h0)
+        Key12Byte2 = Sc.GetByte(&h01)
+        Key12Byte3 = Sc.GetByte(&h02)
+        Key12Byte4 = Sc.GetByte(&h03)
+        Key12Byte5 = Sc.GetByte(&h04)
+        Key12Byte6 = Sc.GetByte(&h05)
+        Key12Byte7 = Sc.GetByte(&h06)
+        Key12Byte8 = Sc.GetByte(&h07)
+        Key12Byte9 = Sc.GetByte(&h08)
+        Key12Byte10 = Sc.GetByte(&h09)
+        Key12Byte11 = Sc.GetByte(&h0A)
+        Key12Byte12 = Sc.GetByte(&h0B)
+
+XORedByte1 = HexString(Byte1A XOR Byte1B, 2)
+XORedByte2 = HexString(Byte2A XOR Byte2B, 2)
+XORedByte3 = HexString(Byte3A XOR Byte3B, 2)
+XORedByte4 = HexString(Byte4A XOR Byte4B, 2)
+XORedByte5 = HexString(Byte5A XOR Byte5B, 2)
+XORedByte6 = HexString(Byte6A XOR Byte6B, 2)
+XORedByte7 = HexString(Byte7A XOR Byte7B, 2)
+XORedByte8 = HexString(Byte8A XOR Byte8B, 2)
+
+XORedHexTimeZone = HexString(Hex2Dec(XORedByte1) XOR Hex2Dec(HexTimeZone), 2)
+EPROMKey = XORedByte1 & XORedByte2 & XORedByte3 & XORedByte4 & XORedByte5 & XORedByte6 & XORedByte7 & XORedByte8
+GuideByte = HexString(Hex2Dec(XORedByte7) XOR &h80, 2) & HexString(Hex2Dec(XORedByte8) XOR Hex2Dec(Guide), 2)
+IRDKey = XORedByte5 & XORedByte6 & XORedByte7 & XORedByte8
+GuideByteKey = XORedByte1 & XORedByte2 & XORedByte3 & XORedByte4 & XORedByte5 & XORedByte6 & XORedByte7 & XORedByte8 & XORedByte1 & XORedByte2 & XORedByte3 & XORedByte4 & XORedByte5 & XORedByte6 & XORedByte7 & XORedByte8 & XORedByte1 & XORedByte2
+Key12Byte = HexString(Key12Byte1,2) & HexString(Key12Byte2,2) & HexString(Key12Byte3,2) & HexString(Key12Byte4,2) & HexString(Key12Byte5,2) & HexString(Key12Byte6,2) & HexString(Key12Byte7,2) & HexString(Key12Byte8,2) & HexString(Key12Byte9,2) & HexString(Key12Byte10,2) & HexString(Key12Byte11,2) & HexString(Key12Byte12,2)
+XORedHexZipCode1 = HexString(Hex2Dec(HexZipCode1) XOR Hex2Dec(XORedByte1 & XORedByte2 & XORedByte3), 6)
+XORedHexZipCode2 = HexString(Hex2Dec(HexZipCode2) XOR Hex2Dec(XORedByte4 & XORedByte5 & XORedByte6), 6)
+XORedHexZipCode3 = HexString(Hex2Dec(HexZipCode3) XOR Hex2Dec(XORedByte7 & XORedByte8), 4)
+XORedHexZipCode = XORedHexZipCode1 & XORedHexZipCode2 & XORedHexZipCode3
+Address = &h2026
+Call WriteThruBootStrap("2030", "E2E2E2E2E2E2E2E2E2423813880100388ED3EFE14D13380FF7E6", "Dump decrypted CMD90", 4, 5)
+Call WriteThruBootStrap("3978", "8C2030", "Intercept", 5, 5)
+
+
+Sc.Write("A0")                ' turn the LED off
+Sc.Write("020200")
+Sc.Delay(100)
+Sc.Read(&h02)
+
+Call Sc.ProgressBox ("", 0, 0, "")
+
+Dim EndMsg
+EndMsg = "CMD90 Decryption Code is now activated." & vbCrLf
+EndMsg = EndMsg & "Clean the card to remove the code." & vbCrLf
+EndMsg = EndMsg & "Consult the script headers for info on how to use the slave card." & vbCrLf
+sc.msgbox(EndMsg)
+
+end sub
+
+Sub WDTMR()
+
+    Dim RetValue
+
+    Sc.Write("05150E108000")    'SET WDTMR
+    Sc.Delay(80)
+    Sc.Read(&h02)
+        RetValue = Sc.GetByte(&h01)
+        Sc.Read(RetValue)
+
+End Sub
+
+Sub CleanCardNoExit()
+    Dim Byte1A
+    Dim Byte2A
+    Dim Byte3A
+    Dim Byte4A
+    Dim Byte5A
+    Dim Byte6A
+    Dim Byte7A
+    Dim Byte8A
+    Dim Byte1B
+    Dim Byte2B
+    Dim Byte3B
+    Dim Byte4B
+    Dim Byte5B
+    Dim Byte6B
+    Dim Byte7B
+    Dim Byte8B
+    Dim XORedByte1
+    Dim XORedByte2
+    Dim XORedByte3
+    Dim XORedByte4
+    Dim XORedByte5
+    Dim XORedByte6
+    Dim XORedByte7
+    Dim XORedByte8
+    Dim GuideByte1
+    Dim GuideByte2
+    Dim GuideByte3
+    Dim GuideByte4
+    Dim GuideByte5
+    Dim GuideByte6
+    Dim GuideByte7
+    Dim GuideByte8
+    Dim GuideByte9
+    Dim GuideByte10
+    Dim GuideByte11
+    Dim GuideByte12
+    Dim GuideByte13
+    Dim GuideByte14
+    Dim GuideByte15
+    Dim GuideByte16
+    Dim GuideByte17
+    Dim GuideByte18
+    Dim RetValue
+    Dim EPROMKey
+    Dim IRDKey
+    Dim GuideByteKey
+
+Sc.Write("A2")
+Call WDTMR()
+Call WriteThruBootStrap("28CB", "8C29C4", "Cleaning Intercept 1...", 1, 30)'Ver 1 and 2 of HU3M write protection
+Call WriteThruBootStrap("29C4", "C87720", "", "", "")
+Call WriteThruBootStrap("2000", "0000", "Cleaning Main Code...", 1, 30)
+Call WriteThruBootStrap("283A", "D1FEFE", "Cleaning Intercept 2...", 2, 30)'Ver 1 and 2 of HU3M
+Call WriteThruBootStrap("3830", "8EDC0A", "Cleaning Intercept 3...", 3, 30)'Ver 2 of HU3M
+Call Sc.ProgressBox ("Extracting EPROM Keys...", 4, 30,ScriptName+" "+ScriptVer)
+Sc.Write("06C20724C08800")
+Sc.Read(&h02)
+        RetValue = Sc.GetByte(&h01)
+        Sc.Read(RetValue)
+        Byte1A = Sc.GetByte(0)
+        Byte2A = Sc.GetByte(1)
+        Byte3A = Sc.GetByte(2)
+        Byte4A = Sc.GetByte(3)
+        Byte5A = Sc.GetByte(4)
+        Byte6A = Sc.GetByte(5)
+        Byte7A = Sc.GetByte(6)
+        Byte8A = Sc.GetByte(7)
+Call Sc.ProgressBox ("Extracting EPROM Keys...", 5, 30,ScriptName+" "+ScriptVer)
+Sc.Write("06C20726588800")
+Sc.Read(&h02)
+        RetValue = Sc.GetByte(&h01)
+        Sc.Read(RetValue)
+        Byte1B = Sc.GetByte(0)
+        Byte2B = Sc.GetByte(1)
+        Byte3B = Sc.GetByte(2)
+        Byte4B = Sc.GetByte(3)
+        Byte5B = Sc.GetByte(4)
+        Byte6B = Sc.GetByte(5)
+        Byte7B = Sc.GetByte(6)
+        Byte8B = Sc.GetByte(7)
+
+XORedByte1 = HexString(Byte1A XOR Byte1B, 2)
+XORedByte2 = HexString(Byte2A XOR Byte2B, 2)
+XORedByte3 = HexString(Byte3A XOR Byte3B, 2)
+XORedByte4 = HexString(Byte4A XOR Byte4B, 2)
+XORedByte5 = HexString(Byte5A XOR Byte5B, 2)
+XORedByte6 = HexString(Byte6A XOR Byte6B, 2)
+XORedByte7 = HexString(Byte7A XOR Byte7B, 2)
+XORedByte8 = HexString(Byte8A XOR Byte8B, 2)
+GuideByte1 = XORedByte1
+GuideByte2 = HexString(Hex2Dec(XORedByte2) XOR &hFF, 2)
+GuideByte3 = HexString(Hex2Dec(XORedByte3) XOR &hFF, 2)
+GuideByte4 = HexString(Hex2Dec(XORedByte4) XOR &hFF, 2)
+GuideByte5 = HexString(Hex2Dec(XORedByte5) XOR &hFF, 2)
+GuideByte6 = HexString(Hex2Dec(XORedByte6) XOR &hFF, 2)
+GuideByte7 = HexString(Hex2Dec(XORedByte7) XOR &hFF, 2)
+GuideByte8 = HexString(Hex2Dec(XORedByte8) XOR &hFF, 2)
+GuideByte9 = HexString(Hex2Dec(XORedByte1) XOR &hFF, 2)
+GuideByte10 = HexString(Hex2Dec(XORedByte2) XOR &hFF, 2)
+GuideByte11 = HexString(Hex2Dec(XORedByte3) XOR &hFF, 2)
+GuideByte12 = HexString(Hex2Dec(XORedByte4) XOR &hFF, 2)
+GuideByte13 = HexString(Hex2Dec(XORedByte5) XOR &hFF, 2)
+GuideByte14 = HexString(Hex2Dec(XORedByte6) XOR &hFF, 2)
+GuideByte15 = HexString(Hex2Dec(XORedByte7) XOR &hFF, 2)
+GuideByte16 = HexString(Hex2Dec(XORedByte8) XOR &hFF, 2)
+GuideByte17 = HexString(Hex2Dec(XORedByte1) XOR &hFF, 2)
+GuideByte18 = HexString(Hex2Dec(XORedByte2) XOR &hFF, 2)
+
+GuideByteKey = GuideByte1 & GuideByte2 & GuideByte3 & GuideByte4 & GuideByte5 & GuideByte6 & GuideByte7 & GuideByte8 & GuideByte9 & GuideByte10 & GuideByte11 & GuideByte12 & GuideByte13 & GuideByte14 & GuideByte15 & GuideByte16 & GuideByte17 & GuideByte18
+
+
+IRDKey = XORedByte5 & XORedByte6 & XORedByte7 & XORedByte8
+EPROMKey = XORedByte1 & XORedByte2 & XORedByte3 & XORedByte4 & XORedByte5 & XORedByte6 & XORedByte7 & XORedByte8
+
+Call WriteThruBootStrap("2014", "20DF", "Writing Fuse Byte...", 6, 30)
+Call WriteThruBootStrap("24A4", IRDKey, "Cleaning IRD...", 7, 30)
+Call WriteThruBootStrap("2510", GuideByte17 & GuideByte18 & XORedByte3 & XORedByte4 & XORedByte5 & XORedByte6 & XORedByte7 & XORedByte8 & EPROMKey, "Cleaning GuideByte...", 8, 30)
+Call WriteThruBootStrap("2500", GuideByteKey, "Cleaning GuideByte...", 8, 30)
+
+Call WriteThruBootStrap("22F2", "2210E37702270C8EE2B67610280575FC67D56A8CDCE712608EDB7E7D0029020B", "Cleaning Main Code...", 9, 30)
+Call WriteThruBootStrap("2312", "982A30EF1D6102038CD4B5F97D40BE060375FED28CD15C40010017C5AA0060AB", "", "", "")
+Call WriteThruBootStrap("2332", "0101C33D170FF5748028F98800603088003B327202068EE5ADF9726015882ACE", "", "", "")
+Call WriteThruBootStrap("2352", "2A720204E700098A2ACFB34D006102EAF912088E3C96F9C5AA2AF8D024AA3F50", "", "", "")
+Call WriteThruBootStrap("2372", "13248E3C96C35D080FEEF9", "", "", "")
+Call WriteThruBootStrap("23B3", "982A30EF70012A8E3C96C704EDD70904E0D5088827052A8ED1B0F98ED21D8E", "", "", "")
+Call WriteThruBootStrap("23D2", "3C96F9C58E23F5F4CC2E2A0F0C8E23F5F4CC2A2E0F07223FE6D32CD32CC35D0C", "", "", "")
+Call WriteThruBootStrap("23F2", "0FE2F99A2CD02DD32C9A2CD02ED32CF9FFFFFFFF", "", "", "")
+Call WriteThruBootStrap("2406", XORedByte7 & XORedByte8 & XORedByte1 & XORedByte2 & XORedByte3 & XORedByte4 & XORedByte5 & XORedByte6 & XORedByte7 & XORedByte8, "", "", "")' spending limit and password
+Call WriteThruBootStrap("2464", XORedByte5 & XORedByte6 & XORedByte7, "", "", "")' ATR 00 to 25 fix and ratings
+Call WriteThruBootStrap("24C8", EPROMKey, "", "", "")' block of 00s for USW
+Call WriteThruBootStrap("24E0", XORedByte1, "", "", "")'time zone
+Call WriteThruBootStrap("2690", "0000000000000000B3B8BDC2C7C7C7C7C7C7C7C7C7B3B3B3B3B3CCD1D1D1D1D1", "Cleaning Main Code...", 10, 30)
+Call WriteThruBootStrap("26B0", "D1D6DB06C9DC3E1306C9DC3E2B08C9DC3E4306C9DC3E6301C9DC3E7B04C9DC3E", "", "", "")
+Call WriteThruBootStrap("26D0", "7F01C9DC3E8F01C9DC3E9303C9DC3E97FFC8A0CE0D16F082AC8602C081580703", "", "", "")
+Call WriteThruBootStrap("26F0", "0000FF40000000000000000000000000DFE1F01A00DFE1003800DF83043800D5", "", "", "")
+Call WriteThruBootStrap("2710", "13011800D912031800D597001820D59B001820DAE50B1800D8B1812820D7AF82", "", "", "")
+Call WriteThruBootStrap("2730", "3800385003D000289E051C00DFE1023800DABE122860D7B30328E0D6A1012860", "", "", "")
+Call WriteThruBootStrap("2750", "DFE2002860D7F3822860D4110828E0D883003800DF7F00380028C50D28E0DEBA", "", "", "")
+Call WriteThruBootStrap("2770", "0228E0D834042860D8B8082860D8DE003800D8D7043800D90B033800D93B2338", "", "", "")
+Call WriteThruBootStrap("2790", "00D9CEF03800DAB7003860DAD0003820DAD4023860DB16043800D42A052860DB", "", "", "")
+Call WriteThruBootStrap("27B0", "2800181022F2F01800DFF0042860DD808D28E0D9CEF03800DB4C853860DFE101", "", "", "")
+Call WriteThruBootStrap("27D0", "180028A1883C002308E12860D5E7821800D667842860DB9FD52860E002822860", "Cleaning Main Code...", 11, 30)
+Call WriteThruBootStrap("27F0", "DBD0813800D809D29000DFE1F09000383003F000D9608628E02FC79028A02F10", "", "", "")
+Call WriteThruBootStrap("2810", "8028A02ABF89D000DB4C8528E02F088428E0DE458C28E0DE548628E05507AA24", "", "", "")
+Call WriteThruBootStrap("2830", "B843000EAA2650130EF9D1FEFEAAFFFD8E3F3D2DF78C2F5C8E3F5812399B3012", "", "", "")
+Call WriteThruBootStrap("2850", "3AF4EB0130F9B8C8D829D82AC5AA2AF0D007AA3F481307AB00DDC35D080FEE22", "", "", "")
+Call WriteThruBootStrap("2870", "A064AB00DDC35D100FF5C59A30AB00ED700130C33D060FF38C3039008CC2988C", "", "", "")
+Call WriteThruBootStrap("2890", "C0EC8C3EEB8C3B068C3B348C38198C39788CC27A8C3C968C393A8CE0748C2F43", "", "", "")
+Call WriteThruBootStrap("28B0", "8C37008CE30E8C3D128C37808C37708CE0438C3C968C3D568CD6B28C29C48C2F", "", "", "")
+Call WriteThruBootStrap("28D0", "568C31818C3F378C2AC58C3B558C3B798C36EA8CC4308C33B78C2F9D8CD6F68C", "", "", "")
+Call WriteThruBootStrap("28F0", "31038CD3438C36F58C231E8C37738C3ED08C305C8CEC9C8C37728C377220203F", "", "", "")
+Call WriteThruBootStrap("2910", "EF00000000000000000000000000000000000000000000000000000000000000", "", "", "")
+Call WriteThruBootStrap("2930", "000000000000000000000000005CDA5EFA8F6152EA1CFED0C6043DA97745BB98", "Cleaning Main Code...", 13, 30)
+Call WriteThruBootStrap("2950", "231803ECF766BD3570C1DF224A8EA4599B94A5B8FF490C27663B80DE52CD7AE1", "", "", "")
+Call WriteThruBootStrap("2970", "134DAAF79438C92552BC617F8016EE03DB01298401005C0A3C7D919AC5AA24B8", "", "", "")
+Call WriteThruBootStrap("2990", "AB00EDAA2650AB00F5C35D080FEFC522A064AB00DDC35D100FF58800ED2A8800", "", "", "")
+Call WriteThruBootStrap("29B0", "DD2C7210FD8E3EB272DD158824B02A721004E7F9C877202703757F2775EF2742", "", "", "")
+Call WriteThruBootStrap("29D0", "2A0275F727751F02731F02D3024D04020F034204024C0204F750113215D80298", "", "", "")
+Call WriteThruBootStrap("29F0", "2A347780270DD105D50E322A8E283A3205000A77202703B50003AA0000764027", "", "", "")
+Call WriteThruBootStrap("2A10", "0ED0039A2AB81303D40315030206B99B2A740827C370012ADA02C7D402770827", "", "", "")
+Call WriteThruBootStrap("2A30", "07882AA72A8E2A9575F7273215F75011762027277780270DD105D50E32348E28", "", "", "")
+Call WriteThruBootStrap("2A50", "3A32050003AA00007640270AD0039A341303150302059B34740827C3700134DA", "", "", "")
+Call WriteThruBootStrap("2A70", "02CED11577082707882AB32A8E2A9598342A7D0004020389FF45757F2775DF27", "", "", "")
+Call WriteThruBootStrap("2A90", "75BF27C4F9C59A2AAB00ED70012AC35D0C0FF38E00EDF9F76011F761118EE7AE", "", "", "")
+Call WriteThruBootStrap("2AB0", "8CE799F76211F763118EE7AE8CE7998EDCBB8CD5537702120225FE8CC89E0000", "", "", "")
+Call WriteThruBootStrap("2EF8", "A5A5A5A5A5A5A5A5A5A5A5A500FFFFFF7601D001F98CDE3A720504882ACE2A8E", "", "", "")
+Call WriteThruBootStrap("2F18", "E6A0720C048824F42A8EE6A02202E377022701F9D5D08EE02F8824662E882406", "", "", "")
+Call WriteThruBootStrap("2F38", "2C8EC5078822F22E8CD8992D00F406E0938EE0F3771026034224938CE0D47223", "", "", "")
+Call WriteThruBootStrap("2F58", "038CC0C1062FAAFFFC2DD80628B4B4C4D50BF4D9002A0EC8322A8E2F8FC4D00E", "", "", "")
+Call WriteThruBootStrap("2F78", "AA006043000E440E0BC3D32A3D070FE2B4B4120BF932FE5507AA24C043000EAA", "", "", "")
+Call WriteThruBootStrap("2F98", "2658130EF97DFF6002038CD9E51217021D7202078EDA993260CD5D030B10AA2A", "", "", "")
+Call WriteThruBootStrap("2FB8", "D01D6102060FE6770160E27480D3F98EDC9977022745C5AA0064AB00EDC35D0C", "", "", "")
+Call WriteThruBootStrap("2FD8", "0FF5AA297CAB00EDC35D100FF58829412A8800ED2C7210FD8E3EB2C5AA00EDD0", "", "", "")
+Call WriteThruBootStrap("2FF8", "0BAA0064130BAB0064C35D0C0FEE8824F42A720C047264158CDC54F9E2880100", "Cleaning Main Code...", 14, 30)
+Call WriteThruBootStrap("3018", "30E9D50BC5AA24F4D009AA2AE4130944000BC35D0C0FEE120B02032205E68CD0", "", "", "")
+Call WriteThruBootStrap("3038", "0D225064AB00EDC35D100FF58800DD2A8800ED2C7206FD8E3EB298EE3AD42AD4", "", "", "")
+Call WriteThruBootStrap("3058", "29C4B4F975BFCF32BEAA3073D029AA3074D02A8EC37A9E2A8C3404C358CE77C7", "", "", "")
+Call WriteThruBootStrap("3078", "ECCFF8C358C358C358C358C358C7FBC358C358C358C358C358C358C358C358C3", "", "", "")
+Call WriteThruBootStrap("3098", "58C358C7F5CF56C806C6A4CCC43EDCC358CF08C983C358C358C358D0EED0EE30", "", "", "")
+Call WriteThruBootStrap("30B8", "143F20CE3F3710C6E4C358C358CEAD3BA1C9A0CEB83722C8A0C5498E311C9A2A", "", "", "")
+Call WriteThruBootStrap("30D8", "D02B70012A9A2AD02C9E2C8ED27812088ED310D517120802088E23CED0178ED3", "", "", "")
+Call WriteThruBootStrap("30F8", "108CD25A7D87080FD200057D80080BF48A2ACE2D02020AF4CA2A270506032240", "", "", "")
+Call WriteThruBootStrap("3118", "E68CD242320855075A0788312F2A4B012A4900298CD1B03190F0382023693280", "", "", "")
+Call WriteThruBootStrap("3138", "CF382023632329D23810237C233D823800237CDFE1F038202369DFE1823800", "", "", "")
+Call WriteThruBootStrap("3159", "235982386023698E311C7D82080B258ED3AE770227058ED4079E194B17388C", "", "", "")
+Call WriteThruBootStrap("3178", "D3807D87080FE1000C7610B6032241E67D80080BED8CD36C220F8E32718824C8", "", "", "")
+Call WriteThruBootStrap("3198", "3088009E32720206EB4D609E060A4261244C9F2402020314D39E4D609E060C4D", "", "", "")
+Call WriteThruBootStrap("31B8", "629F0607426124D3240001F9C5AA0063AB0090C35D0C0FF5C5AA0090AB0070C3", "", "", "")
+Call WriteThruBootStrap("31D8", "5D0C0FF5AA2931AB0090C35D100FF58829712A8800902C7210FD8E3EB2C5AA00", "", "", "")
+Call WriteThruBootStrap("31F8", "70D00EAA0090130EAB0090C35D100FEED72404C4D50BC5AA2EECD00EAA009043", "", "", "")
+Call WriteThruBootStrap("3218", "000E440E0BC35D0C0FED120B0202009B726315882EEC2A720C04E78800603088", "", "", "")
+Call WriteThruBootStrap("3238", "24C832720206ED1217028022038E32714261FD98622A753F291260B7B7D0048E", "Cleaning Main Code...", 15, 30)
+Call WriteThruBootStrap("3258", "32717780FD0D88006030982A32420406ED00D4726015E700CE42170BD0178ED3", "", "", "")
+Call WriteThruBootStrap("3278", "D54C170B420B17F97440CF22038E3271126202042D040F01F98824E63088009E", "", "", "")
+Call WriteThruBootStrap("3298", "32720206EBF4CC9F610A057D0162021206E68824CA30EFB002DE2507B34D0062", "", "", "")
+Call WriteThruBootStrap("32B8", "06D698619F3262224CC702072231C7020222401D1706C1720C04882EF82A8EE6", "", "", "")
+Call WriteThruBootStrap("32D8", "A03262D1FFC70658220C8E3271C5AA0060AB00DDC35D0C0FF5AA297CAB00DDC3", "", "", "")
+Call WriteThruBootStrap("32F8", "5D100FF58829412A8800DD2C7208FD8E3EB2C5AA0060D00EAA00DD130EAB00DD", "", "", "")
+Call WriteThruBootStrap("3318", "C35D0C0FEE72DD15882EE02A720C04E7882DE02A8E337C882E002A8E337C002B", "", "", "")
+Call WriteThruBootStrap("3338", "C7061A22118E327188006030882AD332721106ED882E202A8E337C000E882E40", "", "", "")
+Call WriteThruBootStrap("3358", "2A8E337C882E602A8E337C88009E308824E632720206ED12FF8824CA30EA75BF", "", "", "")
+Call WriteThruBootStrap("3378", "CF89FF1422208E327188006030982A32722006EDF98824CA30EF2507F9B87260", "", "", "")
+Call WriteThruBootStrap("3398", "BE8E3537D4BE002512BE2D5C0BEF7640CFEB0019D7D78E338D2D030BEB000EC5", "", "", "")
+Call WriteThruBootStrap("33B8", "B5AB00DAC35D260FF812D706E722908CC38F52FF8E351F120B0239002C300100", "", "", "")
+Call WriteThruBootStrap("33D8", "60C5AA0101AB0061C33D600FF58824E63088009E32720206EBF4CC9F6202D300", "", "", "")
+Call WriteThruBootStrap("33F8", "088824CA30EFB002D48900AE768028F1F98CC27A5D0C06F9C5AA2951AB0100C3", "", "", "")
+Call WriteThruBootStrap("3418", "5D100FF5882AD330EFD00BC5AA0063AB0100C33D0B0FF5C5AA0100AB0140C35D", "", "", "")
+Call WriteThruBootStrap("3438", "100FF58829612A8801002C7204FD8E3EB2223C8E3ECBD5DB32DBC2A801002C8E", "", "", "")
+Call WriteThruBootStrap("3458", "ECA58EECA5C59A2CD009AA014013099B2CF4EB102CAB0140D32CC35D100FE7D3", "", "", "")
+Call WriteThruBootStrap("3478", "DB7D04DB0FD28801402C8EECA58EECA5226A8E3ECBD509C5AA0140D00BAA0148", "", "", "")
+Call WriteThruBootStrap("3498", "130BAB0140D00BA82ADC30EF130B440009C35D080FE21209020D8EDED97701B8", "Cleaning Main Code...", 16, 30)
+Call WriteThruBootStrap("34B8", "037217C689FF49C5AA0100D00BA82DE030EF130BAB0100C35D400FECC5A82AD4", "", "", "")
+Call WriteThruBootStrap("34D8", "30EFAB00DDC35D080FF3882AD330EFC01260B7B76CD0248800632A4B012AC53D", "", "", "")
+Call WriteThruBootStrap("34F8", "240B059A2AAB00DDD32AC35D080FF08E0100C5AA00DDD00BAA00A0130BAB00A0", "", "", "")
+Call WriteThruBootStrap("3518", "C35D080FEE009DD50BC5AA2EE0D00EAA2EF8130E44000BC35D0C0FEE120BF98E", "", "", "")
+Call WriteThruBootStrap("3538", "3ED68A288B0207882F042A8EE68E8824CA30EFD01625072D03061C8E36A17260", "", "", "")
+Call WriteThruBootStrap("3558", "0C7202128EE4098EE41A882E802A8E36C18E36A18901212D04061E8E36A1882E", "", "", "")
+Call WriteThruBootStrap("3578", "803088010032726006EB72600C7202128EE41A8E36BD8900FF2D070259D5E926", "", "", "")
+Call WriteThruBootStrap("3598", "0102D9E98E36A18829812A8EC4AEC542E9EA5D060B02D9EAAA2EE015EAAB00DD", "", "", "")
+Call WriteThruBootStrap("35B8", "C35D0C0FEA222D8E3ECB8800DD2A22608EEBEF226A8E3ECBC5AA0100AB0060C3", "", "", "")
+Call WriteThruBootStrap("35D8", "5D200FF572600C7202128EE4098EE41A8E36BD8C36907248948EED82D5DB32DB", "", "", "")
+Call WriteThruBootStrap("35F8", "5D400B06A82DE02A00225D480B06A82A942A00185D500B06A82A942A000E5D51", "", "", "")
+Call WriteThruBootStrap("3618", "0B06A82A832A0004A82DCF2A982A30EF8EEDA4C3129502095DB10FC4C88EEE89", "", "", "")
+Call WriteThruBootStrap("3638", "C4129606B9D1DB5DB10FB3C5AA0088AB00DDC35D0C0FF5AA297CAB00DDC35D10", "", "", "")
+Call WriteThruBootStrap("3658", "0FF58829412A8800DD2C7208FD8E3EB2C5AA0088D00EAA00DD130EAB00DDC35D", "", "", "")
+Call WriteThruBootStrap("3678", "0C0FEE72DD15882EF82A720C04E78E351F020852028E3EA31216B38824CA30EA", "", "", "")
+Call WriteThruBootStrap("3698", "B5882F042A8EE68EF9882E202A726004C5982A349A34AB0100700134C33D040F", "", "", "")
+Call WriteThruBootStrap("36B8", "F38E36C4F9882E202A7260048801002C420422C59A2CAB006070012CC35D200F", "", "", "")
+Call WriteThruBootStrap("36D8", "F388006030982A32722006ED7C202204E2F92D080604C58E3EA38CC3A3D002A6", "Cleaning Main Code...", 17, 30)
+Call WriteThruBootStrap("36F8", "013DFC80351302F97D54BE06087D400902032200E68CC1C9E2D0C18ED06A7260", "", "", "")
+Call WriteThruBootStrap("3718", "157240048826102AE7F9760112178ED06A770125058ECEFF00288ED04D882610", "", "", "")
+Call WriteThruBootStrap("3738", "2A7701101172400C8EE4098EE41A8801002A7601120DC59A2AE170012AC35D40", "", "", "")
+Call WriteThruBootStrap("3758", "0FF5F998C3AB8837D22A8E379BC5AA0088E1C35D080FF7F9D50BF93203AB0164", "", "", "")
+Call WriteThruBootStrap("3778", "B81202AB016CB4F92240522DAB0100C35D3F0FF81210AB01008826902A8E379F", "", "", "")
+Call WriteThruBootStrap("3798", "8C376576011014C59A2A7D5ABE0601B2AB00A4C370012A5D080FED7248948EED", "", "", "")
+Call WriteThruBootStrap("37B8", "827D44BE020D7D56BE02088E37DA8E37DA00068E37F38E37F3F9E44425024554", "", "", "")
+Call WriteThruBootStrap("37D8", "14D4C5AA01008EEDA4C35D400FF5C5AA00A48EEDA4C35D080FF5F9C5A8010030", "", "", "")
+Call WriteThruBootStrap("37F8", "EE8EEDA4C35D2D0FF3AA01008EEDA4C35D400FF5C5AA00A48EEDA4C35D080FF5", "", "", "")
+Call WriteThruBootStrap("3818", "F9D513D50B7D36BE0201F972041E8E386622368E3CA000F28EDC0A88006230EE", "", "", "")
+Call WriteThruBootStrap("3838", "272004302987D78A2ACE27010776401E03223EE68E3866F9302987D78A2ACE27", "", "", "")
+Call WriteThruBootStrap("3858", "0203223DE6D51E74801E8E3866F97201D977801E037200D98E39168E38B18838", "", "", "")
+Call WriteThruBootStrap("3878", "912A77801E048838A12AC59A2AAB00A0C370012A5D100FF3F950E75FA407240E", "", "", "")
+Call WriteThruBootStrap("3898", "C5A87738C1CBE7B663B3029E192FC4CF365AB16C722D1DB1BEF70038F7003AF7", "", "", "")
+Call WriteThruBootStrap("38B8", "803DFF5207F7083D8E38D9C704FA8839012C77801E0488390A2C8E38EE8E38D9", "", "", "")
+Call WriteThruBootStrap("38D8", "F99A2AD0059A2E1305A6013DFC213070012A70012EF99A2C213270012C9A2C21", "", "", "")
+Call WriteThruBootStrap("38F8", "3470012C9A2C213DF902622C02403402442601642D01603401422F03403C121E", "Cleaning Main Code...", 18, 30)
+Call WriteThruBootStrap("3918", "25072704022504B2BC8826602A4B002A790029883F582E4B002E79002DF97410", "", "", "")
+Call WriteThruBootStrap("3938", "B6F9", "", "", "")
+Call WriteThruBootStrap("393D", "2240AB0100C35D400FF88E3ED6C5AA2688D024AA3F801324AB00A4", "", "", "")
+Call WriteThruBootStrap("3958", "C35D080FEE8E37B3C5D509E2D002AA00881302440009C35D080FF0120902BFF9", "", "", "")
+Call WriteThruBootStrap("3978", "8E3ED67D40BE061A8824503088009032720406EB129014910208720206880090", "", "", "")
+Call WriteThruBootStrap("3998", "30E58E3A8375EFB68E3AE48E3F8872970A920A8EE7D1726A0A920A520C8E3AFC", "", "", "")
+Call WriteThruBootStrap("39B8", "7D67080601E25208A6013DFC80358E3CA0C704F4C5AA00A02DFB0F022CFBAB00", "", "", "")
+Call WriteThruBootStrap("39D8", "7CC35D080FEF12D988E91F30B0020488EA3F3098302A72A30A920A12D98EE89F", "", "", "")
+Call WriteThruBootStrap("39F8", "726A0A920AC5E2D007A8015C30EE1307AB0060C35D08020D7D670802E95D050F", "", "", "")
+Call WriteThruBootStrap("3A18", "E5D50700E4F7803DFFC5F7083DAA0060A6013DFC2130C35D070FF28839072C77", "", "", "")
+Call WriteThruBootStrap("3A38", "801E048839102C8E38EE1267A6013DFC2130C5A6013DFC8035AB007CC35D080F", "", "", "")
+Call WriteThruBootStrap("3A58", "F2982A3072A30A920A12D9D5038EE8D5726A0A920A7D0803F406C27AB0021B77", "", "", "")
+Call WriteThruBootStrap("3A78", "021E0552018E3EA38CDCDF5208A6013DFC80358E3C96C704F4F97410B68800B0", "", "", "")
+Call WriteThruBootStrap("3A98", "2A88003B2E7202078EDBD87D40BE06D8F7803D88390A2CF7083D8E38EEF7283D", "", "", "")
+Call WriteThruBootStrap("3AB8", "C5AA00A0A6013DFC2130C35D070605F7243D00EDF7283D5D0F0FE68839132C8E", "", "", "")
+Call WriteThruBootStrap("3AD8", "38EE12AFA6013DFC2130009C8839042C77801E0488390D2C8E38EE12D8A6013D", "", "", "")
+Call WriteThruBootStrap("3AF8", "FC2130F9B58E3CA012D8C704F8F932117D60BE06068EFFBC2317F912BE250F2D", "", "", "")
+Call WriteThruBootStrap("3B18", "0A061112D402038CFFB67620C1038CFF9E8CFFAE7D56BE02F58CFFA67D60BE06", "", "", "")
+Call WriteThruBootStrap("3B38", "05882E202AF912D402058825D02AF97620C1058825502AF98825902AF97D60BE", "Cleaning Main Code...", 19, 30)
+Call WriteThruBootStrap("3B58", "061A8E338D2D030605882E7F2CF92D040605882E4F2CF988007F2CF988264F2C", "", "", "")
+Call WriteThruBootStrap("3B78", "F97D60BE061D8E338D2D030606F4CA2C2E4FF92D040606F4CA2C2E1FF9F4CA2C", "", "", "")
+Call WriteThruBootStrap("3B98", "005FF9F4CA2C260FF98E3ED67710B82FD508D5B87708D0087216087404B80051", "", "", "")
+Call WriteThruBootStrap("3BB8", "7640B54D880176308800A0327208068EE5B7D5A8D5A97401B88E3C74890096C5", "", "", "")
+Call WriteThruBootStrap("3BD8", "AA24F4D00BAA00A043000BAA2AE4130BAB00A0C35D0C0FE88EDED98EDF617D17", "", "", "")
+Call WriteThruBootStrap("3BF8", "C606037204B87708B8037402D17601B80FC5B5AB00A0AB0088C35D0A0FF50037", "", "", "")
+Call WriteThruBootStrap("3C18", "C58801762CA6013DFC80358E3CA0A8017630EE13D89B2C70012CC35D0A0FE688", "", "", "")
+Call WriteThruBootStrap("3C38", "01762CC59A2CAB00A0AB0088B59B2CC370012C5D0A0FED7740B7038E3D907601", "", "", "")
+Call WriteThruBootStrap("3C58", "B604D5A8D5A98E3C74C5AA0088AB00A0C35D080FF598D6C398A7D6F942B5AA12", "", "", "")
+Call WriteThruBootStrap("3C78", "B82507D0AB32C734C802057401D2D5084208ACC5AA00A0E1C35D0D0FF7F9A601", "", "", "")
+Call WriteThruBootStrap("3C98", "3DFC21308E3CA0F9B8C8D5DBD5DCD0D87B05DC32DBAA00A81BD8AB00A8D0DAAA", "", "", "")
+Call WriteThruBootStrap("3CB8", "00A013DAAB00A013DC251FC0AA3CF2D0DA32DB5306AA00A813DAAB00A8B0BDD0", "", "", "")
+Call WriteThruBootStrap("3CD8", "DA32DB5305AA00A01CDAAB00A04300D8D3DB7D08DB0FB9C4B4F9BF12939242AF", "", "", "")
+Call WriteThruBootStrap("3CF8", "E7E3B2C6B89180B4E8739EF75DFDA082F96F25177D0B55970C8022678EE06F74", "", "", "")
+Call WriteThruBootStrap("3D18", "042522088EE06F8E3A838E3AE48E3F8872970A920A8EE7D1726A0A920A520A8E", "", "", "")
+Call WriteThruBootStrap("3D38", "3AFC8839012C8E38EEC5A6013DFC80358E3C9612D88EE06FC35D080FEDF98EFA", "", "", "")
+Call WriteThruBootStrap("3D58", "27B006F98800683088245832720406EDC5AA2688D007AA3F80430007AA006013", "", "", "")
+Call WriteThruBootStrap("3D78", "07AB0060C35D080FE87260158826902A720804E77420D1F9882460308800ED32", "", "", "")
+Call WriteThruBootStrap("3D98", "720406EB720407D5063206AA00A0D0045503AA00EDD0053206C35507AA00A04B", "", "", "")
+Call WriteThruBootStrap("3DB8", "0005C85503AA00EDD00932043C00553F8E3E0843000512041309BDB0BDC08E3E", "Cleaning Main Code...", 20, 30)
+Call WriteThruBootStrap("3DD8", "08BE1B05C4AB00A0C5D8F0AA00EDD002B0BFD003B4D8022580BE1403AB00EDC3", "", "", "")
+Call WriteThruBootStrap("3DF8", "770401E7B4D3067708069ED7070498F98EFFB67D00D406F78CFF9E0012010125", "", "", "")
+Call WriteThruBootStrap("3E18", "002008001E010124100808001A0101240602080013010125202008002D010124", "", "", "")
+Call WriteThruBootStrap("3E38", "08040800D0010124650108002E010124682008004E0101245C04080058010124", "", "", "")
+Call WriteThruBootStrap("3E58", "E0010800F3010124A40408001901012464010800FE0101240C04080041010121", "", "", "")
+Call WriteThruBootStrap("3E78", "060408C9F400000045010124881C0800F8010120240908CA360000CA750000CA", "", "", "")
+Call WriteThruBootStrap("3E98", "B100000044010124E80C08B8A82AD02A9A2AB302038EE68EB4F9223C8E3ECB42", "", "", "")
+Call WriteThruBootStrap("3EB8", "04FED50E8EECA5D30E4DFD0E0FF642FE04226AD00A920AF98E3ED68CC1A47202", "", "", "")
+Call WriteThruBootStrap("3ED8", "058CC204E2C07604D10375BFD375F7CF8CC9597601CF1B2D7F06178E298C8EC2", "", "", "")
+Call WriteThruBootStrap("3EF8", "4C8A2F04020A882E202A72C0048EE6A0227F7D5EBE060E7D01120609D31D7D08", "", "", "")
+Call WriteThruBootStrap("3F18", "1D060222018CC00B770212108ED0EE8EDED97608B80375BFB48CCC4E8CCC3675", "", "", "")
+Call WriteThruBootStrap("3F38", "FBB48CD59FF4CA2CCBB90603728646F9", "", "", "")
+Call WriteThruBootStrap("3F58", "12937D04060603751F938E2856D093F9", "", "", "")
+Call WriteThruBootStrap("3F88", "727B0252058E3FB8722902000A520FAA00A0BCF008D0028E3FB3AA00A0823FDF", "", "", "")
+Call WriteThruBootStrap("3FA8", "C522C72306724B024B02005203A40220AA00AA1B02AB00AAAA009FCAF3F91E72", "", "", "")
+Call WriteThruBootStrap("3FC8", "CB250299A866F0DA234B00F8F5A0ABA70005009FCAB9F95203AA00A0D002AA00", "", "", "")
+Call WriteThruBootStrap("3FE8", "AC4B0002AA3F9413022B5ABE236BAB00ACCAE6A3FD20F900", "Cleaning Main Code...", 21, 30)
+
+Call WriteThruBootStrap("2024", IRDKey & EPROMKey, "Cleaning blank areas...", 22, 30)
+Call WriteThruBootStrap("2030", EPROMKey & EPROMKey & EPROMKey & EPROMKey, "", "", "")
+Call WriteThruBootStrap("2050", EPROMKey & EPROMKey & EPROMKey & EPROMKey, "", "", "")
+Call WriteThruBootStrap("2070", EPROMKey & EPROMKey & EPROMKey & EPROMKey, "", "", "")
+Call WriteThruBootStrap("2090", EPROMKey & EPROMKey & EPROMKey & EPROMKey, "", "", "")
+Call WriteThruBootStrap("20B0", EPROMKey & EPROMKey & EPROMKey & EPROMKey, "Cleaning blank areas...", 23, 30)
+Call WriteThruBootStrap("20D0", EPROMKey & EPROMKey & EPROMKey & EPROMKey, "", "", "")
+Call WriteThruBootStrap("20F0", EPROMKey & EPROMKey & EPROMKey & EPROMKey, "", "", "")
+Call WriteThruBootStrap("2110", EPROMKey & EPROMKey & EPROMKey & EPROMKey, "", "", "")
+Call WriteThruBootStrap("2130", EPROMKey & EPROMKey & EPROMKey & EPROMKey, "", "", "")
+Call WriteThruBootStrap("2150", EPROMKey & EPROMKey & EPROMKey & EPROMKey, "", "", "")
+Call WriteThruBootStrap("2170", EPROMKey & EPROMKey & EPROMKey & EPROMKey, "", "", "")
+Call WriteThruBootStrap("2190", EPROMKey & EPROMKey & EPROMKey & EPROMKey, "Cleaning blank areas...", 24, 30)
+Call WriteThruBootStrap("21B0", EPROMKey & EPROMKey & EPROMKey & EPROMKey, "", "", "")
+Call WriteThruBootStrap("21D0", EPROMKey & EPROMKey & EPROMKey & EPROMKey, "", "", "")
+Call WriteThruBootStrap("21F0", EPROMKey & EPROMKey & EPROMKey & EPROMKey, "", "", "")
+Call WriteThruBootStrap("2210", EPROMKey & EPROMKey & EPROMKey & EPROMKey, "", "", "")
+Call WriteThruBootStrap("2230", EPROMKey & EPROMKey & EPROMKey & EPROMKey, "", "", "")
+Call WriteThruBootStrap("2250", EPROMKey & EPROMKey & EPROMKey & EPROMKey, "", "", "")
+Call WriteThruBootStrap("2270", EPROMKey & EPROMKey & EPROMKey & EPROMKey, "", "", "")
+Call WriteThruBootStrap("2290", EPROMKey & EPROMKey & EPROMKey & EPROMKey, "Cleaning blank areas...", 25, 30)
+Call WriteThruBootStrap("22B0", EPROMKey & EPROMKey & EPROMKey & EPROMKey, "", "", "")
+Call WriteThruBootStrap("22D0", EPROMKey & EPROMKey & EPROMKey & EPROMKey, "", "", "")
+Call WriteThruBootStrap("22 F0", XORedByte1 & XORedByte2, "", "", "")
+'------------------------------------------------------------------------
+Call WriteThruBootStrap("2B00", EPROMKey & EPROMKey & EPROMKey & EPROMKey, "", "", "")
+Call WriteThruBootStrap("2B20", EPROMKey & EPROMKey & EPROMKey & EPROMKey, "", "", "")
+Call WriteThruBootStrap("2B40", EPROMKey & EPROMKey & EPROMKey & EPROMKey, "", "", "")
+Call WriteThruBootStrap("2B60", EPROMKey & EPROMKey & EPROMKey & EPROMKey, "Cleaning blank areas...", 26, 30)
+Call WriteThruBootStrap("2B80", EPROMKey & EPROMKey & EPROMKey & EPROMKey, "", "", "")
+Call WriteThruBootStrap("2BA0", EPROMKey & EPROMKey & EPROMKey & EPROMKey, "", "", "")
+Call WriteThruBootStrap("2BC0", EPROMKey & EPROMKey & EPROMKey & EPROMKey, "", "", "")
+Call WriteThruBootStrap("2BE0", EPROMKey & EPROMKey & EPROMKey & EPROMKey, "", "", "")
+Call WriteThruBootStrap("2C00", EPROMKey & EPROMKey & EPROMKey & EPROMKey, "", "", "")
+Call WriteThruBootStrap("2C20", EPROMKey & EPROMKey & EPROMKey & EPROMKey, "", "", "")
+Call WriteThruBootStrap("2C40", EPROMKey & EPROMKey & EPROMKey & EPROMKey, "", "", "")
+Call WriteThruBootStrap("2C60", EPROMKey & EPROMKey & EPROMKey & EPROMKey, "Cleaning blank areas...", 27, 30)
+Call WriteThruBootStrap("2C80", EPROMKey & EPROMKey & EPROMKey & EPROMKey, "", "", "")
+Call WriteThruBootStrap("2CA0", EPROMKey & EPROMKey & EPROMKey & EPROMKey, "", "", "")
+Call WriteThruBootStrap("2CC0", EPROMKey & EPROMKey & EPROMKey & EPROMKey, "", "", "")
+Call WriteThruBootStrap("2CE0", EPROMKey & EPROMKey & EPROMKey & EPROMKey, "", "", "")
+Call WriteThruBootStrap("2D00", EPROMKey & EPROMKey & EPROMKey & EPROMKey, "", "", "")
+Call WriteThruBootStrap("2D20", EPROMKey & EPROMKey & EPROMKey & EPROMKey, "", "", "")
+Call WriteThruBootStrap("2D40", EPROMKey & EPROMKey & EPROMKey & EPROMKey, "", "", "")
+Call WriteThruBootStrap("2D60", EPROMKey & EPROMKey & EPROMKey & EPROMKey, "", "", "")
+Call WriteThruBootStrap("2D80", EPROMKey & EPROMKey & EPROMKey & EPROMKey, "", "", "")
+Call WriteThruBootStrap("2DA0", EPROMKey & EPROMKey & EPROMKey & EPROMKey, "Cleaning blank areas...", 28, 30)
+Call WriteThruBootStrap("2DE0", EPROMKey & EPROMKey & EPROMKey & EPROMKey, "", "", "")
+Call WriteThruBootStrap("2E00", EPROMKey & EPROMKey & EPROMKey & EPROMKey, "", "", "")
+Call WriteThruBootStrap("2E20", EPROMKey & EPROMKey & EPROMKey & EPROMKey, "", "", "")
+Call WriteThruBootStrap("2E40", EPROMKey & EPROMKey & EPROMKey & EPROMKey, "", "", "")
+Call WriteThruBootStrap("2E60", EPROMKey & EPROMKey & EPROMKey & EPROMKey, "", "", "")
+Call WriteThruBootStrap("2E80", EPROMKey & EPROMKey & EPROMKey & EPROMKey, "", "", "")
+Call WriteThruBootStrap("2EA0", EPROMKey & EPROMKey & EPROMKey & EPROMKey, "", "", "")
+Call WriteThruBootStrap("2EC0", EPROMKey & EPROMKey & EPROMKey & EPROMKey, "Cleaning blank areas...", 29, 30)
+
+End Sub
+
+Function GetATR()
+
+    Dim temp
+    Dim I
+
+    Call Sc.ProgressBox(0,0,0,0)
+    Sc.Write("06100E10019300")
+    Sc.Delay(500)
+    Sc.Read(&h02)
+    temp = Sc.GetByte(&h01)
+    Sc.Read (temp)
+
+If temp <> 20 Then
+GetATR = False
+Exit Function
+End If
+
+    If Sc.GetByte(&h01) = &h7F Then
+        GetATR = True
+    Else
+        GetATR = False
+    End If
+
+'Verbose = False
+
+End Function
+
+Function VerifyUnlooper()
+    ' This subroutine makes sure that the unlooper is connected and working properly.
+    ' If not, an error message is displayed and the script is aborted.
+
+    Dim ErrorString
+
+    VerifyUnlooper=1
+    If UnlooperResetVerify()=0 Then
+        ErrorString="Unable to communicate with unlooper... " +vbCr+vbCr+_
+            "This means one of the following:"+vbCr+vbCr+_
+            "- You have not selected 'Unlooper' in the WinExplorer quicksettings."+vbCr+_
+            "- You are trying to use a programmer instead of an unlooper."+vbCr+_
+            "- Your unlooper is not connected to the same COM port selected in WinExplorer."+vbCr+_
+            "- Your unlooper is not Flashed for the card type you are trying to do."+vbCr+_
+            "        su2bs01 for H-cards    ul4s for HU cards"+vbCr+_
+            "- Your unlooper is not powered on."+vbCr+vbCr+_
+            "Please correct this problem and try to run the script again."
+        Call Sc.MsgBox(ErrorString,vbCritical,ScriptName+" "+ScriptVer+" - Communication Error")
+        VerifyUnlooper=0
+    End If
+End Function
+
+Function UnlooperResetVerify()
+    ' This function attempts to reset the unlooper and verify that it is
+    ' present, connected, and working properly.  1 is returned if successful,
+    ' 0 if not.
+    Dim RetVal
+    Dim UnlooperID
+    Dim i
+
+    UnlooperResetVerify=0
+    Sc.ByteDelay=0                            ' Unlooper doesn't need byte delay
+    Call Sc.Reset()                            ' Reset the unlooper
+    RetVal=Sc.Flush()                        ' Flush the receive buffer
+    If SendUL("90")=1 Then                    ' Ask the unlooper to identify itself
+        If Sc.Read(4)=4 Then                ' We should receive 4 bytes from unlooper
+            For i=0 to 3                    ' Assemble the unlooper version string
+                UnlooperID=UnlooperID+Chr(Sc.GetByte(i))
+            Next
+            If (UnlooperID="UL4S") Then
+Sc.Print vBcR + "Atmel Flash : " + UnlooperID + VbCr
+                Sc.Write("A0")                ' Turn LED off if it is on
+                UnlooperResetVerify=1        ' We are successfully communicating with the Unlooper
+            End If
+        End If
+    End If
+End Function
+
+Function HexString(Number,Length)
+
+    ' This function takes 2 arguments, a number and a length.  It converts the decimal
+    ' number given by the first argument to a Hexidecimal string with its length
+    ' equal to the number of digits given by the second argument
+
+    Dim RetVal
+    Dim CurLen
+
+    RetVal=Hex(Number)
+    CurLen=Len(RetVal)
+    If CurLen<Length Then
+        RetVal=String(Length-CurLen,"0") & RetVal
+    End If
+    HexString=RetVal
+
+End Function
+
+Function Hex2Dec(HexNumber)
+    ' This function takes 1 argument, a string containing a hex value of any digit length
+    ' and returns the decimal equivalent
+    Dim DecimalValue
+    Dim DigitCount
+    Dim Digit
+    Dim HexDigit
+
+    HexNumber = Replace(UCase(HexNumber), " ", "")
+    DigitCount = Len(HexNumber)
+
+    For Digit = 1 To DigitCount
+
+        HexDigit = Mid(HexNumber, Digit, 1)
+        If Asc(HexDigit) < 58 Then
+            DecimalValue = HexDigit * 16 ^ (DigitCount - Digit)
+        Else
+            DecimalValue = (Asc(HexDigit) - 55) * 16 ^ (DigitCount - Digit)
+        End If
+        Hex2Dec = Hex2Dec + DecimalValue
+    Next
+
+End Function
+
+Function SendUL(ToSend)
+    ' This function handles the low-level communication to the unlooper for
+    ' packets that receive a response.  It gives the unlooper some time to
+    ' respond to a packet.  If we get a response the function returns 1,
+    ' otherwise returns 0.
+
+    Dim RetVal
+    Dim ULResponseTime
+    Dim BufferBytes
+    Const MaxULResponseTime=25000                ' Make sure we delay enough so very fast computers wait a little
+    Const MaxBufferBytes=100
+
+    SendUL=0
+    ULResponseTime=0                            ' Currently, haven't waited for unlooper
+    BufferBytes=0                                ' Current bytes in buffer is 0
+    RetVal=Sc.Flush()                            ' Flush receive buffer
+    Sc.Write(ToSend)                            ' Send the bytes to the unlooper
+    Do While (BufferBytes=0 And ULResponseTime<MaxULResponseTime)
+        ULResponseTime=ULResponseTime+1            ' Add 1 to running total of delayed time
+        BufferBytes=Sc.BytesInBuffer
+    Loop
+
+    If ULResponseTime<MaxULResponseTime Then
+        SendUL=1                                ' We got a response from the unlooper
+    End If
+End Function
+
+Sub SendGP(GP)
+    ' This subroutine sends a glitch packet to the unlooper and receives the response
+    ' The glitch packet should not have the length byte or the end procedure commands
+    Dim Length
+    Dim i
+
+    Call Replace(GP," ","")
+    GP=GP+"00"                                        ' Add the end procedure byte
+    Length=Len(GP)\2
+    GP=HexString(Length,2)+GP                        ' Add the glitch procedure start/length byte
+    If SendUL(GP)=1 Then                            ' Send the glitch packet, and if we received a response,
+        If Sc.Read(2)=2 Then                        ' Did we get 2 bytes?  If so,
+            ' Receive the response packet "# bytes processed" byte and "bytes to send" byte
+            GPPLen=Sc.GetByte(0)                    ' Get the processed byte length from unlooper
+            GPRLen=Sc.GetByte(1)                    ' Get the number of bytes the unlooper has to send
+            If GPRLen>0 Then Sc.Read(GPRLen)        ' Read additional bytes from the unlooper if they're coming
+            i=0
+            Do While (GPRLen>i)                        ' Put all bytes that the unlooper had to send into the GPR array
+                GPR(i)=Sc.GetByte(i)
+                i=i+1
+            Loop
+        Else
+            ' We didn't receive 2 bytes from the unlooper
+            GPPLen=0
+            GPRLen=0
+        End If
+    Else
+        ' We didn't receive a response from the unlooper
+        GPPLen=0
+        GPRLen=0
+    End If
+End Sub
+
+Function SendUL(ToSend)
+    ' This function handles the low-level communication to the unlooper for
+    ' packets that receive a response.  It gives the unlooper some time to
+    ' respond to a packet.  If we get a response the function returns 1,
+    ' otherwise returns 0.
+
+    Dim RetVal
+    Dim ULResponseTime
+    Dim BufferBytes
+    Const MaxULResponseTime=25000                ' Make sure we delay enough so very fast computers wait a little
+    Const MaxBufferBytes=100
+
+    SendUL=0
+    ULResponseTime=0                            ' Currently, haven't waited for unlooper
+    BufferBytes=0                                ' Current bytes in buffer is 0
+    RetVal=Sc.Flush()                            ' Flush receive buffer
+    Sc.Write(ToSend)                            ' Send the bytes to the unlooper
+    Do While (BufferBytes=0 And ULResponseTime<MaxULResponseTime)
+        ULResponseTime=ULResponseTime+1            ' Add 1 to running total of delayed time
+        BufferBytes=Sc.BytesInBuffer
+    Loop
+
+    If ULResponseTime<MaxULResponseTime Then
+        SendUL=1                                ' We got a response from the unlooper
+    End If
+End Function
+
+Sub UnlooperSettings()
+    ' This subroutine uses WinExplorer 4.6's new Wx. object to automatically
+    ' configure all the WinExplorer settings for the user.
+    Wx.BaudRate=115200
+    Wx.ResetBaudRate=115200
+    Wx.Parity=0                    ' 0 = None, 1 = Odd, 2 = Even, 3 = Mark, 4 = Space
+    Wx.StopBits=0                ' 0 = 1 stop bit, 1 = 1.5 stop bits, 2 = 2 stop bits
+    Wx.DTRControl=0                ' Initial state of DTR  0 = off, 1 = on
+    Wx.RTSControl=1                ' Initial state of RTS  0 = off, 1 = on
+    Wx.ResetDelay=0                ' In microseconds
+    Wx.ByteDelay=0                ' In microseconds
+    Wx.RxByteTimeout=200        ' In milliseconds
+    Wx.ResetMode=2                ' 0 = No Resets, 1 = ISO Reset (Expect a ATR), 2 = Device Reset (No ATR)
+    Wx.ResetLine=1                ' 0 = Toggle RTS for Reset, 1 = Toggle DTR for Reset
+    Wx.ByteConvention=1            ' 0 = Inverse, 1 = Direct
+    Wx.FlushEchoByte=0            ' 0 = no flush, 1 = flush - A Phoenix interface will echo each byte transmitted.
+    Wx.FlushBeforeWrite=1        ' 0 = no flush, 1 = flush - Flush the receive buffer before each write to strip off Null bytes.
+    Wx.IgnoreTimeouts=1            ' 0 = Abort script on a receive timeout, 1 = Ignore all receive timeouts
+    Wx.ResetAfterTimeout=0        ' 0 = Don't reset after a timeout, 1 = do a reset after a timeout  - Not used if "IgnoreTimeouts=0"
+    Wx.LogTransactions=0        ' 0 = Don't log transactions, 1 = log transactions
+    Wx.DisplayUSW=0                ' Display USW after script complete 0 = no, 1 = yes
+    Wx.DisplayFuse=0            ' Display Fuse after script complete 0 = no, 1 = yes
+End Sub

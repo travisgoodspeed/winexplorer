@@ -1,0 +1,323 @@
+sub main()
+call dishsettings
+call checklogin
+end sub
+Sub dishsettings()
+' WinExplorer v4.4 Settings (3.6864 crystal):
+    ' This subroutine uses WinExplorer 4.6's new Wx. object to automatically
+    ' configure all the WinExplorer settings for the user.
+    Wx.BaudRate=115200
+    Wx.ResetBaudRate=9600
+    Wx.Parity=1           ' 0 = None, 1 = Odd, 2 = Even, 3 = Mark, 4 = Space
+    Wx.StopBits=2         ' 0 = 1 stop bit, 1 = 1.5 stop bits, 2 = 2 stop bits
+    Wx.DTRControl=1      ' Initial state of DTR  0 = off, 1 = on
+    Wx.RTSControl=0       ' Initial state of RTS  0 = off, 1 = on
+    Wx.ResetDelay=1000     ' In microseconds
+    Wx.ByteDelay=20     ' In microseconds
+    Wx.RxByteTimeout=1000  '  In milliseconds
+    Wx.ResetMode=1                ' 0 = No Resets, 1 = ISO Reset (Expect a ATR), 2 = Device Reset (No ATR)
+    Wx.ResetLine=0                ' 0 = Toggle RTS for Reset, 1 = Toggle DTR for Reset
+   Wx.ByteConvention=0            ' 0 = Inverse, 1 = Direct
+    Wx.FlushEchoByte=1            ' 0 = no flush, 1 = flush - A Phoenix interface will echo each byte transmitted.
+    Wx.FlushBeforeWrite=1        ' 0 = no flush, 1 = flush - Flush the receive buffer before each write to strip off Null bytes.
+    Wx.IgnoreTimeouts=0            ' 0 = Abort script on a receive timeout, 1 = Ignore all receive timeouts
+    Wx.ResetAfterTimeout=0        ' 0 = Don't reset after a timeout, 1 = do a reset after a timeout  - Not used if "IgnoreTimeouts=0"
+ End sub
+
+DIM POINTER, KEYTOBEGINSEARCH, keyfound, finalLRC, LRCck, step, bdcount, newS, DATACOUNT, COUNT, TRYKEY, SUBLRCck, LOGINKEYlrcCK
+POINTER="F1"
+bdcount=1
+step=0
+newS=0
+
+Dim ATOF(15)
+    ATOF(0)="0"
+    ATOF(1)="1"
+    ATOF(2)="2"
+    ATOF(3)="3"
+    ATOF(4)="4"
+    ATOF(5)="5"
+    ATOF(6)="6"
+    ATOF(7)="7"
+    ATOF(8)="8"
+    ATOF(9)="9"
+    ATOF(10)="A"
+    ATOF(11)="B"
+    ATOF(12)="C"
+    ATOF(13)="D"
+    ATOF(14)="E"
+    ATOF(15)="F"
+
+    Dim DATAPOINT(15)
+    DATAPOINT(0)="0"
+    DATAPOINT(1)="1"
+    DATAPOINT(2)="2"
+    DATAPOINT(3)="3"
+    DATAPOINT(4)="4"
+    DATAPOINT(5)="5"
+    DATAPOINT(6)="6"
+    DATAPOINT(7)="7"
+    DATAPOINT(8)="8"
+    DATAPOINT(9)="9"
+    DATAPOINT(10)="A"
+    DATAPOINT(11)="B"
+    DATAPOINT(12)="C"
+    DATAPOINT(13)="D"
+    DATAPOINT(14)="E"
+    DATAPOINT(15)="F"
+
+DATACOUNT=15
+COUNT =15
+''''''''''''''''ENTER YOUR C060 INFORMATION BELOW FROM RIGHT TO LEFT GOING DOWN
+''''''''''''''''STARTING AT LOGINKEY(2) if you know what it is, these ones are for
+''''''''''''''''virgin or restored keys
+''''''''''''''''IF SOMEONE WANTS TO ADD A DIALOGE BOX THAT DOES THE SAME thing GO FOR IT
+'''''''''''''''''PROCTOR
+'F3 AD 06 42 5D 15 43 9C A1 58 FE 67 B1 4F 99 B9
+Dim LOGINKEY(15)
+    LOGINKEY(0)="F3"
+    LOGINKEY(1)="AD"
+    LOGINKEY(2)="06"
+    LOGINKEY(3)="42"
+    LOGINKEY(4)="5D"
+    LOGINKEY(5)="15"
+    LOGINKEY(6)="43"
+    LOGINKEY(7)="9C"
+    LOGINKEY(8)="A1"
+    LOGINKEY(9)="58"
+    LOGINKEY(10)="FE"
+    LOGINKEY(11)="67"
+    LOGINKEY(12)="B1"
+    LOGINKEY(13)="4F"
+    LOGINKEY(14)="99"
+    LOGINKEY(15)=POINTER
+LOGINKEYlrcCK=("&H" & LOGINKEY(0) Xor "&H" & LOGINKEY(1) Xor "&H" & LOGINKEY(2) Xor "&H" & LOGINKEY(3) Xor "&H" & LOGINKEY(4) Xor "&H" & LOGINKEY(5) Xor "&H" & LOGINKEY(6) Xor "&H" & LOGINKEY(7) Xor "&H" & LOGINKEY(8) Xor "&H" & LOGINKEY(9) Xor "&H" & LOGINKEY(10) Xor "&H" & LOGINKEY(11) Xor "&H" & LOGINKEY(12) Xor "&H" & LOGINKEY(13) Xor "&H" & LOGINKEY(14) Xor "&H" & LOGINKEY(15))
+TRYKEY = LOGINKEY(0)&" "&LOGINKEY(1)&" "&LOGINKEY(2)&" "&LOGINKEY(3)&" "&LOGINKEY(4)&" "&LOGINKEY(5)&" "&LOGINKEY(6)&" "&LOGINKEY(7)&" "&LOGINKEY(8)&" "&LOGINKEY(9)&" "&LOGINKEY(10)&" "&LOGINKEY(11)&" "&LOGINKEY(12)&" "&LOGINKEY(13)&" "&LOGINKEY(14)&" "&LOGINKEY(15)
+Dim keylook(15)
+    keylook(0)="XX"
+    keylook(1)="XX"
+    keylook(2)="XX"
+    keylook(3)="XX"
+    keylook(4)="XX"
+    keylook(5)="XX"
+    keylook(6)="XX"
+    keylook(7)="XX"
+    keylook(8)="XX"
+    keylook(9)="XX"
+    keylook(10)="XX"
+    keylook(11)="XX"
+    keylook(12)="XX"
+    keylook(13)="XX"
+    keylook(14)="XX"
+    keylook(15)="XX"
+DIM ENTIREKEYLOOK
+ENTIREKEYLOOK= keylook(0)&" "& keylook(1)&" "& keylook(2)&" "& keylook(3)&" "& keylook(4)&" "& keylook(5)&" "& keylook(6)&" "& keylook(7)&" "& keylook(8)&" "& keylook(9)&" "& keylook(10)&" "& keylook(11)&" "& keylook(12)&" "& keylook(13)&" "& keylook(14)&" "& keylook(15)
+dim PRchoice, name
+
+Sub checklogin()
+Dim RetVal
+   RetVal = Sc.ButtonBox("Please select your service provider",  vbDefaultButton2 + vbQuestion, "Welcome to Speed keyzXP3", "Dish", "Bev")
+if RetVal ="1" then
+PRchoice="00"
+name="Dish"
+call crdtest
+end if
+if RetVal ="2" then
+PRchoice="08"
+name="Bev"
+call crdtest
+end if
+   Exit Sub
+End sub
+
+sub dumptest()
+sc.delay(50)
+if name="Bev" then
+'0801-goodlogin
+Sc.Write("21001DA0CA000017031508011011054E6970504572204973206120627554742600")
+    Sc.Verbose = false
+Sc.read(11)
+    sc.print "sending nipper login........."&vbCrLf
+    Sc.Write("210007A0B1100002004065")
+    Sc.Verbose = true
+Sc.read(4)
+sc.print "^^^^^^^^^^^^^^^^^^^^^^^^this response should match"
+sc.print " RX Data : 00 XX XX XX XX -where XX are numbers from your cam"&vbCrLf
+    Sc.Verbose = false
+'0801-badlogin
+'sc.reset
+    sc.print "sending incorrect nipper login..........."&vbCrLf
+Sc.Write("21001DA0CA0000170315080110110544697050457220497320612062755474260A")
+Sc.read(11)
+Sc.Write("210007A0B1100002004065")
+    Sc.Verbose = true
+Sc.read(4)
+    Sc.Verbose = false
+sc.print "^^^^^^^^^^^^^^^^^^^^^^^^this response should match"
+sc.print " RX Data : 12 40 02 63 -meaning bad login"&vbCrLf
+sc.print "if these numbers dont match or at least resemble the above then there is a configuration problem with winexplorer"
+else
+'0001-goodlogin
+Sc.Write("21001DA0CA000017031500011011054E6970504572204973206120627554742608")
+Sc.read(11)
+Sc.Write("210007A0B1100002004065")
+    Sc.Verbose = true
+Sc.read(4)
+    Sc.Verbose = false
+sc.print "^^^^^^^^^^^^^^^^^^^^^^^^this response should match"
+sc.print " RX Data : 00 XX XX XX XX -where XX are numbers from your cam"&vbCrLf
+
+'0001-badlogin
+Sc.Write("21001DA0CA00001703150001101105446970504572204973206120627554742602")
+Sc.read(11)
+Sc.Write("210007A0B1100002004065")
+    Sc.Verbose = true
+Sc.read(4)
+    Sc.Verbose = false
+sc.print "^^^^^^^^^^^^^^^^^^^^^^^^this response should match"
+sc.print " RX Data : 12 40 02 63 -meaning bad login"&vbCrLf
+sc.print "if these numbers dont match or at least resemble the above then there is a configuration problem with winexplorer"
+end if
+sc.reset
+call crdtest()
+End sub
+
+Sub crdtest()
+dim thisbyte, provider, camdate1, camdate2,camdate
+dim cam1,cam2,cam3,cam4
+    Sc.Verbose = false
+sc.delay(30)
+Sc.Write("210008A0CA000002C6000483")
+Sc.read(5)
+Sc.read(2)
+camdate1= hex(sc.getbyte(0))
+camdate2= hex(sc.getbyte(1))
+camdate= camdate1&" "&camdate2
+Sc.Write("21000DA0CA00000721050603FFFF002040")
+Sc.read(6)
+provider=sc.getbyte(5)
+Sc.read(2)
+Sc.read(4)
+cam1=hex(sc.getbyte(0))
+cam2=hex(sc.getbyte(1))
+cam3=hex(sc.getbyte(2))
+cam4=hex(sc.getbyte(3))
+thisbyte=cam1&" "&cam2&" "&cam3&" "&cam4&" <--- cam#"&vbCrLf
+if hex(provider)="8" then
+provider="0801"
+else
+provider="0001"
+end if
+
+Dim RetVal2
+ RetVal2 = Sc.ButtonBox("Do these numbers match you CAM"&vbCrlf&camdate&" <---- date on cam"&vbCrLf&thisbyte&provider&"<---- provider#"&vbCrLf&"If yes then click yes to Proceed",  vbDefaultButton3 + vbQuestion, "Welcome to Speed keyzXP3", "Yes", "No", "Dump Test","Exit" )
+if RetVal2 ="1" then
+sc.reset
+call keysearch
+End If
+
+if RetVal2 ="2" then
+   Exit Sub
+End If
+if RetVal2 ="3" then
+call dumptest
+End If
+end sub
+
+Sub keysearch()
+       For CurrStep = 0 to 15
+        Call Sc.ProgressBox("Trying the following key " & newS&ATOF(CurrStep)& vbcr&"CURRENTLY KNOWN "&name&" KEY"& vbcr&ENTIREKEYLOOK, CurrStep, 15,"Welcome to Speed KeyzXP")
+''''''this will change the speed of the read if you keep timing out increase the delay from 20
+       Call Sc.Delay(20)
+    LRCck=newS&ATOF(CurrStep)
+SUBLRCck =("&H" & LRCck)
+'''''''''''''''BUILD BACKDOORREAD'''''''''''''''''''''''''''''''''
+    Sc.Verbose = faLSE
+finalLRC = Hex(SUBLRCck Xor &H52 Xor LOGINKEYlrcCK Xor "&H"&PRchoice)
+   SC.WRITE("21 00 1D A0 CA 00 00 17 03 15 "&PRchoice&" 01 10 11 05"& newS & ATOF(CurrStep) & TRYKEY & finalLRC)
+  Sc.read(11)
+   Sc.Write("210007A0B1100002004065")
+   Sc.read(4)
+ThisByte = Hex(Sc.GetByte(0))
+IF COUNT="0" THEN
+    COUNT=15
+ELSE
+    COUNT=COUNT-1
+END IF
+
+IF ThisByte="0" then
+keyfound = newS&ATOF(CurrStep)
+SC.RESET
+
+IF DATACOUNT="0" and bdcount="0"THEN
+SC.PRINT "HERE IS YOUR BACKDOOR-0 KEY"& vbcr
+SC.PRINT KEYfound&" "& LOGINKEY(0)&" "&LOGINKEY(1)&" "&LOGINKEY(2)&" "&LOGINKEY(3)&" "&LOGINKEY(4)&" "&LOGINKEY(5)&" "&LOGINKEY(6)&" "&LOGINKEY(7)&" "&LOGINKEY(8)&" "&LOGINKEY(9)&" "&LOGINKEY(10)&" "&LOGINKEY(11)&" "&LOGINKEY(12)&" "&LOGINKEY(13)&" "&LOGINKEY(14)& vbcr
+exit sub
+END IF
+IF DATACOUNT="0" and bdcount="1"THEN
+SC.PRINT "HERE IS YOUR BACKDOOR-1 KEY"& vbcr
+SC.PRINT KEYfound&" "& LOGINKEY(0)&" "&LOGINKEY(1)&" "&LOGINKEY(2)&" "&LOGINKEY(3)&" "&LOGINKEY(4)&" "&LOGINKEY(5)&" "&LOGINKEY(6)&" "&LOGINKEY(7)&" "&LOGINKEY(8)&" "&LOGINKEY(9)&" "&LOGINKEY(10)&" "&LOGINKEY(11)&" "&LOGINKEY(12)&" "&LOGINKEY(13)&" "&LOGINKEY(14)& vbcr
+bdcount=bdcount-1
+DATACOUNT=16
+    keylook(0)="XX"
+    keylook(1)="XX"
+    keylook(2)="XX"
+    keylook(3)="XX"
+    keylook(4)="XX"
+    keylook(5)="XX"
+    keylook(6)="XX"
+    keylook(7)="XX"
+    keylook(8)="XX"
+    keylook(9)="XX"
+    keylook(10)="XX"
+    keylook(11)="XX"
+    keylook(12)="XX"
+    keylook(13)="XX"
+    keylook(14)="XX"
+    keylook(15)="XX"
+ sc.reset
+END IF
+IF DATACOUNT=16 THEN
+keylook(DATACOUNT-1)=keyfound
+ELSE
+keylook(DATACOUNT)=keyfound
+END IF
+DATACOUNT=(DATACOUNT-1)
+    LOGINKEY(15)= (DATAPOINT(DATACOUNT)&bdcount)
+    LOGINKEY(14)=LOGINKEY(13)
+    LOGINKEY(13)=LOGINKEY(12)
+    LOGINKEY(12)=LOGINKEY(11)
+    LOGINKEY(11)=LOGINKEY(10)
+    LOGINKEY(10)=LOGINKEY(9)
+    LOGINKEY(9)=LOGINKEY(8)
+    LOGINKEY(8)=LOGINKEY(7)
+    LOGINKEY(7)=LOGINKEY(6)
+    LOGINKEY(6)=LOGINKEY(5)
+    LOGINKEY(5)=LOGINKEY(4)
+    LOGINKEY(4)= LOGINKEY(3)
+    LOGINKEY(3)=LOGINKEY(2)
+    LOGINKEY(2)=LOGINKEY(1)
+    LOGINKEY(1)=LOGINKEY(0)
+    LOGINKEY(0)=KEYfound
+    step = "0"
+    newS=ATOF(0)
+LOGINKEYlrcCK=("&H" & LOGINKEY(0) Xor "&H" & LOGINKEY(1) Xor "&H" & LOGINKEY(2) Xor "&H" & LOGINKEY(3) Xor "&H" & LOGINKEY(4) Xor "&H" & LOGINKEY(5) Xor "&H" & LOGINKEY(6) Xor "&H" & LOGINKEY(7) Xor "&H" & LOGINKEY(8) Xor "&H" & LOGINKEY(9) Xor "&H" & LOGINKEY(10) Xor "&H" & LOGINKEY(11) Xor "&H" & LOGINKEY(12) Xor "&H" & LOGINKEY(13) Xor "&H" & LOGINKEY(14) Xor "&H" & LOGINKEY(15))
+TRYKEY = LOGINKEY(0)&" "&LOGINKEY(1)&" "&LOGINKEY(2)&" "&LOGINKEY(3)&" "&LOGINKEY(4)&" "&LOGINKEY(5)&" "&LOGINKEY(6)&" "&LOGINKEY(7)&" "&LOGINKEY(8)&" "&LOGINKEY(9)&" "&LOGINKEY(10)&" "&LOGINKEY(11)&" "&LOGINKEY(12)&" "&LOGINKEY(13)&" "&LOGINKEY(14)&" "&LOGINKEY(15)
+ENTIREKEYLOOK= keylook(0)&" "& keylook(1)&" "& keylook(2)&" "& keylook(3)&" "& keylook(4)&" "& keylook(5)&" "& keylook(6)&" "& keylook(7)&" "& keylook(8)&" "& keylook(9)&" "& keylook(10)&" "& keylook(11)&" "& keylook(12)&" "& keylook(13)&" "& keylook(14)&" "& keylook(15)
+    call keysearch
+    end if
+    Next
+
+if newS = "F" AND keyfound <> "FF" THEN
+Sc.MsgBox "sorry your card may not have a virgin backdoor/ or the key is wiped", vbInformation
+exit sub
+end if
+if step = 0 then
+step=1
+    newS=ATOF(1)
+else
+    step = (step+1)
+    newS=ATOF(step)
+    end if
+    call keysearch
+End Sub

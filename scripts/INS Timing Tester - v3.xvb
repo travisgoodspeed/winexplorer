@@ -1,0 +1,333 @@
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+' INS Timing Tester.xvb - Created 2006-02-24
+'
+' simple test to time execution of instructions to determine clock cycles for different opcodes
+'
+' for use with modified ND13 atmel flash (INS 70 timer added)
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+Option Explicit     ' any used variables must be explicitly declared
+
+
+Sub Main()
+    Dim CS                      ' checksum for packet
+    Dim DirtyEMMHead            ' data sent before the payload of DirtyEMMPacket
+    Dim DirtyEMMTail            ' data sent after the payload of DirtyEMMPacket
+    Dim Payload                 ' data used as payload of DirtyEMMPacket (code part - loaded to RAM:0080)
+    Dim PayloadLen
+    Dim DirtyEMMPacket          ' full packet to send to card to setup payload for execution
+    Dim DirtyEMMPacketLen       ' length of our opcode test packet
+    Dim A0FFPacket              ' packet used to trigger execution of the DirtyEMMPacket payload
+    Dim A0FFPacketLen           ' length of the A0FF packet
+    Dim DisableTimer            ' 3-byte call (CD + address) to disable timer
+    Dim SECREG2                 ' byte to load into SECREG2 (REG:0002)
+    Dim EEPROT                  ' byte to load into SECREG3 (REG:000D)
+    Dim CLKREG                  ' byte to load into CLKREG (REG:0006)
+    Dim i                       ' counter used to track # of passes through loop to take measurement
+    Dim Repeats                 ' number of times to repeat the loop to take measurement
+    Dim SamplesTaken            ' number of measurements taken
+    Dim SampleInt               ' integer value of result from the current measurement
+    Dim MeasureTotal            ' total sum of measured time
+    Dim MeasureAvg              ' average measurement from the samples taken
+    Dim MeasureMin              ' minimum time measured
+    Dim MeasureMax              ' maximum time measured
+    Dim ClocksAvg               ' average number of clocks from the samples taken (MeasureAvg / 2)
+    Dim ClocksPerLoop           ' number of clocks in each of the 256 rounds of looping (ClocksAvg / 256)
+    Dim ClocksPerInstruction    ' number of clocks for the tested instruction (difference from baseline loop to this test)
+    Dim BaselineClocksAvg       ' number of clocks for the baseline loop test
+    Dim OpcodeCycles            ' number of clocks used by opcode in baseline loop test (used for calculating core speed)
+    Dim CoreSpeed               ' calculated speed the core is running at
+
+''''''''''''''''''''''''''''''''''''''''''''''
+
+' run test 50 times
+    Repeats = 50
+
+''''''''''''''''''''''''''''''''''''''''''''''
+
+''''''''''''''''''''''''''''''''''''''''''''''
+' data used as payload of DirtyEMMPacket (code part only - loaded to RAM:0080)
+' "A6 00 B7 06" = clk external
+' "A6 01 B7 06" = clk internal
+
+
+' baseline: only deca/jrne
+'    Payload = "9B CD 54 87  A6 A5 B7 06  01 00 02 20 FB 00 00 02 20 FB   4F  11 00  4A 26 FD  10 00  20 FE"
+
+' test nop
+    Payload = "9B CD 54 87  A6 A5 B7 06   01 00 02 20 FB 00 00 02 20 FB   4F  11 00  9D  4A 26 FC  10 00  20 FE"
+
+
+''''''''''''''''''''''''''''''''''''''''''''''
+' average result from doing baseline test (empty loop 256 times)
+'    BaselineClocksAvg = 1541     ' external clock, no multiplier (CLKREG=00)
+'    BaselineClocksAvg = 770.79      ' external clock, x2 multiplier
+
+'    BaselineClocksAvg = 669     ' CLKREG=01
+
+    BaselineClocksAvg = 625.7     ' CLKREG=A5
+
+
+' number of cycles used by the tested opcode (for calculating core speed)
+    OpcodeCycles = 2
+
+
+''''''''''''''''''''''''''''''''''''''''''''''
+' data sent before the payload of DirtyEMMPacket
+    PayloadLen = GetPacketLen(Payload)    ' calculate length of the payload
+    PayloadLen = PayloadLen / 2
+
+    DirtyEMMHead = "21 00 " & HexString(21+PayloadLen, 2) & "A0 CA 00 00" & HexString(15+PayloadLen, 2) & "04" & HexString(13+PayloadLen, 2) & "01 01 86 00 AA 9D 9D 9D 9D 9D 9D 9D 9D"
+
+
+' data sent after the payload of DirtyEMMPacket (LRC will be added automatically)
+    DirtyEMMTail = "02"
+
+''''''''''''''''''''''''''''''''''''''''''''''
+' setup DirtyEMMPacket
+
+    DirtyEMMPacket = DirtyEMMHead + Payload + DirtyEMMTail
+
+    DirtyEMMPacketLen = GetPacketLen(DirtyEMMPacket)    ' calculate length of the packet
+    DirtyEMMPacketLen = DirtyEMMPacketLen / 2
+    DirtyEMMPacketLen = DirtyEMMPacketLen + 1           ' adjust for checksum
+
+    CS = DoCheckSum(DirtyEMMPacket)
+    DirtyEMMPacket = DirtyEMMPacket + CS
+
+
+''''''''''''''''''''''''''''''''''''''''''''''
+' define A0FFPacket
+    A0FFPacket = "21 00 07 A0 FF 00 00 02 48 00 33"
+
+    A0FFPacketLen = GetPacketLen(A0FFPacket)
+    A0FFPacketLen = A0FFPacketLen / 2
+
+
+''''''''''''''''''''''''''''''''''''''''''''''
+' hide comm
+    Sc.Verbose = False
+'    Sc.Verbose = True
+
+' reset card and receive ATR
+    Sc.Reset                ' this doesn't seem to work to reset the atmel
+
+    Sc.Write("90")          ' read atmel version
+    Sc.Read(4)
+
+
+' init variables used for adding up all measurements from all samples
+    SamplesTaken = 0
+    MeasureTotal = 0
+    MeasureMin = 0
+    MeasureMax = 0
+
+
+    For i = 1 to Repeats
+        Print "Running measurement " & i & "...  "
+
+        Sc.Write("08 10 01 03 9A 15 0E 20 00")
+        Sc.Read(2)
+        Sc.Read(27)
+
+' send the DirtyEMMPacket
+        Sc.Write( HexString(4+DirtyEMMPacketLen, 2) & "60" & HexString(DirtyEMMPacketLen-1, 2) & DirtyEMMPacket & "86 00")
+        Sc.Read(2)
+        Sc.Read(7)
+
+' send the A0FFPacket (execute the DirtyEMMPacket)
+        Sc.Write( HexString(3+A0FFPacketLen, 2) & "60" & HexString(A0FFPacketLen-1, 2) & A0FFPacket & "00")
+        Sc.Read(2)
+
+        Sc.Delay(100)       ' delay so that the card is ready when the atmel does sync pulse on IO
+
+'        Sc.Delay(1000)      ' an extra delay so the scope can trigger
+
+' exec the timing instruction (30) to count clock cycles
+        Sc.Write("02 30 00")
+        Sc.Read(2)
+
+        if(Sc.Getbyte(1) = 2) then
+            Sc.Read(2)
+            SamplesTaken = SamplesTaken + 1
+            SampleInt = Sc.GetByte(0) * 256
+            SampleInt = SampleInt + Sc.GetByte(1)
+            MeasureTotal = MeasureTotal + SampleInt
+
+            if( MeasureMin = 0) then            ' MeasureMin hasn't been set yet
+                MeasureMin = SampleInt
+            end if
+
+            if( SampleInt < MeasureMin ) then   ' this measurement is less than MeasureMin
+                MeasureMin = SampleInt
+            end if
+
+            if( SampleInt > MeasureMax ) then   ' this measurement is greater than MeasureMax
+                MeasureMax = SampleInt
+            end if
+
+            Print "SampleInt: " & SampleInt & VbCr
+        end if
+
+    Next    ' For i = 1 to Repeats
+
+    Print VbCr & VbCr
+    Print "SamplesTaken:                  " & SamplesTaken & VbCr
+'    Print "MeasureTotal:           " & MeasureTotal & VbCr
+
+    MeasureAvg = MeasureTotal / SamplesTaken
+
+    Print "MeasureMin:                    " & MeasureMin & VbCr
+    Print "MeasureMax:                    " & MeasureMax & VbCr
+    Print "MeasureAvg:                    " & MeasureAvg & VbCr
+    Print "Clocks [@9.2 MHz]:             " & MeasureAvg & VbCr
+ '   Print "Measure variation:      " & MeasureMax - MeasureMin & VbCr
+'    Print "Variation in clocks:    " & (MeasureMax - MeasureMin) / 2 & VbCr
+    Print "Variation, clk / loop:         " & ( (MeasureMax - MeasureMin) / 2) / 256 & VbCr
+
+    ClocksAvg = MeasureAvg / 2
+    Print "Clocks [@4.6 MHz]:             " & ClocksAvg & VbCr
+
+    ClocksPerLoop = ClocksAvg / 256
+    Print "Clocks per loop [@4.6 MHz]:    " & ClocksPerLoop & VbCr
+
+
+' average result from doing baseline test (empty loop 256 times)
+
+    ClocksPerInstruction = (ClocksAvg - BaselineClocksAvg) / 256
+    Print "Clocks per instruction [4.6M]: " & ClocksPerInstruction & VbCr
+
+
+    CoreSpeed = (OpcodeCycles / ClocksPerInstruction) * 4.608
+    Print "Core speed [MHz]:              " & CoreSpeed & VbCr
+
+
+End Sub
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+' the rest of this file is helper functions
+' ripped from ROM102_ND13_A0FF-INTERCEPT-autoVCC_20_Smart.xvb
+'
+' DoCheckSum(Packet) - calculate checksum for Packet
+' Hex2Dec(HexNumber) - takes a string with a hex value, returns decimal value
+' HexString(Number,Length) - convert Number to a string containing Length-digit hex value
+' GetPacketLen(Packet) - returns length (in characters) of Packet
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+' DoCheckSum(Packet) - calculate checksum for Packet
+'
+' ripped from ROM102_ND13_A0FF-INTERCEPT-autoVCC_20_Smart.xvb
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+Function DoCheckSum (Packet)
+ Dim Temp
+ Dim Length
+ Dim PK
+ Dim CheckSum
+ Dim i
+
+ PK=""
+
+ Length = Len(Packet)           'get packet length with spaces
+
+ for i = 1 to Length
+    Temp = Mid(Packet, i, 1)
+    if Temp <> " " then         'remove all spaces in packet
+        PK = PK + Temp
+    End if
+ next
+
+ Length = Len(PK)               'get packet length without spaces
+
+ CheckSum = 0
+
+ for i = 0 to Length
+     i=i+1                      'Simulate Step 2 in VB scripting
+     Temp = Mid(PK, i, 2)
+     CheckSum = CheckSum XOR Hex2Dec(Temp)  'Calc Checksum
+ next
+
+ DoCheckSum = HexString(CheckSum, 2) 'convert checksum to a hex strimg and return it to caller
+
+End Function
+
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+' Hex2Dec(HexNumber) - takes a string with a hex value, returns decimal value
+'
+' ripped from ROM102_ND13_A0FF-INTERCEPT-autoVCC_20_Smart.xvb
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+Function Hex2Dec(HexNumber)
+    ' This function takes 1 argument, a string containing a hex value of any digit length
+    ' and returns the decimal equivalent
+    Dim DecimalValue
+    Dim DigitCount
+    Dim Digit
+    Dim HexDigit
+
+    HexNumber = Replace(UCase(HexNumber), " ", "")
+    DigitCount = Len(HexNumber)
+
+    For Digit = 1 To DigitCount
+
+        HexDigit = Mid(HexNumber, Digit, 1)
+        If Asc(HexDigit) < 58 Then
+            DecimalValue = HexDigit * 16 ^ (DigitCount - Digit)
+        Else
+            DecimalValue = (Asc(HexDigit) - 55) * 16 ^ (DigitCount - Digit)
+        End If
+        Hex2Dec = Hex2Dec + DecimalValue
+    Next
+
+End Function
+
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+' HexString(Number,Length) - convert Number to a string containing Length-digit hex value
+'
+' ripped from ROM102_ND13_A0FF-INTERCEPT-autoVCC_20_Smart.xvb
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+Function HexString(Number,Length)
+    ' This function takes 2 arguments, a number and a length.  It converts the decimal
+    ' number given by the first argument to a Hexidecimal string with its length
+    ' equal to the number of digits given by the second argument
+    Dim RetVal
+    Dim CurLen
+    RetVal=Hex(Number)
+    CurLen=Len(RetVal)
+    If CurLen<Length Then
+        RetVal=String(Length-CurLen,"0") & RetVal
+    End If
+    HexString=RetVal
+End Function
+
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+' GetPacketLen(Packet) - returns length (in characters) of Packet
+' note: returned value = length in bytes * 2
+'
+' ripped from ROM102_ND13_A0FF-INTERCEPT-autoVCC_20_Smart.xvb
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+Function GetPacketLen(Packet)
+ Dim Length
+ Dim Temp
+ Dim PK
+ Dim i
+
+ PK = ""
+
+ Length = Len(Packet)                   'get packet length with spaces
+
+ for i = 1 to Length
+    Temp = Mid(Packet, i, 1)
+    if Temp <> " " then                 'remove all spaces in packet
+        PK = PK + Temp
+    End if
+ next
+
+ GetPacketLen = Len(PK)                 'return packet length without spaces
+
+End Function

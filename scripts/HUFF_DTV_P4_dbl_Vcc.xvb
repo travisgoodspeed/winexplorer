@@ -1,0 +1,277 @@
+'
+' For Mikubu-III flashed with HUFF
+' Power up the P4 then wait a variable number
+' of cycles (0x038F+...) for ATR_DM
+'
+' Print a statistics about the success rate
+' at the end
+'
+' tested with Winexplorer 5.42 (earlier versions might also do)
+' and unlooper settings
+'
+' Author: Lee Gibling :)
+'
+'-----------------------------------------------------------------
+' "Hit" means here got an ATR_DM resp. more than 3 bytes received.
+' No "Hit" means got noting or only one byte (3F).
+' It is based on the fact that the normal ATR (3F - 7A ...) comes in 2 blocks separated
+' by y considerable amount of time, whereas ATR_DM comes in a single block.
+' I guess there must be an internal datastream with the following structure:
+'
+' 3F - 33 99 FF 7F 31 00 BB F5 F1 97 9B D7 71 2F - 13 25 03 40 B0 20 FF FF 4A 50 00.
+'
+' Some bytes following the 33 may be card specific, as the result of INS "48 12 00 00 08".
+'
+' Depending on when the unl@@per sets I/O to high, it starts reading either 3F or 33.
+' The watershed is around 0x0390 cycles after reset.
+' When it gets 3F it has read 3 bytes only: 2 unl@@per specific + 3F itself (no hit)
+' When it gets 33 it has read 16 bytes: 2 unl@@per specific + ATR_DM (hit)
+'
+'
+
+
+
+Dim cmd_ARY(26), AAI_success(183, 255, 11)
+
+Sub Main()
+
+Dim I_bytes_received_f1, max_idx, Succcess
+Dim i1, i2, I_tt_1, I_tt_2, I_tt_3, I_tt_4
+Dim I_loop_1, I_loop_2,  idx_start_f0, idx_end_f0
+Dim StringToSend_atr, StringToSend
+
+Sc.Verbose = true
+Call  UnlooperSettings()
+
+Wx.LogTransactions = 1
+
+I_voltage_base         = &h50 ' base gl**ch voltage (2.0V in this case)
+I_voltage_steps_f0     = 0
+
+I_interval_1_base        = &h00
+I_interval_1_steps_f0    = 0  ' 00 - &hff
+
+I_interval_2_base        = &h88
+I_interval_2_steps_f0    = 11
+I_nbr_attempts_f1        = 4096
+
+I_voltage_steps_f1       = I_voltage_steps_f0    + 1
+I_interval_1_steps_f1    = I_interval_1_steps_f0 + 1
+I_interval_2_steps_f1    = I_interval_2_steps_f0 + 1
+
+H_voltage_base           = HexString(I_voltage_base, 2)
+I_interval_2_last        = I_interval_2_base + I_interval_2_steps_f0
+H_interval_2_last        = HexString(I_interval_2_last, 2)
+
+cmd_ARY(0) = &hB0   ' next byte will be glitch voltage
+cmd_ARY(1) = I_voltage_base
+cmd_ARY(2) = &h0e   ' gl**ch packet length
+cmd_ARY(3) = &h10   ' switch to 9.6 kbaud
+cmd_ARY(4) = &h01   ' power up card
+cmd_ARY(5) = &h30   ' wait
+cmd_ARY(6) = &h00   ' wait
+cmd_ARY(7) = &h00   ' wait
+cmd_ARY(8) = &h01   ' power up card again
+cmd_ARY(9) = &h0c  ' double Vcc gl**ch
+cmd_ARY(10) = I_interval_base_1  ' interval for double Vcc gl**ch
+cmd_ARY(11) = 01
+cmd_ARY(12) = &h20  ' interval
+cmd_ARY(13) = &h03  ' interval
+cmd_ARY(14) = I_interval_base_2  ' interval to wait for ATR DM
+cmd_ARY(15) = &h8D  ' read 16 bytes
+cmd_ARY(16) = &h00  ' packet end
+
+Success = Sc.Log ("Start of Test Run")
+if Success = 1 Then
+   Sc.Err("Unable to open LogFile")
+End If
+Success = Sc.Log("")
+
+For i1 = 0 to I_voltage_steps_f0
+   For i2 = 0 to I_interval_1_steps_f0
+      For i3 = 0 to I_interval_2_steps_f0
+         AAI_success(i1, i2, i3) = 0
+      Next
+   Next
+Next
+
+idx_end_f0 = 16
+For i1 = 0 to I_voltage_steps_f0 ' &h00 - &hAB
+   I_voltage = I_voltage_base + i1
+   H_voltage = HexString(I_voltage, 2)
+   cmd_ARY(1) = I_voltage
+   For i2 = 0 to I_interval_1_steps_f0
+      I_tt_1 = I_interval_1_base + i2
+      H_tt_1 = HexString(I_tt_1, 2)
+      cmd_ARY(10) = I_tt_1  ' wait within double Vcc
+      For i3 = 0 to I_interval_2_steps_f0
+         I_tt_2 = I_interval_2_base + i3
+         H_tt_2 = HexString(I_tt_2, 2)
+         cmd_ARY(14) = I_tt_2 ' wait for ATR_DM
+         I_success_rate = 0
+         for I_att = 1 to I_nbr_attempts_f1
+             I_bytes_received_f1 = FI_send_to_card ( _
+                  "", _
+                  0, _
+                  idx_end_f0)
+             If (I_bytes_received_f1 >= 4) then
+                AAI_success(i1, i2, i3) = AAI_success(i1, i2, i3) + 1
+                I_success_rate = I_success_rate + 1
+             End If
+             Call Sc.ProgressBox _
+             ("Attempt: " & I_att & " out of " & I_nbr_attempts_f1 & _
+              "  - hits: " & I_success_rate & _
+              "  -  " & "last interval_2: 03" & H_interval_2_last, _
+              I_att, I_nbr_attempts_f1, _
+             "Vcc (hex): " & H_voltage & "  " & _
+             "interval_1: " & H_tt_1  & "  -  interval_2: 03" & H_tt_2)
+         next
+      next
+   next
+next
+
+StringToLog = " * * *   S u m m a r y * * * for base voltage (hex): " & H_voltage_base & _
+              " and " & I_nbr_attempts_f1 &  " (dec) attempts * * *"
+ Sc.Print(StringToLog)
+ Sc.Print(vbcrlf)
+ Success = Sc.Log(StringToLog)
+ Success = Sc.Log("")
+
+for i1 = 0 to I_voltage_steps_f0
+   I_voltage = I_voltage_base + i1
+   H_voltage = HexString(I_voltage, 2)
+   StringToLog = " * * *   S u m m a r y ++++ for voltage (hex): " & H_voltage
+   Sc.Print(StringToLog)
+   Sc.Print(vbcrlf)
+   Success = Sc.Log(StringToLog)
+   Success = Sc.Log("")
+   for i2 =  0 to I_interval_1_steps_f0
+      I_interval_1 = I_interval_1_base + i2
+      H_interval_1 = HexString(I_interval_1, 2)
+      StringToLog = " * * *   S u m m a r y ++++ for interval_1 (hex): " & H_interval_1
+      Sc.Print(StringToLog)
+      Sc.Print(vbcrlf)
+      Success = Sc.Log(StringToLog)
+      Success = Sc.Log("")
+      I_interval_1 = I_interval_1_base + i2
+      H_interval_1 = HexString(I_interval_1, 2)
+      for i3 =  0 to I_interval_2_steps_f0
+         I_interval_2 = I_interval_2_base + i3
+         H_interval_2 = HexString(I_interval_2, 2)
+         StringToLog = "03" & H_interval_2 & ": " & _
+                       " success rate (dec): " & AAI_success(i1, i2, i3)
+         Sc.Print(StringToLog)
+         Sc.Print("")
+         Success = Sc.Log(StringToLog)
+      Next
+   Next
+Next
+
+Success = Sc.Log("")
+
+End Sub
+
+'-----------------------------------------
+
+Function FI_send_to_card (_
+ P_StringToSend_head, _
+ P_idx_start_f0, _
+ P_idx_end_f0)
+
+Dim i1, I_bytes_received_f1, I_byte, max_idx, StringToSend
+
+StringToSend = P_StringToSend_head
+
+for i1 = P_idx_start_f0 to P_idx_end_f0
+   I_byte = cmd_ARY(i1)
+   S_byte = HexString(I_byte,2)
+   StringToSend = StringToSend & S_byte
+   if i1 < P_idx_end_f0 then
+      StringToSend = StringToSend & " "
+   End If
+Next
+
+Sc.Write(StringToSend)
+Sc.Log(StringToSend)
+
+Sc.Delay(500)
+I_bytes_received_f1 = Sc.BytesInBuffer
+StringToLog = ("Received: (dec) " & I_bytes_received_f1 & " bytes")
+Sc.Print(StringToLog)
+Sc.Log(StringToLog)
+
+Sc.Read(I_bytes_received_f1)
+max_idx = I_bytes_received_f1 - 1
+StringReceived = ""
+' sc.Print("max_idx: " & max_idx & vbcrlf)
+For i1 = 0 to max_idx
+      '  sc.Print("i1: " & i1 & vbcr)
+    I_byte = Sc.GetByte(i1)
+    S_byte = HexString(I_byte, 2)
+      '  sc.Print("Hex_Bxte: " & Hex_Byte & vbcr)
+    StringReceived = StringReceived & S_byte
+    If i1 < max_idx Then
+       StringReceived = StringReceived & " "
+    End If
+Next
+
+Success = Sc.Log(StringReceived)
+Sc.Print(vbcrlf)
+Success = Sc.Log("")
+
+FI_send_to_card = I_bytes_received_f1
+
+End Function ' FI_send_to_card
+
+'-----------------------------------------
+
+Function HexString(Number,Length)
+' This function takes 2 arguments, a number and a length. It converts the decimal
+' number given by the first argument to a Hexidecimal string with its length
+' equal to the number of digits given by the second argument
+Dim RetVal
+Dim CurLen
+
+RetVal=Hex(Number)
+CurLen=Len(RetVal)
+
+If CurLen<Length Then
+   RetVal=String(Length-CurLen, "0") & RetVal
+End If
+
+HexString=RetVal
+End Function
+
+
+'-----------------------------------------
+
+Sub  UnlooperSettings()
+
+    '  Wx.CommPort = "com1:"
+    Wx.BaudRate = 115200
+    Wx.ResetBaudRate = 115200
+    Wx.Parity = 0                ' 0 = None, 1 = Odd, 2 = Even, 3 = Mark, 4 = Space
+    Wx.StopBits = 0              ' 0 = 1 stop bit, 1 = 1.5 stop bits, 2 = 2 stop bits
+    Wx.DTRControl = 0            ' Initial state of DTR  0 = off, 1 = on
+    Wx.RTSControl = 1            ' Initial state of RTS  0 = off, 1 = on
+
+    Wx.ResetDelay = 0            ' In microseconds
+    Wx.ByteDelay = 0             ' In microseconds
+    Wx.RxByteTimeout = 300       ' In milliseconds
+    Wx.ResetMode = 2             ' 0 = No Resets, 1 = ISO Reset (Expect a ATR),
+                                 ' 2 = Device Reset (No ATR)
+    Wx.ResetLine = 1             ' 0 = Toggle RTS for Reset, 1 = Toggle DTR for Reset
+    Wx.ByteConvention = 1        ' 0 = Inverse, 1 = Direct
+    Wx.FlushEchoByte = 0         ' 0 = no flush, 1 = flush -
+                                 ' A Phoenix interface will echo each byte transmitted.
+    Wx.FlushBeforeWrite = 0      ' 0 = no flush, 1 = flush - Flush the receive buffer before
+                                 ' each write to strip off Null bytes.
+    Wx.IgnoreTimeouts = 0        ' 0 = Abort script on a receive timeout,
+                                 ' 1 = Ignore all receive timeouts
+    Wx.ResetAfterTimeout = 0     ' 0 = Don't reset after a timeout,
+                                 ' 1 = do a reset after a timeout  - Not used if "IgnoreTimeouts=0"
+    Wx.LogTransactions = 0       ' 0 = Don't log transactions, 1 = log transactions
+    Wx.DisplayUSW = 0            ' Display USW after script complete 0 = no, 1 = yes
+    Wx.DisplayFuse = 0           ' Display Fuse after script complete 0 = no, 1 = yes
+
+End Sub

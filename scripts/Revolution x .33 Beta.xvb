@@ -1,0 +1,2259 @@
+' ================
+' = Revolution X =
+' ================
+' =    v.33 Beta =
+' ================
+'
+' by the #dishunlooper crew
+' #dishunlooper #hackp4 thanks for the pushing and proding
+' this is just a start more to come :)
+' based on turbo unloop by Aol Thanks for the starting
+' ground and great documentation without it i'd be still figuring
+' how to put the glitches in synch
+' This script requires WinExplorer 4.6 or higher
+' For Rom 2 Only at the moment. This does not complete you must abort
+' manually after a couple minutes in most cases it takes less then
+' 30 seconds. If difficulty in unlooping Read the READ ME
+'
+'
+
+' Global Variable Definitions
+    Option Explicit
+
+    ' Constants used throughout script
+    Const ScriptName="Revolution X"
+    Const ScriptVer=".33 Beta"
+
+    ' Glitching values/constants
+    Dim DAC(12),Delay(12),GlitchDelay(12)                ' Working values
+    Dim DACL(12),DelayL(12),GlitchDelayL(12)            ' Lower range limit constants
+    Dim DACI(12),DelayI(12),GlitchDelayI(12)            ' Initial Value Constants
+    Dim DACH(12),DelayH(12),GlitchDelayH(12)            ' High range limit constants
+    Dim Tries(12)                                        ' Running total of number of times a glitch has been tried
+    Dim TotalTries(12)                                    ' Running total of number of times a glitch task has been tried
+    Dim TriesLimit(12)                                    ' Upper limit for trying this glitch - exceeding it means new glitch values will be selected
+    Dim TriesLimitN(12)                                    ' Normal limit for number of times to try a glitch
+    Dim TriesLimitI(12)                                    ' Initial limit for trying initial glitches
+    Dim AltProcTriesLimit(12)                            ' Limit on Total tries before switching glitch procedures
+    Dim AltProc(12)                                        ' The glitch set that is the alternate procedure
+    Dim GlitchProc(12)                                    ' The procedure number within the task that should be run with these glitch parameters
+    Dim FailsLimit(12)                                    ' Failure limit for trying previously successful glitches - exceeding it means saved glitch values will be deleted and new ones will be searched for
+    Dim GlitchLogic(12)                                    ' 0=Try successive glitches by incrementing glitch values, 1=Try random glitch values
+    Dim Search(12)                                        ' 0=Using saved glitch parameters, 1=Searching for new glitch parameters
+    Dim TaskSet(5)                                        ' Holds which set of glitches is currently being used for a task
+
+    ' Global Unlooper Packet Variables
+    Dim ATR(13)
+    Dim PacketResponse(4)
+    Dim GPPLen,GPRLen                                    ' Glitch Packet "Processed" Length, Glitch Packet Response Length
+    Dim GPR(70)                                            ' Glitch Packet Response
+    Const MasterFailLimit=25000                            ' Maximum number of glitch tries before giving up
+
+    ' Constants for file manipulation
+    Const fsoError=-1
+    Const fsoOpenRead=0
+    Const fsoOpenWrite=1
+    Const fsoOpenReadWrite=2
+    Const fsoSEEK_SET=0
+    Const fsoSEEK_CUR=1
+    Const fsoSEEK_END=2
+
+
+'    ==================
+'   = Pre-Main Setup =
+'    ==================
+
+' Setup WinExplorer to Unlooper settings
+Call UnlooperSettings()
+
+
+'    ==================
+'    = Main Procedure =
+'    ==================
+
+Sub Main()
+    ' Main Program Loop and Menu
+    Dim MenuChoice
+    Dim MsgPrompt
+    Dim ErrorValue
+
+    ' Suppress window output
+    Sc.Verbose=True
+
+    ' Verify correct version of WinExplorer
+    If VerifyWinExplorer()=0 Then Exit Sub
+
+    ' Verify that an unlooper is connected and we can communicate with it
+    If VerifyUnlooper()=0 Then Exit Sub
+
+    Do
+        MsgPrompt="=== "+ScriptName+" "+ScriptVer+" ==="+vbCr+vbCr
+        MenuChoice=Sc.ButtonBox(MsgPrompt,vbDefaultButton1,ScriptName+" "+ScriptVer+" - Main Menu","Card Status","Fix Card","Exit")
+
+        ' Initialize Glitch values
+        Call SetGlitchValues()
+
+        Select Case MenuChoice
+            Case 1:
+                ErrorValue=CardStatus()
+            Case 2:
+                ErrorValue=FixCard()
+            End Select
+    Loop Until MenuChoice=3
+
+End Sub
+
+
+'    =========================
+'    = High-Level Procedures =
+'    =========================
+
+Function ReadCard()
+    ReadCard=GlitchDrive(0)
+End Function
+
+Function FixCard()
+    FixCard=GlitchDrive(1)
+End Function
+
+Function WriteCard()
+    WriteCard=GlitchDrive(2)
+End Function
+
+Function GlitchDrive(Func)
+    ' This function drives the unlooper to fix a card.
+    ' The Func variable controls whether the routine is going to Read the card (Func=0),
+    ' Unloop/Fix the card (Func=1), or Write a user-supplied .img or .bin (Func=2)
+    Dim i,j
+    Dim Stage
+    Dim RetVal
+    Dim CardStatus
+    Dim MsgPrompt
+    Dim Display
+    Dim MasterTries
+    Dim Finished
+    Dim EID,CAMID,USW,IRD,LastDynCode   ' left in to leave the script balanced for updates with minimal effort
+    Dim WriteListEEP(4096)        ' Array of strings consisting of hex address, hex length, and bytes to write
+    Dim WriteListBoot(72)        ' Array of byte values consisting of the bytes to write to 8020h-8067h when exiting the bootloader
+
+    GlitchDrive=0
+    MasterTries=0
+    Finished=0
+
+    ' Turn off LED
+    Sc.Write("A0")
+
+    ' Glitcher Driver (
+    Stage=1
+    Display=0
+    Do While (Finished=0)
+        If (Stage>1) And (Stage<22) And (CardInserted()=0) Then
+            Stage=14
+        End If
+        If (Stage>1) And (Stage<22) And (MasterTries>MasterFailLimit) Then
+            Stage=15
+        End If
+        MasterTries=MasterTries+1
+
+        Select Case Stage
+            Case 1: ' Wait for card to be inserted
+                Call WaitCardInsert()
+                Stage=2
+            Case 2: ' Check the card status (Does it have ATR, can it process a packet?)
+                ' Turn on LED Green
+                Sc.Write("A1")
+                Call GenericMsg("Checking ATR ...")
+                Sc.Delay(500)
+                If CheckGoodCard() Then
+                    CardStatus=1 ' looped with atr (damaged)
+                ElseIf CheckGoodCardBS() Then
+                    CardStatus=2 ' Unlooped, properly working damaged card
+                Else
+                    CardStatus=0 ' Looped , no atr
+                End If
+                If Func=0 Then Stage=3    ' Fix Card - start glitching
+                If Func=1 Then Stage=11    ' Fix card - go load the FixBin.img (never loads just here for a latter addtion of a fix bin for dish :) )
+                If Func=2 Then Stage=12    ' Write .img/.bin - go load the .img or .bin that user wants to write
+                If CardStatus=2 Then TaskSet(1)=AltProc(TaskSet(1)) ' If working card, start with low glitches
+                If CardStatus<>0 And Func=1 Then Stage=16 ' Trying to unloop a card that is already unlooped
+                If CardStatus=0 And Func=2 Then Stage=17 ' Trying to write .img or .bin to a looped card
+            Case 3: ' Glitch Task 1 - Attempt to get 1st byte of ATR
+                ' Turn on LED Green
+                Sc.Write("A1")
+                ' Clear ATR
+                ATR(0)=&H100
+                If Params(TaskSet(1)) Or Display<1 Then
+                    Call GlitchMsg(1)
+                    Display=1
+                End If
+                If GlitchTask1(TaskSet(1)) Then
+                    Stage=4
+                    Tries(TaskSet(1))=0
+                    Search(TaskSet(1))=0
+                Else
+                    If Search(TaskSet(1))=1 Then Display=0
+                    If TotalTries(TaskSet(1))>=AltProcTriesLimit(TaskSet(1)) Then
+                        ' If we've tried AltProcTriesLimit glitches for one glitch parameter set and won't pop, try alternate glitch parameter set
+                        TotalTries(TaskSet(1))=0
+                        TaskSet(1)=AltProc(TaskSet(1))
+                    End If
+                End If
+            Case 4: ' Glitch Task 2 - Get Next 10 bytes of ATR
+                If Params(TaskSet(2)) Or Display<2 Then
+                    Call GlitchMsg(2)
+                    Display=2
+                End If
+                If GlitchTask2(TaskSet(2)) Then
+                    Stage=5
+                    Tries(TaskSet(2))=0
+                    Search(TaskSet(2))=0
+                Else
+                    Stage=3 ' Glitch task 2 failed - start over
+                End If
+            Case 5: ' Glitch Task 3 - Get last 2 bytes of ATR and get card to process a packet
+                If Params(TaskSet(3)) Or Display<3 Then
+                    Call GlitchMsg(3)
+                    Display=3
+                End If
+                If GlitchTask3(TaskSet(3)) Then
+                    If Search(TaskSet(3))=0 Then
+                        ' If these are parameters we've already found, go to next glitch task
+                        If Func=0 Then
+                            Stage=7
+                        Else
+                            Stage=6
+                        End If
+                    Else
+                        Stage=3 ' Otherwise, we already "used" the one processable packet on finding the glitch
+                    End If        ' parameters, so we have to start over.
+                    Tries(TaskSet(3))=0
+                    Search(TaskSet(3))=0
+                Else
+                    If TotalTries(TaskSet(3))>=AltProcTriesLimit(TaskSet(3)) Then
+                        ' If we've tried AltProcTriesLimit glitches for one glitch parameter set and won't pop, try alternate glitch parameter set
+                        TotalTries(TaskSet(3))=0
+                        TaskSet(3)=AltProc(TaskSet(3))
+                    End If
+                    Stage=3 ' Glitch task 3 failed - start over
+                End If
+            Case 6: ' Glitch Task 4 - Fill Memory to overwrite stack to write bootloader
+                If Params(TaskSet(4)) Or Display<4 Then
+                    Call GlitchMsg(4)
+                    Display=4
+                End If
+                If GlitchTask4(TaskSet(4)) Then
+                    Stage=8
+                    Tries(TaskSet(4))=0
+                    Search(TaskSet(4))=0
+                Else
+                    Stage=3 ' Glitch task 4 failed - start over
+                End If
+            Case 7: ' Glitch Task 4B - Fill Memory to overwrite stack to read EEPROM
+                If Params(TaskSet(4)) Or Display<4 Then
+                    Call GlitchMsg(4)
+                    Display=4
+                End If
+                If GlitchTask4B(TaskSet(4)) Then
+                    Stage=10
+                    Tries(TaskSet(4))=0
+                    Search(TaskSet(4))=0
+                Else
+                    Stage=3 ' Glitch task 4B failed - start over
+                End If
+            Case 8: ' Glitch task 5 - Get into the bootloader
+                If Params(TaskSet(5)) Or Display<5 Then
+                    Call RWMsg("Activating Bootloader ...",1,225)
+                    Display=5
+                End If
+                If GlitchTask5(TaskSet(5)) Then
+                    If Func=1 Then
+                        Stage=9 ' Bootloader is active, get card info
+                    Else
+                        Stage=13 ' Don't get card info on write .img/.bin
+                    End If
+                ElseIf TotalTries(TaskSet(5))>25 Then
+                    Stage=3 ' Tried to glitch into bootloader many times, can't get in.  Reglitch.
+                    TotalTries(TaskSet(5))=0
+                Else
+                    If TotalTries(TaskSet(5))>=AltProcTriesLimit(TaskSet(5)) Then
+                        ' If we've tried AltProcTriesLimit glitches for one glitch parameter set and won't pop, try alternate glitch parameter set
+                        TotalTries(TaskSet(5))=0
+                        TaskSet(5)=AltProc(TaskSet(5))
+                    End If
+                End If ' Otherwise try to glitch into bootloader again
+            Case 9: ' Get card info
+                If Display<6 Then
+                    Call RWMsg("Getting Card Info ...",1,225)
+                    Display=6
+                End If
+                If GetCardInfo(EID,CAMID,USW,IRD,LastDynCode) Then
+                    Stage=13 ' Got info, go to write Fixbin
+                Else
+                    Stage=3 ' Bootloader is on card but failed?  Probable corrupted bootloader.  Reglitch.
+                End If
+            Case 10: ' Read and Save EEPROM
+                If ReadBin() Then
+                    Stage=18 ' Successfully read EEPROM, go to finished.
+                Else
+                    If CardInserted()<>0 Then
+                        Stage=15 ' Couldn't read card, display error.
+                    Else
+                        Stage=14 ' Card was removed during read.
+                    End If
+                End If
+            Case 11: ' Load the FixBin.img into the WriteListEEP and WriteListBoot arrays
+                If Fs.FileExists("FixBin.img")<>0 And ReadImgFile("FixBin.img",WriteListEEP,WriteListBoot)=1 Then
+                    Stage=3 ' Successfully read FixBin.img, start glitching
+                Else
+                    ' Turn off LED
+                    Sc.Write("A0")
+                    ' Clear Progress Box
+                    Call RemoveMsg()
+                    RetVal=Sc.MsgBox("Unable to load FixBin.img",vbExclamation+vbOKOnly,ScriptName+" "+ScriptVer+" - Unloop Procedure")
+                    Stage=22
+                End If
+            Case 12: ' Load a user-specified .img or .bin into the WriteListEEP and WriteListBoot arrays
+                If ReadFile(WriteListEEP,WriteListBoot)=1 Then
+                    Stage=3 ' Successfully read user's file, start glitching
+                Else
+                    ' Turn off LED
+                    Sc.Write("A0")
+                    ' Clear Progress Box
+                    Call RemoveMsg()
+                    Stage=22
+                End If
+            Case 13: ' Write the WriteListEEP array, and exit the bootlaoder, writing the WriteListBoot array
+                    If WriteWriteList(WriteListEEP) And ExitBootloader(WriteListBoot) Then
+                        Stage=18 ' Finished and successful
+                    Else
+                        If CardInserted()<>0 Then
+                            Stage=15 ' Error writing card, display error.
+                        Else
+                            Stage=14 ' Card was removed during write.
+                        End If
+                    End If
+            Case 14: ' Card was Removed
+                ' Turn off LED
+                Sc.Write("A0")
+                ' Clear Progress Box
+                Call RemoveMsg()
+                RetVal=Sc.MsgBox("Card was Removed",vbInformation+vbOKOnly,ScriptName+" "+ScriptVer+" - Unloop Procedure")
+                Stage=22
+            Case 15: ' Error glitching or reading/writing card
+                ' Turn on LED Red
+                Sc.Write("A2")
+                ' Disconnect Card
+                SendGP("02")
+                ' Clear Progress Box
+                Call RemoveMsg()
+                RetVal=Sc.MsgBox("Error: Unable to Dac the Card",vbExclamation+vbOKOnly,ScriptName+" "+ScriptVer+" - Unloop Procedure")
+                ' Turn off LED
+                Sc.Write("A0")
+                Stage=22
+            Case 16: ' Trying to unloop a card that is not looped
+                Sc.Write("A0")
+                Call RemoveMsg()
+                MsgPrompt="This card has a good ATR and can process packets."+vbCr+_
+                    "It is probably not looped."+vbCr
+                If CardStatus=2 Then
+                    MsgPrompt=MsgPrompt+"(It could be corrupted try bug busters before you attempt this)."+vbCr
+                End If
+                    MsgPrompt=MsgPrompt+vbCr+"Do you want to fix/unloop the card anyway?"
+                RetVal=Sc.MsgBox(MsgPrompt,vbQuestion+vbYesNo+vbDefaultButton2,ScriptName+" "+ScriptVer+" - Fix Good Card?")
+                If RetVal=vbNo Then
+                    Stage=22
+                Else
+                    Stage=11
+                End If
+            Case 17: ' Trying to write .img/.bin to a looped card
+                Sc.Write("A0")
+                Call RemoveMsg()
+                MsgPrompt="This card has a bad ATR or no ATR, and cannot process packets."+vbCr+_
+                    "It is probably looped."+vbCr
+                MsgPrompt=MsgPrompt+vbCr+"You need to fix the card with the 'Fix Card' option before you"
+                MsgPrompt=MsgPrompt+vbCr+"can write a .bin to the card."
+                RetVal=Sc.MsgBox(MsgPrompt,vbExclamation+vbOKOnly,ScriptName+" "+ScriptVer+" - Card is Looped")
+                Stage=22
+            Case 18: ' Finished & successful
+                ' Disconnect Card
+                SendGP("02")
+                ' Turn off LED
+                Sc.Write("A0")
+                ' Clear Progress Box
+                Call RemoveMsg()
+                GlitchDrive=1
+                If Func=0 Then Stage=20
+                If Func=1 Then Stage=19
+                If Func=2 Then Stage=21
+            Case 19: ' After-Fix Display
+                MsgPrompt="Finished Fixing Card, Repair Sequence: "+HexString(DAC(TaskSet(1)),2)+"/"+HexString(Delay(TaskSet(1)),2)+"/"+_
+                        HexString(GlitchDelay(TaskSet(1)),2)+"/"+HexString(DAC(TaskSet(3)),2)+"/"+HexString(Delay(TaskSet(3)),2)+"/"+HexString(GlitchDelay(TaskSet(3)),2)+"/"+_
+                        HexString(DAC(TaskSet(4)),2)+"/"+HexString(Delay(TaskSet(4)),2)+"/"+HexString(GlitchDelay(TaskSet(4)),2)+vbCr+vbCr
+                MsgPrompt=MsgPrompt+"Before Repair:"+vbCr
+                MsgPrompt=MsgPrompt+"EID: "+vbTab+EID+vbCr+_
+                    "CAM ID: "+vbTab+CStr(HexToDec(CAMID))+CStr(CheckDigit(HexToDec(CAMID)))+" ("+CAMID+")"+vbCr+_
+                    "USW: "+vbTab+CStr(HexToDec(USW))+" ("+USW+")"+vbCr+_
+                    "IRD: "+vbTab+IRD+vbCr
+                If HexToDec(USW)>=63 And HexToDec(USW)<=67 Then
+                    MsgPrompt=MsgPrompt+"Last Executed Dynamic Code: "
+                    For i=0 to (Len(LastDynCode)\2)-1
+                        MsgPrompt=MsgPrompt+Mid(LastDynCode,i*2+1,2)+" "
+                    Next
+                End If
+                MsgPrompt=MsgPrompt+vbCr+vbCr
+                MsgPrompt=MsgPrompt+"After Repair:"+vbCr+"ATR: "+vbTab
+                If CheckGoodCard() Then
+                    CardStatus=1
+                ElseIf CheckGoodCardBS() Then
+                    CardStatus=2
+                Else
+                    CardStatus=0
+                End If
+                If CardStatus>0 Then
+                    For i=0 to 12
+                        MsgPrompt=MsgPrompt+HexString(ATR(i),2)+" "
+                    Next
+                    GlitchDrive=1
+                Else
+                    MsgPrompt=MsgPrompt+"Error!  Still bad ATR!"
+                End If
+                MsgPrompt=MsgPrompt+vbCr
+                If CardStatus=2 Then
+                    MsgPrompt=MsgPrompt+vbTab+"(This is a Failed Cam and contains bad cells)."
+                End If
+                RetVal=Sc.MsgBox(MsgPrompt,vbInformation+vbOKOnly,ScriptName+" "+ScriptVer+" - Unloop Procedure")
+                Stage=22
+            Case 20: ' After-Read Display
+                MsgPrompt="Finished Reading Card, Glitch Sequence: "+HexString(DAC(TaskSet(1)),2)+"/"+HexString(Delay(TaskSet(1)),2)+"/"+_
+                        HexString(GlitchDelay(TaskSet(1)),2)+"/"+HexString(DAC(TaskSet(3)),2)+"/"+HexString(Delay(TaskSet(3)),2)+"/"+HexString(GlitchDelay(TaskSet(3)),2)+"/"+_
+                        HexString(DAC(TaskSet(4)),2)+"/"+HexString(Delay(TaskSet(4)),2)+"/"+HexString(GlitchDelay(TaskSet(4)),2)+vbCr+vbCr
+                RetVal=Sc.MsgBox(MsgPrompt,vbInformation+vbOKOnly,ScriptName+" "+ScriptVer+" - Read Procedure")
+                GlitchDrive=1
+                Stage=22
+            Case 21: ' After-Write .img/.bin Display
+                MsgPrompt="Finished Writing .img/.bin, Glitch Sequence: "+HexString(DAC(TaskSet(1)),2)+"/"+HexString(Delay(TaskSet(1)),2)+"/"+_
+                        HexString(GlitchDelay(TaskSet(1)),2)+"/"+HexString(DAC(TaskSet(3)),2)+"/"+HexString(Delay(TaskSet(3)),2)+"/"+HexString(GlitchDelay(TaskSet(3)),2)+"/"+_
+                        HexString(DAC(TaskSet(4)),2)+"/"+HexString(Delay(TaskSet(4)),2)+"/"+HexString(GlitchDelay(TaskSet(4)),2)+vbCr+vbCr
+                RetVal=Sc.MsgBox(MsgPrompt,vbInformation+vbOKOnly,ScriptName+" "+ScriptVer+" - Write Procedure")
+                GlitchDrive=1
+                Stage=22
+            Case 22: ' Exit Glitch Loop
+                Finished=1
+        End Select
+    Loop
+End Function
+
+Function CardStatus()
+    ' This function attempts to gain information about the card currently in the unlooper.
+    ' It reports the information back to the user.  Function returns 0 on error, 1 on
+    ' status successfully determined.
+    Dim EID,CAMID,USW,IRD,Fuse
+    Dim CAMIDDec
+    Dim RetVal
+    Dim i
+    Dim MsgPrompt,ToWrite
+    Dim INS2AData(128)
+    Dim GoodATR(13),ATRBytes
+    Dim ATRGood,BS,INS2AGood,ParmsGood
+
+    CardStatus=0
+    GoodATR(0)=&H3F
+    GoodATR(1)=&Hff
+    GoodATR(2)=&H95
+    GoodATR(3)=&H00
+    GoodATR(4)=&HFF
+    GoodATR(5)=&H91
+    GoodATR(6)=&H81
+    GoodATR(7)=&H71
+    GoodATR(8)=&H64
+    GoodATR(9)=&H47
+    GoodATR(10)=&H00
+    GoodATR(11)=&H44
+    GoodATR(12)=&H4e
+    GoodATR(13)=&H41
+    'GoodATR(14)=&H53    'all we need for nagra to read the game and attempt to push a bin :)
+    'GoodATR(15)=&H50
+    'GoodATR(16)=&H30
+    'GoodATR(17)=&H30
+
+
+    ' Turn Off LED
+    Sc.Write("A0")
+
+    ' Verify Unlooper is present
+    If VerifyUnlooper()=0 Then Exit Function
+
+    ' Wait for card insertion
+    Call WaitCardInsert()
+
+    ' Turn On LED Green
+    Sc.Write("A1")
+
+    ' Set the DAC Voltage
+    ToWrite="B0B3"                    ' Set DAC to b3h or 179 dec = 3.49 v after loss higher = bad  lower by 1 hex = ok if u use a high qulaity loader
+    Sc.Write(ToWrite)
+
+    ' Check if we have an ATR
+    Call GenericMsg("Checking ATR ...")
+    Sc.Delay(500)
+
+    BS=0                            ' Assume not a BS card
+    ATR(0)=&H100                    ' Assume no ATR
+    ToWrite="100190"                ' Glitch procedure, set baud to ATR, reset card, receive 13 bytes, end procedure
+    SendGP(ToWrite)
+    i=0
+    Do While (GPRLen>i)
+        ATR(i)=GPR(i)
+        i=i+1
+    Loop
+
+    ATRGood=0
+    ATRBytes=GPRLen
+
+    ' See if the ATR is good
+    If (ATRBytes=13) Then
+        ATRGood=1
+        For i=0 to 12
+            If ATR(i)<>GoodATR(i) Then
+                ATRGood=0
+            End If
+        Next
+    End If
+
+    If ATRBytes=0 Then                ' Didn't get any bytes of ATR.  Check if card is BS'd
+        ToWrite="10012000E0B90"    ' Glitch procedure, set baud to ATR, reset card, delay 15 clock cycles, glitch Vcc, receive 13 bytes, end procedure
+        SendGP(ToWrite)
+        i=0
+        Do While (GPRLen>i)
+            ATR(i)=GPR(i)
+            i=i+1
+        Loop
+
+        ATRGood=0
+        ATRBytes=GPRLen
+        If ATRBytes>1 Then BS=1        ' If we got bytes this time, card is a Brainded card
+
+        ' See if the ATR is good
+        If (ATRBytes=13) Then
+            ATRGood=1
+            For i=0 to 12
+                If ATR(i)<>GoodATR(i) Then
+                    ATRGood=0
+                End If
+            Next
+        End If
+    End If
+
+    INS2AGood=0
+
+    ' Check if we can process a packet
+    Call GenericMsg("Checking Packet Processing ...")
+    Sc.Delay(500)
+
+    If ATRGood Then                    ' If we got a good ATR, see if we can get the card to process a bad packet
+        ' Send an INS 2A
+        ToWrite="15C4482A0000830E0480"    ' Set baud to P2 xmit/rcv, transmit 5 bytes, set watchdog timer to 04, receive 1 byte, end procedure
+        SendGP(ToWrite)
+        If GPRLen=&H01 and GPR(0)=&H2A Then
+            ToWrite="BF"
+            SendGP(ToWrite)
+            If GPRLen=&H40 Then
+                For i=&H0 To &H3F
+                    INS2AData(i)=GPR(i)
+                Next
+            End If
+            ToWrite="BF"
+            SendGP(ToWrite)
+            If GPRLen=&H40 Then
+                For i=&H0 To &H3F
+                    INS2AData(i+&H40)=GPR(i)
+                Next
+            End If
+            ToWrite="81"
+            SendGP(ToWrite)
+            If GPRLen=&H02 and GPR(0)=&H90 and GPR(1)=&H00 Then
+                INS2AGood=1
+            End If
+        End If
+    End If
+
+    If INS2AGood Then                ' If we got a good INS 2A then analyze it for information (never happens this is dish)
+        EID=""
+        For i=0 to 7
+            EID=EID+HexString(INS2AData(i),2)
+        Next
+        Fuse=HexString(INS2AData(8),2)
+        CAMID=""
+        For i=0 to 3
+            CAMID=CAMID+HexString(INS2AData(i+20),2)
+        Next
+        IRD=""
+        For i=0 to 3
+            IRD=IRD+HexString((INS2AData(i+20) Xor INS2AData(i+24)),2)
+        Next
+        USW=&H100*INS2AData(28)+INS2AData(29)
+    End If
+
+    MsgPrompt="Card Analysis Complete:"+vbCr+vbCr
+
+    If ATRBytes>0 Then
+        If BS=0 Then
+            MsgPrompt=MsgPrompt+"This is a sedated card."+vbCr
+        Else
+            MsgPrompt=MsgPrompt+"This is a Burnt Cell card."+vbCr
+        End If
+    Else
+        MsgPrompt=MsgPrompt+"Unable to determine if this is a Dish Card or not."+vbCr
+    End If
+    MsgPrompt=MsgPrompt+"ATR:"+vbTab
+    If ATRBytes>0 Then
+        For i=0 to ATRBytes-1
+            MsgPrompt=MsgPrompt+HexString(ATR(i),2)+" "
+        Next
+        If ATRGood Then
+            MsgPrompt=MsgPrompt+"   (Good ATR)"+vbCr+vbCr
+        Else
+            MsgPrompt=MsgPrompt+"   (Bad ATR)"+vbCr+vbCr
+        End If
+    Else
+        MsgPrompt=MsgPrompt+"----"+"    (No ATR)"+vbCr+vbCr
+    End If
+    If INS2AGood Then
+        ParmsGood=1
+        MsgPrompt=MsgPrompt+"This card can process packets.  Card Information:"+vbCr
+        MsgPrompt=MsgPrompt+vbTab+"EID: "+vbTab+EID+vbCr
+        MsgPrompt=MsgPrompt+vbTab+"Fuse: "+vbTab+Fuse+"    "
+        Select Case HexToDec(Fuse)
+            Case &H00:
+                MsgPrompt=MsgPrompt+"(Virgin Card)"+vbCr
+            Case &H05:
+                MsgPrompt=MsgPrompt+"(Unmarried and Not Activated)"+vbCr
+            Case &H20:
+                MsgPrompt=MsgPrompt+"(Married and Not Activated)"+vbCr
+            Case &H24:
+                MsgPrompt=MsgPrompt+"(Married and Cancelled)"+vbCr
+            Case &H25:
+                MsgPrompt=MsgPrompt+"(Married and Activated)"+vbCr
+            Case Else:
+                MsgPrompt=MsgPrompt+"(Unknown Fuse Byte)"+vbCr
+                ParmsGood=0
+        End Select
+        CAMIDDec=HexToDec(CAMID)
+        If CAMIDDec<0 Then CAMIDDec=&H7FFFFFFF
+        MsgPrompt=MsgPrompt+vbTab+"CAM ID: "+vbTab+CStr(CAMIDDec)+CStr(CheckDigit(CAMIDDec))+" ("+CAMID+")    "
+        If (CAMIDDec>=0) And (CAMIDDec<4000000) Then
+            MsgPrompt=MsgPrompt+"(F Card CAM ID)"+vbCr
+        ElseIf (CAMIDDec>=4000000) And (CAMIDDec<16000000) Then
+            MsgPrompt=MsgPrompt+"(H Card CAM ID)"+vbCr
+        ElseIf (CAMIDDec>=16000000) And (CAMIDDec<50000000) Then
+            MsgPrompt=MsgPrompt+"(HU Card CAM ID)"+vbCr
+        Else
+            MsgPrompt=MsgPrompt+"(Invalid CAM ID)"+vbCr
+            ParmsGood=0
+        End If
+        MsgPrompt=MsgPrompt+vbTab+"IRD: "+vbTab+IRD+vbCr
+        MsgPrompt=MsgPrompt+vbTab+"USW: "+vbTab+CStr(USW)+" ("+HexString(USW,4)+")    "
+        If (USW=0) Then
+            MsgPrompt=MsgPrompt+"(Original EEPROM On Card)"+vbCr+vbCr
+        ElseIf (USW>0) And (USW<26) Then
+            MsgPrompt=MsgPrompt+"(Valid Old USW)"+vbCr+vbCr
+        ElseIf (USW>=26) And (USW<63) Then
+            MsgPrompt=MsgPrompt+"(Valid USW, Dynamic code not active)"+vbCr+vbCr
+        ElseIf (USW>=63) And (USW<67) Then
+            MsgPrompt=MsgPrompt+"(Valid USW, Dynamic code active)"+vbCr+vbCr
+        ElseIf (USW=67) Then
+            MsgPrompt=MsgPrompt+"(Current USW, Dynamic code active)"+vbCr+vbCr
+        Else
+            MsgPrompt=MsgPrompt+"(Invalid USW)"+vbCr+vbCr
+            ParmsGood=0
+        End If
+    End If
+    If ATRGood and INS2AGood Then
+        MsgPrompt=MsgPrompt+"This appears to be a properly working card"
+        If ParmsGood Then
+            MsgPrompt=MsgPrompt+"."+vbCr
+        Else
+            MsgPrompt=MsgPrompt+", but this card"+vbCr+"appears to have one or more invalid parameters."+vbCr+_
+                "Try writing a valid .bin to the card."+vbCr
+        End If
+    Else
+        If ATRGood Then
+            MsgPrompt=MsgPrompt+"This card has a good ATR, but is not properly processing packets."+vbCr
+        Else
+            MsgPrompt=MsgPrompt+"This card is looped."+vbCr
+        End If
+        MsgPrompt=MsgPrompt+vbCr+"Try to fix it with the 'Fix Card' option and/or write a valid .bin to the card."+vbCr
+    End If
+
+    ' Remove the "Getting status" message
+    Call RemoveMsg()
+
+    ' Turn Off LED
+    Sc.Write("A0")
+
+    Call Sc.MsgBox(MsgPrompt,vbInformation+vbOKOnly,ScriptName+" "+ScriptVer+" - Card Information")
+    CardStatus=1
+End Function
+
+
+'    ========================
+'    = Mid-Level Procedures =
+'    ========================
+
+Function VerifyUnlooper()
+    ' This subroutine makes sure that the unlooper is connected and working properly.
+    ' If not, an error message is displayed and the script is aborted.
+
+    Dim ErrorString
+
+    VerifyUnlooper=1
+    If UnlooperResetVerify()=0 Then
+        ErrorString="Unable to communicate with unlooper."+vbCr+vbCr+_
+            "This means one of the following:"+vbCr+vbCr+_
+            "- You have not selected 'Unlooper' in the WinExplorer quicksettings."+vbCr+_
+            "- Your unlooper is not powered up in unlooper mode (powered up with card OUT if"+vbCr+_
+            "  you are not using Revolution X Atmel code)."+vbCr+_
+            "- You are trying to use a programmer instead of an unlooper."+vbCr+_
+            "- Your unlooper is not connected to the same COM port selected in the WinExplorer settings."+vbCr+_
+            "- Your unlooper is not a WildThing-compatible unlooper."+vbCr+_
+            "- Your unlooper is not powered on."+vbCr+vbCr+_
+            "Please correct this problem and try to run the script again."
+        Call Sc.MsgBox(ErrorString,vbCritical,ScriptName+" "+ScriptVer+" - Communication Error")
+        VerifyUnlooper=0
+    End If
+End Function
+
+Sub WaitCardInsert()
+    ' This function waits for a card to be inserted
+    Call Sc.ProgressBox("Please Insert A Card into the Unlooper"+vbCr+"(Insert the card by itself)"+vbCr+"(It may take a few seconds to recognize that the card is inserted.)",1,100,ScriptName+" "+ScriptVer+" - Insert Card")
+    Do While (CardInserted()=0)
+    Loop
+End Sub
+
+Function Params(g)
+    ' This function updates the glitch parameters of the selected glitch
+    ' parameter set.  The function returns 1 if the current working glitches
+    ' were updated, 0 otherwise.
+
+    Dim Temp
+
+    Params=0
+    ' Initialize to starting values if this is first entry
+    If DAC(g)=0 And Search(g)=1 Then
+        DAC(g)=DACI(g)
+        Delay(g)=DelayI(g)
+        GlitchDelay(g)=GlitchDelayI(g)
+        TriesLimit(g)=TriesLimitI(g)
+        Tries(g)=0
+        Params=1
+    Else
+        Tries(g)=Tries(g)+1
+        If Search(g)=0 Then        ' We're trying glitch settings that worked before.
+            ' If we have tried these settings repeatedly and reached the fail limit, this is not a real good
+            ' set of glitch parameters, so try to find a different set.
+            If Tries(g)>FailsLimit(g) Then
+                Search(g)=1
+                Tries(g)=TriesLimit(g)+1
+            End If
+        End If
+        If Search(g)=1 Then        ' We're searching for glitch parameters that work
+            ' If we have tried these settings repeatedly and reached the tries limit, these parameters didn't
+            ' work, so try to find a different set.
+            TotalTries(g)=TotalTries(g)+1    ' Only increment TotalTries when searching
+            If Tries(g)>TriesLimit(g) Then
+                If GlitchLogic(g)=0 Then                                        ' Increment the parameters
+                    Temp=ParmInc(DAC(g),DACL(g),DACH(g),ParmInc(Delay(g),DelayL(g),DelayH(g),ParmInc(GlitchDelay(g),GlitchDelayL(g),GlitchDelayH(g),1)))
+                Else
+                    DAC(g)=RandomRange(DACL(g),DACH(g))                            ' Select random voltage
+                    Delay(g)=RandomRange(DelayL(g),DelayH(g))                    ' Select random delay
+                    GlitchDelay(g)=RandomRange(GlitchDelayL(g),GlitchDelayH(g))    ' Select random glitch delay
+                End If
+                TriesLimit(g)=TriesLimitN(g)
+                Tries(g)=0
+                Params=1
+            End If
+        End If
+    End If
+End Function
+
+Sub GlitchMsg(t)
+    ' This function displays a progress box on the status of unlooping
+    ' What is displayed depends on the task the sub is called with, t
+
+    Dim i
+    Dim Msg
+
+    Msg="Status:"+vbTab+"Glitching ..."+vbCr+"Sequ: "+vbTab
+    If t>=1 Then
+        Msg=Msg+HexString(DAC(TaskSet(1)),2)+"/"+HexString(Delay(TaskSet(1)),4)+"/"+HexString(GlitchDelay(TaskSet(1)),2)
+    End If
+    If t>=3 Then
+        Msg=Msg+"/"+HexString(DAC(TaskSet(3)),2)+"/"+HexString(Delay(TaskSet(3)),4)+"/"+HexString(GlitchDelay(TaskSet(3)),2)
+    End If
+    If t>=4 Then
+        Msg=Msg+"/"+HexString(DAC(TaskSet(4)),2)+"/"+HexString(Delay(TaskSet(4)),4)+"/"+HexString(GlitchDelay(TaskSet(4)),2)
+    End If
+    Msg=Msg+vbCr+"ATR: "+vbTab
+    If t>=1 Then
+        If ATR(0)<>&H100 Then
+            Msg=Msg+HexString(ATR(0),2)+" "
+        Else
+            Msg=Msg+"----"
+        End If
+    End If
+    If t>=2 Then
+        For i=1 to 10
+            Msg=Msg+HexString(ATR(i),2)+" "
+        Next
+    End If
+    If t>=3 Then
+        For i=11 to 12
+            Msg=Msg+HexString(ATR(i),2)+" "
+        Next
+    End If
+    Call Sc.ProgressBox(Msg,t,5,ScriptName+" "+ScriptVer+" - Unloop Procedure")
+End Sub
+
+Sub GenericMsg(Message)
+    ' This function displays a progress box on the status of unlooping
+    ' No glitches or ATR are displayed, only the passed Message
+
+    Dim i
+    Dim Msg
+
+    Msg="Status: "+vbTab+Message+vbCr+"Sequ: "+vbCr+"ATR: "
+    Call Sc.ProgressBox(Msg,1,5,ScriptName+" "+ScriptVer+" - Unloop Procedure")
+End Sub
+
+Sub RWMsg(Message,Progress,MaxProgress)
+    ' This function displays a progress box on the status of unlooping
+    ' The full glitch sequence and ATR are displayed along with the passed Message
+    ' The Progress and MaxProgress control the progress bar, Progress is auto-incremented
+
+    Dim i
+    Dim Msg
+
+    Msg="Status: "+vbTab+Message+vbCr+"Sequ: "+vbTab
+    Msg=Msg+HexString(DAC(TaskSet(1)),2)+"/"+HexString(Delay(TaskSet(1)),4)+"/"+HexString(GlitchDelay(TaskSet(1)),2)+"/"
+    Msg=Msg+HexString(DAC(TaskSet(3)),2)+"/"+HexString(Delay(TaskSet(3)),4)+"/"+HexString(GlitchDelay(TaskSet(3)),2)+"/"
+    Msg=Msg+HexString(DAC(TaskSet(4)),2)+"/"+HexString(Delay(TaskSet(4)),4)+"/"+HexString(GlitchDelay(TaskSet(4)),2)+" - Success!"+vbCr+"ATR: "+vbTab
+    For i=0 to 12
+        Msg=Msg+HexString(ATR(i),2)+" "
+    Next
+    Call Sc.ProgressBox(Msg,Progress,MaxProgress,ScriptName+" "+ScriptVer+" - Unloop Procedure")
+End Sub
+
+Sub RemoveMsg()
+    ' This function removes the progress box from the screen.
+    Call Sc.ProgressBox("",0,0,"")
+End Sub
+
+Function GetCardInfo(EID,CAMID,USW,IRD,LastDynCode)
+    GetCardInfo=0
+    If ReadViaBootloader("8008",&H08,EID)=0 Then Exit Function          ' dtv based  for now :)
+    If ReadViaBootloader("8374",&H04,CAMID)=0 Then Exit Function
+    If HexToDec(Left(CAMID,2))>=&H80 Then CAMID=HexString(HexToDec(Left(CAMID,2))-&H80,2)+Right(CAMID,6)
+    If ReadViaBootloader("8406",&H02,USW)=0 Then Exit Function
+    If ReadViaBootloader("83D0",&H04,IRD)=0 Then Exit Function
+    If HexToDec(USW)>=63 And HexToDec(USW)<67 Then
+        If ReadViaBootloader("893C",&H11,LastDynCode)=0 Then Exit Function
+    ElseIf HexToDec(USW)=67 Then
+        If ReadViaBootloader("8924",&H15,LastDynCode)=0 Then Exit Function
+    End If
+    GetCardInfo=1
+End Function
+
+Function ReadBin()
+    ' This function reads the bin off the card via the stack unwind, and saves
+    ' it to a file.  The read stack must already be on the card.  The function
+    ' returns 1 on successful read, 0 on failure.
+    Dim Progress
+    Dim i,j,k
+    Dim EEPROM(4096)
+    Dim ToWrite
+
+    ReadBin=0                            'need to use backdoor or over flow here to read the cam incase of a
+    For i=&H80 to &H8F                   'need to edit on the fly or reload a good bin with pulled info :)
+        For j=&H00 to &HC0 Step &H40
+            Call RWMsg("Reading EEPROM ...",Progress,64)
+            ToWrite="BF"                        ' Glitch Procedure, read 64 bytes, end procedure
+            SendGP(ToWrite)
+            If GPRLen<>&H40 Then Exit Function
+            For k=&H0 to &H3F
+                EEPROM((i-&H80)*&H100+j+k)=GPR(k)
+            Next
+            Progress=Progress+1
+        Next
+    Next
+
+    i=SaveEEPROMFile(EEPROM)
+    ReadBin=1
+End Function
+
+
+'    =============================
+'    = Basic Unlooper Procedures =
+'    =============================
+
+Function UnlooperResetVerify()
+    ' This function attempts to reset the unlooper and verify that it is
+    ' present, connected, and working properly.  1 is returned if successful,
+    ' 0 if not.
+    Dim RetVal,UnlooperID
+    Dim i
+
+    UnlooperResetVerify=0
+    Sc.ByteDelay=10                            ' Unlooper doesn't need byte delay
+    Call Sc.Reset()                            ' Reset the unlooper
+    RetVal=Sc.Flush()                        ' Flush the receive buffer
+    If SendUL("90")=1 Then                    ' Ask the unlooper to identify itself
+        If Sc.Read(4)=4 Then                ' We should receive 4 bytes from unlooper
+            For i=0 to 3                    ' Assemble the unlooper version string
+                UnlooperID=UnlooperID+Chr(Sc.GetByte(i))
+            Next
+            If (UnlooperID="V5.0" Or UnlooperID="SU-2") Then 'change later to stop confsuion between flashes
+                UnlooperResetVerify=1        ' We are successfully communicating with a WildThing or SU-2 Unlooper
+                Sc.Write("A0")                ' Turn LED off if it is on
+            End If
+        End If
+    End If
+End Function
+
+Function CardInserted()
+    ' This function determines whether a card is inserted in the unlooper.
+    ' 1 is returned if Yes, 0 if no.
+    Dim RetVal
+    CardInserted=0
+    If SendUL("80")=1 Then
+        Sc.Read(1)
+        If Sc.GetByte(0)=&HFF Then
+            CardInserted=1
+        End If
+    End If
+End Function
+
+Function CheckGoodCard()
+    ' This function checks to see if the card currently in the unlooper is not looped
+    ' 1 is returned if the card is currently good, 0 if there is something wrong with it
+    Dim ToWrite
+    Dim GoodATR(13)
+    Dim i
+
+    GoodATR(0)=&H3F
+    GoodATR(1)=&Hff
+    GoodATR(2)=&H95
+    GoodATR(3)=&H00
+    GoodATR(4)=&HFF
+    GoodATR(5)=&H91
+    GoodATR(6)=&H81
+    GoodATR(7)=&H71
+    GoodATR(8)=&H64
+    GoodATR(9)=&H47
+    GoodATR(10)=&H00
+    GoodATR(11)=&H44
+    GoodATR(12)=&H4e
+    GoodATR(13)=&H41
+    'GoodATR(14)=&H53    'all we need for nagra to read the game and attempt to push a bin :)
+    'GoodATR(15)=&H50
+    'GoodATR(16)=&H30
+    'GoodATR(17)=&H30
+
+    ' Set the DAC Voltage
+    ToWrite="B0B3"                    ' Set DAC to B3h
+    Sc.Write(ToWrite)
+
+    ToWrite="10018C"                ' Glitch procedure, set baud to ATR, reset card, receive 13 bytes, end procedure
+    SendGP(ToWrite)
+    i=0
+    Do While (GPRLen>i)
+        ATR(i)=GPR(i)
+        i=i+1
+    Loop
+
+    CheckGoodCard=0
+
+    ' See if the ATR is good
+    If (GPRLen=13) Then
+        CheckGoodCard=1
+        For i=0 to 12
+            If ATR(i)<>GoodATR(i) Then
+                CheckGoodCard=0
+            End If
+        Next
+    End If
+
+    ' If so, see if the card will process a packet
+    If CheckGoodCard=1 Then
+        ToWrite="15C448060000000E0283"    ' Glitch procedure, transmit packet header, Set watchdog timer to 02, receive 4 bytes, end procedure
+        SendGP(ToWrite)
+        If (GPRLen<>4 Or GPR(2)<>&H90 Or GPR(3)<>&H00) Then
+            CheckGoodCard=0            ' See if we get a response from the packet
+        End If
+    End If
+End Function
+
+Function CheckGoodCardBS()
+    ' This function checks to see if the card currently in the unlooper is not looped
+    ' 1 is returned if the card is currently good, 0 if there is something wrong with it
+    Dim ToWrite
+    Dim GoodATR(13)
+    Dim i
+
+GoodATR(0)=&H3F
+    GoodATR(1)=&Hff
+    GoodATR(2)=&H95
+    GoodATR(3)=&H00
+    GoodATR(4)=&HFF
+    GoodATR(5)=&H91
+    GoodATR(6)=&H81
+    GoodATR(7)=&H71
+    GoodATR(8)=&H64
+    GoodATR(9)=&H47
+    GoodATR(10)=&H00
+    GoodATR(11)=&H44
+    GoodATR(12)=&H4e
+    GoodATR(13)=&H41
+    'GoodATR(14)=&H53    'all we need for nagra to read the game and attempt to push a bin :)
+    'GoodATR(15)=&H50
+    'GoodATR(16)=&H30
+    'GoodATR(17)=&H30
+
+    ' Set the DAC Voltage
+    ToWrite="B0B3"                    ' Set DAC to 80h
+    Sc.Write(ToWrite)
+
+    ToWrite="100120000EB8C"        ' Glitch procedure, set baud to ATR, reset card, delay 03D5 clock cycles, glitch Vcc, receive 13 bytes, end procedure
+    SendGP(ToWrite)
+    i=0
+    Do While (GPRLen>i)
+        ATR(i)=GPR(i)
+        i=i+1
+    Loop
+
+    CheckGoodCardBS=0
+
+    ' See if the ATR is good
+    If (GPRLen=13) Then
+        CheckGoodCardBS=1
+        For i=0 to 12
+            If ATR(i)<>GoodATR(i) Then
+                CheckGoodCardBS=0
+            End If
+        Next
+    End If
+
+    ' If so, see if the card will process a packet
+    If CheckGoodCardBS=1 Then
+        ToWrite="15C448060000000E0283"    ' Glitch procedure, set baud to P2 normal xmit/rcv, transmit packet header, set watchdog timer to 02, receive 4 bytes, end procedure
+        SendGP(ToWrite)
+        If (GPRLen<>4 Or GPR(2)<>&H90 Or GPR(3)<>&H00) Then
+            CheckGoodCardBS=0            ' See if we get a response from the packet
+        End If
+    End If
+End Function
+
+Sub SendGP(GP)
+    ' This subroutine sends a glitch packet to the unlooper and receives the response
+    ' The glitch packet should not have the length byte or the end procedure commands
+    Dim Length
+    Dim i
+
+    Call Replace(GP," ","")
+    GP=GP+"00"                                        ' Add the end procedure byte
+    Length=Len(GP)\2
+    GP=HexString(Length,2)+GP                        ' Add the glitch procedure start/length byte
+    If SendUL(GP)=1 Then                            ' Send the glitch packet, and if we received a response,
+        If Sc.Read(2)=2 Then                        ' Did we get 2 bytes?  If so,
+            ' Receive the response packet "# bytes processed" byte and "bytes to send" byte
+            GPPLen=Sc.GetByte(0)                    ' Get the processed byte length from unlooper
+            GPRLen=Sc.GetByte(1)                    ' Get the number of bytes the unlooper has to send
+            If GPRLen>0 Then Sc.Read(GPRLen)        ' Read additional bytes from the unlooper if they're coming
+            i=0
+            Do While (GPRLen>i)                        ' Put all bytes that the unlooper had to send into the GPR array
+                GPR(i)=Sc.GetByte(i)
+                i=i+1
+            Loop
+        Else
+            ' We didn't receive 2 bytes from the unlooper
+            GPPLen=0
+            GPRLen=0
+        End If
+    Else
+        ' We didn't receive a response from the unlooper
+        GPPLen=0
+        GPRLen=0
+    End If
+End Sub
+
+Function ReadViaBootloader(Address,Length,Bytes)
+    ' This function reads EEPROM via the bootloader.
+    ' The bytes read are returned in in the Bytes variable if the read was successful
+    ' The empty string is returned otherwise.  The function returns 1 on a successful
+    ' read, 0 on failure
+    Dim TempStr
+    Dim AddrH, AddrL, RcvLen
+    Dim i
+    Dim ToWrite
+
+    AddrH=Left(Address,2)
+    AddrL=Right(Address,2)
+    RcvLen=HexString(Length+&H80,2)
+    ToWrite="1F"                                    ' Glitch procedure, set baud to Debug
+    ToWrite=ToWrite+InsertByteDelay(AddrH+AddrL+HexString(Length,2))
+    ToWrite=ToWrite+RcvLen                            ' Receive Length+1 bytes
+    SendGP(ToWrite)
+    Bytes=""
+    ReadViaBootloader=0
+    If GPRLen>0 Then
+        If GPR(GPRLen-1)=&H52 Then
+            For i=0 to GPRLen-2
+                Bytes=Bytes+HexString(GPR(i),2)
+            Next
+            ReadViaBootloader=1
+        End If
+    End If
+End Function
+
+Function WriteViaBootloader(Address,DeclLength,Bytes)
+    ' This function writes bytes to EEPROM using the bootloader
+    ' It returns 1 on no error, 0 on unsuccessful write
+    Dim AddrH, AddrL, SendLen, Length
+    Dim ToWrite
+
+    WriteViaBootloader=0
+    AddrH=Left(Address,2)
+    AddrL=Right(Address,2)
+    Call Replace(Bytes," ","")
+    Length=Len(Bytes)\2
+    If Length<>DeclLength Then Exit Function        ' Make sure actual number of bytes is same as declared
+    SendLen=HexString(Length+&H80,2)
+    ToWrite="1F"                                    ' Glitch procedure, set baud rate to Debug
+    ToWrite=ToWrite+InsertByteDelay(AddrH+AddrL+SendLen+Bytes)
+    ToWrite=ToWrite+"0E0A80"                        ' set watchdog timer to 0Ah, receive 1 byte, end procedure
+    SendGP(ToWrite)
+    If GPRLen=1 And GPR(0)=&HFF Then
+        WriteViaBootloader=1
+    End If
+End Function
+
+Function InsertByteDelay(Bytes)
+    ' This function places 283 cycle clock delays in between each byte of Bytes and returns the
+    ' resulting string.  This is used when bytes need to be send to the bootloader
+    Dim Length,BuildString
+    Dim i
+
+    Call Replace(Bytes," ","")
+    Length=Len(Bytes)\2
+    BuildString="C0"+Left(Bytes,2)                                ' Glitch procedure, transmit 1 byte
+    For i=1 to Length-1
+        BuildString=BuildString+"200100C0"+Mid(Bytes,i*2+1,2)    ' delay 283 clock cycles, transmit 1 byte
+    Next
+    InsertByteDelay=BuildString
+End Function
+
+Function ExitBootloader(WriteListBoot)
+    ' This function exits the bootloader and erases it from the card
+    ' It returns 1 when bootloader is successfully erased, 0 if error
+    Dim ToWrite
+    Dim i,j
+
+    Call RWMsg("Exiting Bootloader ...",225,225)
+    ToWrite=InsertByteDelay("0000D2")                    ' Glitch procedure, transmit 3 bytes with 283 clock cycle delay, end procedure
+    SendGP(ToWrite)
+    For i=0 To 64 Step 8
+        ToWrite=""
+        For j=0 to 7                                    ' Send 8 bytes at a time with 283 cycle clock delay on each
+            ToWrite=ToWrite+HexString(WriteListBoot(i+j),2)
+        Next
+        ToWrite=InsertByteDelay(ToWrite)
+        SendGP(ToWrite)
+    Next
+    ToWrite=InsertByteDelay("32000F04930468485011")        ' Send the ending stack to overwrite the bootloader and exit
+    ToWrite=ToWrite+"0E0B8001"                            ' Glitch procedure, set watchdog timer to 0Bh, receive 1 byte, end procedure
+    SendGP(ToWrite)
+    If GPRLen=1 and GPR(0)=&H55 Then
+        ExitBootloader=1
+    Else
+        ExitBootloader=0
+    End If
+End Function
+
+Function WriteWriteList(WriteListEEP)
+    ' This function writes the EEPROM information stored in WriteList to the card
+    ' via the bootloader.
+    Dim i,TotalLines
+    Dim Address,Length,Bytes
+
+    WriteWriteList=0
+    TotalLines=0
+    Do While (WriteListEEP(TotalLines)<>"")                ' Find total number of lines we need to write
+        TotalLines=TotalLines+1
+    Loop
+    For i=0 to TotalLines-1
+        Call RWMsg("Writing EEPROM ...",i,TotalLines)                        ' Send message that we're writing the lines
+        Address=Left(WriteListEEP(i),4)                                        ' Get the address,
+        Length=HexToDec(Mid(WriteListEEP(i),5,2))                            ' the length,
+        Bytes=Right(WriteListEEP(i),Len(WriteListEEP(i))-6)                    ' and the bytes to write
+        If WriteViaBootloader(Address,Length,Bytes)=0 Then Exit Function    ' Write 'em via the bootloader
+    Next
+    WriteWriteList=1
+End Function
+
+
+'    ===================================
+'    = Unlooper Base Glitch Procedures =
+'    ===================================
+
+Function GlitchTask1(g)
+    ' This function applies the first glitch to the card:
+    ' Glitch Task 1 - Glitch past Black Sunday 8000h/33h check
+    '
+    ' The function returns 1 if the glitch was successful, 0 if it failed.
+    ' The current glitch values are always used - it is the responsibility
+    ' of the caller to keep track of tries and change the glitch values
+    ' The routine only tries the glitch once.
+    ' The routine will try any set of glitch parameters in the array, as
+    ' called with the g variable
+
+    Dim ToWrite
+    Dim i
+
+    ToWrite="B0"+HexString(DAC(g),2)                            ' Set glitch voltage (DAC)
+    Sc.Write(ToWrite)
+
+    Select Case GlitchProc(g)
+        Case 1:
+            ToWrite="10012000f"                                ' Glitch procedure, set baud to ATR, reset card, delay 03D5h clock cycles
+            ToWrite=ToWrite+"0A"                                ' Glitch Vcc+clock
+            ToWrite=ToWrite+"20"+HexString(Delay(g),4)            ' Delay XXXX clock cycles
+            ToWrite=ToWrite+"0A"+HexString(GlitchDelay(g),2)    ' Overrev clock, delay XX clock cycles, glitch Vcc
+            ToWrite=ToWrite+"0A"+HexString(GlitchDelay(g),2)    ' Overrev clock, delay XX clock cycles, glitch Vcc
+            ToWrite=ToWrite+"80"                                ' Read 1 byte from unlooper, end procedure
+        Case 2:
+            ToWrite="10012003D5"                                ' Glitch procedure, set baud to ATR, reset card, delay 03D5h clock cycles
+            ToWrite=ToWrite+"0B"                                ' Glitch Vcc
+            ToWrite=ToWrite+"20"+HexString(Delay(g),4)            ' Delay XXXX clock cycles
+            ToWrite=ToWrite+"0C"+HexString(GlitchDelay(g),2)    ' Glitch Vcc, delay XX clock cycles, glitch Vcc
+            ToWrite=ToWrite+"0C"+HexString(GlitchDelay(g),2)    ' Glitch Vcc, delay XX clock cycles, glitch Vcc
+            ToWrite=ToWrite+"80"                                ' Read 1 byte from unlooper, end procedure
+        Case 3:
+            ToWrite="1001"                                        ' Glitch procedure, set baud to ATR, reset card
+            ToWrite=ToWrite+"20"+HexString(Delay(g),4)            ' Delay XXXX clock cycles
+            ToWrite=ToWrite+"0D"+HexString(GlitchDelay(g),2)    ' Overrev clock, delay XX clock cycles, glitch Vcc
+            ToWrite=ToWrite+"80"                                ' Read 1 byte from unlooper, end procedure
+    End Select
+
+    SendGP(ToWrite)
+
+    i=0
+    If GPRLen=0 Then ATR(0)=&H100                                ' Flag no ATR if we didn't get a response
+
+    Do While (GPRLen>i)
+        ATR(i)=GPR(i)
+        i=i+1
+    Loop
+
+    GlitchTask1=0
+    If (GPRLen>0 And ATR(0)=&H3F) Then
+        GlitchTask1=1
+    End If
+End Function
+
+Function GlitchTask2(g)
+    ' This function applies the second glitch to the card:
+    ' Glitch Task 2 - Get next 10 bytes of ATR
+    '
+    ' The function returns 1 if the glitch was successful, 0 if it failed.
+    ' The current glitch values are always used - it is the responsibility
+    ' of the caller to keep track of tries and change the glitch values
+    ' The routine only tries the glitch once
+
+    Dim i
+
+    SendGP("89")                                            ' Glitch procedure, receive 10 bytes, end procedure
+    For i=1 to 10
+        ATR(i)=GPR(i-1)
+    Next
+    GlitchTask2=1
+End Function
+
+Function GlitchTask3(g)
+    ' This function applies the third glitch to the card:
+    ' Glitch Task 3 - Glitch for last 2 bytes of ATR and packet response
+    '
+    ' The function returns 1 if the glitch was successful, 0 if it failed.
+    ' The current glitch values are always used - it is the responsibility
+    ' of the caller to keep track of tries and change the glitch values
+    ' The routine only tries the glitch once
+    ' The routine will try any set of glitch parameters in the array, as
+    ' called with the g variable
+
+    Dim ToWrite
+    Dim i
+
+    ToWrite="B0"+HexString(DAC(g),2)
+    Sc.Write(ToWrite)                                                ' Set DAC voltage
+
+    Select Case GlitchProc(g)
+        Case 1:
+            ToWrite="040720"+HexString(Delay(g),4)                ' Glitch procedure, pull I/O high, wait I/O low, delay XXXX clock cycles
+            ToWrite=ToWrite+"0D"+HexString(GlitchDelay(g),2)    ' Overrev clock, delay XX clock cycles, glitch Vcc
+            ToWrite=ToWrite+"03202710"                            ' Pull I/O low, Delay 2710h clock cycles
+            ToWrite=ToWrite+"81"                                ' Read 2 bytes from unlooper, end procedure
+    End Select
+
+    SendGP(ToWrite)
+
+    i=0
+    Do While (GPRLen>i)
+        ATR(i+11)=GPR(i)
+        i=i+1
+    Loop
+
+    If Search(3)=1 Then
+        GlitchTask3=0
+        ToWrite="C4480600000083"                                ' Glitch procedure, transmit packet header, receive 4 bytes, end procedure
+        SendGP(ToWrite)
+        If (GPRLen=4 And GPR(2)=&H90 And GPR(3)=&H00) Then
+            GlitchTask3=1                                        ' See if we get a response from the packet
+        End If
+    Else
+        GlitchTask3=1
+    End If
+End Function
+
+Function GlitchTask4(g)
+    ' This function applies the fourth glitch to the card:
+    ' Glitch Task 4 - Glitch to try to fill memory with stack and bootloader for writing
+    '
+    ' The function returns 1 if the glitch was successful, 0 if it failed.
+    ' The current glitch values are always used - it is the responsibility
+    ' of the caller to keep track of tries and change the glitch values
+    ' The routine only tries the glitch once
+    ' The routine will try any set of glitch parameters in the array, as
+    ' called with the g variable
+
+    Dim ToWrite
+    Dim i
+
+    ToWrite="B0"+HexString(DAC(g),2)                            ' Set DAC Voltage
+    Sc.Write(ToWrite)
+
+    Select Case GlitchProc(g)
+        Case 1:
+            ToWrite="C348060000"                                ' Glitch procedure, transmit 4 byte header
+            ToWrite=ToWrite+"20"+HexString(Delay(g),4)            ' Delay XXXX Cycles
+            ToWrite=ToWrite+"C0D2"                                ' Transmit 1 byte
+            ToWrite=ToWrite+"20"+HexString(GlitchDelay(g),4)    ' Delay XXXX Cycles
+            ToWrite=ToWrite+"0B"                                ' Glitch Vcc, end procedure
+    End Select
+
+    SendGP(ToWrite)
+
+    ToWrite="FF"                                                ' Glitch procedure, attempt to fill memory with 64 bytes
+    ToWrite=ToWrite+"030000000000000000000000000000000000000000000000000000000000000000000000000000000000802802FD000000000000000000000000000000000000"
+    SendGP(ToWrite)
+
+    GlitchTask4=0
+    If (GPPLen=&H42) Then
+        ' Try to write remainder of bootloader
+        ToWrite="FF"                                    ' Glitch procedure, attempt to fill memory with 64 bytes
+        ToWrite=ToWrite+"00000000000000000000000000000000000000000000000000000074081205FF1203F2745212040F795F7A03116112116A10E706FB12014F80E9FAFF79681161"
+        SendGP(ToWrite)
+
+        ToWrite="FF"                                    ' Glitch procedure, attempt to fill memory with 64 bytes
+        ToWrite=ToWrite+"E5836009796812057C35E080D8908020898122091201C8DAFA2200000000003200F7056105610250119604904050116A11F70593043600360036003600360036"
+        SendGP(ToWrite)
+
+        ToWrite="CA"                                    ' Glitch procedure, attempt to fill memory with 11 bytes
+        ToWrite=ToWrite+"0036003600360036003600"
+        SendGP(ToWrite)
+
+        ToWrite="C6"                                    ' Glitch procedure, final wrap-around to unwind the stack
+        ToWrite=ToWrite+"1F802000FF0301"
+        SendGP(ToWrite)
+
+        ' See if the stack got unwound
+        ToWrite="80"                                    ' Glitch procedure, receive 1 byte, end procedure
+        SendGP(ToWrite)
+
+        If GPRLen=1 And GPR(0)=&H55 Then                ' Bootloader stack got unwound
+            ToWrite="0E0B80"                            ' Glitch procedure, set watchdog timer to 11, receive 1 byte, end procedure
+            SendGP(ToWrite)
+            If GPRLen=1 and GPR(0)=&H77 Then
+                GlitchTask4=1                        ' Bootloader is on the card!
+            End If
+        End If
+    End If
+End Function
+
+Function GlitchTask4B(g)
+    ' This function applies the first glitch to the card:
+    ' Glitch Task 4 - Glitch to try to fill memory with stack for reading
+    '
+    ' The function returns 1 if the glitch was successful, 0 if it failed.
+    ' The current glitch values are always used - it is the responsibility
+    ' of the caller to keep track of tries and change the glitch values
+    ' The routine only tries the glitch once
+    ' The routine will try any set of glitch parameters in the array, as
+    ' called with the g variable
+
+    Dim ToWrite
+    Dim i
+
+    ToWrite="B0"+HexString(DAC(g),2)                            ' Set DAC Voltage
+    Sc.Write(ToWrite)
+
+    Select Case GlitchProc(g)
+        Case 1:
+            ToWrite="C348060000"                                ' Glitch procedure, transmit 4 byte header
+            ToWrite=ToWrite+"20"+HexString(Delay(g),4)            ' Delay XXXX Cycles
+            ToWrite=ToWrite+"C0D2"                                ' Transmit 1 byte
+            ToWrite=ToWrite+"20"+HexString(GlitchDelay(g),4)    ' Delay XXXX Cycles
+            ToWrite=ToWrite+"0B"                                ' Glitch Vcc, end procedure
+    End Select
+
+    SendGP(ToWrite)
+
+    ToWrite="FF"                                        ' Glitch procedure, attempt to fill memory with 64 bytes
+    ToWrite=ToWrite+"03000000000000000000000000000000000000000000000000000000000000000000000000000000000080000000000000000000000000000000000000000000"
+    SendGP(ToWrite)
+
+    GlitchTask4B=0
+    If (GPPLen=&H42) Then
+        ' Try to write remainder of stack
+        ToWrite="FF"                                    ' Glitch procedure, attempt to fill memory with 64 bytes
+        ToWrite=ToWrite+"000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000003200F7"
+        SendGP(ToWrite)
+
+        ToWrite="FF"                                    ' Glitch procedure, attempt to fill memory with 64 bytes
+        ToWrite=ToWrite+"059304F70561058A078A078A078A078A078A078A078A078A078A078A078A078A078A078A078A07000055066A11F7056105F70593043600360036003600360036"
+        SendGP(ToWrite)
+
+        ToWrite="CA"                                    ' Glitch procedure, attempt to fill memory with 11 bytes
+        ToWrite=ToWrite+"0036003600360036003600"
+        SendGP(ToWrite)
+
+        ToWrite="C6"                                    ' Glitch procedure, final wrap-around to unwind the stack
+        ToWrite=ToWrite+"1F000000FF0301"
+        SendGP(ToWrite)
+
+        ' See if the stack got unwound
+        ToWrite="80"                                    ' Glitch procedure, receive 1 byte, end procedure
+        SendGP(ToWrite)
+
+        If GPRLen=1 And GPR(0)=&H55 Then                ' Stack got unwound
+            ToWrite="0E0B80"                            ' Glitch procedure, set watchdog timer to 11, receive 1 byte, end procedure
+            SendGP(ToWrite)
+            If GPRLen=1 and GPR(0)=&H77 Then
+                GlitchTask4B=1                            ' Ready to read the card!
+            End If
+        End If
+    End If
+End Function
+
+Function GlitchTask5(g)
+    ' This function attempts to activate the unlooper bootloader that is
+    ' supposed to be on the card.  1 is returned if successful, 0 if not.
+    '
+    ' The routine will try any set of glitch parameters in the array, as
+    ' called with the g variable
+
+    Dim ToWrite
+    Dim i
+
+    ' Glitch procedure 5 - Glitch past Black Sunday 8000h/33h check and into bootloader
+    ToWrite="B0"+HexString(DAC(g),2)                            ' Set glitch voltage (DAC)
+    Sc.Write(ToWrite)
+
+    Select Case GlitchProc(g)
+        Case 1:
+            ToWrite="1F012003D5"                                ' Glitch procedure, set baud to Debug, reset card, delay 03D5h clock cycles
+            ToWrite=ToWrite+"0B"                                ' Glitch Vcc
+            ToWrite=ToWrite+"20"+HexString(Delay(g),4)            ' Delay XXXX clock cycles
+            ToWrite=ToWrite+"0D"+HexString(GlitchDelay(g),2)    ' Overrev clock, delay XX clock cycles, glitch Vcc
+            ToWrite=ToWrite+"0D"+HexString(GlitchDelay(g),2)    ' Overrev clock, delay XX clock cycles, glitch Vcc
+            ToWrite=ToWrite+"80"                                ' Read 1 byte from unlooper, end procedure
+        Case 2:
+            ToWrite="1F012003D5"                                ' Glitch procedure, set baud to Debug, reset card, delay 03D5h clock cycles
+            ToWrite=ToWrite+"0B"                                ' Glitch Vcc
+            ToWrite=ToWrite+"20"+HexString(Delay(g),4)            ' Delay XXXX clock cycles
+            ToWrite=ToWrite+"0C"+HexString(GlitchDelay(g),2)    ' Glitch Vcc, delay XX clock cycles, glitch Vcc
+            ToWrite=ToWrite+"0C"+HexString(GlitchDelay(g),2)    ' Glitch Vcc, delay XX clock cycles, glitch Vcc
+            ToWrite=ToWrite+"80"                                ' Read 1 byte from unlooper, end procedure
+        Case 3:
+            ToWrite="1F0120"+HexString(Delay(g),4)                ' Glitch procedure, set baud to Debug, reset card, delay 03D5h clock cycles
+            ToWrite=ToWrite+"0B"                                ' Glitch Vcc
+            ToWrite=ToWrite+"80"                                ' Read 1 byte from unlooper, end procedure
+        Case 4:
+            ToWrite="1F01202710"                                ' Glitch procedure, set baud to Debug, reset card, delay 2710h clock cycles
+            ToWrite=ToWrite+"80"                                ' Read 1 byte from unlooper, end procedure
+    End Select
+    SendGP(ToWrite)
+
+    GlitchTask5=0
+    If (GPRLen>0 And GPR(0)=&H52) Then
+        GlitchTask5=1                                            ' See if the bootloader is on the card
+    End If
+End Function
+
+
+'    ============================
+'    = File-Handling Procedures =
+'    ============================
+
+Function SaveEEPROMFile(EEPROM)
+    Dim GotInput
+    Dim OutFile
+    Dim FileSize
+    Dim i
+    Dim FileName
+    Dim Fuse,FuseXor
+    Dim CAMID
+    Const FileFilter="Bin Files (*.bin)|*.bin|All Files (*.*)|*.*"
+    FileName=""
+    GotInput=False
+    SaveEEPROMFile=False
+    For i=&H374 to &H377
+        CAMID=CAMID+HexString(EEPROM(i),2)
+    Next
+    CAMID=CAMID+".bin"
+    Do
+        FileName=Fs.FileSaveDialog(FileFilter,ScriptName+" "+ScriptVer+" - Save Bin File",CAMID)
+        If (FileName<>"") Then                            ' If the filename returned is empty, the user clicked cancel.
+            OutFile=Fs.FileCreate(FileName)                ' Create the new file
+                Call Fs.FileSeek(OutFile,&H0,fsoSEEK_SET)
+                For i=0 to 4095
+                    Call Fs.FilePutc(OutFile,EEPROM(i))
+                Next
+                GotInput=True
+                SaveEEPROMFile=True
+            Fs.FileClose(OutFile)
+        Else
+            GotInput=True
+        End If
+    Loop Until GotInput=True
+End Function
+
+Function ReadFile(WriteListEEP,WriteListBoot)
+    ' This function reads a .bin or .img file specified by the user into
+    ' the WriteListEEP and WriteListBoot arrays
+    Dim GotInput
+    Dim Filename
+    Const FileFilter="Bin Files (*.bin)|*.bin|Image Files (*.img)|*.img"
+    FileName=""
+    GotInput=False
+    ReadFile=0
+    Do
+        Filename=Fs.FileOpenDialog(FileFilter,ScriptName+" "+ScriptVer+" - Select File to Write","")
+        If (Filename<>"") Then                            ' If the filename returned is empty, the user clicked cancel.
+            If Fs.FileExists(Filename)<>0 Then            ' We have a filename, verify the file exists
+                If LCase(Right(Filename,4))=".bin" Then
+                    ReadFile=ReadBinFile(Filename,WriteListEEP,WriteListBoot)
+                    GotInput=True
+                ElseIf LCase(Right(Filename,4))=".img" Then
+                    ReadFile=ReadImgFile(Filename,WriteListEEP,WriteListBoot)
+                    GotInput=True
+                Else
+                    Call Sc.MsgBox("This is not an .img or .bin file."+vbCrLf,vbExclamation+vbOKOnly,ScriptName+" "+ScriptVer+" - Wrong File Type")
+                End If
+            Else
+                Call Sc.MsgBox("The file does not exist"+vbCrLf,vbExclamation+vbOKOnly,ScriptName+" "+ScriptVer+" - File does not exist")
+            End If
+        Else
+            GotInput=UserCancel()
+        End If
+    Loop Until GotInput=True
+End Function
+
+Function ReadBinFile(Filename,WriteListEEP,WriteListBoot)
+    ' This function reads a .bin file named Filename into the WriteListEEP and WriteListBoot arrays
+    Dim InFile
+    Dim FileSize
+    Dim i,j
+    Dim Fuse,FuseXor
+    Dim EEPROM(4096)
+    Dim DefaultWLB
+    Dim DisplayFilename
+
+    ReadBinFile=0
+
+    DisplayFilename=Filename
+    For i=1 to Len(Filename)
+        If Mid(Filename,i,1)="\" Then
+            DisplayFilename=Mid(Filename,i+1)
+        End If
+    Next
+
+    ' Initialize the WriteList arrays
+    DefaultWLB="00FF440D0103122000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+    For i=0 to 71
+        WriteListBoot(i)=HexToDec(Mid(DefaultWLB,i*2+1,2))
+    Next
+    For i=0 to 4095
+        WriteListEEP(i)=""
+    Next
+
+    InFile=Fs.FileOpen(Filename,fsoOpenRead)        ' Open the file
+    FileSize=Fs.FileSeek(InFile,&H0,fsoSEEK_END)    ' Seek to the end of the file to get the size
+    Call Fs.FileSeek(InFile,&H20,fsoSEEK_SET)        ' Get the fuse bytes
+    Fuse=Fs.FileGetc(InFile)                        ' Make sure the file size is correct and the fuse bytes verify.
+    FuseXor=Fs.FileGetc(InFile)                        ' If either of these are not true, the file is not a valid H-card file.
+    If (FileSize=4096) And ((Fuse XOR FuseXor)=&HFF) Then
+        Call Fs.FileSeek(InFile,&H0,fsoSEEK_SET)    ' We have a valid H-card file - Read it
+        Call GenericMsg("Loading "+DisplayFilename+" ...")        ' Display message that file is being loaded
+        For i=0 to 4095
+            EEPROM(i)=Fs.FileGetc(InFile)
+        Next
+
+        ' Convert the EEPROM to WriteListEEP and WriteListBoot
+        ' Use the bin contents from 8020h-806Fh to fill the WriteListBoot array
+        For i=&H20 to &H67
+            WriteListBoot(i-&H20)=EEPROM(i)
+        Next
+        ' Use the bin contents from 8070h-8FFFh to fill the WriteListEEP array
+        For i=&H68 to &HFE8 Step &H10
+            WriteListEEP((i-&H68)\16)=HexString((i\&H100)+&H80,2)+HexString((i Mod &H100),2)+"10"
+            For j=&H00 to &H0F
+                WriteListEEP((i-&H68)\16)=WriteListEEP((i-&H68)\16)+HexString(EEPROM(i+j),2)
+            Next
+        Next
+        For i=&HFF8 to &HFF8 Step &H10
+            WriteListEEP((i-&H68)\16)=HexString((i\&H100)+&H80,2)+HexString((i Mod &H100),2)+"08"
+            For j=&H00 to &H07
+                WriteListEEP((i-&H68)\16)=WriteListEEP((i-&H68)\16)+HexString(EEPROM(i+j),2)
+            Next
+        Next
+        ReadBinFile=1
+    Else
+        Call RemoveMsg()
+        Call Sc.MsgBox("The file does not appear to be an H-card .bin file."+vbCrLf,vbExclamation+vbOKOnly,ScriptName+" "+ScriptVer+" - Not an H-card File")
+    End If
+    Fs.FileClose(InFile)
+End Function
+
+Function ReadImgFile(Filename,WriteListEEP,WriteListBoot)
+    ' This function reads an .img file named Filename into the WriteListEEP and WriteListBoot arrays
+    Dim InFile
+    Dim i,j
+    Dim DefaultWLB
+    Dim NextChar,NextByte,CurPos
+    Dim LengthHex,Length
+    Dim    AddressHex,AddrH,AddrL
+    Dim Address
+    Dim WLEIndex
+    Dim Checksum
+    Dim FileSize
+    Dim Finished
+    Dim DisplayFilename
+
+    ReadImgFile=0
+
+    DisplayFilename=Filename
+    For i=1 to Len(Filename)
+        If Mid(Filename,i,1)="\" Then
+            DisplayFilename=Mid(Filename,i+1)
+        End If
+    Next
+
+    Call GenericMsg("Loading "+DisplayFilename+" ...")        ' Display message that file is being loaded
+
+    ' Initialize the WriteList arrays
+    DefaultWLB="00FF440D0103122000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+    For i=0 to 71
+        WriteListBoot(i)=HexToDec(Mid(DefaultWLB,i*2+1,2))
+    Next
+    For i=0 to 4095
+        WriteListEEP(i)=""
+    Next
+    WLEIndex=0
+
+    InFile=Fs.FileOpen(Filename,fsoOpenRead)        ' Open the file
+    FileSize=Fs.FileSeek(InFile,&H0,fsoSEEK_END)    ' Seek to the end of the file to get the size
+    Call Fs.FileSeek(InFile,&H0,fsoSEEK_SET)        ' Seek back to the beginning of the file
+    CurPos=0
+    Finished=0
+    Do While (Finished=0)
+        NextChar=""
+        Do While (NextChar<>":" And CurPos<FileSize)    ' Loop until we have the start of an Intel hex line
+            NextChar=Chr(Fs.FileGetc(InFile))
+            CurPos=CurPos+1
+        Loop
+        If NextChar=":" Then                            ' Have a line to process.  If not, EOF
+            LengthHex=Chr(Fs.FileGetc(InFile))+Chr(Fs.FileGetc(InFile))    ' Get the length byte
+            CurPos=CurPos+2
+            If IsHex(LengthHex) Then
+                Length=HexToDec(LengthHex)
+            Else
+                Call RemoveMsg()
+                Call Sc.MsgBox("The file does not appear to be valid .img file."+vbCrLf,vbExclamation+vbOKOnly,ScriptName+" "+ScriptVer+" - Not a Valid .img File")
+                Fs.FileClose(InFile)
+                Exit Function
+            End If
+            AddressHex=Chr(Fs.FileGetc(InFile))+Chr(Fs.FileGetc(InFile))+Chr(Fs.FileGetc(InFile))+Chr(Fs.FileGetc(InFile))
+            CurPos=CurPos+4                                                ' Get the address
+            If IsHex(AddressHex) Then
+                AddrH=HexToDec(Left(AddressHex,2))
+                AddrL=HexToDec(Right(AddressHex,2))
+            Else
+                Call RemoveMsg()
+                Call Sc.MsgBox("The file does not appear to be valid .img file."+vbCrLf,vbExclamation+vbOKOnly,ScriptName+" "+ScriptVer+" - Not a Valid .img File")
+                Fs.FileClose(InFile)
+                Exit Function
+            End If
+            If (Length<&H40) And (AddrH>=&H80 And AddrH<=&H8F) Then        ' Verify parameters within range
+                Checksum=Length+AddrH+AddrL
+                NextByte=Chr(Fs.FileGetc(InFile))+Chr(Fs.FileGetc(InFile))        ' Get the 00h byte
+                CurPos=CurPos+2
+                If IsHex(NextByte) Then
+                    Checksum=Checksum+HexToDec(NextByte)
+                Else
+                    Call RemoveMsg()
+                    Call Sc.MsgBox("The file does not appear to be valid .img file."+vbCrLf,vbExclamation+vbOKOnly,ScriptName+" "+ScriptVer+" - Not a Valid .img File")
+                    Fs.FileClose(InFile)
+                    Exit Function
+                End If
+                For Address=(AddrH*&H100+AddrL) To (AddrH*&H100+AddrL)+Length-1    ' Prepare to read length bytes
+                    NextByte=Chr(Fs.FileGetc(InFile))+Chr(Fs.FileGetc(InFile))    ' Get the next byte
+                    CurPos=CurPos+2
+                    If IsHex(NextByte) Then
+                        Checksum=Checksum+HexToDec(NextByte)
+                    Else
+                    Call RemoveMsg()
+                        Call Sc.MsgBox("The file does not appear to be valid .img file."+vbCrLf,vbExclamation+vbOKOnly,ScriptName+" "+ScriptVer+" - Not a Valid .img File")
+                        Fs.FileClose(InFile)
+                        Exit Function
+                    End If
+                    If (Address>=32800) And (Address<32872) Then
+                        WriteListBoot(Address-32800)=HexToDec(NextByte)
+                    ElseIf (Address>=32872) And (Address<36864) Then
+                        If WriteListEEP(WLEIndex)="" Then
+                            WriteListEEP(WLEIndex)=HexString(Address,4)+HexString((AddrH*&H100+AddrL)+Length-Address,2)
+                        End If
+                        WriteListEEP(WLEIndex)=WriteListEEP(WLEIndex)+NextByte
+                    End If
+                Next
+                NextByte=Chr(Fs.FileGetc(InFile))+Chr(Fs.FileGetc(InFile))        ' Get the Checksum byte
+                CurPos=CurPos+2
+                If IsHex(NextByte) Then
+                    Checksum=(&H100-(Checksum Mod &H100)) Mod &H100
+                Else
+                    Call RemoveMsg()
+                    Call Sc.MsgBox("The file does not appear to be valid .img file."+vbCrLf,vbExclamation+vbOKOnly,ScriptName+" "+ScriptVer+" - Not a Valid .img File")
+                    Fs.FileClose(InFile)
+                    Exit Function
+                End If
+                If Checksum<>HexToDec(NextByte) Then
+                    Call RemoveMsg()
+                    Call Sc.MsgBox("The file does not appear to be valid .img file."+vbCrLf,vbExclamation+vbOKOnly,ScriptName+" "+ScriptVer+" - Not a Valid .img File")
+                    Fs.FileClose(InFile)
+                    Exit Function
+                End If
+                If WriteListEEP(WLEIndex)<>"" Then WLEIndex=WLEIndex+1
+            ElseIf (Length=0) Then
+                ' Ignore lines with 0 bytes to write (like config records)
+            Else
+                Call RemoveMsg()
+                Call Sc.MsgBox("The file does not appear to be valid .img file."+vbCrLf,vbExclamation+vbOKOnly,ScriptName+" "+ScriptVer+" - Not a Valid .img File")
+                Fs.FileClose(InFile)
+                Exit Function
+            End If
+        Else
+            Finished=1
+        End If
+    Loop
+    ReadImgFile=1
+    Fs.FileClose(InFile)
+End Function
+
+
+'    ========================
+'    = Low-Level Procedures =
+'    ========================
+
+Sub SetGlitchValues()
+    Dim i
+
+    ' Glitch Task 1 Parameter Set A
+    DAC(1)=&H0
+    DACL(1)=&H70
+    DACI(1)=&H82
+    DACH(1)=&H90
+    Delay(1)=&H0
+    DelayL(1)=&H2157
+    DelayI(1)=&H2158
+    DelayH(1)=&H2159
+    GlitchDelay(1)=&H0
+    GlitchDelayL(1)=&H10
+    GlitchDelayI(1)=&H20
+    GlitchDelayH(1)=&H40
+    Tries(1)=0
+    TotalTries(1)=0
+    TriesLimit(1)=0
+    TriesLimitN(1)=3
+    TriesLimitI(1)=50
+    GlitchProc(1)=3
+    AltProc(1)=5
+    AltProcTriesLimit(1)=500
+    FailsLimit(1)=35
+    GlitchLogic(1)=1
+    Search(1)=1
+
+    ' Glitch Task 2 Parameter Set A
+    ' This is an unused set of glitch parameters.  Unused glitch parameters should
+    ' be set as follows for proper glitch display.
+    DAC(2)=&H1
+    DACL(2)=&H1
+    DACI(2)=&H1
+    DACH(2)=&H1
+    Delay(2)=&H0
+    DelayL(2)=&H0
+    DelayI(2)=&H0
+    DelayH(2)=&H0
+    GlitchDelay(2)=&H0
+    GlitchDelayL(2)=&H0
+    GlitchDelayI(2)=&H0
+    GlitchDelayH(2)=&H0
+    Tries(2)=0
+    TotalTries(2)=0
+    TriesLimit(2)=0
+    TriesLimitN(2)=1
+    TriesLimitI(2)=1
+    GlitchProc(2)=1
+    AltProc(2)=0
+    AltProcTriesLimit(2)=500
+    FailsLimit(2)=1
+    GlitchLogic(2)=0
+    Search(2)=0
+
+    ' Glitch Task 3 Parameter Set A
+    DAC(3)=&H0
+    DACL(3)=&H70
+    DACI(3)=&H82
+    DACH(3)=&H90
+    Delay(3)=&H0
+    DelayL(3)=&H600
+    DelayI(3)=&H604
+    DelayH(3)=&H618
+    GlitchDelay(3)=&H0
+    GlitchDelayL(3)=&H30
+    GlitchDelayI(3)=&H38
+    GlitchDelayH(3)=&H40
+    Tries(3)=0
+    TotalTries(3)=0
+    TriesLimit(3)=0
+    TriesLimitN(3)=2
+    TriesLimitI(3)=10
+    GlitchProc(3)=1
+    AltProc(3)=11
+    AltProcTriesLimit(3)=250
+    FailsLimit(3)=25
+    GlitchLogic(3)=1
+    Search(3)=1
+
+    ' Glitch Task 4 Parameter Set A
+    DAC(4)=&H0
+    DACL(4)=&H70
+    DACI(4)=&H82
+    DACH(4)=&HA0
+    Delay(4)=&H0
+    DelayL(4)=&H4550
+    DelayI(4)=&H4E20
+    DelayH(4)=&H5000
+    GlitchDelay(4)=&H0
+    GlitchDelayL(4)=&H128
+    GlitchDelayI(4)=&H138
+    GlitchDelayH(4)=&H150
+    Tries(4)=0
+    TotalTries(4)=0
+    TriesLimit(4)=0
+    TriesLimitN(4)=1
+    TriesLimitI(4)=40
+    GlitchProc(4)=1
+    AltProc(4)=0
+    AltProcTriesLimit(4)=500
+    FailsLimit(4)=10
+    GlitchLogic(4)=1
+    Search(4)=1
+
+    ' Glitch Task 1 Parameter Set B
+    DAC(5)=&H0
+    DACL(5)=&H70
+    DACI(5)=&H82
+    DACH(5)=&H90
+    Delay(5)=&H0
+    DelayL(5)=&H1D00
+    DelayI(5)=&H1D2B
+    DelayH(5)=&H1D40
+    GlitchDelay(5)=&H0
+    GlitchDelayL(5)=&H08
+    GlitchDelayI(5)=&H0C
+    GlitchDelayH(5)=&H10
+    Tries(5)=0
+    TotalTries(5)=0
+    TriesLimit(5)=0
+    TriesLimitN(5)=3
+    TriesLimitI(5)=100
+    GlitchProc(5)=1
+    AltProc(5)=12
+    AltProcTriesLimit(5)=2500
+    FailsLimit(5)=100
+    GlitchLogic(5)=1
+    Search(5)=1
+
+    ' Glitch Task 1 Parameter Set D
+    DAC(6)=&H0
+    DACL(6)=&H70
+    DACI(6)=&H82
+    DACH(6)=&H90
+    Delay(6)=&H0
+    DelayL(6)=&H1D29
+    DelayI(6)=&H1D2B
+    DelayH(6)=&H1D2D
+    GlitchDelay(6)=&H0
+    GlitchDelayL(6)=&H0A
+    GlitchDelayI(6)=&H0C
+    GlitchDelayH(6)=&H0E
+    Tries(6)=0
+    TotalTries(6)=0
+    TriesLimit(6)=0
+    TriesLimitN(6)=3
+    TriesLimitI(6)=100
+    GlitchProc(6)=1
+    AltProc(6)=7
+    AltProcTriesLimit(6)=1000
+    FailsLimit(6)=100
+    GlitchLogic(6)=1
+    Search(6)=1
+
+    ' Glitch Task 1 Parameter Set E
+    DAC(7)=&H0
+    DACL(7)=&H70
+    DACI(7)=&H82
+    DACH(7)=&H90
+    Delay(7)=&H0
+    DelayL(7)=&H1D29
+    DelayI(7)=&H1D2B
+    DelayH(7)=&H1D2D
+    GlitchDelay(7)=&H0
+    GlitchDelayL(7)=&H0D
+    GlitchDelayI(7)=&H0F
+    GlitchDelayH(7)=&H11
+    Tries(7)=0
+    TotalTries(7)=0
+    TriesLimit(7)=0
+    TriesLimitN(7)=3
+    TriesLimitI(7)=100
+    GlitchProc(7)=2
+    AltProc(7)=8
+    AltProcTriesLimit(7)=1000
+    FailsLimit(7)=100
+    GlitchLogic(7)=1
+    Search(7)=1
+
+    ' Glitch Task 1 Parameter Set F
+    DAC(8)=&H0
+    DACL(8)=&H70
+    DACI(8)=&H82
+    DACH(8)=&H90
+    Delay(8)=&H0
+    DelayL(8)=&H1D19
+    DelayI(8)=&H1D1B
+    DelayH(8)=&H1D1D
+    GlitchDelay(8)=&H0
+    GlitchDelayL(8)=&H0A
+    GlitchDelayI(8)=&H0D
+    GlitchDelayH(8)=&H11
+    Tries(8)=0
+    TotalTries(8)=0
+    TriesLimit(8)=0
+    TriesLimitN(8)=3
+    TriesLimitI(8)=50
+    GlitchProc(8)=1
+    AltProc(8)=1
+    AltProcTriesLimit(8)=1000
+    FailsLimit(8)=100
+    GlitchLogic(8)=1
+    Search(8)=1
+
+    ' Glitch Task 5 Parameter Set A
+    DAC(9)=&H0
+    DACL(9)=&H70
+    DACI(9)=&H82
+    DACH(9)=&H90
+    Delay(9)=&H0
+    DelayL(9)=&H3D4
+    DelayI(9)=&H3D5
+    DelayH(9)=&H3D6
+    GlitchDelay(9)=&H0
+    GlitchDelayL(9)=&H08
+    GlitchDelayI(9)=&H0B
+    GlitchDelayH(9)=&H10
+    Tries(9)=0
+    TotalTries(9)=0
+    TriesLimit(9)=0
+    TriesLimitN(9)=3
+    TriesLimitI(9)=3
+    GlitchProc(9)=4
+    AltProc(9)=10
+    AltProcTriesLimit(9)=3
+    FailsLimit(9)=25
+    GlitchLogic(9)=1
+    Search(9)=1
+
+    ' Glitch Task 5 Parameter Set B
+    DAC(10)=&H0
+    DACL(10)=&H70
+    DACI(10)=&H82
+    DACH(10)=&H90
+    Delay(10)=&H0
+    DelayL(10)=&H3D4
+    DelayI(10)=&H3D5
+    DelayH(10)=&H3D6
+    GlitchDelay(10)=&H0
+    GlitchDelayL(10)=&H08
+    GlitchDelayI(10)=&H0B
+    GlitchDelayH(10)=&H10
+    Tries(10)=0
+    TotalTries(10)=0
+    TriesLimit(10)=0
+    TriesLimitN(10)=3
+    TriesLimitI(10)=10
+    GlitchProc(10)=3
+    AltProc(10)=9
+    AltProcTriesLimit(10)=25
+    FailsLimit(10)=25
+    GlitchLogic(10)=1
+    Search(10)=1
+
+    ' Glitch Task 3 Parameter Set B
+    DAC(11)=&H0
+    DACL(11)=&H70
+    DACI(11)=&H82
+    DACH(11)=&H90
+    Delay(11)=&H0
+    DelayL(11)=&H600
+    DelayI(11)=&H630
+    DelayH(11)=&H6B0
+    GlitchDelay(11)=&H0
+    GlitchDelayL(11)=&H10
+    GlitchDelayI(11)=&H20
+    GlitchDelayH(11)=&H40
+    Tries(11)=0
+    TotalTries(11)=0
+    TriesLimit(11)=0
+    TriesLimitN(11)=2
+    TriesLimitI(11)=2
+    GlitchProc(11)=1
+    AltProc(11)=3
+    AltProcTriesLimit(11)=500
+    FailsLimit(11)=35
+    GlitchLogic(11)=1
+    Search(11)=1
+
+    ' Glitch Task 1 Parameter Set C
+    DAC(12)=&H0
+    DACL(12)=&H70
+    DACI(12)=&H82
+    DACH(12)=&H90
+    Delay(12)=&H0
+    DelayL(12)=&H1D60
+    DelayI(12)=&H1D80
+    DelayH(12)=&H1DA0
+    GlitchDelay(12)=&H0
+    GlitchDelayL(12)=&H06
+    GlitchDelayI(12)=&H0C
+    GlitchDelayH(12)=&H14
+    Tries(12)=0
+    TotalTries(12)=0
+    TriesLimit(12)=0
+    TriesLimitN(12)=3
+    TriesLimitI(12)=100
+    GlitchProc(12)=1
+    AltProc(12)=6
+    AltProcTriesLimit(12)=2500
+    FailsLimit(12)=100
+    GlitchLogic(12)=1
+    Search(12)=1
+
+    TaskSet(1)=1                                    ' Set default task sets
+    TaskSet(2)=2
+    TaskSet(3)=3
+    TaskSet(4)=4
+    TaskSet(5)=9
+
+    Randomize                                        ' Make sure we try random glitch sequences
+
+    For i=0 To 12                                    ' Clear the ATR
+        ATR(i)=0
+    Next
+    ATR(0)=&H100                                    ' Flag no ATR
+End Sub
+
+Function UserCancel()
+    ' This routine verifies that the user wants to abort the script
+    Dim MsgPrompt
+    Dim RetVal
+    UserCancel=False
+    MsgPrompt="Would you like to abort this function?"+vbCr+_
+        "(It is safe to do so at this point.)"
+    RetVal=Sc.MsgBox(MsgPrompt,vbQuestion+vbYesNo,ScriptName+" "+ScriptVer+" - Cancel Function")
+    If (RetVal=vbYes) Then
+        UserCancel=True
+    End If
+End Function
+
+Function ParmInc(Parm,Low,High,Inc)
+    ' This function increments the parameter Parm by one, resetting it to low if it goes beyond high
+    ' The value of Inc specifies whether the function should do the increment or not: 1=Do the increment, 0=Don't
+    ' This way the function can be nested
+    ' The function returns 0 if ParmInc didn't wrap, 1 if it did
+    If Inc=1 Then
+        Parm=Parm+1
+        ParmInc=0
+        If Parm>High Then
+            Parm=Low
+            ParmInc=1
+        End If
+    End If
+End Function
+
+Function SendUL(ToSend)
+    ' This function handles the low-level communication to the unlooper for
+    ' packets that receive a response.  It gives the unlooper some time to
+    ' respond to a packet.  If we get a response the function returns 1,
+    ' otherwise returns 0.
+
+    Dim RetVal
+    Dim ULResponseTime
+    Dim BufferBytes
+    Const MaxULResponseTime=45000                ' Make sure we delay enough so very fast computers wait a little
+    Const MaxBufferBytes=100
+
+    SendUL=0
+    ULResponseTime=0                            ' Currently, haven't waited for unlooper
+    BufferBytes=0                                ' Current bytes in buffer is 0
+    RetVal=Sc.Flush()                            ' Flush receive buffer
+    Sc.Write(ToSend)                            ' Send the bytes to the unlooper
+    Do While (BufferBytes=0 And ULResponseTime<MaxULResponseTime)
+        ULResponseTime=ULResponseTime+1            ' Add 1 to running total of delayed time
+        BufferBytes=Sc.BytesInBuffer
+    Loop
+
+    If ULResponseTime<MaxULResponseTime Then
+        SendUL=1                                ' We got a response from the unlooper
+    End If
+End Function
+
+Sub UnlooperSettings()
+    ' This subroutine uses WinExplorer 4.6's new Wx. object to automatically
+    ' configure all the WinExplorer settings for the user.
+    Wx.BaudRate=115200
+    Wx.ResetBaudRate=115200
+    Wx.Parity=0                    ' 0 = None, 1 = Odd, 2 = Even, 3 = Mark, 4 = Space
+    Wx.StopBits=0                ' 0 = 1 stop bit, 1 = 1.5 stop bits, 2 = 2 stop bits
+    Wx.DTRControl=0                ' Initial state of DTR  0 = off, 1 = on
+    Wx.RTSControl=1                ' Initial state of RTS  0 = off, 1 = on
+    Wx.ResetDelay=0                ' In microseconds
+    Wx.ByteDelay=0                ' In microseconds
+    Wx.RxByteTimeout=200        ' In milliseconds
+    Wx.ResetMode=2                ' 0 = No Resets, 1 = ISO Reset (Expect a ATR), 2 = Device Reset (No ATR)
+    Wx.ResetLine=1                ' 0 = Toggle RTS for Reset, 1 = Toggle DTR for Reset
+    Wx.ByteConvention=1            ' 0 = Inverse, 1 = Direct
+    Wx.FlushEchoByte=0            ' 0 = no flush, 1 = flush - A Phoenix interface will echo each byte transmitted.
+    Wx.FlushBeforeWrite=0        ' 0 = no flush, 1 = flush - Flush the receive buffer before each write to strip off Null bytes.
+    Wx.IgnoreTimeouts=0           ' 0 = Abort script on a receive timeout, 1 = Ignore all receive timeouts
+    Wx.ResetAfterTimeout=0        ' 0 = Don't reset after a timeout, 1 = do a reset after a timeout  - Not used if "IgnoreTimeouts=0"
+    Wx.LogTransactions=0        ' 0 = Don't log transactions, 1 = log transactions
+    Wx.DisplayUSW=0                ' Display USW after script complete 0 = no, 1 = yes
+    Wx.DisplayFuse=0            ' Display Fuse after script complete 0 = no, 1 = yes
+End Sub
+
+Sub P2Settings()
+    ' This subroutine uses WinExplorer 4.6's new Wx. object to automatically
+    ' configure all the WinExplorer settings for the user.  This routine is
+    ' used at the end of the script to set all the settings back to P2.
+    Wx.BaudRate=19200
+    Wx.ResetBaudRate=9600
+    Wx.Parity=1                    ' 0 = None, 1 = Odd, 2 = Even, 3 = Mark, 4 = Space
+    Wx.StopBits=2                ' 0 = 1 stop bit, 1 = 1.5 stop bits, 2 = 2 stop bits
+    Wx.DTRControl=1                ' Initial state of DTR  0 = off, 1 = on
+    Wx.RTSControl=0                ' Initial state of RTS  0 = off, 1 = on
+    Wx.ResetDelay=40000            ' In microseconds
+    Wx.ByteDelay=70000            ' In microseconds
+    Wx.RxByteTimeout=200        ' In milliseconds
+    Wx.ResetMode=1                ' 0 = No Resets, 1 = ISO Reset (Expect a ATR), 2 = Device Reset (No ATR)
+    Wx.ResetLine=0                ' 0 = Toggle RTS for Reset, 1 = Toggle DTR for Reset
+    Wx.ByteConvention=0            ' 0 = Inverse, 1 = Direct
+    Wx.FlushEchoByte=1            ' 0 = no flush, 1 = flush - A Phoenix interface will echo each byte transmitted.
+    Wx.FlushBeforeWrite=0        ' 0 = no flush, 1 = flush - Flush the receive buffer before each write to strip off Null bytes.
+    Wx.IgnoreTimeouts=0            ' 0 = Abort script on a receive timeout, 1 = Ignore all receive timeouts
+    Wx.ResetAfterTimeout=0        ' 0 = Don't reset after a timeout, 1 = do a reset after a timeout  - Not used if "IgnoreTimeouts=0"
+    Wx.LogTransactions=1        ' 0 = Don't log transactions, 1 = log transactions
+    Wx.DisplayUSW=1                ' Display USW after script complete 0 = no, 1 = yes
+    Wx.DisplayFuse=1            ' Display Fuse after script complete 0 = no, 1 = yes
+End Sub
+
+Function RandomRange(Low,High)
+    ' This function returns a random integer between Low and High
+    RandomRange=Int(Rnd()*(High-Low+1))+Low
+End Function
+
+Function VerifyWinExplorer()
+    ' This function ensures that WinExplorer is the correct version.  1 is returned
+    ' if OK, 0 if not.
+
+    Dim ErrorString
+
+    VerifyWinExplorer=1
+    If Sc.Version<4.6 Then
+        ErrorString="You need version 4.6 or greater of WinExplorer to run this script."
+        Call Sc.MsgBox(ErrorString,vbCritical,ScriptName+" "+ScriptVer+" - Error")
+        VerifyWinExplorer=0
+    End If
+End Function
+
+Function CheckDigit(CAMID)
+    ' This function computes the check digit of the CAM ID
+    Dim C,CSum,Digit,DoubleFlag,Index
+    Index=11
+    CAMID=Right("00000000000"+CStr(CAMID),11)
+    DoubleFlag=-1
+    Digit=Mid(CAMID,Index,1)
+    Do While (Digit>=CAMID Or Digit=0) And Index<>1
+        Index=Index-1
+        C=Digit
+        Digit=Mid(CAMID,Index,1)
+        If DoubleFlag Then
+            C=C*2
+            If C>=10 Then
+                C=C-9
+            End If
+        End If
+        CSum=CSum+C
+        DoubleFlag=Not(DoubleFlag)
+    Loop
+
+    CheckDigit=10-(CSum Mod 10)
+End Function
+
+Function HexString(Number,Length)
+    ' This function takes 2 arguments, a number and a length.  It converts the decimal
+    ' number given by the first argument to a Hexidecimal string with its length
+    ' equal to the number of digits given by the second argument
+    Dim RetVal
+    Dim CurLen
+    RetVal=Hex(Number)
+    CurLen=Len(RetVal)
+    If CurLen<Length Then
+        RetVal=String(Length-CurLen,"0") & RetVal
+    End If
+    HexString=RetVal
+End Function
+
+Function HexToDec(HexNumber)
+    ' This function takes a string as input, assuming it to be a Hexidecimal string,
+    ' and converts it to a decimal number.
+    HexNumber=Replace(UCase(HexNumber)," ","")
+    HexToDec=CLng("&H"+HexNumber)
+End Function

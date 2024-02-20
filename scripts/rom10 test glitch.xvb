@@ -1,0 +1,202 @@
+' New VB Script File - Created 9/15/04
+' rom10 test glitch
+' glitching is similar to r3 unlooper
+
+'**********************************************************
+
+Option Explicit
+    Dim Bytes
+    dim bytes2
+    Dim BR2(5)
+    Dim VCCStart
+    Dim VCCLimit
+    Dim VCC
+    Dim Delay
+    Dim DelayLimit
+    Dim DelayStart
+    Dim GlitchType
+    Dim TryCnt
+    DIM TryLimit
+    Dim UNLOOPED
+    dim atr
+    UNLOOPED = 0
+
+
+Sub Main()
+sc.reset
+    ' turn led off
+    sc.verbose=TRUE
+    Sc.Write("A0")
+    Sc.Delay(500)
+    ' card is in turn led on
+    Sc.Write("A1")
+
+' get atr
+    sc.verbose=TRUE
+    Sc.Write("07 0e 03 10 01 03 9a 00")    'reset card
+    Sc.Read(02)
+    Bytes = Sc.Getbyte(1)
+    if Bytes > 25 then
+    Sc.Read(25)
+    end if
+    DelayStart = &h30
+    DelayLimit = &h5f
+    VCCStart = &h3A
+    VCCLimit = &h34
+    GlitchType = &h0A
+    'TryCnt = 1
+    Delay = DelayStart
+    VCC = VCCStart
+
+
+    sc.verbose=false
+
+
+Do
+
+trycnt=trycnt +1
+if trycnt > 500 then
+trycnt = 0
+end if
+
+             VCC = VCC - 1
+               if VCC < VCCLimit then
+               VCC = VCCStart
+               END IF
+               delay = delay + 0.10
+               if delay > delayLimit then
+               delay = delayStart
+               END IF
+
+           GlitchType = &h0a
+           vcc = &H45
+          ' delay = &H4b
+
+call Sc.ProgressBox ("Glitching...   " & HexString(vcc,2)&"/"&  HexString(GlitchType, 2)  & "/" & HexString(Delay,4)&"              trys   " &trycnt&vbcr& "ATR:" &(atr),1,999,"Rom10 glitchfinder" )
+    Sc.Write("B0" & HexString(VCC, 2))
+    Sc.Write("0b 10 0e 03 01 02"& HexString(GlitchType, 2) & HexString(Delay, 4) & "03 9A 00")
+    Sc.Read(02)
+Bytes = Sc.Getbyte(1)
+if Bytes > 10 then
+        Bytes = sc.read(9)
+        Bytes = Sc.Getbyte(0)
+        atr =  hexstring (sc.getbyte(0),2)& hexstring (sc.getbyte(1),2)& hexstring (sc.getbyte(2),2)& hexstring (sc.getbyte(3),2)& VbCr
+        SC.DELAY(2)
+
+  if Bytes = &H02 then
+             print
+             Sc.Print "===========================================" & VbCr
+             Sc.Print "VCC = "& HexString(VCC, 2)
+             SC.PRINT "/" &  HexString(GlitchType, 2)  &"/" & HexString(Delay, 4)& VbCr
+             Sc.Print " GLITCHED past 1st bug" & VbCr
+             PRINT HEXSTRING(SC.GETBYTE(0),2) & HEXSTRING(SC.GETBYTE(1),2) & HEXSTRING(SC.GETBYTE(2),2)& HEXSTRING(SC.GETBYTE(3),2)& VbCr
+             Sc.Print "===========================================" & VbCr
+             End if
+            if Bytes = &H03 then
+             print
+             Sc.Print "===========================================" & VbCr
+             Sc.Print "VCC = "& HexString(VCC, 2)
+             SC.PRINT "/" &  HexString(GlitchType, 2)  &"/" & HexString(Delay, 4)& VbCr
+             Sc.Print "glitched past 2nd bug" & VbCr
+             PRINT HEXSTRING(SC.GETBYTE(0),2) & HEXSTRING(SC.GETBYTE(1),2) & HEXSTRING(SC.GETBYTE(2),2)& HEXSTRING(SC.GETBYTE(3),2)& VbCr
+             Sc.Print "===========================================" & VbCr
+            End if
+  if Bytes = &H04 then
+             print
+             Sc.Print "===========================================" & VbCr
+             Sc.Print "VCC = "& HexString(VCC, 2)
+            SC.PRINT "/" &  HexString(GlitchType, 2)  &"/" & HexString(Delay, 4)& VbCr
+             Sc.Print "glitched past 3rd bug" & VbCr
+             PRINT HEXSTRING(SC.GETBYTE(0),2) & HEXSTRING(SC.GETBYTE(1),2) & HEXSTRING(SC.GETBYTE(2),2)& HEXSTRING(SC.GETBYTE(3),2)& VbCr
+             Sc.Print "===========================================" & VbCr
+            End if
+ if Bytes = &H3f then
+             print
+             Sc.Print "===========================================" & VbCr
+             Sc.Print "VCC = "& HexString(VCC, 2)
+             SC.PRINT "/" &  HexString(GlitchType, 2)  &"/" & HexString(Delay, 4)& VbCr
+             Sc.Print "SUCCESS all bugs!!!" & VbCr
+             PRINT HEXSTRING(SC.GETBYTE(0),2) & HEXSTRING(SC.GETBYTE(1),2) & HEXSTRING(SC.GETBYTE(2),2)& HEXSTRING(SC.GETBYTE(3),2)& VbCr
+             Sc.Print "===========================================" & VbCr
+            End if
+
+
+if unlooped = 1 then
+          'TURN LED OFF
+          print
+          print"========================= "& VbCr
+          print"= CAM IS NOW UNLOOPED!!!!! = "& VbCr
+          print"========================= "& VbCr
+          Sc.Write("A0")
+          Exit Sub
+
+
+END IF
+end if
+LOOP
+
+End Sub
+
+Function HexString(Number,Length)
+    ' This function takes 2 arguments, a number and a length.  It converts the decimal
+    ' number given by the first argument to a Hexidecimal string with its length
+    ' equal to the number of digits given by the second argument
+    Dim RetVal
+    Dim CurLen
+    RetVal=Hex(Number)
+    CurLen=Len(RetVal)
+    If CurLen<Length Then
+        RetVal=String(Length-CurLen,"0") & RetVal
+    End If
+    HexString=RetVal
+End Function
+
+Sub SENDOVERFLOW()
+sc.delaY(05)
+Sc.Write("5D 15 F6 21 00")
+Sc.Write("53 A0 CA 00 00 4D 03 4B 00 C5 10 6F 15 CC 00 CC")
+Sc.Write("00 CC 00 CC 00 0C CD 32 0C 5A EA 2D 2D 0C CD 32")
+Sc.Write("0C 5A EA 2D 2D B1 C4 45 F4 E1 20 14 80 8D 4C F0")
+Sc.Write("AA A6 1D 0D AA 1D F4 97 65 2E 88 4E 25 0C CD 32")
+Sc.Write("0C 5A EA 2D 2D B1 C4 45 F4 E1 20 14 80 05 67 21")
+Sc.Write("92 00 00 00 7D 0E 05 85 00")
+
+
+   Sc.Read(02)
+   Bytes = Sc.Getbyte(1)
+        if Bytes > 4 then
+        Sc.Read(5)
+        bytes=sc.getbyte(3)
+
+
+
+      END IF
+        if bytes = &H83 then
+
+            SC.DELAY(2500)
+
+            sc.verbose=TRUE
+            Sc.Write("0A 15 A3 21 92 00 B3 0E 03 85 00")
+            SC.READ(2)
+ sc.verbose=true
+ Sc.Write("08 0e 03 10 01 01 03 9a 00")
+    Sc.Read(02)
+    Bytes = Sc.Getbyte(1)
+    if Bytes > 25 then
+    Sc.Read(25)
+    Bytes = Sc.Getbyte(0)
+    if Bytes = &H3F then
+    Bytes = Sc.Getbyte(1)
+    if Bytes = &HFF then
+    Bytes = Sc.Getbyte(2)
+     if Bytes = &H95 then
+    unlooped = 1
+    sc.verbose=false
+      end if
+
+
+END IF
+END IF
+ end if
+END IF
+END SUB

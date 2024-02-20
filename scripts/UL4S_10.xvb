@@ -1,0 +1,455 @@
+'
+' Tested with
+' P4/2001 + T911/UL4S + Winexplorer 5.42
+' Power up the P4 then wait  of (0x038B+...)  cycles for ATR_DM
+'
+' Print a statistics about the success rate
+' at the end
+'
+' tested with Winexplorer 5.42 (earlier versions might also do)
+' and unlooper settings
+'
+' Author: Lee Gibling
+'
+'-----------------------------------------------------------------
+' "Hit" means here got an ATR (ATR_DM, ATR ..) .
+' No "Hit" means got nothin (ATR_DM, nothing).
+
+
+Dim AI_cmd(&h80), AI_success()
+Dim I_nbr_IO_attempts_f1, I_IO_delay, I_IO_time_out
+
+
+Sub Main()
+
+Dim I_bytes_received_f1, I_max_idx, Succcess
+Dim i1, i2, I_tt_1, I_tt_2, I_tt_3, I_tt_4
+Dim I_loop_1, I_loop_2,  I_idx_start_f0, I_idx_end_f0
+Dim StringToSend_atr, StringToSend, S_interval
+
+Sc.Verbose = true
+
+Wx.LogTransactions = 1
+
+I_key_base             = &h00 '
+I_key_steps            = 0
+
+I_interval_1_base        = &h0f ' 20 00 0A
+I_interval_2_base        = &h68 ' &h88
+
+I_interval_1_steps_f1    = 1  ' 00 - &hff
+I_interval_2_steps_f1    = 1 ' 11
+
+
+I_IO_delay               = 300
+I_IO_time_out            = 3000 '  Wx.RxByteTimeout
+Call  UnlooperSettings()
+I_nbr_attempts_f1        = 8192 '
+I_nbr_IO_attempts_f1     = 4096
+
+I_key_steps_f1           = I_key_steps_f0    + 1
+I_interval_1_steps_f0    = I_interval_1_steps_f1 - 1
+I_interval_2_steps_f0    = I_interval_2_steps_f1 - 1
+Redim  AI_success((I_interval_1_steps_f0 * &h100) + I_interval_2_steps_f0)
+
+H_key_base               = HexString(I_key_base, 2)
+I_interval_2_last        = I_interval_2_base + I_interval_2_steps_f0
+H_interval_2_last        = HexString(I_interval_2_last, 2)
+
+AI_cmd(&h00)  = &h58   ' gl**ch packet length
+AI_cmd(&h01)  = &h10   ' switch to 9.6 kbaud
+AI_cmd(&h02)  = &h01   ' power up card
+AI_cmd(&h03)  = &h28   ' wait
+AI_cmd(&h04)  = &h00   ' wait
+AI_cmd(&h05)  = &h00   ' wait
+AI_cmd(&h06)  = &h01   ' power up card again
+AI_cmd(&h07)  = &h20   ' wait for ATR_DM
+AI_CMD(&h08)  = &h03   ' ="=
+AI_cmd(&h09)  = &hB8   ' ="=
+
+AI_cmd(&h0a)  = &h80   ' receive byte 33
+AI_cmd(&h0b)  = &h28
+AI_cmd(&h0c)  = &h00
+AI_cmd(&h0d)  = &h00
+AI_cmd(&h0e)  = &h8C   ' receive 13 (dec) bytes from card (end of ATR_DM)
+
+AI_cmd(&h0f) = &hCF    ' key length 5
+
+AI_cmd(&h10) = &h00
+AI_cmd(&h11) = &h00
+AI_cmd(&h12) = &h00
+AI_cmd(&h13) = &h00
+
+AI_cmd(&h14) = &h00
+AI_cmd(&h15) = &h00
+AI_cmd(&h16) = &h00
+AI_cmd(&h17) = &h00
+
+AI_cmd(&h18) = &h00
+AI_cmd(&h19) = &h00
+AI_cmd(&h1a) = &h00
+AI_cmd(&h1b) = &h00
+
+AI_cmd(&h1c) = &h00
+AI_cmd(&h1d) = &h00
+AI_cmd(&h1e) = &h00
+AI_cmd(&h1f) = &h00
+
+AI_cmd(&h20) = &h20
+AI_cmd(&h21) = &h00
+AI_cmd(&h22) = &h00
+
+AI_cmd(&h23) = &hC7
+AI_cmd(&h24) = &h00
+AI_cmd(&h25) = &h00
+AI_cmd(&h26) = &h00
+AI_cmd(&h27) = &h00
+AI_cmd(&h28) = &h00
+AI_cmd(&h29) = &h00
+AI_cmd(&h2A) = &h00
+AI_cmd(&h2B) = &h00
+
+AI_cmd(&h2C) = &h20
+AI_cmd(&h2D) = &h15
+AI_cmd(&h2E) = &h22
+
+AI_cmd(&h2F) = &hC7
+AI_cmd(&h30) = &h00
+AI_cmd(&h31) = &h00
+AI_cmd(&h32) = &h00
+AI_cmd(&h33) = &h00
+AI_cmd(&h34) = &h00
+AI_cmd(&h35) = &h00
+AI_cmd(&h36) = &h00
+AI_cmd(&h37) = &h00
+
+AI_cmd(&h38) = &h20
+AI_cmd(&h39) = &h15
+AI_cmd(&h3A) = &h22
+
+AI_cmd(&h3B) = &hC7
+AI_cmd(&h3C) = &h00
+AI_cmd(&h3D) = &h00
+AI_cmd(&h3E) = &h00
+AI_cmd(&h3F) = &h00
+AI_cmd(&h40) = &h00
+AI_cmd(&h41) = &h00
+AI_cmd(&h42) = &h00
+AI_cmd(&h43) = &h00
+
+AI_cmd(&h44) = &h20
+AI_cmd(&h45) = &h15
+AI_cmd(&h46) = &h22
+
+AI_cmd(&h47) = &hC7
+AI_cmd(&h48) = &h00
+AI_cmd(&h49) = &h00
+AI_cmd(&h4a) = &h00
+AI_cmd(&h4b) = &h00
+
+AI_cmd(&h4c) = &h00
+AI_cmd(&h4d) = &h00
+AI_cmd(&h4e) = &h00
+AI_cmd(&h4f) = &h00
+
+AI_cmd(&h50) = &h20
+AI_cmd(&h51) = &h00 ' Interval_1 modified here
+AI_cmd(&h52) = &h00 ' Interval_2 modified here
+
+AI_cmd(&h53) = &h80
+AI_cmd(&h54) = &h28
+AI_cmd(&h55) = &h00
+AI_cmd(&h56) = &h00
+AI_cmd(&h57) = &h8c
+AI_cmd(&h58) = &h00  ' packet end
+
+I_idx_end_f0 = &h58
+
+Success = Sc.Log ("Start of Test Run")
+if Success = 1 Then
+   Sc.Err("Unable to open LogFile")
+End If
+Success = Sc.Log("")
+
+For i1 = 0 to I_interval_1_steps_f0
+   AI_success(i1) = 0
+Next
+
+For i1 = 0 to I_interval_1_steps_f0 '
+   I_tt_1 = I_interval_1_base + i2
+   H_tt_1 = HexString(I_tt_1, 2)
+   AI_cmd(&h51) = I_tt_1  ' wait after key
+   For i2 = 0 to I_interval_2_steps_f0 '
+      I_tt_2 = I_interval_2_base + i2
+      H_tt_2 = HexString(I_tt_2, 2)
+      AI_cmd(&h52) = I_tt_2  ' wait after key
+
+
+      I_success_rate = 0
+      for I_att = 1 to I_nbr_attempts_f1
+          I_bytes_received_f1 = FI_send_to_card ( _
+               0, _
+               I_idx_end_f0)
+          If (I_bytes_received_f1 >= 24) then
+             I_byte_atr = Sc.GetByte(16)
+             if (I_byte_atr = &h33) OR (I_byte_atr = &h3F)  Then
+                AI_success(i1) = AI_success(i1) + 1
+                I_success_rate = I_success_rate + 1
+             End If
+          End If
+          S_interval = "20 " & H_tt_1 & " " &  H_tt_2
+          Call Sc.ProgressBox _
+          ("Attempt: " & I_att & " out of " & I_nbr_attempts_f1 & _
+           "  - hits: " & I_success_rate, _
+           I_att, I_nbr_attempts_f1, _
+          "Testing Interval: " & S_interval)
+          ' & "  -  interval_2: 03" & H_tt_2)
+     next
+   next
+next
+
+StringToLog = " * * *   S u m m a r y * * * for base key (hex): " & H_key_base & _
+              " and " & I_nbr_attempts_f1 &  " (dec) attempts * * *"
+ Sc.Print(StringToLog)
+ Sc.Print(vbcrlf)
+ Success = Sc.Log(StringToLog)
+ Success = Sc.Log("")
+
+for i1 = 0 to I_interval_1_steps_f0
+   I_interval_1 = I_interval_1_base + i2
+   H_interval_1 = HexString(I_interval_1, 2)
+   StringToLog = " * * *   S u m m a r y ++++ for interval_1 (hex): " & H_interval_1
+   Sc.Print(StringToLog)
+   Sc.Print(vbcrlf)
+   Success = Sc.Log(StringToLog)
+   Success = Sc.Log("")
+   for i2 = 0 to I_interval_2_steps_f0
+      I_interval_2 = I_interval_2_base + i2
+      H_interval_2 = HexString(I_interval_2, 2)
+      S_interval = "20 " & H_interval_1 & " " &  H_interval_2
+         StringToLog = " success rate (dec) for interval " & S_interval & ": "  & _
+         AI_success(i1) & "/" & I_nbr_attempts_f1
+         Sc.Print(StringToLog)
+         Sc.Print("")
+         Success = Sc.Log(StringToLog)
+   Next
+Next
+
+Success = Sc.Log("")
+
+End Sub
+
+'-----------------------------------------
+' S E N D - T O - C A R D
+'-----------------------------------------
+
+Function FI_send_to_card (_
+ P_idx_start_f0, _
+ P_idx_end_f0)
+
+Dim B_IO_ok
+Dim i1, i2, I_loop, I_delay
+Dim I_bytes_received_f1, I_len_f1, I_len_hdr_sent_f1, I_len_hdr_rcvd_f1, I_byte, I_max_idx
+Dim StringToSend, H_len_hdr_sent_f1, H_len_hdr_rcvd_f1, H_len_f1
+
+I_len_f1 = P_idx_end_f0 - P_idx_start_f0 + 1
+
+StringToSend = FS_HexString_ary( _
+    AI_cmd, _
+    P_idx_start_f0, _
+    I_len_f1)
+
+i1 = 1
+I_loop = 0
+I_delay = I_IO_delay
+While I_loop = 0
+   B_IO_ok     = false
+   B_sent_ok   = false
+   StringToLog = ""
+   If i1 <= I_nbr_IO_attempts_f1  Then
+      On Error Resume Next
+      Sc.Write(StringToSend)
+      On Error Goto 0
+      SC.Print(vbcrlf)
+      Sc.Log(StringToSend)
+      Sc.Log("")
+
+      Sc.Delay(I_delay)
+      I_bytes_received_f1 = Sc.BytesInBuffer
+
+      StringToLog = "Received: (dec) " & I_bytes_received_f1 & " bytes"
+      Sc.Print(StringToLog)
+      Sc.Log(StringToLog)
+
+      If I_bytes_received_f1 >= 2 Then
+
+         Sc.Read(I_bytes_received_f1)
+         I_max_idx = I_bytes_received_f1 - 1
+         StringReceived = ""
+      ' sc.Print("I_max_idx: " & I_max_idx & vbcrlf)
+         For i2 = 0 to I_max_idx
+      '  sc.Print("i1: " & i1 & vbcr)
+            I_byte = Sc.GetByte(i2)
+            If i2 = 0 then   ' bytes sent to unlooper
+               If I_byte > 0 Then
+                  B_sent_ok = true
+               Else
+                  I_len_hdr_sent_f1 = I_byte
+                  H_len_hdr_sent_f1 = HexString(I_len_hdr_sent_f1, 2)
+                  H_len_f1          = HexString(I_len_f1, 2)
+
+                  StringToLog = "Sc.write() card error occured at attempt " & _
+                                i1 & " after " & I_delay & " ms delay" & vbcr & _
+                                H_len_hdr_sent_f1 & "/" & H_len_f1 & "(hex) bytes sent."
+
+               End If
+            Else
+               If i2 = 1 Then ' bytes received from unlooper
+                  if B_sent_ok Then
+                     If I_byte > 0 Then
+                        B_IO_ok = true
+                     Else
+                        I_len_hdr_rcvd_f1 = I_byte
+                        H_len_hdr_rcvd_f1 = HexString(I_len_hdr_rcvd_f1, 2)
+                        StringToLog = "Sc.write() card error occured at attempt " & _
+                                      i1 & " after " & I_delay & " ms delay" & vbcr & _
+                                      H_len_hdr_rcvd_f1 & "(hex) bytes received."
+                     End If
+                  End If
+               End If
+            End If
+            S_byte = HexString(I_byte, 2)
+      '  sc.Print("Hex_Bxte: " & Hex_Byte & vbcr)
+            StringReceived = StringReceived & S_byte
+            If i2 < I_max_idx Then
+               StringReceived = StringReceived & " "
+            End If
+         Next
+      Else
+         StringToLog = "RS232 I/O error occured at Sc.write() attempt " & i1 & _
+                       " after " & I_delay & " ms"
+      End If
+      If B_IO_ok then
+         I_loop = 1
+      Else
+         Sc.Reset()
+         SC.Flush()
+         Sc.Print(vbcr)
+         Sc.Print(StringToLog)
+         Sc.Print(vbcr)
+         Sc.Log(StringToLog)
+         Sc.Log("")
+         i1 = i1 + 1
+         I_delay = I_delay + 5
+      End If
+   Else
+      I_loop = -1
+   End If
+Wend
+
+Success = Sc.Log(StringReceived)
+Sc.Print(vbcrlf)
+Success = Sc.Log("")
+
+FI_send_to_card = I_bytes_received_f1
+
+End Function ' FI_send_to_card
+
+'-----------------------------------------
+
+Function FS_HexString_Ary( _
+P_AI_ary(), _
+P_I_idx_start_f0, _
+P_I_idx_len_f1)
+
+Dim S_retval, H_byte
+Dim i1, I_count_f1, I_loop, U_bound_f0, L_bound_f0, I_byte
+
+Dim StringToLog
+StringToLog = "P_I_idx_start_f0: " & P_I_idx_start_f0
+
+S_retval = ""
+
+I_count_f1 = 0
+U_bound_f0 = Ubound(P_AI_ary)
+L_bound_f0 = Lbound(P_AI_ary)
+
+i1 = P_I_idx_start_f0
+
+I_loop = 0
+While I_loop = 0
+   if I_count_f1 < P_I_idx_len_f1 Then
+      if i1 <= U_bound_f0 Then
+         if i1 >= L_bound_f0 Then
+            I_byte = P_AI_ary(i1)
+            H_byte = HexString(I_byte, 2)
+            S_retval = S_retval & H_byte
+            if i1 < U_bound_f0 Then
+               S_retval =  S_retval + " "
+            End If
+         End If
+         i1 = i1 + 1
+         I_count_f1 = I_count_f1 + 1
+      Else
+         I_loop = 1
+      End If
+   Else
+      I_loop = 1
+   End If
+Wend
+
+FS_HexString_Ary = S_retval
+
+End Function
+
+'-----------------------------------------
+
+Function HexString(Number, Length)
+' This function takes 2 arguments, a number and a length. It converts the decimal
+' number given by the first argument to a Hexidecimal string with its length
+' equal to the number of digits given by the second argument
+Dim RetVal
+Dim CurLen
+
+RetVal=Hex(Number)
+CurLen=Len(RetVal)
+
+If CurLen<Length Then
+   RetVal=String(Length-CurLen, "0") & RetVal
+End If
+
+HexString=RetVal
+End Function
+
+'-----------------------------------------
+
+Sub  UnlooperSettings()
+
+    '  Wx.CommPort = "com1:"
+    Wx.BaudRate = 115200
+    Wx.ResetBaudRate = 115200
+    Wx.Parity = 0                ' 0 = None, 1 = Odd, 2 = Even, 3 = Mark, 4 = Space
+    Wx.StopBits = 0              ' 0 = 1 stop bit, 1 = 1.5 stop bits, 2 = 2 stop bits
+    Wx.DTRControl = 0            ' Initial state of DTR  0 = off, 1 = on
+    Wx.RTSControl = 1            ' Initial state of RTS  0 = off, 1 = on
+
+    Wx.ResetDelay = 0            ' In microseconds
+    Wx.ByteDelay = 0             ' In microseconds
+    Wx.RxByteTimeout = I_IO_time_out ' In milliseconds
+    Wx.ResetMode = 2             ' 0 = No Resets, 1 = ISO Reset (Expect a ATR),
+                                 ' 2 = Device Reset (No ATR)
+    Wx.ResetLine = 1             ' 0 = Toggle RTS for Reset, 1 = Toggle DTR for Reset
+    Wx.ByteConvention = 1        ' 0 = Inverse, 1 = Direct
+    Wx.FlushEchoByte = 0         ' 0 = no flush, 1 = flush -
+                                 ' A Phoenix interface will echo each byte transmitted.
+    Wx.FlushBeforeWrite = 0      ' 0 = no flush, 1 = flush - Flush the receive buffer before
+                                 ' each write to strip off Null bytes.
+    Wx.IgnoreTimeouts = 0        ' 0 = Abort script on a receive timeout,
+                                 ' 1 = Ignore all receive timeouts
+    Wx.ResetAfterTimeout = 0     ' 0 = Don't reset after a timeout,
+                                 ' 1 = do a reset after a timeout  - Not used if "IgnoreTimeouts=0"
+    Wx.LogTransactions = 0       ' 0 = Don't log transactions, 1 = log transactions
+    Wx.DisplayUSW = 0            ' Display USW after script complete 0 = no, 1 = yes
+    Wx.DisplayFuse = 0           ' Display Fuse after script complete 0 = no, 1 = yes
+
+End Sub

@@ -1,0 +1,348 @@
+' Texting
+' RSA minutiae:
+'    Modulus (N) is same for both encryption and decryption (N=PQ)
+'    Public Exponent(E) = 3
+'    Private Exponent (D) = Px + Qy = GCD(P,Q)
+'
+'    "Public Key" (modulus and public exponent) used for encryption
+'    "Private Key" (modulus and private exponent) used for decryption
+'
+' *** The values used to decrypt/encrypt the data must be in LITTLE ENDIAN format
+' *** inside the formulas.  It should be in BIG ENDIAN format when receiving/transmitting
+' *** to the card.
+'
+'
+' IRD/Script        CAM
+'  CMD2A      -->
+'             <--   Encrypted 2A Data (in big endian format)
+'
+' *** From here, the values in the formulas need to be in LITTLE ENDIAN format (Data, E, N) ***
+' *********************************************************************************************
+'
+'  Decrypt data using CAM-N (CAM Specific RSA key)
+'     ("Encrypted 2A Data" ^ "CAM Public Exponent (E)") MOD "CAM Public Modulus (N)"  = "Decrypted 2A Data"
+'                             -------------------            ----------------------
+'                                     |                                 |
+'                                     |-- 3                             |
+'                                                                       ----From Rcv dump, or from...???
+'
+'  Insert 16 random bytes (bytes 16-32)(??? - I think this is where the session key goes...maybe not needed for exploit)
+'
+'  Encrypt new data
+'     ("Decrypted 2A Data" ^ "CAM Public Exponent (D)") MOD "CAM Public Modulus (N)" = "Encrypted 2B Data"
+'
+'
+' Byteflop the Encrypted 2B data (to convert it back to BIG ENDIAN for transmission to card...
+'
+'  Send encrypted data back ro CAM in CMD2B
+'
+'  CMD2B      -->
+'             <--   SW
+'
+
+
+Option Explicit
+
+
+Dim CAMPublicModulus
+Dim CAMPublicModulusLittleEnd
+Dim CAMPublicExponent
+Dim CAMPrivateExponent
+Dim FakeModulus
+Dim FakeModulusLittleEnd
+
+Dim Hpmbmath
+Dim DebugLevel
+
+DebugLevel = 1
+
+Set hpmbmath = CreateObject("Hpmbmath.Mparith")
+
+CAMPublicExponent = "03"
+
+ClearOutputWindow
+
+Sub Main()
+    Dim i
+    Dim Encrypted2AData
+    Dim Encrypted2ADataLittleEnd
+    Dim Decrypted2AData
+    Dim Encrypted2BData
+    Dim StuffedData
+    Dim GlitchPayload
+    Dim NagraHeader
+    Dim NagraPacket
+    Dim LoaderPacket
+    Dim SendLength
+    Dim LoaderLen
+
+    Dim RoundNumber
+    Dim PassNumber
+    Dim MaxPasses
+    Dim ThisPassCount
+    Dim MinCount
+    Dim MaxCount
+    Dim AvgCount
+    Dim TotalCount
+
+    CAMPublicModulus =   HexSpace("E4EEE69F0E97E23576F177A6BAC06E09120589FA9F0CC69FE2DF508B3ED52E7CABA46A5F01449355BE697E0E7221DAD138C119B3E39828D1543CD1CE2D5DB9C8")
+    FakeModulus      =   HexSpace("00112233445566778899AABBCCDDEEFF00112233445566778899AABBCCDDEEFF00112233445566778899AABBCCDDEEFF00112233445566778899AABBCCDDEEFF")
+    CAMPublicModulusLittleEnd = Hpmbmath.Swap(CAMPublicModulus, 64)
+    FakeModulusLittleEnd = Hpmbmath.Swap(FakeModulus, 64)
+
+
+
+' Get Flash Version
+    Sc.Write("90")
+    Sc.Delay(10)
+    Sc.Read(Sc.BytesInBuffer)
+
+' Reset card and read ATR
+    Sc.Write("06100103501A00")
+    Sc.Read(2)
+    Sc.Read(Sc.Getbyte(1))
+
+' Set working baud rate
+    Sc.Write("021500")
+    Sc.Read(02)
+
+' Set IFS (information field size)
+    Sc.Write("0A 6004 21C1018061 5004 00")
+    Sc.Delay(500)
+    Sc.Read(2)
+    Sc.Read(Sc.Getbyte(1))
+
+
+
+
+    Sc.Verbose = False
+
+    MaxPasses = 1
+
+    For RoundNumber = 1 to 2
+
+        MinCount = 0
+        MaxCount = 0
+        AvgCount = 0
+        TotalCount = 0
+
+        For PassNumber = 1 to MaxPasses
+            ' For the second pass, use the known incorrect CAM-N...
+            If PassNumber = 2 Then
+                CAMPublicModulusLittleEnd = FakeModulusLittleEnd
+            End If
+
+            ' Get the encrypted random 2A data from the card
+            Sc.Write("11 600B 210008A0CA0000022A004229 5047 00")
+            Sc.Read(2)
+            Sc.Read(Sc.Getbyte(1))
+
+            Encrypted2AData = ""
+            For i = 5 to 68
+                Encrypted2AData = Encrypted2AData & HexString(Sc.GetByte(i), 2)
+            Next
+
+            Encrypted2AData = HexSpace(Encrypted2AData)
+
+
+            ' Convert the encrypted data to little endian format
+            Encrypted2ADataLittleEnd = HexSpace(Hpmbmath.Swap(Encrypted2AData, 64))
+
+            ' Decrypt the random 2A data
+            Decrypted2AData = hpmbmath.ModPow(Encrypted2ADataLittleEnd, CAMPublicExponent, CAMPublicModulusLittleEnd)
+
+            ' Now stuff our payload into the decrypted data (preserving the first 16 bytes so the signature test will pass)
+            ' 16 bytes signature, 48 bytes for payload (payload from original 206 script)
+            '      1.  Convert to big endian (byteflop)
+            '      2.  Add payload (preserving signature bytes (0-15))
+            '      3.  Convert back to little endian (byteflop)
+            '******* The payload needs to be verified before glitching...this is just to test encrypt/decrypt...not to dump *******
+            StuffedData = UnSpace(Hpmbmath.Swap(Decrypted2AData, 64))
+            GlitchPayload = ""
+            GlitchPayload = GlitchPayload & "0000"              ' Not sure...why zeroes?
+            GlitchPayload = GlitchPayload & "9D9D9D9D9D9D9D9D"  ' Pad...NOP
+            GlitchPayload = GlitchPayload & "9D9D9D9D9D9D9D9D"  ' ...
+            GlitchPayload = GlitchPayload & "9D9D9D9D9D9D9D9D"  ' ...
+            GlitchPayload = GlitchPayload & "9D9D9D9D9D9D9D9D"  ' ...
+            GlitchPayload = GlitchPayload & "9D9D9D9D9D9D"      ' ...
+            GlitchPayload = GlitchPayload & "CD7E14"            ' Call routine to copy and jump
+            GlitchPayload = GlitchPayload & "0C98"              '    From 0C98
+            GlitchPayload = GlitchPayload & "00CE"              '    To   00CE
+            GlitchPayload = GlitchPayload & "90"                '    &h90 bytes
+            StuffedData = HexSpace(Left(StuffedData, 32) & GlitchPayload)
+            Decrypted2AData = Hpmbmath.Swap(StuffedData, 64)
+
+
+            ' Re-encrypt the data (original 16 bytes plus out new payload) for the 2B command
+            Encrypted2BData = hpmbmath.ModPow(Decrypted2AData, CAMPublicExponent, CAMPublicModulusLittleEnd)
+            Encrypted2BData = Hpmbmath.Swap(Encrypted2BData, 64)
+
+            If DebugLevel >= 1 Then
+                Sc.Print VbCr & "Encrypted 2A Data       = " & Unspace(Encrypted2AData)
+                Sc.Print VbCr & "Decrypted 2A Data       = " & Unspace(Decrypted2AData)
+                Sc.Print VbCr & "Encrypted 2B Data       = " & Unspace(Encrypted2BData)
+            End If
+
+            ' Send Encrypted2BData back to card...
+            NagraHeader = ""
+            NagraPacket = ""
+            LoaderPacket = ""
+            GlitchPayload = ""
+
+            GlitchPayload = UnSpace(Encrypted2BData)
+
+            NagraPacket = NagraPacket & "42"                    ' Instruction Length
+            NagraPacket = NagraPacket & "2B"                    ' Command (CMD27)
+            NagraPacket = NagraPacket & "40"                    ' Command Data Length
+            NagraPacket = NagraPacket & GlitchPayload
+            NagraPacket = NagraPacket & "02"                    ' Expected Response Length
+
+            NagraHeader = NagraHeader & "2100"                      ' Nagra Header NAD and PCB
+            NagraHeader = NagraHeader & HexString(((Len(NagraPacket) / 2) + 4), 2)
+            NagraHeader = NagraHeader & "A0CA0000"
+
+            NagraPacket = NagraHeader & NagraPacket
+
+            NagraPacket = NagraPacket & LRC(Unspace(NagraPacket))   ' Nagra Packet LRC checksum
+
+            SendLength = HexString(((Len(NagraPacket) / 2) - 1), 2)
+
+            LoaderPacket = LoaderPacket & "15"                      ' Reset Baud Rate
+            LoaderPacket = LoaderPacket & "60" & SendLength         ' Send Nagra Packet
+            LoaderPacket = LoaderPacket & NagraPacket               '
+    '        LoaderPacket = LoaderPacket & "5007"                    ' Read 8 bytes from card (00-07)
+            LoaderPacket = LoaderPacket & "0D"                    ' Read 8 bytes from card (00-07)
+            LoaderPacket = LoaderPacket & "00"                      ' End of Loader Packet
+
+            LoaderLen = HexString((Len(LoaderPacket) / 2), 2)
+
+            LoaderPacket = LoaderLen & LoaderPacket
+
+            Sc.Write(LoaderPacket)
+
+            Sc.Read(3)
+
+            ThisPassCount = "&h" & HexString(Sc.GetByte(0),2) & HexString(Sc.GetByte(1),2) & HexString(Sc.GetByte(2),2)
+
+            Sc.Print(".")
+
+            If PassNumber = 1 Then
+                MaxCount = ThisPassCount
+                MinCount = ThisPassCount
+            Else
+                If ThisPassCount > MaxCount Then
+                    MaxCount = ThisPassCount
+                End If
+                If ThisPassCOunt < MinCount Then
+                    MinCount = ThisPassCount
+                End If
+            End If
+
+            TotalCount = TotalCount + ThisPassCount
+        Next
+
+        AvgCount = HexString(TotalCount/("&h" & HexString(MaxPasses,2)),6)
+
+        Sc.Print(VBCR & "----------------------------------------------") & VBCR
+        Sc.Print(" Round " & RoundNumber) & VBCR
+        Sc.Print(" Min Delay   :" & MinCount) & VBCR
+        Sc.Print(" Max Delay   :" & MaxCount) & VBCR
+        Sc.Print(" Avg Delay   :&h" & AvgCount) & VBCR & VBCR
+    Next
+
+
+
+
+'...it should then pass the signature test and get copied to $0080
+'...wait the appropriate amount of time and see if we can get the PC to jump somewhere in the $0092-$00B8 range :)
+
+
+End Sub
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Function HexSpace(strInputHex)
+' This function takes a string of hexadecimal characters (with whatever spacing) and returns
+' a nice evenly spaced string of hexadicmal bytes (one space between each byte)
+    Dim strNewString, i
+
+    strInputHex = Unspace(strInputHex)
+    For i = 1 To Len(strInputHex) Step 2
+        strNewString = strNewString & Mid(strInputHex, i, 2) & " "
+    Next
+    HexSpace = Trim(strNewString)
+End Function
+
+
+
+
+
+Function ArrayToHexString(ByVal ByteArray)
+    Dim i
+    Dim BuildString
+    Dim strHexValueString
+
+    For i = 0 To UBound(ByteArray)
+        strHexValueString = CStr(ByteArray(i))
+        If (Len(strHexValueString) Mod 2) <> 0 Then
+            strHexValueString = "0" & strHexValueString
+        End If
+        BuildString = BuildString & strHexValueString
+    Next
+
+    ArrayToHexString = BuildString
+
+End Function
+
+
+
+
+
+
+Function HexString(Number,Length)
+    Dim RetVal
+    Dim CurLen
+    RetVal=Hex(Number)
+    CurLen=Len(RetVal)
+    If CurLen<Length Then
+        RetVal=String(Length-CurLen,"0") & RetVal
+    End If
+    HexString=RetVal
+End Function
+
+
+
+
+
+
+Function Unspace(HexString)
+    Unspace = UCase(Replace(HexString, " ", ""))
+End Function
+
+
+
+
+
+Function LRC(Cmd)
+    Dim CmdLen
+    Dim j
+
+    CmdLen = Len(Cmd)
+    For j = 1 to CmdLen Step 2
+        LRC = "&h" & mid(Cmd,j,2) Xor LRC
+    Next
+
+    LRC = Right("0" + Hex(LRC), 2)
+End Function

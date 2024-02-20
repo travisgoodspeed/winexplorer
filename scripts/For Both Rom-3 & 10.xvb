@@ -1,0 +1,1210 @@
+' Script date 12/08/04 - ReK
+' fixed rom3 unlock script to use complete trycount range - thanks DevilDSS :-)
+' included Rom3 VCC analyser - *** STILL REQUIRES a TEST BIN to be loaded *******
+' changed delay ranges for rom3
+' Added identification for D7 and D9 flashes as well
+' Now we have identifiable flashes, merged Rom3 and Rom10 scripts
+' added popup for test vcc ranges and delay ranges
+' Added check for correct flash for Rom10 - NEEDS D8 FLASH
+' Modified ATR -  Thanks T0Y
+' Modified to set winexplorer settings for script
+' Modified to add SC.restart, card insertion detect, and led "twinkle
+' Added VCCanalyser routine to determine VCCStart and  VCCLimit thanks slickvguy
+' Added Dish or Bev card select
+' FOR Dish rom 10 A23 or Bell Rom10 A81 STREAMLOCKED only.
+' Need to do:
+' - - - Get VCC analyser running on Rom3 without test bin
+'
+' THANKS TO NO1B4ME, PENGA, WNC, T0Y, GopherX, slickvguy, DevilDSS
+
+'**************************************************************************************
+
+'Instruction Table
+'01 Reset Card (Leaves card clock off)
+'02 4.608 MHz Card Clock Off -FREEZE CAM
+'03 4.608 MHz Card Clock On - FREE RUNNING CAM
+'04 XX XX Delay $XXXX card clocks and glitch VCC on high phase with 1.152 MHz Card clock
+'05 XX XX Delay $XXXX card clocks and glitch VCC on high phase with 1.536 MHz Card clock
+'07 XX XX Delay $XXXX card clocks and glitch VCC on low phase with 1.152 MHz Card clock
+'06 XX XX Delay $XXXX card clocks and glitch VCC on low phase with 1.536 MHz Card clock
+'09 rom 10 glitch DELAY -- 2*CARD CLOCKS -- ex. 2x xx xx 09 for timing
+'0E XX SET WD TIMER
+'0F POWER DOWN CAM
+'1X TX RX SPEED
+
+'2X XX XX Delay $2X XX XX Atmel clock cycles
+
+'8X-9X Rx from card, instruction anded with $1f plus 1 bytes Ex. $9F = rx $20 bytes
+'aX-FX Tx to card, instruction anded with $5f plus 1 bytes Ex. $FF = Tx $60 bytes
+'**************************************************************************************
+'Commands
+'80 Check Card Presence - Sends 1 byte
+'90 Get chip ID - Sends 4 Bytes (DISH)
+'AX Set Bi-color Led - X = 0 off, X = 1 Red, X = 2 Green
+'B0 XX Set Glitch VCC - VCC = (5/255) * XX
+
+Option Explicit
+ Dim TestFlag
+    Dim VCCTestMax,VCCTestMin
+    Dim VCCCeiling,VCCFloor
+    Dim VCCMax,VCCMin
+    DIM TryLimit
+    DIM Try
+    DIM Delay
+    Dim ResetCounter
+    Dim Bytes
+    dim bytes2
+    Dim BR2(5)
+    Dim VCCStart
+    Dim VCCLimit
+    Dim VCC
+    Dim DelayEnd
+    Dim DelayStart
+    Dim DelayLimit
+    Dim GlitchType
+    Dim TryCnt
+    DIM TRYCNT2
+    DIM RT
+    Dim RT2
+    DIM TestMode
+    DIM Flashver
+    Dim opencam
+    Dim RetVal
+    opencam = 0
+    RT = &h2A
+    TRYCNT2=1
+
+'@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@2
+'----------------------------Main Subroutine
+Sub Main()
+CALL setupunlocker()
+  sc.verbose = false 'turns off debug, ture makes it print sent and received data
+    Select case Chipver
+    case 1
+    call rom3
+    case 8
+    call rom10
+    case else
+    call otherflash
+
+end select
+
+
+
+
+SC.reset
+
+
+End sub '  End of Main Sub
+
+'@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+'---------------------Card inserted subroutine
+Sub IsCardInserted()
+Dim RetValue
+Dim GotInput
+
+Do
+Sc.Verbose = 0 'Turn off debug mode
+Sc.Write("A0") 'Turn the LED off
+Sc.Write("80") 'Is card present?
+Sc.Delay(100)
+If Sc.BytesInBuffer > 0 then
+Sc.Read(&h01)
+RetValue = Sc.GetByte(0)
+end if
+
+If RetValue = &h0 then
+Call Sc.ProgressBox ("                            *** Please INSERT your card! ***", 1, 999, "Powersync")
+GotInput = False
+else
+If RetValue = &hFF then
+GotInput = True
+else
+If RetValue <> &h0 or RetValue <> &hFF then
+End if
+End if
+End if
+Loop Until GotInput = True
+Call Sc.ProgressBox("", 0, 100)   'close the dialog
+end sub
+'-----------------End Card inserted subroutine
+'@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+'-----------------start twinkle subroutine
+sub twinkle
+Dim GotInput
+    Do
+    Sc.Write ("A1") 'turn green led on
+    Sc.Delay(75)
+    Sc.Write ("A2") 'turn red led on
+    Sc.Delay(75)
+
+    Sc.Write ("A0") 'turn led off
+    Dim RetValue
+
+
+Sc.Verbose = 0 'Turn off debug mode
+Sc.Write("80") 'Is card present?
+Sc.Delay(100)
+If Sc.BytesInBuffer > 0 then
+Sc.Read(&h01)
+RetValue = Sc.GetByte(0)
+end if
+
+If RetValue = &h0 then
+GotInput = False
+else
+If RetValue = &hFF then
+GotInput = True
+else
+If RetValue <> &h0 or RetValue <> &hFF then
+End if
+End if
+End if
+Loop Until GotInput = False
+end sub
+'---------------------------End twinkle subroutine
+'@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+'
+'@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+'
+'-------------------------Rom 3 Select Subroutine
+sub Rom3
+    Dim RetVal
+    RetVal = Sc.ButtonBox("Please EnterUnlock or Analyse", vbDefaultButton2 + vbExclamation, "Unlock or analyse",  "Unlock Rom3", "VCC Analyser",  "Abort")
+Select Case RetVal
+case 1
+call Rom3unlock
+case 2
+call Rom3VCC
+case 3
+  sc.print vbcr & "Have a Nice Day"
+  Exit Sub
+end select
+end sub
+'-----------------------End of Rom 3 Select Subroutine
+'@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+'
+'-------------------------Rom 3 VCC Analyser Subroutine
+sub Rom3VCC
+   Sc.MsgBox "Remember to use Rom3 with test bin loaded", vbinformation, "Powersync"
+Dim RetValue
+Dim GotInput
+    RT = &h2A
+    TRYCNT2 = 1
+    GlitchType = &h06
+    DelayStart = &h10A4
+Do
+Sc.Verbose = 0 'Turn off debug mode
+Sc.Write("A0") 'Turn the LED off
+Sc.Write("80") 'Is card present?
+Sc.Delay(100)
+If Sc.BytesInBuffer > 0 then
+Sc.Read(&h01)
+RetValue = Sc.GetByte(0)
+end if
+
+If RetValue = &h0 then
+Call Sc.ProgressBox ("                            *** Please INSERT card with test bin! ***", 1, 999, "Powersync")
+GotInput = False
+else
+If RetValue = &hFF then
+GotInput = True
+else
+If RetValue <> &h0 or RetValue <> &hFF then
+End if
+End if
+End if
+Loop Until GotInput = True
+Call Sc.ProgressBox("", 0, 100)   'close the dialog
+Sc.reset
+
+    VCC = &hA1             'YOU CAN CHANGE THIS FROM 20 TO 50 241A
+    trylimit = 51
+    VCCLimit = VCCStart - &h09  'YOU CAN CHANGE THIS FROM 1A TO 30
+    Delay = DelayStart
+
+    ' turn led off
+    Sc.Write("A0")
+    Sc.Delay(50)
+    ' card is in turn led on
+    Sc.Write("A1")
+
+    ' get atr, reset card
+    sc.verbose=TRUE
+    Sc.Write("07 0e 03 10 01 03 9A 00")
+    Sc.Read(02)
+    Bytes = Sc.Getbyte(1)
+    if Bytes > 25 then
+    Sc.Read(25)
+    end if
+    sc.verbose=false
+
+Do
+
+            if GlitchType < &h40 then
+                GlitchType = GlitchType + 1
+            end if
+            if GlitchType = &h08 then
+                GlitchType = &h04
+            end if
+
+            RT = RT + 1
+            if rt > &H33 then
+               rt = &H2C
+            END IF
+
+            'GlitchType = &h06
+
+
+
+    Sc.Write("B0" & HexString(VCC, 2))
+
+    Sc.Write("0B 10 0e 03 01 02"&  HexString(GlitchType, 2)  & HexString(Delay, 4) &  "03 9A 00")
+    Sc.Read(02)
+    Bytes = Sc.Getbyte(1)
+
+        if Bytes > 10 then
+        Bytes = Sc.Read(9)
+        Bytes = Sc.Getbyte(0)
+
+SC.DELAY(5)
+
+            if Bytes = &H3F then
+             print
+             Sc.Print "===========================================" & VbCr
+             Sc.Print "VCC = &h"& HexString(VCC, 2) & VbCr
+             Sc.PRINT "glitch type  = &h" &  HexString(GlitchType, 2) & VbCr
+             Sc.PRINT "glitch delay = &h" & HexString(Delay, 4) & VbCr
+             Sc.Print "GLITCHED past 0C BUG!!!, unlocker is good to go." & VbCr
+             Sc.Print "use the above settings on real unlocker script" & VbCr
+             PRINT HEXSTRING(SC.GETBYTE(0),2) & HEXSTRING(SC.GETBYTE(1),2) & HEXSTRING(SC.GETBYTE(2),2)& HEXSTRING(SC.GETBYTE(3),2)& VbCr
+             Sc.Print "===========================================" & VbCr
+            End if
+SC.DELAY(2)
+
+        Sc.Write("12 15 c5 21 00 02 A0 28 AB 80 02 " & HexString(GlitchType, 2) & " 00 " &  HexString(RT, 2) & " 03 0E 05 8a 00")
+        Sc.Read(02)
+
+        Bytes = Sc.Getbyte(1)
+
+            if Bytes > 7 then
+                Bytes = Sc.Read(7)
+            END IF
+
+            if Bytes > 3 then
+                Bytes = Sc.Getbyte(1)
+                br2(1)= sc.getbyte(2)
+            else
+                Bytes = 0
+            End if
+        RT2 = bytes
+        'print HexString(bytes, 2)
+        if RT2 = &HAA then
+            VCC = VCC - 1
+            print "+"
+        end IF
+        if  RT2 = &HFF then
+            VCC = VCC + 1
+            print "-"
+        end if
+
+
+            if Bytes = &H77 then
+
+            br2(2)= sc.getbyte(3)
+            br2(3)= sc.getbyte(4)
+            Sc.Print VbCr
+            Sc.Print "===========================================" & VbCr
+            Sc.Print "Success on Test Glitch, Try #" & TryCnt2 & VbCr
+            Sc.Print "VCC = "& HexString(VCC, 2) & "  (~" & ((5/255) * VCC) &" vdc)" & VbCr
+            Sc.Print "Glitch Delay = " & HexString(RT, 4) & VbCr
+            Sc.Print "Glitch type " & HexString(GlitchType, 2) & VbCr
+            Sc.Print "READ 20-23 from ram, glitch =" & HexString(br2(1), 2) & HexString(br2(2), 2) & HexString(br2(3), 2)& VbCr
+            Sc.Print "===========================================" & VbCr
+            end if
+        end if
+
+        TryCnt2 = TryCnt2 + 1
+        if trycnt2 > trylimit then
+                IF DELAYSTART > &H10B4 THEN
+                    DELAYSTART=&H10A1
+                END IF
+           DelayStart = DelayStart + 1
+           DELAY=DELAYSTART
+           TRYCNT2 = 0
+           PRINT "--- Delay=" & HexString(DELAYSTART, 4)& " Vcc=" & hexstring(vcc,2)  & VbCr
+        END IF
+LOOP
+
+End Sub
+'-----------------------End of Rom 3 VCC Analyser Subroutine
+'@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+'@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+'
+'-------------------------Rom 3 Unlock Subroutine
+sub Rom3unlock
+    Dim RetVal
+
+Call Iscardinserted()
+    RetVal = Sc.ButtonBox("Rom3 unlock?",  vbDefaultButton1 + vbExclamation, "Unlock", "OK", "Abort")
+  If RetVal = 2 then
+
+  sc.print vbcr & "Have a Nice Day"
+Exit Sub
+  else
+  end if
+Dim DelSt
+Dim DelL
+ DelSt = "&h" & Sc.InputBox( "Try Using 10A4", "Please enter Delay Start",DelSt)
+
+ DelL = "&h" & Sc.InputBox("Try Using 10A5", "Please enter Delay Limit ", DelL)
+ DelayStart = DelSt
+ DelayLimit = DelL
+    Sc.Print(vbCr & "Delay Start " & DelayStart  )
+    Sc.Print(vbCr & "Delay Limit " & DelayLimit )
+
+'DelayStart = &h10A4
+ 'DelayLimit =  &h10A5
+  '  VCCStart = &h20 'YOU CAN CHANGE THIS FROM 20 TO 50
+   ' VCCLimit = &h1a 'YOU CAN CHANGE THIS FROM 1A TO 30
+VCCStart = "&h" & Sc.InputBox( "Try Using 20", "Please enter VCC Start",VCCStart)
+VCCLimit = "&h" & Sc.InputBox("Try Using 1a", "Please enter VCC Limit ",VCCLimit)
+
+    Sc.Print(vbCr & "VCC Start " & VCCStart  )
+    Sc.Print(vbCr & " VCC Limit " &  VCCLimit )
+    GlitchType = &h06
+    TryCnt = 1
+    TryLimit = 2
+    Delay = DelayStart
+    VCC = VCCStart
+
+    ' turn led off
+    sc.verbose=TRUE
+    Sc.Write("A0")
+    Sc.Delay(500)
+    ' card is in turn led on
+    Sc.Write("A1")
+
+' get atr
+    sc.verbose=TRUE
+    Sc.Write("07 0e 03 10 01 03 9a 00")    'reset card
+    Sc.Read(02)
+    Bytes = Sc.Getbyte(1)
+    if Bytes > 25 then
+    Sc.Read(25)
+    end if
+    sc.verbose=false
+
+Do
+
+            if GlitchType < &h40 then
+            GlitchType = GlitchType + 1
+            end if
+            if GlitchType = &h08 then GlitchType = &h04 end if
+             VCC = VCC - 1.0
+               if VCC < VCCLimit then
+               VCC = VCCStart
+               END IF
+            RT = RT + 1
+               if rt > &H33 then
+               rt = &H33
+               END IF
+           'GlitchType = &h06
+
+
+
+    Sc.Write("B0" & HexString(VCC, 2))
+
+    Sc.Write("0E 10 0e 03 01 02"&  HexString(GlitchType, 2)  & HexString(Delay, 4) &  "03 23 9B 80 02 00")
+    Sc.Read(02)
+
+    Bytes = Sc.Getbyte(1)
+    BYTES = 0
+    SENDOVERFLOW()
+    PRINT HEXSTRING(bytes,2)
+    BYTES = 0
+        if Bytes > 10 then
+        Bytes = Sc.Read(9)
+        Bytes = Sc.Getbyte(0)
+        PRINT HEXSTRING(bytes,2)
+            if Bytes = &H0A then
+             print
+             Sc.Print "===========================================" & VbCr
+             Sc.Print "VCC = "& HexString(VCC, 2)
+             SC.PRINT "-" &  HexString(GlitchType, 2)  & HexString(Delay, 4)
+             Sc.Print " GLITCHED past 01 BUG" & VbCr
+             PRINT HEXSTRING(SC.GETBYTE(0),2) & HEXSTRING(SC.GETBYTE(1),2) & HEXSTRING(SC.GETBYTE(2),2)& HEXSTRING(SC.GETBYTE(3),2)& VbCr
+             Sc.Print "===========================================" & VbCr
+             End if
+            if Bytes = &H0B then
+             print
+             Sc.Print "===========================================" & VbCr
+             Sc.Print "VCC = "& HexString(VCC, 2)
+             SC.PRINT "-" &  HexString(GlitchType, 2)  & HexString(Delay, 4)
+             Sc.Print " GLITCHED past 0A BUG" & VbCr
+             PRINT HEXSTRING(SC.GETBYTE(0),2) & HEXSTRING(SC.GETBYTE(1),2) & HEXSTRING(SC.GETBYTE(2),2)& HEXSTRING(SC.GETBYTE(3),2)& VbCr
+             Sc.Print "===========================================" & VbCr
+             End if
+            if Bytes = &H3F then
+             print
+             Sc.Print "===========================================" & VbCr
+             Sc.Print "VCC = "& HexString(VCC, 2)
+             SC.PRINT "-" &  HexString(GlitchType, 2)  & HexString(Delay, 4)
+             Sc.Print " GLITCHED past 0C BUG" & VbCr
+             PRINT HEXSTRING(SC.GETBYTE(0),2) & HEXSTRING(SC.GETBYTE(1),2) & HEXSTRING(SC.GETBYTE(2),2)& HEXSTRING(SC.GETBYTE(3),2)& VbCr
+             Sc.Print "===========================================" & VbCr
+            End if
+
+
+    bytes = 0
+    if Bytes > 0 then
+        Bytes = Sc.Read(Bytes)
+        END IF
+
+    if Bytes > 3 then
+        Bytes = Sc.Getbyte(1)
+       br2(1)= sc.getbyte(2)
+        else
+       Bytes = 0
+        End if
+    if Bytes = &H77 then
+
+        br2(2)= sc.getbyte(3)
+        br2(3)= sc.getbyte(4)
+        Sc.Print VbCr
+        Sc.Print "===========================================" & VbCr
+        Sc.Print "Success on Glitch Try #" & TryCnt2 & VbCr
+        Sc.Print "VCC = "& HexString(VCC, 2) & "  (~" & ((5/255) * VCC) &" vdc)" & VbCr
+        Sc.Print "Glitch Delay = " & HexString(RT, 4) & VbCr
+        Sc.Print "Glitch type " & HexString(GlitchType, 2) & VbCr
+        Sc.Print "READ 20-23 OF bug glitch " & HexString(br2(1), 2) & HexString(br2(2), 2) & HexString(br2(3), 2)& VbCr
+
+        if GlitchType < &h08 then
+            Sc.Print "Glitched on high clock phase" & VbCr
+        else
+            Sc.Print "Glitched on low clock phase" & VbCr
+        end if
+        Sc.Print "===========================================" & VbCr
+        end if
+end if
+        if opencam = 1 then
+          'TURN LED OFF
+          print
+          print"========================= "& VbCr
+          print"= CAM IS OPEN NOW !!!!! = "& VbCr
+          print"========================= "& VbCr
+          Sc.Write("A0")
+
+call twinkle    'call the twinkle routine
+          Exit Sub
+        end if
+
+        TryCnt2 = TryCnt2 + 1
+        if trycnt2 > trylimit then
+            IF DELAYSTART > &H10A6 THEN ' 10A6 OR 10B4
+            DELAYSTART=&H10A1 '10A1
+            END IF
+             DelayStart = DelayStart + 1
+             DelayLimit = DELAYSTART + 1
+             DELAY=DELAYSTART
+             TRYCNT2 = 0
+             PRINT "--- try to hit 0C bug at " & HexString(DELAYSTART, 4)  & VbCr
+        END IF
+LOOP
+
+End Sub
+'----------------------End of Rom 3 Unlock Subroutine
+'@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+'
+Sub SENDOVERFLOW()
+
+PRINT "o"
+'SC.DELAY(100)
+
+Sc.Write("470E051503FFFF00BC00000000000000000000000000")
+Sc.Write("00000000000000000000000000000000")
+Sc.Write("00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00")
+Sc.Write("00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 02 00")
+
+Sc.Read(2)
+
+Sc.Write("46 0E 05 03 FF 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00")
+Sc.Write("00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00")
+Sc.Write("00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00")
+Sc.Write("00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 02 00")
+Sc.Read(2)
+
+Sc.Write("460E0503FF0000000000000030313233E051813741")
+Sc.Write("42434445464748010100000000FF0000")
+Sc.Write("000000CD0000C39B9CAE71A696B74EA6")
+Sc.Write("05CD7801CC73810000000000000000000200")
+Sc.Read(2)
+
+Sc.Write("0D 0E 05 03 C7 60 00 60 00 60 00 60 AA 00")
+Sc.Read(2)
+
+
+Sc.Write("2F 03 0E 05 E8 21 00 25 A0 20 00 00 20 8F AB C2 64 44 9A FE 70 1D E7 62 FA B1 4C 31 06 00 11 22 33 44 55 66 77 88 99 AA BB CC DD EE FF DE 85 00")
+Sc.Read (2)
+ Bytes = Sc.Getbyte(1)
+     if Bytes > 4 then
+        Bytes = Sc.Read(4)
+        Bytes = Sc.Getbyte(3)
+        if bytes = &h63 then
+        OPENCAM = 1
+      end if
+ end if
+
+END SUB
+'
+'@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+sub otherflash
+
+    Dim RetVal
+    RetVal = Sc.ButtonBox("Please Enter flashtype", vbDefaultButton2 + vbExclamation, "Newd6 7,8 or 9",  "Newd6", "Newd7,8 or 9",  "Abort")
+Select Case RetVal
+case 1
+call rom3
+case 2
+call rom10
+case 3
+  sc.print vbcr & "Have a Nice Day"
+  Exit Sub
+end select
+end sub
+'@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+'@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+'--------------------------Rom10 Subroutine -----------------
+sub Rom10
+Call Iscardinserted()
+    Dim RetVal
+    RetVal = Sc.ButtonBox("Please Enter Rom10 provider", vbDefaultButton2 + vbExclamation, "Rom10 Bev or Chuck",  "Bev", "Chuck",  "Abort")
+Select Case RetVal
+case 2
+call chuck
+case 1
+call bev
+case 3
+  sc.print vbcr & "Have a Nice Day"
+  Exit Sub
+end select
+end sub
+'-----------------------End of Rom10 Subroutine -----------------
+'@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+'--------------------------Chuck subroutine
+sub chuck
+' ----------------Test for good vcc glitch voltages
+ VCCMax = "&h" & Sc.InputBox( "Try Using 1a", "Please enter Test VCC High",VCCMax)
+
+ VCCMin = "&h" & Sc.InputBox("Try Using 10", "Please enter Test VCC Lo ", VCCMin)
+ VCCTestMax = VCCMax
+ VCCTestMin = VCCMin
+    Sc.Print(vbCr & "VCC High " & VCCTestMax  )
+    Sc.Print(vbCr & "VCC Low " & VCCTestMin )
+
+    TryLimit    = 50            '<--- Set this to the number of glitches to test for each VCC.
+    Delay       = &h1235        '<--- Set this to the Delay to use for each glitch try.
+
+    VCCCeiling  = VCCTestMax
+    VCCFloor    = VCCTestMin
+    Try         = 0
+    TestFlag    = "C"
+    VCC         = VCCTestMax
+
+    sc.verbose = true
+
+    'FIXUP CARD
+    'Prevents those f'n 06 00 / 03 00 problems.
+    sc.write("02 03 00")    'freeze card
+    sc.write("02 02 00")    'unfreeze card
+
+    'ATR
+    Sc.Write("08 0e 03 10 01 01 03 9a 00")
+    Sc.Read(02)
+    Bytes = Sc.Getbyte(1)
+    if Bytes > 25 then
+        Sc.Read(25)
+    end if
+
+    'CMD12
+    Sc.Write("12 15 AB 21 00 08 A0 CA 00 00 02 12 00 06 55 0E 03 8B 00")
+    Sc.Read(02)
+    Bytes = Sc.Getbyte(1)
+    if Bytes > 5 then
+        Sc.Read(sc.bytesinbuffer)
+    end if
+    sc.print
+    sc.print "@@@@@@@@@@@@ Testing for good glitch voltage @@@@@@@@@@@@@ "
+    sc.print
+    sc.verbose = false
+
+    'VCC LOOP
+    For VCC = VCCTestMax To VCCTestMin Step -1
+
+        sc.delay(50)
+
+        'SET GLITCH VCC
+        Sc.Write("B0" & HexString(VCC, 2))
+        sc.print
+        sc.print "VCC " & HexString(VCC, 2) & ": "
+
+        'TRY LOOP
+        For Try = 1 to TryLimit
+
+            sc.delay(20)
+
+            'SEND CMD03
+            Sc.Write("61 15 F6 21 00")
+            Sc.Write("53 A0 CA 00 00 4D 03 4B 00 C5 10 6F 15 CC 00 CC")
+            Sc.Write("00 CC 00 CC 00 0C CD 32 0C 5A EA 2D 2D 0C CD 32")
+            Sc.Write("0C 5A EA 2D 2D B1 C4 45 F4 E1 20 14 80 8D 4C F0")
+            Sc.Write("AA A6 1D 0D AA 1D F4 97 65 2E 88 4E 25 0C CD 32")
+            Sc.Write("0C 5A EA 2D 2D B1 C4 45 F4 E1 20 14 80 05 67 21")
+            Sc.Write("92 00 00 00 7D 20" & HexString(Delay, 4) & "09 0E 05 85 00")
+
+            'GET CMD03 RESPONSE
+            Sc.Read(02)
+            Bytes = Sc.Getbyte(1)
+            If Bytes > 4 Then
+                Sc.Read(5)
+                bytes=sc.getbyte(3)
+
+                'DISPLAY CMD03 RESPONSE
+                Select Case Bytes
+                    Case &h6F
+                        sc.print "++"
+                        If TestFlag="F" Then
+                            VCCFloor = VCC - 1      'We've got a 6F, so the floor has been established
+                        End If
+                    Case &hFF
+                        sc.print "--"
+                        If TestFlag="C" Then
+                            VCCCeiling = VCC + 1    'We've got a FF, so the ceiling has been established
+                            TestFlag="F"            'Set the TestFlag to find the VCCFloor
+                        End If
+                    Case &h83       sc.print "!!"
+                    Case Else       sc.print "??"
+                End Select
+            Else
+                sc.print "XX"
+            End If
+
+
+            'RESET CARD
+            Sc.Write("08 0e 03 10 01 01 03 9a 00")
+            sc.read(02)
+
+        Next
+
+    Next
+
+    sc.print
+    sc.print
+    sc.print "VCC Ceiling: " & HexString(VCCCeiling,2) & vbcr
+    sc.print "VCC Floor..: " & HexString(VCCFloor,2) & vbcr
+    VCCStart = VCCCeiling
+    VCCLimit = VCCFloor
+Dim DelSt
+Dim DelE
+            PRINT "#########################################################" & VBCR
+            PRINT "#                                                       #" & VBCR
+            PRINT "# For Dealer locked A23 try using Delay range 0C20-0C40 #" & VBCR
+            PRINT "#                                                       #" & VBCR
+            PRINT "#########################################################" & VBCR
+
+ DelSt = "&h" & Sc.InputBox( "Try Using 123E", "Please enter Delay Start",DelSt)
+
+ DelE = "&h" & Sc.InputBox("Try Using 125A", "Please enter Delay End ", DelE)
+ DelayStart = DelSt
+ DelayEnd = DelE
+    Sc.Print(vbCr & "Delay Start " & DelayStart  )
+    Sc.Print(vbCr & " Del End " &  DelayEnd )
+
+'DelayStart=&h123E   'DISH A23 is 123E- could be as low as 1100
+'DelayEnd = &H125A   'DISH A23 IS 125A- could be as high as 127A
+    TryCnt = 300        'Number of tries per delay FROM 5-50000
+    TestMode = 0        'TestMode, 1 = ON, 0 = OFF
+'TestMode is used to find a glitch point on A81 cam. once you find the
+'delay and vcc settings on cam then set TestMode = 0, and open the cam.
+
+' end of variables
+
+    GlitchType=&h09
+    VCC = VCCStart
+    RT = DelayStart
+    ' turn led off
+    sc.verbose=TRUE
+    Sc.Write("A0")
+    Sc.Delay(50)
+    Sc.Write("A0")
+    Sc.Delay(50)
+    ' card is in turn led on
+    Sc.Write("A1")
+
+' get atr
+    sc.verbose=TRUE
+    'Sc.Write("07 0e 03 10 01 03 9a 00")    'reset card
+   Sc.Write("08 0e 03 10 01 01 03 9a 00")    'reset card
+    Sc.Read(02)
+    Bytes = Sc.Getbyte(1)
+    if Bytes > 25 then
+    Sc.Read(25)
+    end if
+
+Sc.Write("12 15 AB 21 00 08 A0 CA 00 00 02 12 00 06 55 0E 03 85 00")
+   Sc.Read(02)
+   Bytes = Sc.Getbyte(1)
+    if Bytes > 5 then
+    Sc.Read(6)
+    end if
+print
+          if TestMode = 1 then
+              print " You are in testmode, cam will not open in this mode!!!" & vbcr
+              print " set TestMode = 0 to open cam " & vbcr & vbcr
+          end if
+print " Now we will try "  & HexString(RT, 4) & " delay" & vbcr
+sc.verbose=false
+
+Do
+
+               VCC = VCC - 1.0
+               if VCC < VCCLimit then
+               VCC = VCCStart
+               END IF
+
+               'if rt > DelayEnd then
+               'rt = DelayStart
+               'END IF
+
+
+
+    Sc.Write("B0" & HexString(VCC, 2))
+
+SC.DELAY(11)
+
+Sc.Write("61 15 F6 21 00")
+Sc.Write("53 A0 CA 00 00 4D 03 4B 00 C5 10 6F 15 CC 00 CC")
+Sc.Write("00 CC 00 CC 00 0C CD 32 0C 5A EA 2D 2D 0C CD 32")
+Sc.Write("0C 5A EA 2D 2D B1 C4 45 F4 E1 20 14 80 8D 4C F0")
+Sc.Write("AA A6 1D 0D AA 1D F4 97 65 2E 88 4E 25 0C CD 32")
+Sc.Write("0C 5A EA 2D 2D B1 C4 45 F4 E1 20 14 80 05 67 21")
+Sc.Write("92 00 00 00 7D 20" & HexString(RT, 4) & "09 0E 05 85 00")
+
+
+   Sc.Read(02)
+   Bytes = Sc.Getbyte(1)
+        if Bytes > 4 then
+        Sc.Read(5)
+        bytes=sc.getbyte(3)
+    PRINT HexString(bytes, 2)
+
+        TryCnt2 = TryCnt2 + 1
+        if trycnt2 > trycnt then
+             RT = RT + 1
+             TRYCNT2 = 0
+            if rt > DelayEnd then
+                    rt = DelayStart
+                    END IF
+sc.print
+sc.print "PowersyncUnlock Testing Chuck Rom10 "
+sc.print
+         print
+             print " now we will try "  & HexString(RT, 4) & " delay"
+             print
+      END IF
+        if bytes = &H83 then
+            print
+            print
+            print "*********** we hit our bug *************"& VbCr
+            PRINT HEXSTRING(SC.GETBYTE(0),2) & HEXSTRING(SC.GETBYTE(1),2) & HEXSTRING(SC.GETBYTE(2),2) & HEXSTRING(SC.GETBYTE(3),2)& HEXSTRING(SC.GETBYTE(4),2)& VbCr
+             Sc.Print "===========================================" & VbCr
+            PRINT HexString(bytes, 2)
+            print " was hit at " & HexString(RT, 4) & " delay ----VCC WAS " & HexString(VCC, 2)
+            print
+            SC.DELAY(2500)
+if TestMode = 0 then
+            sc.verbose=TRUE
+            Sc.Write("0A 15 A3 21 92 00 B3 0E 03 85 00")
+            SC.READ(2)
+            Bytes = Sc.Getbyte(1)
+            if Bytes > 4 then
+                Sc.Read(5)
+                bytes=sc.getbyte(3)
+            END IF
+            SC.DELAY(30)
+
+            PRINT "***************************" & VBCR
+            PRINT "* A23 CAM should be OPEN  *" & VBCR
+            PRINT "*  test in Nagra to see.  *" & VBCR
+            PRINT "*   if not, try again.    *" & VBCR
+            PRINT "***************************" & VBCR
+
+
+            exit sub
+end if
+        sc.verbose=false
+        end if
+       else
+       PRINT" RESET "
+       ResetCounter = ResetCounter +1
+        if ResetCounter > 2 then
+        ResetCounter = 0
+        sc.write("02 03 00") 'freeze card
+        sc.write("02 02 00") 'unfreeze card
+        end if
+       End if
+            Sc.Write("08 0e 03 10 01 01 03 9a 00")   'reset card
+            sc.read(02)
+            sc.delay(5)
+            LOOP
+    end sub
+'---------------------------- end of chuck subroutine
+'@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+' --------------------------- bev subroutine
+sub bev
+' ----------------Test for good vcc glitch voltages
+
+ VCCMax = "&h" & Sc.InputBox( "Try Using 1a", "Please enter Test VCC High",VCCMax)
+
+ VCCMin = "&h" & Sc.InputBox("Try Using 10", "Please enter Test VCC Lo ", VCCMin)
+ VCCTestMax = VCCMax
+ VCCTestMin = VCCMin
+    Sc.Print(vbCr & "VCC High " & VCCTestMax  )
+    Sc.Print(vbCr & "VCC Low " & VCCTestMin )
+
+    TryLimit    = 50            '<--- Set this to the number of glitches to test for each VCC.
+    Delay       = &h1235        '<--- Set this to the Delay to use for each glitch try.
+
+    VCCCeiling  = VCCTestMax
+    VCCFloor    = VCCTestMin
+    Try         = 0
+    TestFlag    = "C"
+    VCC         = VCCTestMax
+
+    sc.verbose = true
+
+    'FIXUP CARD
+    'Prevents those f'n 06 00 / 03 00 problems.
+    sc.write("02 03 00")    'freeze card
+    sc.write("02 02 00")    'unfreeze card
+
+    'ATR
+    Sc.Write("08 0e 03 10 01 01 03 9a 00")
+    Sc.Read(02)
+    Bytes = Sc.Getbyte(1)
+    if Bytes > 25 then
+        Sc.Read(25)
+    end if
+
+    'CMD12
+    Sc.Write("12 15 AB 21 00 08 A0 CA 00 00 02 12 00 06 55 0E 03 8B 00")
+    Sc.Read(02)
+    Bytes = Sc.Getbyte(1)
+    if Bytes > 5 then
+        Sc.Read(sc.bytesinbuffer)
+    end if
+    sc.print
+    sc.print "@@@@@@@@@@@@ Testing for good glitch voltage @@@@@@@@@@@@@ "
+    sc.print
+    sc.verbose = false
+
+    'VCC LOOP
+    For VCC = VCCTestMax To VCCTestMin Step -1
+
+        sc.delay(50)
+
+        'SET GLITCH VCC
+        Sc.Write("B0" & HexString(VCC, 2))
+        sc.print
+        sc.print "VCC " & HexString(VCC, 2) & ": "
+
+        'TRY LOOP
+        For Try = 1 to TryLimit
+
+            sc.delay(20)
+
+            'SEND CMD03
+            Sc.Write("61 15 F6 21 00")
+            Sc.Write("53 A0 CA 00 00 4D 03 4B 00 C5 10 6F 15 CC 00 CC")
+            Sc.Write("00 CC 00 CC 00 0C CD 32 0C 5A EA 2D 2D 0C CD 32")
+            Sc.Write("0C 5A EA 2D 2D B1 C4 45 F4 E1 20 14 80 8D 4C F0")
+            Sc.Write("AA A6 1D 0D AA 1D F4 97 65 2E 88 4E 25 0C CD 32")
+            Sc.Write("0C 5A EA 2D 2D B1 C4 45 F4 E1 20 14 80 05 67 21")
+            Sc.Write("92 00 00 00 7D 20" & HexString(Delay, 4) & "09 0E 05 85 00")
+
+            'GET CMD03 RESPONSE
+            Sc.Read(02)
+            Bytes = Sc.Getbyte(1)
+            If Bytes > 4 Then
+                Sc.Read(5)
+                bytes=sc.getbyte(3)
+
+                'DISPLAY CMD03 RESPONSE
+                Select Case Bytes
+                    Case &h6F
+                        sc.print "++"
+                        If TestFlag="F" Then
+                            VCCFloor = VCC - 1      'We've got a 6F, so the floor has been established
+                        End If
+                    Case &hFF
+                        sc.print "--"
+                        If TestFlag="C" Then
+                            VCCCeiling = VCC + 1    'We've got a FF, so the ceiling has been established
+                            TestFlag="F"            'Set the TestFlag to find the VCCFloor
+                        End If
+                    Case &h83       sc.print "!!"
+                    Case Else       sc.print "??"
+                End Select
+            Else
+                sc.print "XX"
+            End If
+
+
+            'RESET CARD
+            Sc.Write("08 0e 03 10 01 01 03 9a 00")
+            sc.read(02)
+
+        Next
+
+    Next
+
+    sc.print
+    sc.print
+    sc.print "VCC Ceiling: " & HexString(VCCCeiling,2) & vbcr
+    sc.print "VCC Floor..: " & HexString(VCCFloor,2) & vbcr
+    VCCStart = VCCCeiling
+    VCCLimit = VCCFloor
+Dim DelSt
+Dim DelE
+ DelSt = "&h" & Sc.InputBox( "Try Using 12CA", "Please enter Delay Start",DelSt)
+
+ DelE = "&h" & Sc.InputBox("Try Using 12F9", "Please enter Delay End ", DelE)
+ DelayStart = DelSt
+ DelayEnd = DelE
+    Sc.Print(vbCr & "Delay Start " & DelayStart  )
+    Sc.Print(vbCr & " Del End " &  DelayEnd )
+
+    'DelayStart=&h12CA   'BEV A81 is 12CA- could be as low as 1100
+    'DelayEnd = &H12F9   'BEV A81 IS 12F9- could be as high as 13FF
+    TryCnt = 300        'Number of tries per delay FROM 5-50000
+    TestMode = 0        'TestMode, 1 = ON, 0 = OFF
+'TestMode is used to find a glitch point on A81 cam. once you find the
+'delay and vcc settings on cam then set TestMode = 0, and open the cam.
+
+' end of variables
+
+    GlitchType=&h09
+    VCC = VCCStart
+    RT = DelayStart
+    ' turn led off
+    sc.verbose=TRUE
+    Sc.Write("A0")
+    Sc.Delay(100)
+    ' card is in turn led on
+    Sc.Write("A1")
+
+
+' get atr
+    sc.verbose=TRUE
+    Sc.Write("07 0e 03 10 01 03 9a 00")    'reset card
+    Sc.Read(02)
+    Bytes = Sc.Getbyte(1)
+    if Bytes > 25 then
+    Sc.Read(25)
+    end if
+
+Sc.Write("12 15 AB 21 00 08 A0 CA 00 00 02 12 00 06 55 0E 03 85 00")
+   Sc.Read(02)
+   Bytes = Sc.Getbyte(1)
+    if Bytes > 5 then
+    Sc.Read(6)
+    end if
+print
+          if TestMode = 1 then
+              print " You are in testmode, cam will not open in this mode!!!" & vbcr
+              print " set TestMode = 0 to open cam " & vbcr & vbcr
+          end if
+print
+print "PowersyncUnlock Testing Bev Rom10"
+print
+print " Now we will try "  & HexString(RT, 4) & " delay" & vbcr
+sc.verbose=false
+
+Do
+
+               VCC = VCC - 1.0
+               if VCC < VCCLimit then
+               VCC = VCCStart
+               END IF
+
+
+    Sc.Write("B0" & HexString(VCC, 2))
+
+    SC.DELAY(10)
+
+    Sc.Write("48 03 15 E0")
+    Sc.Write("21 00 3D A0 CA 00 00 37 03 35 08 01 10 31 15 00")
+    Sc.Write("00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00")
+    Sc.Write("00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00")
+    Sc.Write("00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 05")
+    Sc.Write("4F 0E 03 85 00")
+    Sc.Read(02)
+    Bytes = Sc.Getbyte(1)
+    if Bytes > 5 then
+    Sc.Read(6)
+    end if
+
+SC.DELAY(35)
+
+Sc.Write("6A 15 FF 21 00")
+Sc.Write("5CA0CA0000560354080C108405CC00CC")
+Sc.Write("00CC00CC000CCD320C5AEA2D2D0CCD32")
+Sc.Write("0C5AEA2D2DB1C445F4E12014808D4CF0")
+Sc.Write("AAA61D0DAA1DF497652E884E250CCD32")
+Sc.Write("0C0CCD320C5AEA2D2DA9CD65B74832C8")
+Sc.Write("EFFFFFFFFFA9CD65B74832C8EFF3 20" & HexString(RT, 4) & "09 0E 05 85 00")
+
+
+   Sc.Read(02)
+   Bytes = Sc.Getbyte(1)
+        if Bytes > 4 then
+        Sc.Read(5)
+        bytes=sc.getbyte(3)
+    PRINT HexString(bytes, 2)
+
+        TryCnt2 = TryCnt2 + 1
+        if trycnt2 > trycnt then
+             RT = RT + 1
+             TRYCNT2 = 0
+                if rt > DelayEnd then
+                rt = DelayStart
+                END IF
+             print
+             print " now we will try "  & HexString(RT, 4) & " delay"
+             print
+        END IF
+        if bytes = &H83 then
+            print
+            print
+            print "*********** we hit our bug *************"& VbCr
+            PRINT HEXSTRING(SC.GETBYTE(0),2) & HEXSTRING(SC.GETBYTE(1),2) & HEXSTRING(SC.GETBYTE(2),2) & HEXSTRING(SC.GETBYTE(3),2)& HEXSTRING(SC.GETBYTE(4),2)& VbCr
+             Sc.Print "===========================================" & VbCr
+            PRINT HexString(bytes, 2)
+            print " was hit at " & HexString(RT, 4) & " delay ----VCC WAS " & HexString(VCC, 2)
+            print
+            SC.DELAY(2500)
+if TestMode = 0 then
+            sc.verbose=TRUE
+            Sc.Write("12 15 AB 21 00 08 A0 CA 00 00 02 C0 00 06 87 0E 03 85 00")
+            SC.READ(2)
+            Bytes = Sc.Getbyte(1)
+            if Bytes > 5 then
+                Sc.Read(6)
+                bytes=sc.getbyte(3)
+            END IF
+            sc.delay(150)
+            Sc.Write("0A 15 A3 21 98 00 B9 0E 03 85 00")
+            SC.READ(2)
+            Bytes = Sc.Getbyte(1)
+            if Bytes > 5 then
+                Sc.Read(6)
+                bytes=sc.getbyte(3)
+            END IF
+            sc.delay(150)
+            Sc.Write("0A 15 A3 21 92 00 B3 0E 04 85 00")
+            SC.READ(2)
+            Bytes = Sc.Getbyte(1)
+            if Bytes > 4 then
+                Sc.Read(5)
+                bytes=sc.getbyte(3)
+            END IF
+            SC.DELAY(30)
+
+            PRINT "***************************" & VBCR
+            PRINT "* A81 CAM should be OPEN  *" & VBCR
+            PRINT "*  test in Nagra to see.  *" & VBCR
+            PRINT "*   if not, try again.    *" & VBCR
+            PRINT "***************************" & VBCR
+ exit sub
+end if
+            sc.verbose=false
+        end if
+       else
+       PRINT" RESET "
+       End if
+            Sc.Write("08 0e 03 10 01 01 03 9a 00")   'reset card
+            sc.read(02)
+            sc.delay(5)
+
+LOOP
+end sub
+'@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+Function ChipVer()
+
+
+
+    sc.write("90")
+    sc.delay(80)
+
+    if sc.read(4) <> 4 then
+        ChipVer = 0
+        Exit Function
+     end if
+
+Bytes = Sc.Getbyte(3)
+If Bytes = 56 then
+sc.print("Chip is flashed with D" & chr(Bytes) & "(version REK" & chr(Bytes) &")and was verified.")
+Chipver=8
+end if
+If Bytes = 55 then
+sc.print("Chip is flashed with D" & chr(Bytes) & "(version REK" & chr(Bytes) &")and was verified.")
+Chipver=8
+end if
+If Bytes = 57 then
+sc.print("Chip is flashed with D" & chr(Bytes) & "(version REK" & chr(Bytes) &")and was verified.")
+Chipver=8
+end if
+If  Bytes = 49 then
+sc.print("Chip is flashed with D" & chr(Bytes) & "(version REK" & chr(Bytes) &")and was verified.")
+Chipver=1
+
+end if
+
+
+
+End Function
+Function setupunlocker()
+sc.print "________________Setting up WinExplorer_________________" & VbCr
+Wx.BaudRate = 115200
+Wx.ResetBaudRate = 115200
+Wx.Parity = 0 ' 0 = None, 1 = Odd, 2 = Even, 3 = Mark, 4 = Space
+Wx.StopBits = 0 ' 0 = 1 stop bit, 1 = 1.5 stop bits, 2 = 2 stop bits
+Wx.DTRControl = 0 ' Initial state of DTR 0 = off, 1 = on
+Wx.RTSControl = 1 ' Initial state of RTS 0 = off, 1 = on
+Wx.ResetDelay = 100 ' In microseconds
+Wx.ByteDelay = 10 ' In microseconds
+Wx.RxByteTimeout = 500 ' In milliseconds
+Wx.ResetMode = 2 ' 0 = No Resets, 1 = ISO Reset (Expect a ATR), 2 = Device Reset (No ATR)
+Wx.ResetLine = 1 ' 0 = Toggle RTS for Reset, 1 = Toggle DTR for Reset
+Wx.ByteConvention = 1 ' 0 = Inverse, 1 = Direct
+Wx.FlushEchoByte = 0 ' 0 = no flush, 1 = flush - A Phoenix interface will echo each byte transmitted.
+Wx.FlushBeforeWrite = 1 ' 0 = no flush, 1 = flush - Flush the receive buffer before each write to strip off Null bytes.
+Wx.IgnoreTimeouts = 1 ' 0 = Abort script on a receive timeout, 1 = Ignore all receive timeouts
+Wx.ResetAfterTimeout = 0 ' 0 = Don't reset after a timeout, 1 = do a reset after a timeout - Not used if "IgnoreTimeouts=0"
+Wx.LogTransactions = 0 ' 0 = Don't log transactions, 1 = log transactions
+Wx.DisplayUSW = 0 ' Display USW after script complete 0 = no, 1 = yes
+Wx.DisplayFuse = 0 ' Display Fuse after script complete 0 = no, 1 = yes
+End function
+Function HexString(Number,Length)
+    ' This function takes 2 arguments, a number and a length.  It converts the decimal
+    ' number given by the first argument to a Hexidecimal string with its length
+    ' equal to the number of digits given by the second argument
+    Dim RetVal
+    Dim CurLen
+    RetVal=Hex(Number)
+    CurLen=Len(RetVal)
+    If CurLen<Length Then
+        RetVal=String(Length-CurLen,"0") & RetVal
+    End If
+    HexString=RetVal
+End Function

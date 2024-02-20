@@ -1,0 +1,410 @@
+'New Rom 3 Glitching Script Ver3(beta)
+'-------------------------------------
+'Script has 3 different unlocking methods in one
+'so you don't have to change everything all the time.
+'This will be a better display in newer version, since i don't find it much use as of yet...
+'As well an analyzer will/should be in the next release as well.  :)
+'Notice as well that you can now see the full 27 digits from ATR line.
+'And ya the clocks mess up sometimes...don't care to set all the defaults up yet
+'since this is just testing beta for now and in the final verion it will all be pretty. :)
+'
+'Remember to always have fun...this is only a hobbie.
+'
+'T0Y :)
+
+Option Explicit
+    Dim Bytes
+    Dim bytes2
+    Dim BR2(5)
+    Dim VCCStart
+    Dim VCCLimit
+    Dim VCC
+    Dim Delay
+    Dim DelayLimit
+    Dim DelayStart
+    Dim GlitchType
+    Dim RT
+    Dim opencam
+    Dim TotalAttempts
+    Dim ComboTotal
+    Dim ComboCheck
+    Dim Repeats, Repeats2, ChkRepeats
+    Dim blink
+    Dim Choice
+    Dim Choice2
+    Dim Choice3
+    Dim MenuPrompt
+    Dim logo
+    Dim tryz
+    Dim TryzChk
+    Dim x
+    Dim THr, THr2 'Hours
+    Dim TMn, TMn2 'Minutes
+    Dim TSc, TSc2 'Seconds
+    Dim T1
+    Dim T2
+    Dim approx
+    Dim approx2
+    Dim NewDS 'delaystart
+    Dim NewDL 'delaylimit
+    Dim NewVS 'vccstart
+    Dim NewVL 'vcclimit
+
+    Repeats2 = Repeats
+    ComboTotal = 0
+    ComboCheck = 0
+    opencam = 0
+    RT = &h2A
+    Sc.ClearOutputWindow
+    logo = "logo.jpg"
+
+Sub Main()
+
+    call Sc.PictureBox(logo,4)
+    MenuPrompt = MenuPrompt & "  " & "1 - Stream" & VbTab & VbTab & "Normal stream locked cam." & vbCr
+    MenuPrompt = MenuPrompt & "  " & "2 - Blocker/Software" & VbTab & "Improperly written blockers or patches, forgotten or unknown passwords." & vbCr
+    MenuPrompt = MenuPrompt & "  " & "3 - Stuborn" & VbTab & VbTab & "Stuborn CAMs." & vbCr
+    MenuPrompt = MenuPrompt & "  " & "4 - No ATR" & VbTab & VbTab & "If you get an ATR in Nagra Edit, but not here." & vbCr
+    MenuPrompt = MenuPrompt & "  " & "5 - Flash Verify" & VbTab & VbTab & "--- Not used Yet. ---" & vbCr
+    Choice = Sc.ButtonBox(MenuPrompt, VbInformation, "Select an option or click X to exit--------------->", "Option #1", "Option #2", "Option #3", "Option #4", "Option #5")
+
+Select Case Choice
+
+Case "0"
+    Exit Sub
+
+Case "1"
+    NewDS = &h10A0
+    NewDL = &h10AF
+    NewVS = &h3F 'YOU CAN CHANGE THIS
+    NewVL = &h1A 'YOU CAN CHANGE THIS
+
+Case "2"
+    NewDS = &h0D00
+    NewDL = &h0F00
+    NewVS = &h40 'YOU CAN CHANGE THIS
+    NewVL = &h0A 'YOU CAN CHANGE THIS
+
+Case "3"
+    NewDS = &h0D00
+    NewDL = &h10AF
+    NewVS = &h40 'YOU CAN CHANGE THIS
+    NewVL = &h0A 'YOU CAN CHANGE THIS
+
+Case "4"
+    NewDS = &h0000
+    NewDL = &h10AF
+    NewVS = &h40 'YOU CAN CHANGE THIS
+    NewVL = &h0A 'YOU CAN CHANGE THIS
+
+Case "5"
+    Print " OPTION 5 WAS PICKED !" & VbCr & "AND IS NOT AVAILABLE YET !"
+    Sc.PlaySound("yeahrite.wav")
+    Exit Sub
+
+
+Case Else
+End Select
+
+    MenuPrompt = "Number of times to try each range." & Vbcr
+    Choice2 = Sc.ButtonBox(MenuPrompt, VbInformation, "Select an option or click X to exit--------------->", "1", "10", "50", "100", "150")
+
+Select Case Choice2
+
+Case "0"
+    Exit Sub
+Case "1"
+    tryz = 1
+Case "2"
+    tryz = 10
+Case "3"
+    tryz = 50
+Case "4"
+    tryz = 100
+Case "5"
+    tryz = 150
+Case Else
+End Select
+
+    MenuPrompt = "Number of times to repeat the ranges." & Vbcr
+    Choice3 = Sc.ButtonBox(MenuPrompt, VbInformation, "Select an option or click X to exit--------------->", "1", "2", "5", "10", "100")
+
+Select Case Choice3
+
+Case "0"
+    Exit Sub
+Case "1"
+    Repeats = 1
+Case "2"
+    Repeats = 2
+Case "3"
+    Repeats = 5
+Case "4"
+    Repeats = 10
+Case "5"
+    Repeats = 100
+Case Else
+End Select
+
+    Sc.Reset
+    sc.verbose=false
+    DelayStart = NewDS
+    DelayLimit = NewDL
+    VCCStart = NewVS
+    VCCLimit = NewVL
+    GlitchType = &h06
+    Delay = DelayStart
+    VCC = VCCStart
+    tryzchk = tryz
+    ComboTotal = ((NewVS-NewVL)+&h1)*((NewDL-NewDS)+&h1)
+    ComboCheck = 1
+    TotalAttempts = (ComboTotal*Repeats)*tryz
+
+' Get ATR
+
+    Sc.Write("A1") 'turn red led on
+    Sc.Delay(10)
+    Sc.Write("A0") 'Turn off leds
+    sc.verbose=true
+    Sc.Write("07 0e 03 10 01 03 9a 00")    'reset card
+    Sc.Read(02)
+    Bytes = Sc.Getbyte(1)
+    if Bytes > 25 then
+    Sc.Read(27)
+    Print VbCr&"Started Glitching = "& Date & " " & Time & VbCr
+    print "VCC Span = " & (NewVS-NewVL)+&h1 & VbTab & VbTab
+    print "Delay Span = " & (NewDL-NewDS)+&h1 & VbCr
+    print "Repeats = " & Repeats & VbTab & VbTab
+    print "Trys = " & tryz & VbCr
+    Print "For a total of " & ComboTotal & " combinations." & VbCr
+    Print "Total Attemps = " & TotalAttempts & " (Combination Total x Repeats x trys)." & VbCr
+    approx = TotalAttempts
+    approx2 = approx/8.3
+    Print "This should take approx ... "
+    print approx2 & " seconds." & VbCr
+    'add in a configuration to better displayed time here...........
+    THr=Hour(Now)
+    TMn=Minute(Now)
+    TSc=Second(Now)
+    sc.verbose=false
+    end if
+    for x = 1 to tryz
+    print " "
+    next
+    x = 0
+    Print " < DELAY : VCC"&VbCr
+    for x = 1 to tryz
+    print "="
+    next
+    Print "=============="&VbCr
+
+
+Do
+            tryzchk = tryzchk - 1
+            print "-"
+            if tryzchk = 0 then
+            tryzchk = tryz
+            PRINT " <  " & HexString(DELAY, 4) & " : " & HexString(VCC, 2) & VbCr  '& " : " &ComboCheck & "/" & ComboTotal & VbCr
+            If Repeats2 < 1 then
+            Repeats2 = Repeats
+            End If
+            ComboCheck = ComboCheck + 1
+            If ComboCheck > TotalAttempts/tryz Then
+            Print Time & VbCr
+            THr2=Hour(Now)
+            TMn2=Minute(Now)
+            TSc2=Second(Now)
+            Print "Worked on " & ComboTotal & " combos for a total of " & TotalAttempts & " attemps for "
+            If Thr2-THr < 10 then
+            print "0" & THr2-THr & ":"
+            else
+            Print THr2-Thr & ":"
+            End if
+            If TMn2-TMn < 10 then
+            print "0" & TMn2-TMn & ":"
+            else
+            Print TMn2-TMn & ":"
+            End If
+            If TSc2-TSc < 10 then
+            print "0" & TSc2-TSc
+            else
+            Print TSc2-TSc
+            End If
+            Print " (HH:MM:SS)" & VbCr
+            Exit Sub
+            End If
+            VCC = VCC - &h1
+            If VCC < VCCLimit then
+            VCC = VCCStart
+            Delay = Delay + &h1
+            End If
+            IF Delay > DelayLimit THEN
+            Delay = DelayStart
+            VCC = VccStart
+            Repeats2 = Repeats2 - &h1
+            If Repeats2 = 1 then
+            Print "Trying ranges " & Repeats2 & " last time." & VbCr
+            'Sound file of Homer=Aw come oooooonnnnnnnnn will ya ? ...hahahaha :)
+            else
+            Print "Trying ranges " & Repeats2 & " more times." & VbCr
+            End If
+            End If
+            End If
+
+    if GlitchType < &h40 then
+    GlitchType = GlitchType + 1
+    end if
+    if GlitchType = &h08 then GlitchType = &h04 end if
+    RT = RT + 1
+    if rt > &H33 then
+    rt = &H33
+    END IF
+
+    Sc.Write("B0" & HexString(VCC, 2))
+    Sc.Write("0E 10 0e 03 01 02"&  HexString(GlitchType, 2) & HexString(Delay, 4) &  "03 23 9B 80 02 00")
+    Sc.Read(02)
+    Bytes = Sc.Getbyte(1)
+    BYTES = 0
+
+    SENDOVERFLOW()
+
+    'PRINT HEXSTRING(bytes,2) ' This prints the 6F to OutputWindow
+    if bytes = &h6F then
+    bytes = 0
+    else
+    PRINT "O"
+    Sc.Playsound("doh.wav")
+    end if
+
+    Bytes = 0
+        If Bytes > 10 then
+        Bytes = Sc.Read(9)
+        Bytes = Sc.Getbyte(0)
+        PRINT HEXSTRING(Bytes,2)
+
+            Bytes = 0
+            If Bytes > 0 then
+            Bytes = Sc.Read(Bytes)
+            End If
+            If Bytes > 3 then
+            Bytes = Sc.Getbyte(1)
+            br2(1)= sc.getbyte(2)
+            Else
+            Bytes = 0
+            End If
+            If Bytes = &H77 then
+            br2(2)= sc.getbyte(3)
+            br2(3)= sc.getbyte(4)
+            Sc.Print VbCr
+            sc.verbose=true
+            Sc.Print "===========================================" & VbCr
+            Sc.Print "Success on Glitch Try #" & ComboCount & VbCr
+            Sc.Print "VCC = "& HexString(VCC, 2) & "  (~" & ((5/255) * VCC) &" vdc)" & VbCr
+            Sc.Print "Glitch Delay = " & HexString(RT, 4) & VbCr
+            Sc.Print "Glitch type " & HexString(GlitchType, 2) & VbCr
+            Sc.Print "READ 20-23 OF bug glitch " & HexString(br2(1), 2) & HexString(br2(2), 2) & HexString(br2(3), 2)& VbCr
+
+            if GlitchType < &h08 then
+            Sc.Print "Glitched on high clock phase" & VbCr
+            else
+            Sc.Print "Glitched on low clock phase" & VbCr
+            end if
+            Sc.Print "===========================================" & VbCr
+        end if
+    end if
+        if opencam = 1 then
+            print
+            print"======================== "& VbCr
+            print"=  CAM IS NOW OPEN  !  = "& VbCr
+            print"======================== "& VbCr
+            print"=    YOU MUST STOP     = "& VbCr
+            print"= the  script  before  = "& VbCr
+            print"=  Removing the CAM.   = "& VbCr
+            print"======================== "& VbCr
+            Print "CAM Opened in "
+            THr2=Hour(Now)
+            TMn2=Minute(Now)
+            TSc2=Second(Now)
+            If Thr2-THr < 10 then
+            print "0" & THr2-THr & ":"
+            else
+            Print THr2-Thr & ":"
+            End if
+            If TMn2-TMn < 10 then
+            print "0" & TMn2-TMn & ":"
+            else
+            Print TMn2-TMn & ":"
+            End If
+            If TSc2-TSc < 10 then
+            print "0" & TSc2-TSc
+            else
+            Print TSc2-TSc
+            End If
+            Print " (HH:MM:SS)" & VbCr
+            Print Time & VbCr
+            PRINT "CAM opened with: DELAY = " & HexString(DELAYSTART, 4)   & "  VCC = " & HexString(VCC, 2) & "  Attempt " & ComboCheck & " of " & ComboTotal & VbCr
+            Sc.PlaySound("smart.wav")
+            for blink = 1 to 15
+            Sc.Write ("A1") 'turn red led on
+            Sc.Delay(200)
+            Sc.Write ("A2") 'turn green led on
+            Sc.Delay(200)
+            next
+            Exit Sub
+            End If
+            'Sc.Write("A1")    'Add this line if you want it to flash red after each attempt.
+LOOP
+End Sub
+
+
+Function HexString(Number,Length)
+    ' This function takes 2 arguments, a number and a length.  It converts the decimal
+    ' number given by the first argument to a Hexidecimal string with its length
+    ' equal to the number of digits given by the second argument
+    Dim RetVal
+    Dim CurLen
+    RetVal=Hex(Number)
+    CurLen=Len(RetVal)
+    If CurLen<Length Then
+        RetVal=String(Length-CurLen,"0") & RetVal
+    End If
+    HexString=RetVal
+End Function
+
+Sub SENDOVERFLOW()
+
+
+
+    Sc.Write("470E051503FFFF00BC00000000000000000000000000")
+    Sc.Write("00000000000000000000000000000000")
+    Sc.Write("00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00")
+    Sc.Write("00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 02 00")
+    Sc.Read(2)
+
+    Sc.Write("46 0E 05 03 FF 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00")
+    Sc.Write("00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00")
+    Sc.Write("00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00")
+    Sc.Write("00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 02 00")
+    Sc.Read(2)
+
+    Sc.Write("460E0503FF0000000000000030313233E051813741")
+    Sc.Write("42434445464748010100000000FF0000")
+    Sc.Write("000000CD0000C39B9CAE71A64BB74EA6")
+    Sc.Write("05CD4B4FCC73810000000000000000000200")
+    Sc.Read(2)
+
+    Sc.Write("0D 0E 05 03 C7 60 00 60 00 60 00 60 AA 00")
+    Sc.Read(2)
+
+    Sc.Write("2F 03 0E 05 E8 21 00 25 A0 20 00 00 20 8F AB C2 64 44 9A FE 70 1D E7 62 FA B1 4C 31 06 00 11 22 33 44 55 66 77 88 99 AA BB CC DD EE FF DE 85 00")
+    Sc.Read (2)
+
+    Bytes = Sc.Getbyte(1)
+    if Bytes > 4 then
+    Bytes = Sc.Read(4)
+    Bytes = Sc.Getbyte(3)
+        if bytes = &h63 then
+        OPENCAM = 1
+        end if
+    end if
+END SUB

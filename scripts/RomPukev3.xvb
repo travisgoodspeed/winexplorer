@@ -1,0 +1,70 @@
+call echosettings()
+    msgbox "RomPuke is to unlock ROM3 at rev372 or 378 Only!" & vbcrlf & vbcrlf & "                              By: DMan79"
+Sub Main()
+    timed=600
+    tried=0
+    while timed<>705
+    tries=tries+1
+    sc.reset
+    sc.delay(50)
+    sc.print vbcrlf & "#" & tries & " Delay is at: " & timed
+    sc.verbose = false
+    sc.write("214053A0CA00004D004B00010286ED9F40C39D85D5F855DA0153BE1C6DC2D3B9339EFC4DA2B399137EDC2D829379F35EBC0D627359D33E9CED425339B31E7CCD22331993FE5CAD0213F973DE3C8DE2F3D953BE1C400525")
+    'sc.verbose = true
+    'sc.read(11)
+    '    sc.verbose = false
+        sc.delay(timed)
+        sc.write("2100F69B9CA64ACD42D7A641CD42D7A656CD42D7CC006000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000C6E05181000000000000000000010100000000FF000000000000CD00C39B9CA696C7004EAE80A601CD7803CC4000BF65A30226ED9ACC738100000000600000000000000000")
+        sc.delay(50)
+     '   sc.verbose = true
+     '   sc.read(4)
+     '   if sc.getbyte(01)<>&h82 or sc.getbyte(03)<>&h82 then
+     '   sc.print "Failed!"
+     '   else
+        sc.reset()
+        sc.verbose = false
+        sc.write("2100C4010203A405060708090A0B0C0D0E0F10110203040A060708595A0B0C0D0E0F10C10203D4050607C8290A0B0C0D0E0F1031D2030405060708390A0B0C0D0E0F10410203D405060708490A0B0C0D0E0F10510203040506E708590A0A0C0A0E0F10610203040001020304050B0708090A0B0C0D0E0F00F102030405E60708090A0B0CFD0C0F00010203050A060708090A0B0C0D0E0F010101000000FF0752567303CDDC34C39B9C9D9DC6E020CD42D73C6626F69D9D9D9D9D9D9D9DED9ACC7381E80000006055")
+        sc.delay(50)
+        sc.verbose = true
+        sc.read(4)
+        if sc.getbyte(01)<>&h81 or sc.getbyte(03)<>&h81 then
+        sc.print "Failed!"
+        else
+        sc.print vbcrlf & "Card is now open!"
+        sc.reset()
+        exit sub
+        end if
+      '  end if
+    timed=timed+6
+    sc.reset()
+
+    if timed>700 then
+    timed=timed-101
+    end if
+    wend
+    sc.print vbcrlf & "Unlocking Failed!"
+End Sub
+
+
+sub echosettings()
+Wx.BaudRate = 115200
+Wx.ResetBaudRate = 9600
+Wx.Parity = 1                ' 0 = None, 1 = Odd, 2 = Even, 3 = Mark, 4 = Space
+Wx.StopBits = 0              ' 0 = 1 stop bit, 1 = 1.5 stop bits, 2 = 2 stop bits
+Wx.DTRControl = 1            ' Initial state of DTR  0 = off, 1 = on
+Wx.RTSControl = 0            ' Initial state of RTS  0 = off, 1 = on
+Wx.ResetDelay = 40000        ' In microseconds
+Wx.ByteDelay = 0        ' In microseconds
+Wx.RxByteTimeout = 150       ' In milliseconds
+Wx.ResetMode = 1             ' 0 = No Resets, 1 = ISO Reset (Expect a ATR), 2 = Device Reset (No ATR)
+Wx.ResetLine = 0             ' 0 = Toggle RTS for Reset, 1 = Toggle DTR for Reset
+Wx.ByteConvention = 0        ' 0 = Inverse, 1 = Direct
+Wx.FlushEchoByte = 1         ' 0 = no flush, 1 = flush - A Phoenix interface will echo each byte transmitted.
+Wx.FlushBeforeWrite = 1      ' 0 = no flush, 1 = flush - Flush the receive buffer before each write to strip off Null bytes.
+Wx.IgnoreTimeouts = 1        ' 0 = Abort script on a receive timeout, 1 = Ignore all receive timeouts
+Wx.ResetAfterTimeout = 0     ' 0 = Don't reset after a timeout, 1 = do a reset after a timeout  - Not used if "IgnoreTimeouts=0"
+Wx.LogTransactions = 0       ' 0 = Don't log transactions, 1 = log transactions
+Wx.DisplayUSW = 0            ' Display USW after script complete 0 = no, 1 = yes
+Wx.DisplayFuse = 0           ' Display Fuse after script complete 0 = no, 1 = yes
+
+end sub

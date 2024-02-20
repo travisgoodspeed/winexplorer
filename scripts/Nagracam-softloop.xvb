@@ -1,0 +1,79 @@
+' modded to do other things - and commented
+' New VB Script File
+' 2-1 script
+' dish rom3 softunlooper
+' like bugbuster is all, but little better
+'**************************************************************
+'
+Option Explicit
+    'set up variables
+    dim i
+    dim ToWrite
+    dim ret
+    dim tries
+
+    ' Global Unlooper Packet Variables
+    Dim ATR(13)
+    Dim GPPLen,GPRLen
+    Dim GPR(70)
+
+' main routine
+sub main()
+    ' read-write displayed=true  -  notdisplayed=false
+    sc.verbose=false
+    ' turn led off
+    Sc.Write("A0")
+    Sc.Delay(2000)
+    ' card is in turn led on
+    Sc.Write("A1")
+
+    GlitchBin()
+
+    ' turn led off
+    Sc.Write("A0")
+    ' end main routine
+end sub
+
+' This function takes 2 arguments, a number and a length. It converts the decimal
+' number given by the first argument to a Hexidecimal string with its length
+' equal to the number of digits given by the second argument.
+' ex. hexstring(23,2)  = $14h
+' ex. hexstring(300,4) = $012Ch
+' ex. hexstring(65535,4)=$FFFFh
+Function HexString(Number,Length)
+    Dim RetVal
+    Dim CurLen
+    RetVal=Hex(Number)
+    CurLen=Len(RetVal)
+    If CurLen<Length Then
+        RetVal=String(Length-CurLen,"0") & RetVal
+    End If
+    HexString=RetVal
+End Function
+
+
+' this sub is the glitch routine
+Sub GlitchBin()
+    ' set up variables
+    Dim glitch
+    Dim glitch2
+    glitch=230001
+    'glitch= the first cli at 246851 to 00 bugs
+    'at loader cycles +- 50 atmel cycles
+    'you can set glitch= 0 TO 1047000
+    'best to start where it is and let it run to end
+    'or stop at around 340000 and see if open
+Do While (glitch<1048000)
+
+Sc.Delay(10)
+glitch2=HexString(glitch,5)
+ToWrite="091A0303012" + glitch2 + "0F00"
+Sc.Write(ToWrite)
+Sc.Delay(10)
+glitch=glitch + 50
+print "    delay = "
+print glitch
+
+
+LOOP
+End Sub

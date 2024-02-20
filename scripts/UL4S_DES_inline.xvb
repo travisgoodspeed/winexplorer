@@ -1,0 +1,1290 @@
+' Author: Lee Gibling 
+' Preliminary attempt of a DTA (differential timing analysis) of the
+' (3)DES accelerator of the P4/SLE66. The challenging 7 byte DES key
+' (first half of the 3DES) is entered in the ATR_DM of the P4 after reset.
+
+' Self check of the 8 watershed intervals
+
+' 0x0ff5/6, 0x1025/6, 0x11f5/6, 0x1305/6,
+' 0x15f5/6, 0x16e5/6, 0x18d5/6, 0x1dc5/6
+
+' for the 512 DES key values:
+
+' 00 00 00 00 00 00 00 00
+' ...
+' 00 00 00 00 00 00 24 FF
+
+' Tested with T911/UL4S on a looped P4/2001
+
+Dim AI_cmd(&h1B), AI_timeouts (255, 255)
+Dim I_nbr_key_bytes_f0, I_nbr_key_bytes_f1
+Dim I_idx_key_0_start_f0, I_cmd_ubound 
+Dim I_nbr_attempts_f1, I_wait_rs232, I_wait_rs232_ext
+' -------------------------------------
+
+Sub Main()
+
+Dim i1, i2, i3, i4, I_timeout, AI_key(13), I_nbr_bytes_received_f1
+Dim I_idx_timeout_f0, I_idx_timeout_max_f0
+Dim H_timeout
+
+Success = Sc.Log ("Start of Test Run")
+if Success = 1 Then
+   Sc.Err("Unable to open LogFile")
+End If
+Success = Sc.Log("")
+
+I_nbr_key_bytes_f1   = 7
+
+I_nbr_attempts_f1    = 8
+I_wait_rs232         = 300 ' in millisecs 
+I_wait_rs232_ext     = 100 ' extension
+I_idx_timeout_max_f0 = &h24 
+
+I_nbr_key_bytes_f0 = I_nbr_key_bytes_f1 - 1
+For i1 = 0 to 255
+  For i2 = 0 to I_nbr_key_bytes_f0
+     AI_timeouts(i2, i1) = 0
+  Next
+'  AI_timeouts(5, i1) = &h01
+Next
+
+'----------------------------------------
+
+' 256 DES key values:
+' 00 00 00 00 00 00 00
+' ...
+' 00 00 00 00 00 00 FF
+
+AI_timeouts(0, &h00) = &h1dc6 ' (0)
+AI_timeouts(0, &h01) = &h16e6
+AI_timeouts(0, &h02) = &h18d6
+AI_timeouts(0, &h03) = &h16e6
+AI_timeouts(0, &h04) = &h18d6
+AI_timeouts(0, &h05) = &h16e6
+AI_timeouts(0, &h06) = &h1dc6 ' (2,3)
+AI_timeouts(0, &h07) = &h16e6
+AI_timeouts(0, &h08) = &h18d6
+AI_timeouts(0, &h09) = &h16e6
+AI_timeouts(0, &h0A) = &h1dc6 ' (2,5)
+AI_timeouts(0, &h0B) = &h16e6
+AI_timeouts(0, &h0C) = &h1dc6 ' (2,2,3)
+AI_timeouts(0, &h0D) = &h16e6
+AI_timeouts(0, &h0E) = &h18d6
+AI_timeouts(0, &h0F) = &h16e6
+
+AI_timeouts(0, &h10) = &h18d6
+AI_timeouts(0, &h11) = &h16e6
+AI_timeouts(0, &h12) = &h1dc6 ' (2,3,3)
+AI_timeouts(0, &h13) = &h16e6
+AI_timeouts(0, &h14) = &h1dc6 ' (2,2,5)
+AI_timeouts(0, &h15) = &h16e6
+AI_timeouts(0, &h16) = &h18d6
+AI_timeouts(0, &h17) = &h16e6
+AI_timeouts(0, &h18) = &h1dc6 ' (2,2,2,3)
+AI_timeouts(0, &h19) = &h16e6
+AI_timeouts(0, &h1A) = &h18d6
+AI_timeouts(0, &h1B) = &h16e6
+AI_timeouts(0, &h1C) = &h18d6
+AI_timeouts(0, &h1D) = &h16e6
+AI_timeouts(0, &h1E) = &h1dc6 ' (3,3,5)
+AI_timeouts(0, &h1F) = &h16e6
+
+AI_timeouts(0, &h20) = &h18d6
+AI_timeouts(0, &h21) = &h16e6
+AI_timeouts(0, &h22) = &h1dc6 ' (2,17)
+AI_timeouts(0, &h23) = &h16e6
+AI_timeouts(0, &h24) = &h1dc6 ' (2,2,3,3)
+AI_timeouts(0, &h25) = &h16e6
+AI_timeouts(0, &h26) = &h18d6
+AI_timeouts(0, &h27) = &h16e6
+AI_timeouts(0, &h28) = &h1dc6 ' (2,2,2,5)
+AI_timeouts(0, &h29) = &h16e6
+AI_timeouts(0, &h2A) = &h18d6
+AI_timeouts(0, &h2B) = &h16e6
+AI_timeouts(0, &h2C) = &h18d6
+AI_timeouts(0, &h2D) = &h16e6
+AI_timeouts(0, &h2E) = &h1dc6 ' (2,23)
+AI_timeouts(0, &h2F) = &h16e6
+
+AI_timeouts(0, &h30) = &h1dc6 ' (2,2,2,2,3)
+AI_timeouts(0, &h31) = &h16e6
+AI_timeouts(0, &h32) = &h18d6
+AI_timeouts(0, &h33) = &h16e6
+AI_timeouts(0, &h34) = &h18d6
+AI_timeouts(0, &h35) = &h16e6
+AI_timeouts(0, &h36) = &h1dc6 ' (2,3,3,3)
+AI_timeouts(0, &h37) = &h16e6
+AI_timeouts(0, &h38) = &h18d6
+AI_timeouts(0, &h39) = &h16e6
+AI_timeouts(0, &h3A) = &h1dc6 ' (2,29)
+AI_timeouts(0, &h3B) = &h16e6
+AI_timeouts(0, &h3C) = &h1dc6 ' (2,2,3,5)
+AI_timeouts(0, &h3D) = &h16e6
+AI_timeouts(0, &h3E) = &h18d6
+AI_timeouts(0, &h3F) = &h16e6
+
+AI_timeouts(0, &h40) = &h18d6
+AI_timeouts(0, &h41) = &h16e6
+AI_timeouts(0, &h42) = &h1dc6 ' (2,3,11)
+AI_timeouts(0, &h43) = &h16e6
+AI_timeouts(0, &h44) = &h1dc6 ' (2,2,17)
+AI_timeouts(0, &h45) = &h16e6
+AI_timeouts(0, &h46) = &h18d6
+AI_timeouts(0, &h47) = &h16e6
+AI_timeouts(0, &h48) = &h1dc6 ' (2,2,2,3,3)
+AI_timeouts(0, &h49) = &h16e6
+AI_timeouts(0, &h4A) = &h18d6
+AI_timeouts(0, &h4B) = &h16e6
+AI_timeouts(0, &h4C) = &h18d6
+AI_timeouts(0, &h4D) = &h16e6
+AI_timeouts(0, &h4E) = &h1dc6 ' (2,3,13)
+AI_timeouts(0, &h4F) = &h16e6
+
+AI_timeouts(0, &h50) = &h1dc6 ' (2,2,2,2,5)
+AI_timeouts(0, &h51) = &h16e6
+AI_timeouts(0, &h52) = &h18d6
+AI_timeouts(0, &h53) = &h16e6
+AI_timeouts(0, &h54) = &h18d6
+AI_timeouts(0, &h55) = &h16e6
+AI_timeouts(0, &h56) = &h1dc6 ' (2,43)
+AI_timeouts(0, &h57) = &h16e6
+AI_timeouts(0, &h58) = &h18d6
+AI_timeouts(0, &h59) = &h16e6
+AI_timeouts(0, &h5A) = &h1dc6 ' (2,3,3,5)
+AI_timeouts(0, &h5B) = &h16e6
+AI_timeouts(0, &h5C) = &h1dc6 ' (2,2,23)
+AI_timeouts(0, &h5D) = &h16e6
+AI_timeouts(0, &h5E) = &h18d6
+AI_timeouts(0, &h5F) = &h16e6
+
+AI_timeouts(0, &h60) = &h1dc6 ' (2,2,2,2,2,3)
+AI_timeouts(0, &h61) = &h16e6
+AI_timeouts(0, &h62) = &h18d6
+AI_timeouts(0, &h63) = &h16e6
+AI_timeouts(0, &h64) = &h18d6
+AI_timeouts(0, &h65) = &h16e6
+AI_timeouts(0, &h66) = &h1dc6 ' (2,3,17)
+AI_timeouts(0, &h67) = &h16e6
+AI_timeouts(0, &h68) = &h18d6
+AI_timeouts(0, &h69) = &h16e6
+AI_timeouts(0, &h6A) = &h1dc6 ' (2,53)
+AI_timeouts(0, &h6B) = &h16e6
+AI_timeouts(0, &h6C) = &h1dc6 ' (2,2,3,3,3)
+AI_timeouts(0, &h6D) = &h16e6
+AI_timeouts(0, &h6E) = &h18d6
+AI_timeouts(0, &h6F) = &h16e6
+
+AI_timeouts(0, &h70) = &h18d6
+AI_timeouts(0, &h71) = &h16e6
+AI_timeouts(0, &h72) = &h1dc6 ' (2,3,19)
+AI_timeouts(0, &h73) = &h16e6
+AI_timeouts(0, &h74) = &h1dc6 ' (2,2,29)
+AI_timeouts(0, &h75) = &h16e6
+AI_timeouts(0, &h76) = &h18d6
+AI_timeouts(0, &h77) = &h16e6
+AI_timeouts(0, &h78) = &h1dc6 ' (2,2,2,3,5)
+AI_timeouts(0, &h79) = &h16e6
+AI_timeouts(0, &h7A) = &h18d6
+AI_timeouts(0, &h7B) = &h16e6
+AI_timeouts(0, &h7C) = &h18d6
+AI_timeouts(0, &h7D) = &h16e6
+AI_timeouts(0, &h7E) = &h1dc6 ' (2,3,3,2)
+AI_timeouts(0, &h7F) = &h16e6
+
+AI_timeouts(0, &h80) = &h18d6
+AI_timeouts(0, &h81) = &h16e6
+AI_timeouts(0, &h82) = &h1dc6 ' (2,5,13)
+AI_timeouts(0, &h83) = &h16e6
+AI_timeouts(0, &h84) = &h1dc6 ' (2,2,3,11)
+AI_timeouts(0, &h85) = &h16e6
+AI_timeouts(0, &h86) = &h18d6
+AI_timeouts(0, &h87) = &h16e6
+AI_timeouts(0, &h88) = &h1dc6 ' (2,2,2,17)
+AI_timeouts(0, &h89) = &h16e6
+AI_timeouts(0, &h8A) = &h18d6
+AI_timeouts(0, &h8B) = &h16e6
+AI_timeouts(0, &h8C) = &h18d6
+AI_timeouts(0, &h8D) = &h16e6
+AI_timeouts(0, &h8E) = &h1dc6 ' (2,71)
+AI_timeouts(0, &h8F) = &h16e6
+
+AI_timeouts(0, &h90) = &h1dc6 ' (2,2,2,2,3,3)
+AI_timeouts(0, &h91) = &h16e6
+AI_timeouts(0, &h92) = &h18d6
+AI_timeouts(0, &h93) = &h16e6
+AI_timeouts(0, &h94) = &h18d6
+AI_timeouts(0, &h95) = &h16e6
+AI_timeouts(0, &h96) = &h1dc6 ' (2,3,5,5)
+AI_timeouts(0, &h97) = &h16e6
+AI_timeouts(0, &h98) = &h18d6
+AI_timeouts(0, &h99) = &h16e6
+AI_timeouts(0, &h9A) = &h1dc6 ' (2,7,11)
+AI_timeouts(0, &h9B) = &h16e6
+AI_timeouts(0, &h9C) = &h1dc6 ' (2,2,3,13)
+AI_timeouts(0, &h9D) = &h16e6
+AI_timeouts(0, &h9E) = &h18d6
+AI_timeouts(0, &h9F) = &h16e6
+
+AI_timeouts(0, &hA0) = &h1dc6 ' (2,2,2,2,2,5)
+AI_timeouts(0, &hA1) = &h16e6
+AI_timeouts(0, &hA2) = &h18d6
+AI_timeouts(0, &hA3) = &h16e6
+AI_timeouts(0, &hA4) = &h18d6
+AI_timeouts(0, &hA5) = &h16e6
+AI_timeouts(0, &hA6) = &h1dc6 ' (2,83)
+AI_timeouts(0, &hA7) = &h16e6
+AI_timeouts(0, &hA8) = &h18d6
+AI_timeouts(0, &hA9) = &h16e6
+AI_timeouts(0, &hAA) = &h1dc6 ' (2,5,17)
+AI_timeouts(0, &hAB) = &h16e6
+AI_timeouts(0, &hAC) = &h1dc6 ' (2,2,43)
+AI_timeouts(0, &hAD) = &h16e6
+AI_timeouts(0, &hAE) = &h18d6
+AI_timeouts(0, &hAF) = &h16e6
+
+AI_timeouts(0, &hB0) = &h18d6
+AI_timeouts(0, &hB1) = &h16e6
+AI_timeouts(0, &hB2) = &h1dc6 ' (2,89)
+AI_timeouts(0, &hB3) = &h16e6
+AI_timeouts(0, &hB4) = &h1dc6 ' (2,2,3,3,5)
+AI_timeouts(0, &hB5) = &h16e6
+AI_timeouts(0, &hB6) = &h18d6
+AI_timeouts(0, &hB7) = &h16e6
+AI_timeouts(0, &hB8) = &h1dc6 ' (2,2,2,23)
+AI_timeouts(0, &hB9) = &h16e6
+AI_timeouts(0, &hBA) = &h18d6
+AI_timeouts(0, &hBB) = &h16e6
+AI_timeouts(0, &hBC) = &h18d6
+AI_timeouts(0, &hBD) = &h16e6
+AI_timeouts(0, &hBE) = &h1dc6 ' (2,5,19)
+AI_timeouts(0, &hBF) = &h16e6
+
+AI_timeouts(0, &hC0) = &h1dc6 ' (2,2,2,2,2,2,3)
+AI_timeouts(0, &hC1) = &h16e6
+AI_timeouts(0, &hC2) = &h18d6
+AI_timeouts(0, &hC3) = &h16e6
+AI_timeouts(0, &hC4) = &h18d6
+AI_timeouts(0, &hC5) = &h16e6
+AI_timeouts(0, &hC6) = &h1dc6 ' (2,3,3,11)
+AI_timeouts(0, &hC7) = &h16e6
+AI_timeouts(0, &hC8) = &h18d6
+AI_timeouts(0, &hC9) = &h16e6
+AI_timeouts(0, &hCA) = &h1dc6 ' (2,101)
+AI_timeouts(0, &hCB) = &h16e6
+AI_timeouts(0, &hCC) = &h1dc6 ' (2,2,3,17)
+AI_timeouts(0, &hCD) = &h16e6
+AI_timeouts(0, &hCE) = &h18d6
+AI_timeouts(0, &hCF) = &h16e6
+
+AI_timeouts(0, &hD0) = &h18d6
+AI_timeouts(0, &hD1) = &h16e6
+AI_timeouts(0, &hD2) = &h1dc6 ' (2,3,5,7)
+AI_timeouts(0, &hD3) = &h16e6
+AI_timeouts(0, &hD4) = &h1dc6 ' (2,2,53)
+AI_timeouts(0, &hD5) = &h16e6
+AI_timeouts(0, &hD6) = &h18d6
+AI_timeouts(0, &hD7) = &h16e6
+AI_timeouts(0, &hD8) = &h1dc6 ' (2,2,2,3,3,3)
+AI_timeouts(0, &hD9) = &h16e6
+AI_timeouts(0, &hDA) = &h18d6
+AI_timeouts(0, &hDB) = &h16e6
+AI_timeouts(0, &hDC) = &h18d6
+AI_timeouts(0, &hDD) = &h16e6
+AI_timeouts(0, &hDE) = &h1dc6 ' (2,3,37)
+AI_timeouts(0, &hDF) = &h16e6
+
+AI_timeouts(0, &hE0) = &h18d6
+AI_timeouts(0, &hE1) = &h16e6
+AI_timeouts(0, &hE2) = &h1dc6 ' (2,113)
+AI_timeouts(0, &hE3) = &h16e6
+AI_timeouts(0, &hE4) = &h1dc6 ' (2,2,3,19)
+AI_timeouts(0, &hE5) = &h16e6
+AI_timeouts(0, &hE6) = &h18d6
+AI_timeouts(0, &hE7) = &h16e6
+AI_timeouts(0, &hE8) = &h1dc6 ' (2,2,2,29)
+AI_timeouts(0, &hE9) = &h16e6
+AI_timeouts(0, &hEA) = &h18d6
+AI_timeouts(0, &hEB) = &h16e6
+AI_timeouts(0, &hEC) = &h18d6
+AI_timeouts(0, &hED) = &h16e6
+AI_timeouts(0, &hEE) = &h1dc6 ' (2,7,17)
+AI_timeouts(0, &hEF) = &h16e6
+
+AI_timeouts(0, &hF0) = &h1dc6 ' (2,2,2,2,3,5)
+AI_timeouts(0, &hF1) = &h16e6
+AI_timeouts(0, &hF2) = &h18d6
+AI_timeouts(0, &hF3) = &h16e6
+AI_timeouts(0, &hF4) = &h18d6
+AI_timeouts(0, &hF5) = &h16e6
+AI_timeouts(0, &hF6) = &h1dc6 ' (2,3,41)
+AI_timeouts(0, &hF7) = &h16e6
+AI_timeouts(0, &hF8) = &h18d6
+AI_timeouts(0, &hF9) = &h16e6
+AI_timeouts(0, &hFA) = &h1dc6 ' (2,5,5,5)
+AI_timeouts(0, &hFB) = &h16e6
+AI_timeouts(0, &hFC) = &h1dc6 ' (2,2,3,3,7)
+AI_timeouts(0, &hFD) = &h16e6
+AI_timeouts(0, &hFE) = &h18d6
+AI_timeouts(0, &hFF) = &h16e6
+
+'----------------------------------------
+' 256 DES key values:
+' 00 00 00 00 00 01 00
+' ...
+' 00 00 00 00 00 01 FF
+
+AI_timeouts(1, &h00) = &h1dc6
+AI_timeouts(1, &h01) = &h15f6
+AI_timeouts(1, &h02) = &h1306
+AI_timeouts(1, &h03) = &h1306
+AI_timeouts(1, &h04) = &h1026
+AI_timeouts(1, &h05) = &h1026
+AI_timeouts(1, &h06) = &h1026
+AI_timeouts(1, &h07) = &h1026
+AI_timeouts(1, &h08) = &h0ff6
+AI_timeouts(1, &h09) = &h0ff6
+AI_timeouts(1, &h0A) = &h0ff6
+AI_timeouts(1, &h0B) = &h0ff6
+AI_timeouts(1, &h0C) = &h0ff6
+AI_timeouts(1, &h0D) = &h0ff6
+AI_timeouts(1, &h0E) = &h0ff6
+AI_timeouts(1, &h0F) = &h0ff6
+
+AI_timeouts(1, &h10) = &h18d6
+AI_timeouts(1, &h11) = &h15f6
+AI_timeouts(1, &h12) = &h1306
+AI_timeouts(1, &h13) = &h1306
+AI_timeouts(1, &h14) = &h1026
+AI_timeouts(1, &h15) = &h1026
+AI_timeouts(1, &h16) = &h1026
+AI_timeouts(1, &h17) = &h1026
+AI_timeouts(1, &h18) = &h0ff6
+AI_timeouts(1, &h19) = &h0ff6
+AI_timeouts(1, &h1A) = &h0ff6
+AI_timeouts(1, &h1B) = &h0ff6
+AI_timeouts(1, &h1C) = &h0ff6
+AI_timeouts(1, &h1D) = &h0ff6
+AI_timeouts(1, &h1E) = &h0ff6
+AI_timeouts(1, &h1F) = &h0ff6
+
+AI_timeouts(1, &h20) = &h18d6
+AI_timeouts(1, &h21) = &h15f6
+AI_timeouts(1, &h22) = &h1306
+AI_timeouts(1, &h23) = &h1306
+AI_timeouts(1, &h24) = &h1026
+AI_timeouts(1, &h25) = &h1026
+AI_timeouts(1, &h26) = &h1026
+AI_timeouts(1, &h27) = &h1026
+AI_timeouts(1, &h28) = &h0ff6
+AI_timeouts(1, &h29) = &h0ff6
+AI_timeouts(1, &h2A) = &h0ff6
+AI_timeouts(1, &h2B) = &h0ff6
+AI_timeouts(1, &h2C) = &h0ff6
+AI_timeouts(1, &h2D) = &h0ff6
+AI_timeouts(1, &h2E) = &h0ff6
+AI_timeouts(1, &h2F) = &h0ff6
+
+AI_timeouts(1, &h30) = &h1dc6
+AI_timeouts(1, &h31) = &h15f6
+AI_timeouts(1, &h32) = &h1306
+AI_timeouts(1, &h33) = &h1306
+AI_timeouts(1, &h34) = &h1026
+AI_timeouts(1, &h35) = &h1026
+AI_timeouts(1, &h36) = &h1026
+AI_timeouts(1, &h37) = &h1026
+AI_timeouts(1, &h38) = &h0ff6
+AI_timeouts(1, &h39) = &h0ff6
+AI_timeouts(1, &h3A) = &h0ff6
+AI_timeouts(1, &h3B) = &h0ff6
+AI_timeouts(1, &h3C) = &h0ff6
+AI_timeouts(1, &h3D) = &h0ff6
+AI_timeouts(1, &h3E) = &h0ff6
+AI_timeouts(1, &h3F) = &h0ff6
+
+AI_timeouts(1, &h40) = &h18d6
+AI_timeouts(1, &h41) = &h15f6
+AI_timeouts(1, &h42) = &h1306
+AI_timeouts(1, &h43) = &h1306
+AI_timeouts(1, &h44) = &h1026
+AI_timeouts(1, &h45) = &h1026
+AI_timeouts(1, &h46) = &h1026
+AI_timeouts(1, &h47) = &h1026
+AI_timeouts(1, &h48) = &h0ff6
+AI_timeouts(1, &h49) = &h0ff6
+AI_timeouts(1, &h4A) = &h0ff6
+AI_timeouts(1, &h4B) = &h0ff6
+AI_timeouts(1, &h4C) = &h0ff6
+AI_timeouts(1, &h4D) = &h0ff6
+AI_timeouts(1, &h4E) = &h0ff6
+AI_timeouts(1, &h4F) = &h0ff6
+
+AI_timeouts(1, &h50) = &h1dc6
+AI_timeouts(1, &h51) = &h15f6
+AI_timeouts(1, &h52) = &h1306
+AI_timeouts(1, &h53) = &h1306
+AI_timeouts(1, &h54) = &h1026
+AI_timeouts(1, &h55) = &h1026
+AI_timeouts(1, &h56) = &h1026
+AI_timeouts(1, &h57) = &h1026
+AI_timeouts(1, &h58) = &h0ff6
+AI_timeouts(1, &h59) = &h0ff6
+AI_timeouts(1, &h5A) = &h0ff6
+AI_timeouts(1, &h5B) = &h0ff6
+AI_timeouts(1, &h5C) = &h0ff6
+AI_timeouts(1, &h5D) = &h0ff6
+AI_timeouts(1, &h5E) = &h0ff6
+AI_timeouts(1, &h5F) = &h0ff6
+
+AI_timeouts(1, &h60) = &h1dc6
+AI_timeouts(1, &h61) = &h15f6
+AI_timeouts(1, &h62) = &h1306
+AI_timeouts(1, &h63) = &h1306
+AI_timeouts(1, &h64) = &h1026
+AI_timeouts(1, &h65) = &h1026
+AI_timeouts(1, &h66) = &h1026
+AI_timeouts(1, &h67) = &h1026
+AI_timeouts(1, &h68) = &h0ff6
+AI_timeouts(1, &h69) = &h0ff6
+AI_timeouts(1, &h6A) = &h0ff6
+AI_timeouts(1, &h6B) = &h0ff6
+AI_timeouts(1, &h6C) = &h0ff6
+AI_timeouts(1, &h6D) = &h0ff6
+AI_timeouts(1, &h6E) = &h0ff6
+AI_timeouts(1, &h6F) = &h0ff6
+
+AI_timeouts(1, &h70) = &h18d6
+AI_timeouts(1, &h71) = &h15f6
+AI_timeouts(1, &h72) = &h1306
+AI_timeouts(1, &h73) = &h1306
+AI_timeouts(1, &h74) = &h1026
+AI_timeouts(1, &h75) = &h1026
+AI_timeouts(1, &h76) = &h1026
+AI_timeouts(1, &h77) = &h1026
+AI_timeouts(1, &h78) = &h0ff6
+AI_timeouts(1, &h79) = &h0ff6
+AI_timeouts(1, &h7A) = &h0ff6
+AI_timeouts(1, &h7B) = &h0ff6
+AI_timeouts(1, &h7C) = &h0ff6
+AI_timeouts(1, &h7D) = &h0ff6
+AI_timeouts(1, &h7E) = &h0ff6
+AI_timeouts(1, &h7F) = &h0ff6
+
+AI_timeouts(1, &h80) = &h18d6
+AI_timeouts(1, &h81) = &h15f6
+AI_timeouts(1, &h82) = &h1306
+AI_timeouts(1, &h83) = &h1306
+AI_timeouts(1, &h84) = &h1026
+AI_timeouts(1, &h85) = &h1026
+AI_timeouts(1, &h86) = &h1026
+AI_timeouts(1, &h87) = &h1026
+AI_timeouts(1, &h88) = &h0ff6
+AI_timeouts(1, &h89) = &h0ff6
+AI_timeouts(1, &h8A) = &h0ff6
+AI_timeouts(1, &h8B) = &h0ff6
+AI_timeouts(1, &h8C) = &h0ff6
+AI_timeouts(1, &h8D) = &h0ff6
+AI_timeouts(1, &h8E) = &h0ff6
+AI_timeouts(1, &h8F) = &h0ff6
+
+AI_timeouts(1, &h90) = &h1dc6
+AI_timeouts(1, &h91) = &h15f6
+AI_timeouts(1, &h92) = &h1306
+AI_timeouts(1, &h93) = &h1306
+AI_timeouts(1, &h94) = &h1026
+AI_timeouts(1, &h95) = &h1026
+AI_timeouts(1, &h96) = &h1026
+AI_timeouts(1, &h97) = &h1026
+AI_timeouts(1, &h98) = &h0ff6
+AI_timeouts(1, &h99) = &h0ff6
+AI_timeouts(1, &h9A) = &h0ff6
+AI_timeouts(1, &h9B) = &h0ff6
+AI_timeouts(1, &h9C) = &h0ff6
+AI_timeouts(1, &h9D) = &h0ff6
+AI_timeouts(1, &h9E) = &h0ff6
+AI_timeouts(1, &h9F) = &h0ff6
+
+AI_timeouts(1, &hA0) = &h1dc6
+AI_timeouts(1, &hA1) = &h15f6
+AI_timeouts(1, &hA2) = &h1306
+AI_timeouts(1, &hA3) = &h1306
+AI_timeouts(1, &hA4) = &h1026
+AI_timeouts(1, &hA5) = &h1026
+AI_timeouts(1, &hA6) = &h1026
+AI_timeouts(1, &hA7) = &h1026
+AI_timeouts(1, &hA8) = &h0ff6
+AI_timeouts(1, &hA9) = &h0ff6
+AI_timeouts(1, &hAA) = &h0ff6
+AI_timeouts(1, &hAB) = &h0ff6
+AI_timeouts(1, &hAC) = &h0ff6
+AI_timeouts(1, &hAD) = &h0ff6
+AI_timeouts(1, &hAE) = &h0ff6
+AI_timeouts(1, &hAF) = &h0ff6
+
+AI_timeouts(1, &hB0) = &h18d6
+AI_timeouts(1, &hB1) = &h15f6
+AI_timeouts(1, &hB2) = &h1306
+AI_timeouts(1, &hB3) = &h1306
+AI_timeouts(1, &hB4) = &h1026
+AI_timeouts(1, &hB5) = &h1026
+AI_timeouts(1, &hB6) = &h1026
+AI_timeouts(1, &hB7) = &h1026
+AI_timeouts(1, &hB8) = &h0ff6
+AI_timeouts(1, &hB9) = &h0ff6
+AI_timeouts(1, &hBA) = &h0ff6
+AI_timeouts(1, &hBB) = &h0ff6
+AI_timeouts(1, &hBC) = &h0ff6
+AI_timeouts(1, &hBD) = &h0ff6
+AI_timeouts(1, &hBE) = &h0ff6
+AI_timeouts(1, &hBF) = &h0ff6
+
+AI_timeouts(1, &hC0) = &h1dc6
+AI_timeouts(1, &hC1) = &h15f6
+AI_timeouts(1, &hC2) = &h1306
+AI_timeouts(1, &hC3) = &h1306
+AI_timeouts(1, &hC4) = &h1026
+AI_timeouts(1, &hC5) = &h1026
+AI_timeouts(1, &hC6) = &h1026
+AI_timeouts(1, &hC7) = &h1026
+AI_timeouts(1, &hC8) = &h0ff6
+AI_timeouts(1, &hC9) = &h0ff6
+AI_timeouts(1, &hCA) = &h0ff6
+AI_timeouts(1, &hCB) = &h0ff6
+AI_timeouts(1, &hCC) = &h0ff6
+AI_timeouts(1, &hCD) = &h0ff6
+AI_timeouts(1, &hCE) = &h0ff6
+AI_timeouts(1, &hCF) = &h0ff6
+
+AI_timeouts(1, &hD0) = &h18d6
+AI_timeouts(1, &hD1) = &h15f6
+AI_timeouts(1, &hD2) = &h1306
+AI_timeouts(1, &hD3) = &h1306
+AI_timeouts(1, &hD4) = &h1026
+AI_timeouts(1, &hD5) = &h1026
+AI_timeouts(1, &hD6) = &h1026
+AI_timeouts(1, &hD7) = &h1026
+AI_timeouts(1, &hD8) = &h0ff6
+AI_timeouts(1, &hD9) = &h0ff6
+AI_timeouts(1, &hDA) = &h0ff6
+AI_timeouts(1, &hDB) = &h0ff6
+AI_timeouts(1, &hDC) = &h0ff6
+AI_timeouts(1, &hDD) = &h0ff6
+AI_timeouts(1, &hDE) = &h0ff6
+AI_timeouts(1, &hDF) = &h0ff6
+
+AI_timeouts(1, &hE0) = &h18d6
+AI_timeouts(1, &hE1) = &h15f6
+AI_timeouts(1, &hE2) = &h1306
+AI_timeouts(1, &hE3) = &h1306
+AI_timeouts(1, &hE4) = &h1026
+AI_timeouts(1, &hE5) = &h1026
+AI_timeouts(1, &hE6) = &h1026
+AI_timeouts(1, &hE7) = &h1026
+AI_timeouts(1, &hE8) = &h0ff6
+AI_timeouts(1, &hE9) = &h0ff6
+AI_timeouts(1, &hEA) = &h0ff6
+AI_timeouts(1, &hEB) = &h0ff6
+AI_timeouts(1, &hEC) = &h0ff6
+AI_timeouts(1, &hED) = &h0ff6
+AI_timeouts(1, &hEE) = &h0ff6
+AI_timeouts(1, &hEF) = &h0ff6
+
+AI_timeouts(1, &hF0) = &h1dc6
+AI_timeouts(1, &hF1) = &h15f6
+AI_timeouts(1, &hF2) = &h1306
+AI_timeouts(1, &hF3) = &h1306
+AI_timeouts(1, &hF4) = &h1026
+AI_timeouts(1, &hF5) = &h1026
+AI_timeouts(1, &hF6) = &h1026
+AI_timeouts(1, &hF7) = &h1026
+AI_timeouts(1, &hF8) = &h0ff6
+AI_timeouts(1, &hF9) = &h0ff6
+AI_timeouts(1, &hFA) = &h0ff6
+AI_timeouts(1, &hFB) = &h0ff6
+AI_timeouts(1, &hFC) = &h0ff6
+AI_timeouts(1, &hFD) = &h0ff6
+AI_timeouts(1, &hFE) = &h0ff6
+AI_timeouts(1, &hFF) = &h0ff6
+
+'----------------------------------------
+' 256 DES key values:
+' 00 00 00 00 00 02 00
+' ...
+' 00 00 00 00 00 02 FF
+
+AI_timeouts(2, &h00) = &h1dc6
+AI_timeouts(2, &h01) = &h15f6
+AI_timeouts(2, &h02) = &h1306
+AI_timeouts(2, &h03) = &h1306
+AI_timeouts(2, &h04) = &h11f6
+AI_timeouts(2, &h05) = &h11f6
+AI_timeouts(2, &h06) = &h11f6
+AI_timeouts(2, &h07) = &h11f6
+AI_timeouts(2, &h08) = &h18D6
+AI_timeouts(2, &h09) = &h15f6
+AI_timeouts(2, &h0A) = &h1306
+AI_timeouts(2, &h0B) = &h1306
+AI_timeouts(2, &h0C) = &h11f6
+AI_timeouts(2, &h0D) = &h11f6
+AI_timeouts(2, &h0E) = &h11f6
+AI_timeouts(2, &h0F) = &h11f6
+
+AI_timeouts(2, &h10) = &h18d6
+AI_timeouts(2, &h11) = &h15f6
+AI_timeouts(2, &h12) = &h1306
+AI_timeouts(2, &h13) = &h1306
+AI_timeouts(2, &h14) = &h11f6
+AI_timeouts(2, &h15) = &h11f6
+AI_timeouts(2, &h16) = &h11f6
+AI_timeouts(2, &h17) = &h11f6
+AI_timeouts(2, &h18) = &h1DC6   ' (2,2,2,3)
+AI_timeouts(2, &h19) = &h15f6
+AI_timeouts(2, &h1A) = &h1306   
+AI_timeouts(2, &h1B) = &h1306
+AI_timeouts(2, &h1C) = &h11f6
+AI_timeouts(2, &h1D) = &h11f6
+AI_timeouts(2, &h1E) = &h11f6
+AI_timeouts(2, &h1F) = &h11f6
+
+AI_timeouts(2, &h20) = &h18d6
+AI_timeouts(2, &h21) = &h15f6 
+AI_timeouts(2, &h22) = &h1306
+AI_timeouts(2, &h23) = &h1306
+AI_timeouts(2, &h24) = &h11f6
+AI_timeouts(2, &h25) = &h11f6
+AI_timeouts(2, &h26) = &h11f6
+AI_timeouts(2, &h27) = &h11f6
+AI_timeouts(2, &h28) = &h1DC6   ' (2,2,2,5)
+AI_timeouts(2, &h29) = &h15f6
+AI_timeouts(2, &h2A) = &h1306
+AI_timeouts(2, &h2B) = &h1306
+AI_timeouts(2, &h2C) = &h11f6
+AI_timeouts(2, &h2D) = &h11f6
+AI_timeouts(2, &h2E) = &h11f6
+AI_timeouts(2, &h2F) = &h11f6
+
+AI_timeouts(2, &h30) = &h1dc6
+AI_timeouts(2, &h31) = &h15f6
+AI_timeouts(2, &h32) = &h1306
+AI_timeouts(2, &h33) = &h1306
+AI_timeouts(2, &h34) = &h11f6
+AI_timeouts(2, &h35) = &h11f6
+AI_timeouts(2, &h36) = &h11f6
+AI_timeouts(2, &h37) = &h11f6
+AI_timeouts(2, &h38) = &h18D6
+AI_timeouts(2, &h39) = &h15f6
+AI_timeouts(2, &h3A) = &h1306
+AI_timeouts(2, &h3B) = &h1306
+AI_timeouts(2, &h3C) = &h11f6
+AI_timeouts(2, &h3D) = &h11f6
+AI_timeouts(2, &h3E) = &h11f6
+AI_timeouts(2, &h3F) = &h11f6
+
+AI_timeouts(2, &h40) = &h18d6
+AI_timeouts(2, &h41) = &h15f6
+AI_timeouts(2, &h42) = &h1306
+AI_timeouts(2, &h43) = &h1306
+AI_timeouts(2, &h44) = &h11f6
+AI_timeouts(2, &h45) = &h11f6
+AI_timeouts(2, &h46) = &h11f6
+AI_timeouts(2, &h47) = &h11f6
+AI_timeouts(2, &h48) = &h1dc6 ' (2,2,2,3,3)
+AI_timeouts(2, &h49) = &h15f6
+AI_timeouts(2, &h4A) = &h1306
+AI_timeouts(2, &h4B) = &h1306
+AI_timeouts(2, &h4C) = &h11f6
+AI_timeouts(2, &h4D) = &h11f6
+AI_timeouts(2, &h4E) = &h11f6
+AI_timeouts(2, &h4F) = &h11f6
+
+AI_timeouts(2, &h50) = &h1dc6
+AI_timeouts(2, &h51) = &h15f6
+AI_timeouts(2, &h52) = &h1306
+AI_timeouts(2, &h53) = &h1306
+AI_timeouts(2, &h54) = &h11f6
+AI_timeouts(2, &h55) = &h11f6
+AI_timeouts(2, &h56) = &h11f6
+AI_timeouts(2, &h57) = &h11f6
+AI_timeouts(2, &h58) = &h18D6
+AI_timeouts(2, &h59) = &h15f6
+AI_timeouts(2, &h5A) = &h1306
+AI_timeouts(2, &h5B) = &h1306
+AI_timeouts(2, &h5C) = &h11f6
+AI_timeouts(2, &h5D) = &h11f6
+AI_timeouts(2, &h5E) = &h11f6
+AI_timeouts(2, &h5F) = &h11f6
+
+AI_timeouts(2, &h60) = &h1dc6
+AI_timeouts(2, &h61) = &h15f6
+AI_timeouts(2, &h62) = &h1306
+AI_timeouts(2, &h63) = &h1306
+AI_timeouts(2, &h64) = &h11f6
+AI_timeouts(2, &h65) = &h11f6
+AI_timeouts(2, &h66) = &h11f6
+AI_timeouts(2, &h67) = &h11f6
+AI_timeouts(2, &h68) = &h18D6
+AI_timeouts(2, &h69) = &h15f6
+AI_timeouts(2, &h6A) = &h1306
+AI_timeouts(2, &h6B) = &h1306
+AI_timeouts(2, &h6C) = &h11f6
+AI_timeouts(2, &h6D) = &h11f6
+AI_timeouts(2, &h6E) = &h11f6
+AI_timeouts(2, &h6F) = &h11f6
+
+AI_timeouts(2, &h70) = &h18d6
+AI_timeouts(2, &h71) = &h15f6
+AI_timeouts(2, &h72) = &h1306
+AI_timeouts(2, &h73) = &h1306
+AI_timeouts(2, &h74) = &h11f6
+AI_timeouts(2, &h75) = &h11f6
+AI_timeouts(2, &h76) = &h11f6
+AI_timeouts(2, &h77) = &h11f6
+AI_timeouts(2, &h78) = &h1DC6  ' (2,2,2,3,5)
+AI_timeouts(2, &h79) = &h15f6
+AI_timeouts(2, &h7A) = &h1306
+AI_timeouts(2, &h7B) = &h1306
+AI_timeouts(2, &h7C) = &h11f6
+AI_timeouts(2, &h7D) = &h11f6
+AI_timeouts(2, &h7E) = &h11f6
+AI_timeouts(2, &h7F) = &h11f6
+
+AI_timeouts(2, &h80) = &h18d6
+AI_timeouts(2, &h81) = &h15f6
+AI_timeouts(2, &h82) = &h1306
+AI_timeouts(2, &h83) = &h1306
+AI_timeouts(2, &h84) = &h11f6
+AI_timeouts(2, &h85) = &h11f6
+AI_timeouts(2, &h86) = &h11f6
+AI_timeouts(2, &h87) = &h11f6
+AI_timeouts(2, &h88) = &h1dc6  ' (2,2,2,17)
+AI_timeouts(2, &h89) = &h15f6
+AI_timeouts(2, &h8A) = &h1306
+AI_timeouts(2, &h8B) = &h1306
+AI_timeouts(2, &h8C) = &h11f6
+AI_timeouts(2, &h8D) = &h11f6
+AI_timeouts(2, &h8E) = &h11f6
+AI_timeouts(2, &h8F) = &h11f6
+
+AI_timeouts(2, &h90) = &h1dc6
+AI_timeouts(2, &h91) = &h15f6
+AI_timeouts(2, &h92) = &h1306
+AI_timeouts(2, &h93) = &h1306
+AI_timeouts(2, &h94) = &h11f6
+AI_timeouts(2, &h95) = &h11f6
+AI_timeouts(2, &h96) = &h11f6
+AI_timeouts(2, &h97) = &h11f6
+AI_timeouts(2, &h98) = &h18D6
+AI_timeouts(2, &h99) = &h15f6
+AI_timeouts(2, &h9A) = &h1306
+AI_timeouts(2, &h9B) = &h1306
+AI_timeouts(2, &h9C) = &h11f6
+AI_timeouts(2, &h9D) = &h11f6
+AI_timeouts(2, &h9E) = &h11f6
+AI_timeouts(2, &h9F) = &h11f6
+
+AI_timeouts(2, &hA0) = &h1dc6
+AI_timeouts(2, &hA1) = &h15f6
+AI_timeouts(2, &hA2) = &h1306
+AI_timeouts(2, &hA3) = &h1306
+AI_timeouts(2, &hA4) = &h11f6
+AI_timeouts(2, &hA5) = &h11f6
+AI_timeouts(2, &hA6) = &h11f6
+AI_timeouts(2, &hA7) = &h11f6
+AI_timeouts(2, &hA8) = &h18D6
+AI_timeouts(2, &hA9) = &h15f6
+AI_timeouts(2, &hAA) = &h1306
+AI_timeouts(2, &hAB) = &h1306
+AI_timeouts(2, &hAC) = &h11f6
+AI_timeouts(2, &hAD) = &h11f6
+AI_timeouts(2, &hAE) = &h11f6
+AI_timeouts(2, &hAF) = &h11f6
+
+AI_timeouts(2, &hB0) = &h18d6
+AI_timeouts(2, &hB1) = &h15f6
+AI_timeouts(2, &hB2) = &h1306
+AI_timeouts(2, &hB3) = &h1306
+AI_timeouts(2, &hB4) = &h11f6
+AI_timeouts(2, &hB5) = &h11f6
+AI_timeouts(2, &hB6) = &h11f6
+AI_timeouts(2, &hB7) = &h11f6
+AI_timeouts(2, &hB8) = &h1dc6 ' (2,2,2,23)
+AI_timeouts(2, &hB9) = &h15f6
+AI_timeouts(2, &hBA) = &h1306
+AI_timeouts(2, &hBB) = &h1306
+AI_timeouts(2, &hBC) = &h11f6
+AI_timeouts(2, &hBD) = &h11f6
+AI_timeouts(2, &hBE) = &h11f6
+AI_timeouts(2, &hBF) = &h11f6
+
+AI_timeouts(2, &hC0) = &h1dc6
+AI_timeouts(2, &hC1) = &h15f6
+AI_timeouts(2, &hC2) = &h1306
+AI_timeouts(2, &hC3) = &h1306
+AI_timeouts(2, &hC4) = &h11f6
+AI_timeouts(2, &hC5) = &h11f6
+AI_timeouts(2, &hC6) = &h11f6
+AI_timeouts(2, &hC7) = &h11f6
+AI_timeouts(2, &hC8) = &h18D6
+AI_timeouts(2, &hC9) = &h15f6
+AI_timeouts(2, &hCA) = &h1306
+AI_timeouts(2, &hCB) = &h1306
+AI_timeouts(2, &hCC) = &h11f6
+AI_timeouts(2, &hCD) = &h11f6
+AI_timeouts(2, &hCE) = &h11f6
+AI_timeouts(2, &hCF) = &h11f6
+
+AI_timeouts(2, &hD0) = &h18d6
+AI_timeouts(2, &hD1) = &h15f6
+AI_timeouts(2, &hD2) = &h1306
+AI_timeouts(2, &hD3) = &h1306
+AI_timeouts(2, &hD4) = &h11f6
+AI_timeouts(2, &hD5) = &h11f6
+AI_timeouts(2, &hD6) = &h11f6
+AI_timeouts(2, &hD7) = &h11f6
+AI_timeouts(2, &hD8) = &h1dc6 ' (2,2,2,3,3,3)
+AI_timeouts(2, &hD9) = &h15f6
+AI_timeouts(2, &hDA) = &h1306
+AI_timeouts(2, &hDB) = &h1306
+AI_timeouts(2, &hDC) = &h11f6
+AI_timeouts(2, &hDD) = &h11f6
+AI_timeouts(2, &hDE) = &h11f6
+AI_timeouts(2, &hDF) = &h11f6
+
+AI_timeouts(2, &hE0) = &h18d6
+AI_timeouts(2, &hE1) = &h15f6
+AI_timeouts(2, &hE2) = &h1306
+AI_timeouts(2, &hE3) = &h1306
+AI_timeouts(2, &hE4) = &h11f6
+AI_timeouts(2, &hE5) = &h11f6
+AI_timeouts(2, &hE6) = &h11f6
+AI_timeouts(2, &hE7) = &h11f6
+AI_timeouts(2, &hE8) = &h1dc6 ' (2,2,2,29)
+AI_timeouts(2, &hE9) = &h15f6
+AI_timeouts(2, &hEA) = &h1306
+AI_timeouts(2, &hEB) = &h1306
+AI_timeouts(2, &hEC) = &h11f6
+AI_timeouts(2, &hED) = &h11f6
+AI_timeouts(2, &hEE) = &h11f6
+AI_timeouts(2, &hEF) = &h11f6
+
+AI_timeouts(2, &hF0) = &h1dc6
+AI_timeouts(2, &hF1) = &h15f6
+AI_timeouts(2, &hF2) = &h1306
+AI_timeouts(2, &hF3) = &h1306
+AI_timeouts(2, &hF4) = &h11f6
+AI_timeouts(2, &hF5) = &h11f6
+AI_timeouts(2, &hF6) = &h11f6
+AI_timeouts(2, &hF7) = &h11f6
+AI_timeouts(2, &hF8) = &h18D6
+AI_timeouts(2, &hF9) = &h15f6
+AI_timeouts(2, &hFA) = &h1306
+AI_timeouts(2, &hFB) = &h1306
+AI_timeouts(2, &hFC) = &h11f6
+AI_timeouts(2, &hFD) = &h11f6
+AI_timeouts(2, &hFE) = &h11f6
+AI_timeouts(2, &hFF) = &h11f6
+
+
+For i1 = 0 to 255
+   AI_timeouts(3,i1)    = AI_timeouts(1,i1)
+   AI_timeouts(4,i1)    = AI_timeouts(2,i1)
+   AI_timeouts(5,i1)    = AI_timeouts(1,i1)
+   AI_timeouts(6,i1)    = AI_timeouts(0,i1)
+   AI_timeouts(7,i1)    = AI_timeouts(1,i1)
+   AI_timeouts(8,i1)    = AI_timeouts(2,i1)
+   AI_timeouts(9,i1)    = AI_timeouts(1,i1)
+   AI_timeouts(&h0A,i1) = AI_timeouts(0,i1)
+   AI_timeouts(&h0B,i1) = AI_timeouts(1,i1)
+   AI_timeouts(&h0C,i1) = AI_timeouts(0,i1)
+   AI_timeouts(&h0D,i1) = AI_timeouts(1,i1)
+   AI_timeouts(&h0E,i1) = AI_timeouts(2,i1)
+   AI_timeouts(&h0F,i1) = AI_timeouts(1,i1)
+
+   AI_timeouts(&h10,i1) = AI_timeouts(2,i1)
+   AI_timeouts(&h11,i1) = AI_timeouts(1,i1)
+   AI_timeouts(&h12,i1) = AI_timeouts(0,i1)
+   AI_timeouts(&h13,i1) = AI_timeouts(1,i1)
+   AI_timeouts(&h14,i1) = AI_timeouts(0,i1)
+   AI_timeouts(&h15,i1) = AI_timeouts(1,i1)
+   AI_timeouts(&h16,i1) = AI_timeouts(2,i1)
+   AI_timeouts(&h17,i1) = AI_timeouts(1,i1)
+   AI_timeouts(&h18,i1) = AI_timeouts(0,i1)
+   AI_timeouts(&h19,i1) = AI_timeouts(1,i1)
+   AI_timeouts(&h1A,i1) = AI_timeouts(2,i1)
+   AI_timeouts(&h1B,i1) = AI_timeouts(1,i1)
+   AI_timeouts(&h1C,i1) = AI_timeouts(2,i1)
+   AI_timeouts(&h1D,i1) = AI_timeouts(1,i1)
+   AI_timeouts(&h1E,i1) = AI_timeouts(0,i1)
+   AI_timeouts(&h1F,i1) = AI_timeouts(1,i1)
+
+   AI_timeouts(&h20,i1) = AI_timeouts(2,i1)
+   AI_timeouts(&h21,i1) = AI_timeouts(1,i1)
+   AI_timeouts(&h22,i1) = AI_timeouts(0,i1) ' (2,17)
+   AI_timeouts(&h23,i1) = AI_timeouts(1,i1)
+   AI_timeouts(&h24,i1) = AI_timeouts(0,i1) ' (2,2,3,3)
+
+Next
+
+
+I_idx_key_0_start_f0 = &h0F
+
+AI_cmd(&h00) = &h1B  ' gl**ch packet len
+AI_cmd(&h01) = &h10  ' set to 9.6 kBaud
+AI_cmd(&h02) = &h01  ' 1st power up
+AI_cmd(&h03) = &h30  ' delay
+AI_cmd(&h04) = &h00  ' delay
+AI_cmd(&h05) = &h00  ' delay
+AI_cmd(&h06) = &h01  ' 2nd power up
+
+AI_cmd(&h07) = &h20  ' wait for ATR_DM past the 0x0390 watershed
+AI_cmd(&h08) = &h03  '
+AI_cmd(&h09) = &hB0  '
+AI_cmd(&h0A) = &h80  ' receive byte 33 (beginning of ATR_DM)
+AI_cmd(&h0B) = &h0E  ' watchdog timer CMD
+AI_cmd(&h0C) = &h03  ' watchdog timer value
+AI_cmd(&h0D) = &h8c  ' receive 13 (dec) bytes from card (remainder of ATR_DM)
+AI_cmd(&h0E) = &hC6  ' send 7 bytes to card (first half of 3DES)
+AI_cmd(&h0F) = &h00  ' pseudo key
+AI_cmd(&h10) = &h00  ' -"-
+AI_cmd(&h11) = &h00  ' -"-
+AI_cmd(&h12) = &h00  ' -"-
+AI_cmd(&h13) = &h00  ' -"-
+AI_cmd(&h14) = &h00  ' -"-
+AI_cmd(&h15) = &h00  ' -"-
+'-------------------------
+AI_cmd(&h16) = &h20  ' critical watershed, if increased by one
+AI_cmd(&h17) = &h1D  ' a regular ATR (3F 78 ...) will be appended to the output
+AI_cmd(&h18) = &hC5
+AI_cmd(&h19) = &h10  ' set to 9.6 kBaud again after watchdog timer unl@@per reset
+AI_cmd(&h1A) = &h8C  ' receive 13 (dec) bytes from card
+AI_cmd(&h1B) = &h00  ' packet end
+I_cmd_ubound = Ubound(AI_cmd)
+
+AI_key(0) = 0
+AI_key(1) = 0
+AI_key(2) = 0
+AI_key(3) = 0
+AI_key(4) = 0
+
+i3 = I_nbr_key_bytes_f0 - 1
+
+For i1 = 0 to 255
+  For i2 = 0 to 1
+    i4 = I_nbr_key_bytes_f0 - i2
+    AI_key(i4) = 0
+  Next
+
+  For i2 = 0 to I_idx_timeout_max_f0
+     
+     ' if i2 > 1 Then
+     '   I_idx_timeout_f0 = 1
+     ' Else
+     '   I_idx_timeout_f0 = i2
+     ' End If
+     I_idx_timeout_f0 = i2
+     I_timeout = AI_timeouts(I_idx_timeout_f0, i1)
+     if I_timeout > 0 Then
+        AI_key(I_nbr_key_bytes_f0) = i1
+        AI_key(i3)                 = i2
+      
+      S_key = FS_HexString_ary( _
+         AI_key, _
+         0, _
+         I_nbr_key_bytes_f1)
+      
+      H_timeout = HexString(I_timeout, 4) 
+      Call Sc.ProgressBox ( _
+        "verifying timeout: 0x" & H_timeout, _ 
+         i1 + 1, 256, _
+         "P4 DES DTA - Key value 0x: " & S_key )
+
+        I_nbr_bytes_received_f1 = FI_verify_limit ( _
+            AI_key, _
+            I_timeout, _
+            &h10, _
+            &h1d)
+     End If
+   Next
+Next
+
+End Sub
+
+'---------------------------
+Function FI_verify_limit ( _
+   P_AI_key, _
+   P_I_timeout_1, _
+   P_I_len_expected_0_f1, _
+   P_I_len_expected_1_f1)
+
+Dim I_len_received_0_f1, I_len_received_1_f1
+Dim I_timeout_0, I_retval
+Dim StringToLog
+
+I_retval = -1
+
+I_timeout_0 = P_I_timeout_1 - 1
+
+I_len_received_0_f1 = FI_Verify_single_limit_ma ( _
+   P_AI_key, _
+   I_timeout_0, _
+   P_I_len_expected_0_f1, _
+   0) ' part
+
+' sc.print ("trace-1  I_len_received_0_f1: "   & I_len_received_0_f1 & vbcrlf)
+' sc.print ("trace-2  P_I_len_expected_0_f1: " & P_I_len_expected_0_f1 & vbcrlf)
+
+If I_len_received_0_f1 = P_I_len_expected_0_f1 Then
+   I_len_received_1_f1 = FI_Verify_single_limit_ma ( _
+   P_AI_key, _
+   P_I_timeout_1, _
+   P_I_len_expected_1_f1, _
+   1) ' part
+
+   If (I_len_received_1_f1 = P_I_len_expected_1_f1) Then
+      I_retval = I_len_received_1_f1
+   End If
+End If
+
+FI_verify_limit = I_retval
+
+End Function
+
+'---------------------------
+' multiple attempts
+Function FI_Verify_single_limit_ma ( _
+  P_AI_key(), _
+  P_I_timeout, _
+  P_I_len_expected_f1, _
+  P_I_part_f0)
+
+Dim I_retval, i1, I_res, I_loop, I_pos_key_f1, I_wait_rs232_lcl
+' I_wait_rs232_ext
+Dim StringToLog, H_timeout, H_len_expected_f1, S_key
+
+I_wait_rs232_lcl = I_wait_rs232
+i1               = 1
+I_retval         = -1
+
+I_loop       = 0
+While I_loop = 0
+   If i1 < I_nbr_attempts_f1 Then
+      I_res = FI_Verify_single_limit ( _
+          P_AI_key, _
+          P_I_timeout, _
+          P_I_len_expected_f1, _
+          i1, _
+          P_I_part_f0, _
+          I_wait_rs232_lcl)
+      If I_res = P_I_len_expected_f1 Then
+         I_retval = I_res
+         I_loop = 1
+      Else
+         i1 = i1 + 1
+         If I_res < P_I_len_expected_f1 Then
+            StringToLog = "Waited for unlooper's response: " & I_wait_rs232_lcl & " ms."
+            Sc.Print(StringToLog & vbcrlf)
+            Sc.Log(StringToLog)
+            Sc.Log("")
+            I_wait_rs232_lcl = I_wait_rs232_lcl + I_wait_rs232_ext
+         End If
+      End If
+   Else
+      I_loop = -1
+      S_key = FS_HexString_ary( _
+           AI_cmd, _
+           I_idx_key_0_start_f0, _
+           I_nbr_key_bytes_f1)
+      H_timeout = HexString(P_I_timeout, 4)
+      H_len_expected_f1 = HexString(P_I_len_expected_f1, 2)
+      StringToLog = "Error for key: " & S_key & vbcrlf & _
+                    "Didn't get expected result length of (hex) " & _
+                    H_len_expected_f1 &  " - at a timeout of: (hex) " & H_timeout & vbcr & _
+                    "after " &  I_nbr_attempts_f1 & " attempts"
+      Sc.Print(StringToLog & vbcrlf)
+      Sc.Log(StringToLog)
+      Sc.Log("")
+
+   End If
+Wend
+
+FI_Verify_single_limit_ma = I_retval
+
+End Function
+
+'---------------------------
+
+Function FI_Verify_single_limit ( _
+  P_AI_key(), _
+  P_I_timeout, _
+  P_I_len_expected_f1, _
+  P_I_nbr_attempt_f1, _
+  P_I_part_f0, _
+  P_I_wait_rs232)
+
+Dim i1, i2, I_nbr_bytes_received_f1, I_key
+Dim I_timeout_0, I_timeout_1, S_timeout_0, S_timeout_1
+
+For i1        = 0 to I_nbr_key_bytes_f0
+   I_key      = P_AI_key(i1)
+   i2         = I_idx_key_0_start_f0 + i1
+   AI_cmd(i2) = I_key
+Next
+
+I_timeout_1  = P_I_timeout MOD &h100
+I_timeout_0  = P_I_timeout \   &h100 ' integer division
+
+' S_timeout_0  =  HexString(I_timeout_0, 2)
+' S_timeout_1  =  HexString(I_timeout_1, 2)
+
+AI_cmd(&h17) = I_timeout_0
+AI_cmd(&h18) = I_timeout_1
+
+I_nbr_bytes_received_f1 = FI_send_to_card_wait_rs232 _
+    ("", 0, I_cmd_ubound, P_I_wait_rs232)
+If I_nbr_bytes_received_f1 <> P_I_len_expected_f1 Then
+   StringToLog = "Expected[" & P_I_part_f0  &  "] " & _
+   P_I_len_expected_f1 & _
+   " --- Received " & _
+   I_nbr_bytes_received_f1
+
+   Sc.Print(StringToLog & vbcrlf)
+   Sc.Log(StringToLog)
+   Sc.Log("")
+
+End If
+
+FI_verify_single_limit = I_nbr_bytes_received_f1
+
+End Function
+
+'---------------------------
+Function FI_send_to_card ( _
+ P_StringToSend_head, _
+ P_idx_start_f0, _
+ P_idx_end_f0) 
+
+Dim I_retval, I_wait_rs232_dflt ' timeout in milliseconds
+
+I_wait_rs232_dflt = 400
+
+I_retval = FI_send_to_card_wait_rs232 ( _
+ P_StringToSend_head, _
+ P_idx_start_f0, _
+ P_idx_end_f0, _
+ I_wait_rs232_dflt)
+
+FI_send_to_card = I_retval
+ 
+End Function
+'---------------------------
+
+Function FI_send_to_card_wait_rs232 ( _
+ P_StringToSend_head, _
+ P_idx_start_f0, _
+ P_idx_end_f0, _
+ P_I_wait_rs232) ' wait in milliseconds for signal to  RS232 interface
+
+Dim i1, I_bytes_received_f1, I_len_f1 , StringToSend, I_max_idx_f0 
+
+StringToSend = P_StringToSend_head
+
+I_len_f1 = P_idx_end_f0 - P_idx_start_f0 + 1
+
+StringToSend = FS_HexString_ary( _
+    AI_cmd, _
+    P_idx_start_f0, _
+    I_len_f1) 
+
+Sc.Write(StringToSend)
+Sc.Log(StringToSend)
+
+Sc.Delay(P_I_wait_rs232)
+I_bytes_received_f1 = Sc.BytesInBuffer
+StringToLog = ("Received: (dec) " & I_bytes_received_f1 & " bytes")
+Sc.Print(StringToLog)
+Sc.Log(StringToLog)
+
+Sc.Read(I_bytes_received_f1)
+I_max_idx_f0 = I_bytes_received_f1 - 1
+StringReceived = ""
+For i1 = 0 to I_max_idx_f0
+    I_byte = Sc.GetByte(i1)
+    S_byte = HexString(I_byte, 2)
+    StringReceived = StringReceived & S_byte
+    If i1 < I_max_idx_f0 Then
+       StringReceived = StringReceived & " "
+    End If
+Next
+
+Success = Sc.Log(StringReceived)
+Sc.Print(vbcrlf)
+Success = Sc.Log("")
+
+FI_send_to_card_wait_rs232 = I_bytes_received_f1
+
+End Function ' FI_send_to_card
+
+'-----------------------------------------
+Function FS_HexString_Ary( _
+P_AI_ary(), _ 
+P_I_idx_start_f0, _
+P_I_idx_len_f1)
+
+Dim S_retval, H_byte
+Dim i1, I_count_f1, I_loop, U_bound_f0, L_bound_f0, I_byte 
+
+Dim StringToLog
+StringToLog = "P_I_idx_start_f0: " & P_I_idx_start_f0
+
+S_retval = ""
+
+I_count_f1 = 0
+U_bound_f0 = Ubound(P_AI_ary)
+L_bound_f0 = Lbound(P_AI_ary)
+
+i1 = P_I_idx_start_f0
+
+I_loop = 0
+While I_loop = 0
+   if I_count_f1 < P_I_idx_len_f1 Then
+      if i1 <= U_bound_f0 Then
+         if i1 >= L_bound_f0 Then 
+            I_byte = P_AI_ary(i1)
+            H_byte = HexString(I_byte, 2)
+            S_retval = S_retval & H_byte
+            if i1 < U_bound_f0 Then
+               S_retval =  S_retval + " "
+            End If
+         End If
+         i1 = i1 + 1
+         I_count_f1 = I_count_f1 + 1 
+      Else
+         I_loop = 1
+      End If
+   Else
+      I_loop = 1
+   End If
+Wend
+
+FS_HexString_Ary = S_retval
+
+End Function
+
+'-------------------------   
+
+Function HexString(Number,Length)
+' This function takes 2 arguments, a number and a length. It converts the decimal
+' number given by the first argument to a Hexidecimal string with its length
+' equal to the number of digits given by the second argument
+Dim RetVal
+Dim CurLen
+
+RetVal=Hex(Number)
+CurLen=Len(RetVal)
+
+If CurLen<Length Then
+   RetVal=String(Length-CurLen, "0") & RetVal
+End If
+
+HexString=RetVal
+End Function

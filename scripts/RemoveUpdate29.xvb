@@ -1,0 +1,267 @@
+' Un29 Utility -- from the JSP 2.9 package (07/22/1999 v1.0)
+' 
+' This script expects a card with 29 (1Dh) updates.
+' 
+' It will remove update 29 (1Dh) from a card and optionally
+' updates 27 and 28 (1Bh/1Ch) so you can use the appropriate
+' uninstaller on your card, clean it in Viyada, and then
+' install new (hopefully better) software.
+' 
+' Although this software was tested on a variety of cards, no
+' guarantee is made that it will work for every card... especially
+' if you tried "other stuff" to remove the latest updates. Who
+' knows what state your card is in now.
+' 
+' As usual, THIS IS FOR EDUCATIONAL USE ONLY. Actually using this
+' script on a card is done completely at your own risk!!
+
+Option Explicit
+
+Sub Main()
+	Dim MsgString
+	Dim CurrentUSW
+	Dim RetVal
+	Dim ReturnTo28
+
+	If Sc.Version < 3.2 Then
+		MsgString = "You need version 3.2 or greater of WinExplorer to run this script"
+		Call Sc.MsgBox(MsgString, vbCritical + vbOKOnly, "Newer version of WinExplorer needed")
+		Exit Sub
+	End If
+
+	If Sc.ByteDelay < 60000 Then
+		Sc.ByteDelay = 60000    'We want a byte delay of at least 600ms
+	End If
+
+	CurrentUSW = GetUSW()
+	MsgString = "The USW for this card is at " & CurrentUSW & " (" & Hex(CurrentUSW) & "h)." & vbCrLf & vbCrLf
+	If CurrentUSW <> 29 Then
+		MsgString = "The USW for this card is at " & CurrentUSW & " (" & Hex(CurrentUSW) & "h)." & vbCrLf & vbCrLf
+		MsgString = MsgString & "This script can only be used to remove update" & vbCrLf
+		MsgString = MsgString & "29 (1Dh) from a card that has the USW at 29." & vbCrLf & vbCrLf
+		MsgString = MsgString & "Do NOT use it on cards with a different USW!"
+		Call Sc.MsgBox(MsgString, vbInformation + vbOKOnly, "Incorrect USW Value")
+		Exit Sub
+	Else
+		MsgString = MsgString & "This script will attempt to remove update 29 (1Dh) and optionally" & vbCrLF
+		MsgString = MsgString & "updates 27 and 28 (1Bh and 1Ch) from a card that had the updates" & vbCrLf
+		MsgString = MsgString & "unexpectedly added. This should enable you to use an uninstaller" & vbCrLf
+		MsgString = MsgString & "intended for 26 (1Ah) or 28 (1Ch) updates, clean the card with a" & vbCrLF
+		MsgString = MsgString & "program like Viyada, and install new code. No guarantee is made" & vbCrLF
+		MsgString = MsgString & "that this script will work for every card but with any luck it" & vbCrLf
+		MsgString = MsgString & "will work for this card." & vbCrLf & vbCrLf
+		MsgString = MsgString & "Do you want to continue?"
+		RetVal = Sc.MsgBox(MsgString, vbQuestion + vbYesNo + vbDefaultButton1, "Ready to Remove Updates")
+		If RetVal = vbNo Then
+			Exit Sub
+		End If
+	End If
+
+	''' Ask about desired USW '''
+	RetVal = Sc.MsgBox("Would you like to return this card to 28 (1Ch) updates?" & vbCrLf & vbCrLf & "If so, click the 'Yes' button. Otherwise, click the 'No' button and your" & vbCrlF & "card will be returned to 26 (1Ah) updates.", vbYesNo + vbQuestion + vbDefaultButton1)
+	If RetVal = vbYes Then
+		ReturnTo28 = True
+	Else
+		ReturnTo28 = False
+	End If
+
+	MsgString = "An attempt to remove update 29 (1Dh) from this card is about to begin." & vbCrLf & vbCrLf
+	MsgString = MsgString & "It is extremely important that this process not be interrupted." & vbCrLf
+	MsgString = MsgString & "Stopping this in the middle will result in an unusable card!" & vbCrLf & vbCrLf
+	MsgString = MsgString & "Note: a short delay and result codes of '90 00' are normal." & vbCrLf & vbCrLf
+	MsgString = MsgString & "Are you sure you want to continue?"
+	RetVal = Sc.MsgBox(MsgString, vbYesNo + vbExclamation + vbDefaultButton1)
+	If RetVal = vbNo Then
+		Sc.Print("User aborted removal")
+		Exit Sub
+	End If
+
+	Sc.Write("48 40 00 00 C2")
+	Sc.Read(1)
+	Sc.Write("09 10 00 00 30 60 C0 B2 00 1E 85 08 0B 85 6C 7F")
+	Sc.Write("0C 12 1C C1 79 80 02 86 13 00 00 00 00 00 00 00")
+	Sc.Write("00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00")
+	Sc.Write("00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00")
+	Sc.Write("00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00")
+	Sc.Write("00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00")
+	Sc.Write("00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00")
+	Sc.Write("00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00")
+	Sc.Write("00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00")
+	Sc.Write("00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00")
+	Sc.Write("00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00")
+	Sc.Write("00 00 00 00 00 00 00 00 00 00 BB 00 0C BD 4E E4")
+	Sc.Write("C6 63")
+	Sc.Print("Delay here is normal. Result codes of '90 00' below are also normal." & vbCrLf)
+	Sc.Delay(6000)
+	Sc.Read(2)
+	Sc.Write("48 40 00 00 0D")
+	Sc.Read(1)
+	Sc.Write("60 08 85 08 5A 4C B8 BA 6C 0B 65 A3 00")
+	Sc.Read(2)
+	Sc.Write("48 40 00 00 0D")
+	Sc.Read(1)
+	Sc.Write("60 08 85 10 B0 14 4B 1C 4E 44 52 20 00")
+	Sc.Read(2)
+	Sc.Write("48 40 00 00 0D")
+	Sc.Read(1)
+	Sc.Write("60 08 85 18 54 45 41 4D D4 CC 17 19 00")
+	Sc.Read(2)
+	Sc.Write("48 40 00 00 0D")
+	Sc.Read(1)
+	Sc.Write("60 08 85 20 29 DE 8D 59 63 4E 95 CC 00")
+	Sc.Read(2)
+	Sc.Write("48 40 00 00 0D")
+	Sc.Read(1)
+	Sc.Write("60 08 85 28 02 3D 00 00 DD 28 97 79 00")
+	Sc.Read(2)
+	Sc.Write("48 40 00 00 0D")
+	Sc.Read(1)
+	Sc.Write("60 08 85 30 43 8A 71 80 12 27 C6 92 00")
+	Sc.Read(2)
+	Sc.Write("48 40 00 00 0D")
+	Sc.Read(1)
+	Sc.Write("60 08 85 38 02 2D 00 00 58 A3 A4 3A 00")
+	Sc.Read(2)
+	Sc.Write("48 40 00 00 0D")
+	Sc.Read(1)
+	Sc.Write("60 08 85 40 F6 47 06 6E C2 18 93 F9 00")
+	Sc.Read(2)
+	Sc.Write("48 40 00 00 0D")
+	Sc.Read(1)
+	Sc.Write("60 08 85 48 79 CD 95 C0 05 55 95 85 00")
+	Sc.Read(2)
+	Sc.Write("48 40 00 00 0D")
+	Sc.Read(1)
+	Sc.Write("60 08 85 50 75 65 35 00 43 47 84 F9 00")
+	Sc.Read(2)
+	Sc.Write("48 40 00 00 0D")
+	Sc.Read(1)
+	Sc.Write("60 08 85 58 FD CF 94 9E 86 45 00 00 00")
+	Sc.Read(2)
+	Sc.Write("48 40 00 00 0D")
+	Sc.Read(1)
+	Sc.Write("60 08 85 60 22 22 22 22 22 22 22 00 00")
+	Sc.Read(2)
+	Sc.Write("48 40 00 00 0D")
+	Sc.Read(1)
+	Sc.Write("60 08 85 78 77 00 74 AA C0 E0 74 85 00")
+	Sc.Read(2)
+	Sc.Write("48 40 00 00 0D")
+	Sc.Read(1)
+	Sc.Write("60 08 85 80 C0 E0 B1 AF CD B1 AF FF 00")
+	Sc.Read(2)
+	Sc.Write("48 40 00 00 0D")
+	Sc.Read(1)
+	Sc.Write("60 08 85 88 FC 91 F9 ED B4 AA 00 40 00")
+	Sc.Read(2)
+	Sc.Write("48 40 00 00 0D")
+	Sc.Read(1)
+	Sc.Write("60 08 85 90 18 80 0C 98 84 80 08 B4 00")
+	Sc.Read(2)
+	Sc.Write("48 40 00 00 0D")
+	Sc.Read(1)
+	Sc.Write("60 08 85 98 C6 02 80 03 B4 BB 0A C0 00")
+	Sc.Read(2)
+	Sc.Write("48 40 00 00 0D")
+	Sc.Read(1)
+	Sc.Write("60 08 85 A0 05 74 85 C0 E0 79 80 78 00")
+	Sc.Read(2)
+	Sc.Write("48 40 00 00 0D")
+	Sc.Read(1)
+	Sc.Write("60 08 85 A8 80 22 12 8D 96 80 CB 12 00")
+	Sc.Read(2)
+	Sc.Write("48 40 00 00 0D")
+	Sc.Read(1)
+	Sc.Write("60 08 85 B0 06 7E 02 8D 96 80 2B 80 00")
+	Sc.Read(2)
+	Sc.Write("48 40 00 00 0D")
+	Sc.Read(1)
+	Sc.Write("60 08 85 B8 25 80 42 80 41 02 85 60 00")
+	Sc.Read(2)
+	Sc.Write("48 40 00 00 0D")
+	Sc.Read(1)
+	Sc.Write("60 08 85 68 01 00 00 00 7F 0F 12 1C 00")
+	Sc.Read(2)
+	Sc.Write("48 40 00 00 10")
+	Sc.Read(1)
+	Sc.Write("60 0B 85 77 D3 77 00 74 AA C0 E0 74 85 C0 E0 00")
+	Sc.Read(2)
+	Sc.Write("48 40 00 00 10")
+	Sc.Read(1)
+	Sc.Write("60 0B 85 6C 12 1C 6C E4 12 1C 6C 75 76 D3 79 00")
+	Sc.Read(2)
+
+	Sc.Write("48 40 00 00 0F")
+	Sc.Read(1)
+	Sc.Write("60 D5 02 85 8E E3 06 02 85 CA 86 F6 00 BB 00")
+	Sc.Read(2)
+
+	If ReturnTo28 = True Then
+		Sc.Write("48 40 00 00 0F")
+		Sc.Read(1)
+		Sc.Write("60 D5 02 85 8E E3 06 02 84 06 00 1C 00 BB 00")
+		Sc.Read(2)
+	Else
+		Sc.Write("48 40 00 00 0F")
+		Sc.Read(1)
+		Sc.Write("60 D5 02 85 8E E3 06 02 85 D3 87 86 00 BB 00")
+		Sc.Read(2)
+
+		Sc.Write("48 40 00 00 14")
+		Sc.Read(1)
+		Sc.Write("60 D5 02 85 8E E3 0B 07 8F 80 F1 AD 1C C2 00 B5 06 00 BB 00")
+		Sc.Read(2)
+   
+ 		Sc.Write("48 40 00 00 0F")
+		Sc.Read(1)
+		Sc.Write("60 D5 02 85 8E E3 06 02 84 06 00 1A 00 BB 00")
+		Sc.Read(2)
+	End If
+
+	Sc.Write("48 40 00 00 0E")
+	Sc.Read(1)
+	Sc.Write("60 D5 02 85 8E E3 05 01 85 91 90 00 BB 00")
+	Sc.Read(2)
+
+	If ReturnTo28 = True Then
+		If GetUSW() <> 28 Then
+			MsgString = "This card is NOT at 28 (1Ch) updates." & vbCrLf & vbCrLf
+			MsgString = MsgString & "This means we could not successfully open the write" & vbCrLf
+			MsgString = MsgString & "hole to remove the updates on this card. Sorry."
+			Call Sc.MsgBox(MsgString, vbCritical + vbOKOnly, "Could Not Remove Updates")
+		Else
+			MsgString = "This card is now at 28 (1Ch) updates." & vbCrLf & vbCrLf
+			MsgString = MsgString & "The updates should be removed from your card and it should" & vbCrLf
+			MsgString = MsgString & "now be possible to use the uninstaller for your old code."
+			Call Sc.MsgBox(MsgString, vbInformation + vbOKOnly, "Updates Removed")
+		End If
+	Else
+		If GetUSW() <> 26 Then
+			MsgString = "This card is NOT at 26 (1Ah) updates." & vbCrLf & vbCrLf
+			MsgString = MsgString & "This means we could not successfully open the write" & vbCrLf
+			MsgString = MsgString & "hole to remove the updates on this card. Sorry."
+			Call Sc.MsgBox(MsgString, vbCritical + vbOKOnly, "Could Not Remove Updates")
+		Else
+			MsgString = "This card is now at 26 (1Ah) updates." & vbCrLf & vbCrLf
+			MsgString = MsgString & "The updates should be removed from your card and it should" & vbCrLf
+			MsgString = MsgString & "now be possible to use the uninstaller for your old code."
+			Call Sc.MsgBox(MsgString, vbInformation + vbOKOnly, "Updates Removed")
+		End If
+	End If
+End Sub
+
+Function GetUSW()
+	Dim Oldstate
+
+	Sc.Reset
+
+	Oldstate = Sc.Verbose
+	Sc.Verbose = False
+
+	Sc.Write("48 2B 00 00 80")
+	Sc.Read(131)
+
+	GetUSW = (Sc.GetByte(29) * &H100) + Sc.GetByte(30)
+
+	Sc.Verbose = Oldstate
+End Function

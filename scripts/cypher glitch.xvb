@@ -1,0 +1,189 @@
+'This is my first script I made this as a Interface Platform for eveyone
+'to use it does work JUST ADD CODE. Menu for P-4 Card - Created 6/11/2004
+'CYPHER_P5 wrote this Script.<<<<<<<<<<<<< Check out <<<<<<<<<<<<<
+
+
+
+
+
+
+
+
+Sub Main()
+Dim ErrorString
+    Dim MenuPrompt
+    Dim Choice
+
+    Sc.Verbose = False
+
+    If Sc.Version < 4.4 Then
+        ErrorString = "You need version 4.4 or greater of WinExplorer to run this script"
+        Sc.MsgBox ErrorString, vbCritical
+        Err.Raise 1050, , ErrorString
+    End If
+
+    Do
+        MenuPrompt = ""
+        MenuPrompt = MenuPrompt & ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>> " & VersionString & "<<<<<<<<<<<<<<<<<<<<<<<<<<<< " & vbCrLf & vbCrLf & vbCrLf
+        MenuPrompt = MenuPrompt & "Read Card" & Chr(9) &        "--Read P-4 Card--" & vbCrLf
+        MenuPrompt = MenuPrompt & "Write Card" & Chr(9) &       "Write a BIN or HEX to Card" & vbCrLf
+        MenuPrompt = MenuPrompt & "Clean Card" & Chr(9) &       "Clean Card  (Open and Close E3 Hole, UnMarry, Wipe PPV)" & vbCrLf
+        MenuPrompt = MenuPrompt & "New Cmd" & Chr(9) & Chr(9) & "New Commands" & vbCrLf
+        MenuPrompt = MenuPrompt & "Exit" & Chr(9) & Chr(9) &    "Exit this Script" & vbCrLf
+
+        Choice = Sc.ButtonBox(MenuPrompt, 0, VersionString, "Read Card", "Write Card", "Clean Card", "New Cmd", "Exit")
+        Select Case Choice
+            Case "1"
+                Call ReadCardSub()
+            Case "2"
+                Call WriteCardSub()
+            Case "3"
+                Call CleanCardSub()
+            Case "4"
+                Call NewCmdSub()
+            Case "5", ""
+                Exit Sub
+            Case Else
+                MenuPrompt = "Invalid Input!" & vbCrLf
+        End Select
+
+    Loop While True = True
+
+
+End Sub
+
+Sub CleanCardSub()
+
+
+
+    Dim ErrorString
+    Dim MenuPrompt
+    Dim Choice
+
+    Do
+        MenuPrompt = ""
+        MenuPrompt = MenuPrompt & "<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< " & VersionString & "<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<, " & vbCrLf & vbCrLf & vbCrLf
+        MenuPrompt = MenuPrompt & "Open E3 Hole" & Chr(9) &      "Will open the E3 hole on the Card" & vbCrLf
+        MenuPrompt = MenuPrompt & "Close E3 Hole" & Chr(9) &     "Will Close the E3 hole on card" & vbCrLf
+        MenuPrompt = MenuPrompt & "Unmarry" & Chr(9) & Chr(9) &  "Will Unmarry the Card from the receiver" & vbCrLf
+        MenuPrompt = MenuPrompt & "Wipe PPV" & Chr(9) &          "Wipes all PPV from the Card" & vbCrLf
+        MenuPrompt = MenuPrompt & "Back" & Chr(9) & Chr(9) &     "Dont understand click Back" & vbCrLf
+        Choice = Sc.ButtonBox(MenuPrompt, 0, VersionString, "Open E3 Hole", "Close E3 Hole", "Unmarry", "Wipe PPV", "Back")
+
+        Select Case Choice
+            Case "1"
+                Call OpenE3()
+            Case "2"
+                Call CloseE3()
+            Case "3"
+                Call UnMarry()
+            Case "4"
+                Call WipePPV()
+            Case "5", ""
+                Exit Sub
+            Case Else
+                MenuPrompt = "Invalid Input!" & vbCrLf
+        End Select
+
+    Loop While True = True
+
+End Sub
+
+
+Sub NewCmdSub()
+
+    Dim ErrorString
+    Dim MenuPrompt
+    Dim Choice
+
+    Do
+        MenuPrompt = ""
+        MenuPrompt = MenuPrompt & ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>" & VersionString & "<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<" & vbCrLf & vbCrLf & vbCrLf
+        MenuPrompt = MenuPrompt & "Check ROM" & Chr(9) &         "Make sure Rom is Good" & vbCrLf
+        MenuPrompt = MenuPrompt & "Dump ROM" & Chr(9) &          "Dump ROM to a BIN file." & vbCrLf
+        MenuPrompt = MenuPrompt & "Change ATR" & Chr(9) & Chr(9) & "Change the Cards ATR" & vbCrLf
+        MenuPrompt = MenuPrompt & "Back " & Chr(9) & Chr(9) &   "Back to Main Menu." & vbCrLf
+        Choice = Sc.ButtonBox(MenuPrompt, 0, VersionString, "Check ROM", "Dump ROM", "Change ATR", "Back")
+
+        Select Case Choice
+            Case "1"
+                Call CheckROM()
+            Case "2"
+                Call DumpROM()
+            Case "3"
+                Call ChangeATR()
+            Case "4", ""
+                Exit Sub
+            Case Else
+                MenuPrompt = "Invalid Input!" & vbCrLf
+        End Select
+
+    Loop While True = True
+
+End Sub
+
+
+
+
+
+
+Sub ReadCardSub()
+
+    Dim ErrorString
+    Dim MenuPrompt
+    Dim Choice
+
+    Do
+        MenuPrompt = ""
+        MenuPrompt = MenuPrompt & ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>" & VersionString &  " >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>" & vbCrLf & vbCrLf & vbCrLf
+        MenuPrompt = MenuPrompt & "Read to BIN" & Chr(9) &     " Read the cards EEPROM as a .BIN file." & vbCrLf
+        MenuPrompt = MenuPrompt & "Read to Hex" & Chr(9) &     " Read the cards EEPROM as a .Hex file." & vbCrLf
+        MenuPrompt = MenuPrompt & "Get CAMID" & Chr(9) &       "Create a Hex file of just the cards CAMID and ZKT " & vbCrLf
+        MenuPrompt = MenuPrompt & " Back " & Chr(9) & Chr(9) & " Back to the Main Menu " & vbCrLf
+        Choice = Sc.ButtonBox(MenuPrompt, 0, VersionString, " Read Bin", "Read Hex", "Get CAMID", "Back")
+
+        Select Case Choice
+            Case "1"
+                Call ReadEEPROMtoBin()
+            Case "2"
+                Call ReadEEPROMtoHex()
+            Case "3"
+                Call GetCAMIDtoImg()
+            Case "4", ""
+                Exit Sub
+            Case Else
+                MenuPrompt = "Invalid Input!" & vbCrLf
+        End Select
+
+    Loop While True = True
+
+End Sub
+
+Sub WriteCardSub()
+
+    Dim ErrorString
+    Dim MenuPrompt
+    Dim Choice
+
+    Do
+        MenuPrompt = ""
+        MenuPrompt = MenuPrompt & ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>" & VersionString & "<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<" & vbCrLf & vbCrLf & vbCrLf
+        MenuPrompt = MenuPrompt & "Write From BIN" & Chr(9) &    "Write to card EEPROM from a .BIN file." & vbCrLf
+        MenuPrompt = MenuPrompt & "Write From HEX" & Chr(9) &    "Write to card EEPROM from a .Hex File." & vbCrLf
+        MenuPrompt = MenuPrompt & " Back " & Chr(9) & Chr(9) &   "Back to Main Menu." & vbCrLf
+        Choice = Sc.ButtonBox(MenuPrompt, 0, VersionString, "Write BIN", "Write Hex", "Back")
+
+        Select Case Choice
+            Case "1"
+                Call WriteEEPROMFromBin()
+            Case "2"
+                Call WriteEEPROMFromHex()
+            Case "3", ""
+                Exit Sub
+            Case Else
+                MenuPrompt = "Invalid Input!" & vbCrLf
+        End Select
+
+    Loop While True = True
+
+End Sub

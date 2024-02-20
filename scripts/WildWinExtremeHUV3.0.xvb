@@ -1,0 +1,4382 @@
+'       WildWinExtremeHUV3.0 by johnnyL
+'
+'  last release most likely on this series
+'       unless I receive more feedback.
+'
+'  fixes in this release:
+'
+'    More bug fixes:
+'
+'1) Removed errors in the included glitch file caused
+'   by the script not saving the D2 and D3 values properly
+'   in some cases. This caused an "error on line 1540"
+'   of thescript for some people after the glitch file
+'   ran for awhile when choosing "use glitchfile to
+'   unloop". Thank you AIP for pointing out the error.
+'
+'2) Edited the script to properly save the D2 & D3 values
+'   to the glitch file. ( I think its fixed finally :) )
+'
+'3) Over 6000 non duplicate glitches in the glitch file
+'   now.
+'
+'4) Included an updated .sig file to check the .bin file
+'   for known signatures dated 02-17-03. Thank you SiCK.
+'
+'5) Modified a few of the glitch file modifiers included
+'   to make them more "appealing to the eye".
+'
+'6) Included a Sort script to be used on the glitch file
+'   for the people that want to see what ranges their card
+'   is unlooping in. Can sort by any one of the Dx values
+'   (D1, D2, D3, etc.). The sort method used is fairly
+'   primitive so as your glitch file gets larger and larger,
+'   the sort will take longer and longer. On small glitch
+'   files it works fine, but, to use it on a file the size
+'   of the one included in this script for example, it
+'   can take 8 - 10 mins to complete, depending on the range.
+'
+'
+'          Suggested use for the glitch file ...
+'
+'   When you choose to unloop card it will ask if you
+' want to use a saved glitch file. After that it will ask
+' what file you want to save the sucessfull glitches to.
+'
+' At this point you can either choose to save the glitch
+' to the same file you are using to glitch into the card,
+' or you can select to save it to a different .txt file.
+'
+' The successful glitches are saved to the beginning of the
+' glitch file you choose to save them to.. thus the glitch
+' file will start to work faster and faster theoretically.
+'
+' The reason to save to a separate glitch file would be
+' to create a glitch file that works for you and not have
+' to use a glitch file that includes a bunch of glitches
+' that don't work with your equipment. Once you get a bunch
+' of glitches in your saved glitch file, you can start using
+' that glitch file as the glitch file you are using to
+' glitch into the card.
+'
+' Either way the glitches that work for you are saved to the
+' beginning of the file you choose to save them to so
+' the glitch file will always try those first.
+'
+' Another thing you can do is save your successful
+' glitches to a separate file. Then after every 10 or
+' 20 unloops, run the glitch file modifier script called
+' "ShuffleGlitchFileV2". This will rearrange the saved
+' glitches in your glitch file (the one you are using
+' to glitch into the card) thus exposing the card to
+' glitches probably not previously tried. Do this a few
+' times then run "NOduplicatesINglitchFILEV2" on your
+' glitch file and then start using your glitch file as
+' the file you use to glitch into the card.
+'
+' Remember this is a testers script so if you want to
+' something repeatedly you can change the variables in
+' this script so you don't have to do things one at a
+' time such as unloop card over and over one at a time.
+'
+' Scroll down \/ \/ \/ to earlier releases to explain
+' how to add line numbers to script for easier editing
+' and how to unloop cards or read/write glitch into
+' cards any number of times.
+'
+' It is recommended that you read further below to get
+' a full understanding of everything this script does
+' or tries to do.
+'
+'*************************************************
+'
+'       WildWinExtremeHUV2a by johnnyL
+'
+'    A few bug fixes were put into this one
+'
+'1) Fixed an error that would not save some successful
+'   unloop glitches to the saved glitch file.
+'
+'2) Now saves the successful unloop glitches to the beginning
+'   of the glitch file instead of the end of the file.
+'   Theoretically making the glitch file work faster each time.
+'   Included glitch file has over 3300 successful glitches
+'   (no duplicates).
+'
+'3) Fixed progress bar in the .bin checker window and also
+'   added the total number of scripts it is checking for.
+'
+'4) Now keeps bootstrap loaded if you choose to abort after
+'   seeing the results from the .bin checker portion and you
+'   have already glitched into the card.
+'
+'5) The AltEEprom is auto fixed after successfully reading
+'   the card, writing a bin to the card, clean card, wipePPV,
+'   4th byte fix, area info change, and unloop.
+'
+'6) Fixed the progress indicator in the write hex portion of
+'   script.
+'
+'7) Some more minor bug fixes.
+'
+'***************************************************************************
+'    WildWinExtremeHUV2 by johnnyL
+'
+'Had to fix a few bugs sorry about that folks.
+'
+'1) Forgot to remove the loop that made the glitch file
+'   be used over and over until it worked and never went
+'   into the glitch range selected by the user.
+'
+'2) Forgot to give props for the AltEE fix I threw in
+'   at the last moment. I used FS-SRV1b.XVB which was
+'   modded by Futureshock and I adapted it to work with
+'   this script.
+'
+'3) Forgot to mention just as a suggestion to people to
+'   put all files that you gonna need into one folder
+'   and that will make the popups go by quicker.
+'
+'4) Fixed a bug with glitchfile name--- I assumed people
+'   would save glitches to same file that they use to
+'   try and glitch into the card with. I made it so
+'   they not have to be same name.
+'
+'5) Included glitch file has over 3000 saved previously
+'   successful glitches. That should be good for starters.
+'
+'6) Also forgot to mention the glitch file scripts. You
+'   can run these to alter your saved glitch file. ie.
+'   check for duplicate entries and remove them, alter
+'   the order of the glitches, look at the glitches saved
+'   and see how many of them, and if you have a previously
+'   saved glitch file you can run "GetGoodValuesFromTextFile"
+'   and as long as your saved D3 values are 2 digits
+'   long ie. 170,57,09,143,606,98,29,62,863
+'   D3 = 09 and not just 9. then you can copy the output
+'   to your saved glitch file. The program will remove
+'   all spaces and * and etc b4 checking so don't worry
+'   about if your file is saved like this for example..
+'   170, 57, 09, 143, 606, 98, 29, 62, 863.
+'
+'************************************************************************
+'    WildWinExtremeHU by johnnyL--- The Full Release!!
+'
+'This took some manipulation but I think I got
+'99% of the bugs I encountered worked out.
+'
+'*******Features of this script************
+'
+'1) This Version keeps the bootstrap loaded after
+'glitching into the card, so once you glitch in
+'you can read/write/clean/unmarry/change zipcode
+'& timezone etc., without having to glitch back
+'into the card each time for each operation.
+'
+'It is strongly suggested that you exit this
+'script by clicking on the exit buttons
+'before removing the card.
+'
+'2) Added the use of a glitch file when trying to
+'unloop a card. The glitch file works similar to the
+'Speedup.dat file used back in the days of H card
+'unlooping using the WildThing program. Every successful
+'unloop glitch is added to the end of the file. So
+'you can use the glitchfile provided or just rename or
+'delete it and run the program and it will build a new
+'one for you. You can also choose "cancel" at the window
+'that asks for the glitch file if you don't want to use
+'a glitch file at all.
+'
+'The format for the glitch file is as follows:
+'170,57,09,143,606,98,29,62,863  for example.
+'These are the successful decimal values reported D1 - D9.
+'Make sure D2 & D3 are 2 spots.. ie 09 and not just 9.
+'
+'3) Normal glitch in (not Unloop) will fix the ALT-EEprom.
+'
+'4) Added a "Percentage complete" to most processes.
+'
+'5) Fixed a lot of the aborts to keep the script active.
+'
+'
+'***Credits for this release go out to the following***
+'
+'SEMU- For I used a modified version of the change
+'Area Info section from SEMU's Script.
+'
+'SiCK- For I used his updated Script Identifier
+'sig file dated 01-17-03.
+'
+'StarGlitch- For I used a modified version of the
+'hex writer from the script StarGlitchPro26. The
+'.hex writing seems to have a problem with some
+'Encrypted .hex files. It seems to work fine with
+'with non Extreme .hex files and Extreme files
+'that do not use parameters such as '#C'.
+'
+'ALT_EEprom fix inspired by FS-SRV1b script
+'
+'A further note.. It is recommended that you exit this
+'script and restart if further modifications to card
+'are needed after you write a .hex file to the card
+'because some slight card corruption can occur if you
+'don't.
+'
+'Scroll down for further options such as for testing
+'with this script, displaying line numbers, etc.
+'***************************************************
+'
+'
+'
+'
+'    Extreme_UL4Smodified_All_IN1 by johnnyL
+'
+'  This is the authentic and full release of
+'Extreme_UL4Smodified_All_IN1 by johnnyL and
+'not one of my early beta versions that was leaked
+'by a tester and then someone renamed the buttons
+'and changed a few glitches and called it StarjettaV2.2.1.
+'
+'  Not to be confused with Extreme or Extreme's
+'Program called ExtremeHU. If Extreme had any
+'affiliation with this it surely would be better.
+'Much props to Extreme and the program ExtremeHU
+'I merely tried to encorporate some of the features
+'of ExtremeHU into a Winexplorer script for the
+'peeps that have not had good luck with Extreme's
+'program. ExtremeHU has some awesome features
+'so I tried my best to translate what can be done
+'in ExtremeHU into script form. Probably did not
+'do it the best way because VB is not my language
+'but it seems to work.
+'
+'You Must Unzip the Extreme_UL4Smodified_All_IN1.zip
+'file to your C: drive to a folder called
+'Extreme_UL4Smodified_All_IN1 ie. C:\Extreme_UL4Smodified_All_IN1)
+'In order for all stuff to work.
+'
+'First thing you do is set Winexplorer to Full screen
+'(Maximize screen) ( The middle button at the top right..
+'Between the _ and the X buttons!)
+'
+'Second thing you do is set Winexplorer to show line
+'numbers.. if it isn't already.You can add line #s to
+'the script by going up to configure/Editor Properties
+'then check the line that says "Show Line Numbers".
+'
+'*******Features of this script************
+'
+'1)I dropped the lower window display of ATR
+'  and put the ATR into the "glitching" box.
+'
+'2)Added a "realtime" display for the people
+'  that kept asking "how much time is 1.83 minutes?"
+'  for example.
+'
+'3)Added Sick's Script identifier program
+'  to check all .bins being wrote to card and
+'  being read from card. (ThankYou Sick!)
+'  The Sig file enclosed comes from P52
+'  dated 10-06-02 (ThankYou P52)
+'
+'4)Added a "fix 4th byte" of ATR(ThankYou Extreme)
+'
+'5)Added a check card information after each
+'  process(ThankYou Testies)
+'
+'6)Replaced the Mod1 unloop range with a new
+'  set of glitches.
+'
+'7)Changed the Read/Write glitches.
+'
+'8)Made the read option auto unmarry the card
+'
+'9)Made the write option auto unmarry as well
+'  so you can not write a married bin to a card
+'  because it will auto unmarry while writing
+'  to the card during both the unloop write as
+'  well as a normal .bin write. This eliminates
+'  the need to glitch card again to unmarry it
+'  after you have written the .bin to the card.
+'
+'10)Changed the clean function so it does not clear
+'  the activated date, DSW, zipcode, locals byte,
+'  or guide byte
+'
+'11)For ExtremeHU users I put the Hex values into the
+'lower window when unlooping so if you want to you can
+'translate them back into ExtremeHU.
+'
+'12)Enabled Multi glitching like in ExtremeHu during
+'  the read/write/clean glitching to send the same
+'  glitch to a card a certain amount of times in line#
+'  865.
+'
+'And now for the Testers out there......
+'
+'   This script is set up for people that want to test
+'their cards also... either read/write/clean glitching
+'or unlooping. Simply go to lines 518-519 and select
+'the # of times you want to run this script. The read/
+'write/clean glitching is set in line #s 867-869. The
+'unlooping ranges are set from line #s 1697-1937.
+'
+'Simply log the successful values you receive then note
+'the most common ones and then edit the line #s in this
+'script to reflect those. You can also start with values
+'that you know work for your equipment by copy/paste
+'over the values in this script.. then work from there.
+'
+'
+'
+'                      johnnyL
+'***********************************************
+'
+'This is ANONYMOUS's UL4S-0700 release that I modified and added stuff from other scripts.
+'
+'The Load BootStrap, card check2000, unmarry, & PPV Wipe were borrowed and modified from USW0700Plus-- thanks Diz
+'The check card info part is a result of a modded Testies script.
+'
+'I incorporated all the previous johnnyL mods to date as well as included 2 more to try
+'in this release.
+'
+'Also modified the glitches used for reading/writing/cleaning to card as well as
+'fixed several small bugs that are in the current scripts, biggest one being
+'was the ability to abort at certain stages, others included making popups a little
+'less "generic" looking. Some others I not remember right now.
+'
+'Once again, I take no credit for this script other than the modifications.
+'Original credit goes to the originators of HUFF,UL4S,and the other mods that
+'inspire me and give me ideas.
+'
+'
+'                          johnnyL
+'---------------------------------------------------------------------------
+'
+'
+'
+'---------ATTENTION---------
+'
+'
+'USW0700 Glitch
+'
+'This Glitch is being posted for a reason. There is a certain person in this "hobby' that
+'actually was going to "RIP" another private program and use it in his own Freeware.
+'
+'I as a 'hobbiest' did not understand as to why someone would actually do this.
+'
+'I am releasing this glitch so that will not happen.
+'
+'BY ANONYMOUS
+'
+'
+' Modified by no1b4me to include unlooper option
+'
+' Requirements: UL4S Atmel code to work!!!
+'
+' Special thanks to all the testers and contributors,
+' Especially:    Canard
+'                Shadz
+'                mpk
+'                MoeDaddy
+'                RAM9999
+'                Mr. Bowling
+'
+' Special thanks go to AOL6945 and especially CLIPGRP, both of whom without their help
+' this would not be possible.
+'
+' Bits and pieces taken from various places are commented with the original author, if known.
+'
+
+Option Explicit
+
+Const fsoError = -1
+Const fsoOpenRead = 0
+Const fsoOpenWrite = 1
+Const fsoOpenReadWrite = 2
+Const fsoSEEK_SET = 0
+Const fsoSEEK_CUR = 1
+Const fsoSEEK_END = 2
+Const FileFilter = "All Eeprom Files (*.Bin, *.Crd)|*.Bin;*.Crd;|Bin Files (*.Bin)|*.Bin|Crd Files (*.Crd)|*.Crd|All (*.*)|*.*"
+Const Ins = &h08
+Const InsParam1 = &h00
+Const InsParam2 = &h00
+Const InsLen = &h34
+Const HexFilter = "Hex Files (*.hex)|*.hex"
+Const TxtFilter = "Text Files (*.txt)|*.txt"
+Const SigFilter = "Signature Files (*.sig)|*.sig"
+
+Fs.FileClose(InFile)
+
+Dim OutFile
+Dim InFile
+Dim FileName
+Dim GlitchFile
+Dim TesterFileName
+Dim HUBinFile
+Dim XORedByte(31)
+Dim Key12byte(11)
+Dim Choice
+Dim LBSChoice
+Dim MBLChoice
+Dim CCChoice
+Dim RChoice
+Dim RWChoice
+Dim FIXChoice
+Dim Unloopchoice
+Dim d0,D1,D2,D3,D4,D5,D6,D7,D8,d9
+Dim ScriptStart,ScriptEnd
+Dim TempScriptStart
+Dim FirstRun
+Dim RunTime
+Dim RdWriGl
+Dim TimeElapsed
+Dim TimeInMinutes
+Dim TimeInHours
+Dim Duration
+Dim ATR, cnt, tmp, b, Msg, kk, kp
+Dim DAC2
+Dim DAC1
+Dim Delaye
+Dim Delay5C
+Dim glttl,Attempts
+Dim chglch
+Dim glchs
+Dim RDwriteCLEANglitchCOUNTER
+Dim MenuPrompt
+Dim Read
+Dim Glrngchoice
+Dim bootstraploads
+Dim writeChoice
+Dim WriteLoopsCompleted
+Dim AtrShown
+Dim ATRtry
+Dim loopcount
+Dim numberOFunloops
+Dim HOWmanyTIMESunloop
+Dim HOWmanyTIMESloadBOOTSTRAP
+Dim TotalUnloopTime
+Dim AvgUnloopTime
+Dim AvgGlitchWrite
+Dim AvgGlitchRead
+Dim AvgGlitchClean
+Dim TotalGlitches
+Dim AvgGlitch
+Dim eeprom(9000)
+Dim infilecount
+Dim infilesize
+Dim sigfile
+Dim ReadBin
+Dim FirstBootload
+Dim RetVal03
+Dim ZipCode
+Dim ZPtemp
+Dim ZPtempx
+Dim ZPtemp1
+Dim ZPtemp2
+Dim ZPtemp3
+Dim ZPtemp4
+Dim ZPtemp5
+Dim ZPCode
+Dim local
+Dim GUIDEbyte
+Dim TZone
+Dim rating
+Dim FuseBytes
+Dim Unlooped
+Dim Glitch2Use
+Dim Fix4thBYTE
+Dim PercentageWrite
+Dim PercentageRead
+Dim PercentageClean
+Dim FileSize
+Dim TotalHexBytesReadSoFar
+Dim PercentageHex
+Dim HexBytesRead
+Dim atrlock, cter, glcnt, mtries
+Dim RetVal, boot, katr
+Dim fso, ts
+Dim GlitchFileWorked
+Dim GlitchFileSaved
+Dim SavedGlitch
+Dim UseGlitchFile
+Dim ReadMode
+Dim GlitchDisplay
+Dim TotalSlots
+Dim slot, results
+Dim SavedGlitches
+Dim ThisStr
+Dim array(15000)
+Dim i
+Dim lengthOFline
+Dim TotalScriptsBeingChecked
+Dim ScriptsCheckedSoFar
+Dim FixAltEE
+
+' Tester Section \/ \/ \/ \/
+    HOWmanyTIMESunloop = 1
+    HOWmanyTIMESloadBOOTSTRAP = 1
+'    /\  /\  /\  /\  /\  /\
+
+    TempScriptStart = ScriptStart
+
+Sub Main()
+
+    Dim ErrorString
+    Dim RetVal
+    Dim RSChoice
+    Dim WSChoice
+    Dim UTILChoice
+
+    Sc.Verbose = 0
+
+    If Sc.Version < 4.6 Then
+        ErrorString = "You need version 4.6 or greater of WinExplorer to run this script"
+        Sc.MsgBox ErrorString, vbCritical
+        Err.Raise 1050, , ErrorString
+    End If
+
+    If ChipVer <> 1 then
+        Sc.MsgBox("Please Check All Hardware Connections And" & VbCr & VbCr & "That Your Chip Is Flashed With UL4S Code.")
+        Exit Sub
+    End if
+
+            Msg = "         This One's For You Sis!!"
+            tmp = ""
+            tmp = tmp + "This Release Is Dedicated To My Sister." & VbCr
+            tmp = tmp + "         01-03-1969   -   11-21-2002." & VbCr
+            tmp = tmp + "                            RIP."
+            cnt = Sc.ButtonBox(tmp, 0,Msg , "Ok")
+            Msg = ""
+            Tmp = ""
+
+    Do
+
+        TotalGlitches = 0
+        loopcount     = 0
+        Unlooped      = 0
+
+        MenuPrompt = ""
+        MenuPrompt = MenuPrompt & " 1) Check Card Status ( ATR, USW, DSW, Timezone, etc ) ." & VbCr & VbCr
+        MenuPrompt = MenuPrompt & " 2) Change Information On Card ( Clean Card, WriteTo Card, Read Card, " & VbCr
+        MenuPrompt = MenuPrompt & "    Unmarry, WipePPV, Change Zip/Timezone/Locals, Fix 4th Byte Of ATR ) . " & VbCr & VbCr
+        MenuPrompt = MenuPrompt & " 3) Fix ATR ( Fix 4TH Byte of ATR, Unloop The Card ) ." & VbCr & VbCr
+        MenuPrompt = MenuPrompt & " 4) End Program . " & VbCr & VbCr
+        MenuPrompt = MenuPrompt & "                        Please Choose From The Following Menu Choices:"
+        Choice = Sc.ButtonBox(MenuPrompt, 0, "           HU UnLooper And USW0700 Glitch Loader/Cleaner", "1) Check Info", "2) Change Info", "3) Unloop Card", "4) Exit")
+
+        Select Case Choice
+            Case "1"            'Check card information and see if looped
+                Call IsCardPresent()
+
+                If (GetATR = False) Then
+                    Call CardIsLooped()
+                Else
+                    Call ReadInfo()
+                End If
+
+            Case "2" ' load bootstrap
+                MenuPrompt = ""
+                MenuPrompt = MenuPrompt + "                  Which Glitch Would You Like To Use To Get Into The Card?" & VbCr
+                MenuPrompt = MenuPrompt + "   If You're Not Sure, It Is Recommended You Start With #1 And Work Your Way Up."
+                LBSChoice = Sc.ButtonBox(MenuPrompt, 0, "                                         Load Bootstrap??", "1) INS 4C", "2) INS 2E", "3) INS 48", "4) Exit")
+
+                Select Case LBSChoice
+                   Case "1"   ' INS 4C
+                        Glitch2Use = "4C"
+                        Call Continue2LoadBootStrap()
+
+                   Case "2"   ' INS 2E
+                        Glitch2Use = "2E"
+                        Call Continue2LoadBootStrap()
+
+                   Case "3"   ' INS 48
+                        Glitch2Use = "48"
+                        Call Continue2LoadBootStrap()
+
+                   Case "4", ""  ' Exit
+                         End Select
+
+             Case "3" ' Fix ATR
+                 MenuPrompt = ""
+                 MenuPrompt = MenuPrompt + "Fix 4th Byte of Atr         Unloop Card                    Exit?"
+                 FIXChoice = Sc.ButtonBox(MenuPrompt, 0, "                                Fix ATR ", "Fix 4TH Byte", "Unloop", "Exit")
+
+                 Select Case FIXChoice
+                 Case "1" 'Fix the 4the byte of ATR
+                      If (GetATR = False) Then
+                         Call CardIsLooped()
+                      Else
+                         TempScriptStart = Now
+                         TimeElapsed     =  0
+                         TimeInMinutes   =  0
+                         TimeInHours     =  0
+
+                         MenuPrompt = ""
+                         MenuPrompt = MenuPrompt + "                  Which Glitch Would You Like To Use To Get Into The Card?" & VbCr
+                         MenuPrompt = MenuPrompt + "   If You're Not Sure, It Is Recommended You Start With #1 And Work Your Way Up."
+                         LBSChoice = Sc.ButtonBox(MenuPrompt, 0, "                                         Load Bootstrap??", "1) INS 4C", "2) INS 2E", "3) INS 48", "4) Exit")
+
+                         Select Case LBSChoice
+                         Case "1"   ' INS 4C
+                            Glitch2Use = "4C"
+                            Fix4thBYTE = "yes"
+                            Call Continue2LoadBootStrap()
+
+                         Case "2"   ' INS 2E
+                            Glitch2Use = "2E"
+                            Fix4thBYTE = "yes"
+                            Call Continue2LoadBootStrap()
+
+                         Case "3"   ' INS 48
+                            Glitch2Use = "48"
+                            Fix4thBYTE = "yes"
+                            Call Continue2LoadBootStrap()
+
+                         Case "4", ""  ' Exit
+                             End Select
+
+                      end if
+
+                    Case "2"           'Unloop card                                                                                                                                                                                                                                         Rottirudy
+                        RetVal = 3
+
+                        Call IsCardPresent()
+
+                        If (GetATR = True) Then
+                           RetVal=Sc.ButtonBox("This card appears to have a good ATR."& VbCr &"Unloop anyway?",  vbDefaultButton2 + vbQuestion, "                Good ATR detected !!!", "Yes", "No")
+                           If RetVal = 1 then RetVal = 3
+                        End if
+
+                        If RetVal = 3 Then
+                           Fs.FileClose(InFile)
+                           TotalUnloopTime = 0
+                           HUBinfile = False
+                           Call GetFile()
+                           If HUBinFile = True Then
+
+                              Call SSID
+                              Call SSID_Abort
+                              If Choice = 1 Then
+
+                                 Call Unloop_Range
+                                 If Unloopchoice <> 7 Then
+
+                                    Call FFTheCard()
+
+                                    Call GetGlitchFileName()
+                                    Call WhereToSaveGoodGlitches()
+
+                                    RDwriteCLEANglitchCOUNTER = 0
+                                    ScriptStart = Now
+                                    Sc.Print "----------------------------------------------------------------" & vbCr
+                                    Sc.Print "Start: " & ScriptStart & vbCr     'main screen
+                                    Sc.Print "----------------------------------------------------------------" & vbCr
+                                    Sc.Print VbCr & "Attempting To Write The Bin To The Card ....." & vbCr & vbCr
+                                    Sc.Print "Attempt # Total Glitches Bootload Attempts       Successful D1 - D9 Values          Time Elapsed" & VbCr
+                                    Sc.Print "========= ============== =================       =========================          ============" & VbCr & VbCr
+
+                                    For numberOFunloops = 1 to HOWmanyTIMESunloop
+                                        TempScriptStart = Now
+                                        TimeElapsed      =  0
+                                        TimeInMinutes    =  0
+                                        TimeInHours      =  0
+                                        GlitchFileWorked =  0
+                                        glttl            =  0 'total glitches to card
+                                        atrlock          =  0
+                                        cter             =  0
+                                        glcnt            =  0
+                                        mtries           =  0
+                                        d0               =  0
+
+                                        Call LoadSavedGlitchFileIntoArray
+
+                                        If UseGlitchFile = 1 then
+                                           Call LoadGlitchFile
+                                        End If
+
+                                        If GlitchFileWorked <> 1 then
+                                           If (BootCard())= 1 Then
+                                              InFile = Fs.FileOpen(TesterFileName, fsoOpenRead)
+                                              FirstBootload = 1
+                                              Call WriteCard(32)
+                                           Else
+                                              Fs.FileClose(InFile)
+                                           End If
+                                        End If
+                                    Next
+
+                                    numberOFunloops = numberOFunloops - 1
+                                    Sc.Print " The .bin Was Written To The Card!!!" & VbCr
+                                    AvgUnloopTime = FormatNumber((CDbl(TotalUnloopTime)) * 24 * 60 * 60, 0, True, True, True)/numberOFunloops
+                                    Sc.Print VbCr & VbCr & "This Card Was Unlooped " & numberOFunloops & " Times." & VbCr & "Average Time Required To Unloop Card: " & AvgUnloopTime & " Seconds." & VbCr
+                                    Unlooped = 1
+                                    Call Card_options()
+                                  End If
+                               End If
+                            End If
+                         End If
+                  End Select
+
+            Case "4", ""       'Exit program
+                Exit Sub
+
+            Case Else
+                MenuPrompt = ""
+                MenuPrompt = MenuPrompt + "Invalid Input!" & vbCrLf
+
+        End Select
+
+    Loop While True = True
+
+End Sub
+
+Sub LoadBootStrap()
+
+    Sc.Verbose = False
+
+    Dim RetValue
+    Dim GotInput
+    Dim Counter
+    Dim MsgBox
+    Dim DoubleGlitch
+
+    TimeElapsed   =  0
+    TimeInMinutes =  0
+    TimeInHours   =  0
+    tmp           =  ""
+    RdWriGl       =  0
+    Counter       =  0
+    Attempts      =  0
+    DAC1          = &h9D
+
+    Call IsCardPresent()
+
+    Do
+        RANDOMIZE TIMER
+        Sc.Write("A1")
+        GotInput = False
+
+'        If Counter = 20 Then
+'            Counter = 0
+'        End If
+
+'        If Counter = 1 Then
+'            DAC1 = &hE4
+'        End If
+
+'        If Counter = 5 Then
+'            DAC1 = &h9A
+'        End If
+
+'        If Counter = 9 Then
+'            DAC1 = &h99
+'        End If
+
+'        If Counter = 13 Then
+'            DAC1 = &hA1
+'        End If
+
+'        If Counter = 17 Then
+'            DAC1 = &h85
+'        End If
+        DoubleGlitch = 0
+        Do
+           Attempts     = Attempts     + 1                                                                                                                                                                                                                                                                                                                                                                                                                                          ' 12RO34TT56IR78UD90Y
+           RdWriGl      = RdWriGl      + 1
+           DoubleGlitch = DoubleGlitch + 1
+           Call FormatTime
+           Call Sc.ProgressBox ("Glitching into card...                       Attempts:        " & Attempts & vbcr & ATR & VbTab & VbTab & "DAC1 value being used:        " & HexString(DAC1,2), 1, 999, "      Glitching into card..." & "            Glitch # " & Attempts)
+
+           sc.write("0610010E109300")
+           if Sc.Read(&h02) > 1 then
+              cnt = sc.getbyte(1)
+           else
+              cnt = 0
+           end if
+
+           if cnt > 0 then
+              cnt = sc.read(cnt)
+
+              for b = 0 to cnt -1
+                 tmp=tmp & HexString(sc.getbyte(b),2) & " "
+              next
+              Atr = tmp
+           else
+              if loopcount = 0 then
+                 Msg = "                   Oh NO!!"
+                 tmp=""
+                 tmp=tmp+"WARNING !!!! The Card Is Looping."
+                 cnt = Sc.ButtonBox(tmp, 0,Msg , "Ok")
+                 loopcount = loopcount + 1
+              end if
+           end if
+
+           tmp = ""
+
+    '************************
+
+           Sc.Write("06100E10019300")
+           Sc.Delay(50)
+           Sc.Read(&h02)
+           RetValue = Sc.GetByte(&h01)
+           Sc.Read (RetValue)
+
+           Sc.Write("B0")
+           Sc.Write(HexString(DAC1,2))
+
+'                  INS 4C
+           If Glitch2Use = "4C" Then
+              Sc.Write("0C 11 15 C4 48 48 FF 56 B9 70 C9 08 00")
+           End If
+'                  INS 2E
+           If Glitch2Use = "2E" Then
+              Sc.Write("0B 15 C4 48 2E FF 56 B9 70 CA 08 00")
+           End If
+'                 INS 48
+           If Glitch2Use = "48" Then
+              Sc.Write("0B 15 C4 48 48 FF 56 B9 70 C9 08 00")
+           End If
+
+           Sc.Delay(50)
+           If Sc.BytesInBuffer > 0 Then
+              Sc.Read(&h02)
+              RetValue = Sc.GetByte(&h01)
+              Sc.Read (RetValue)
+           End If
+
+           Sc.Write("B0 80")
+           Sc.Write("38F00000000069FFFFFFFF523FFD2284E172400772FF14C5E2AB0100C3DA07F88C010000000000000000000000000000000000200011098000")
+           Sc.Read(&h02)
+
+           If Sc.GetByte(&h0) = &h38 Then
+              If Sc.GetByte(&h01) = &h01 Then
+                 Sc.Read(&h01)
+                 If Sc.GetByte(&h0) = &h84 Then
+                    GotInput = True
+                 Else
+                    GotInput = False
+                 End If
+              End If
+           End If
+
+           Counter = Counter + 1
+        loop until DoubleGlitch = 6 or GotInput = True
+        If GotInput = False then
+           Do
+              DAC1 = INT(RND * &h1D) + &h8D ' 141 -  169
+           Loop Until DAC1 = &h8D or DAC1 = &h94 or DAC1 = &h96 or DAC1 = &h9A or DAC1 = &h9D or DAC1 = &hA2 or DAC1 = &hA9
+'                             141            148            150            154            157            162            169
+        End If
+    Loop Until GotInput = True
+
+    Sc.Write("42FF225272FF14E1E2D007E2D029E2D02A77800718753F07D307D807C5E2AB0060C3DA07F8726015D404E700D57640070DD3078ECEFB70012ADA07F700C49E2A00FA00")
+    Sc.Read(&h02)
+
+    Sc.Print VbTab & bootstraploads & VbTab & VbTab & Glitch2Use & VbTab & VbTab  & (HexString(DAC1,2)) & "   <----- " & attempts & " Glitches." & VbCr
+    TotalGlitches = TotalGlitches + attempts
+    RDwriteCLEANglitchCOUNTER = RDwriteCLEANglitchCOUNTER + Attempts
+    FirstBootload = 1
+    Call Sc.ProgressBox ("", 0, 0, "")
+
+End Sub
+
+Sub GetFileName()
+
+
+    TesterFileName = Fs.FileSaveDialog(FileFilter, "Please Select A Name To Save The New Bin File From This Card. ", "Default.bin")
+    If TesterFileName <> "" Then
+       OutFile = Fs.FileCreate(TesterFileName)
+       HUBinFile = True
+    Else
+       HUBinFile = False
+    End If
+
+End Sub
+
+
+Sub GetFile()
+
+    Dim FileSize
+
+    FileName = Fs.FileOpenDialog(FileFilter, "  Please select a valid HU Eprom (*.bin) file to write to this card. ", "Default.bin")
+    TesterFileName = FileName
+
+    If FileName <> "" Then
+        If Fs.FileExists(FileName) = 0 Then
+           Sc.MsgBox("The file does not exist")
+        Else
+           InFile = Fs.FileOpen(FileName, fsoOpenRead)
+        End If
+    End If
+
+    FileSize = Fs.FileSeek(InFile, 0, fsoSEEK_END)
+
+    If FileSize <> "8192" Then
+        Sc.MsgBox("This file is NOT a valid HU bin file" & vbcr & "or the bin file you are trying to open" & vbcr & "is being used by another program")
+        HUBinFile = False
+        Exit Sub
+    Else
+        HUBinFile = True
+    End If
+
+    Fs.FileClose(InFile)
+
+End Sub
+
+Sub ReadCard()
+
+    Dim EEPROM
+    Dim TByte
+    Dim Address
+
+    EEPROM = 0
+    Address = 8192 ' For EEPROM Read
+    'Address = 49152 ' For ROM Read
+
+    If FirstBootload = 1 then
+       Call ExtractCardInfo()
+    End IF
+    FirstBootload = 2
+
+    Call WriteViaLoader("24A4","00000000","E")    ' Clear IRD
+    Call WriteViaLoader("2460","00000000","E")    ' Clear IRD
+
+    For EEPROM = 1 to 128    ' 128 for EEPROM, 256 for ROM
+        Sc.Write("06C23F" & HexString(Address,4) & "BF00")
+        Sc.Delay(50)
+        Sc.Read(&h02)
+        Sc.Read (&h40)
+
+        PercentageRead = EEPROM * 100 / 128
+        Call Sc.ProgressBox ("                               Reading EEPROM Memory..." & INT(PercentageRead) & "%.", EEPROM, 128, "                                 Reading Card...") ' For EEPROM Read
+        'Call Sc.ProgressBox ("Reading ROM Memory...", EEPROM, 256, "UnLooper/Loader") ' For ROM Read
+
+        For TByte = 0 to 63
+            Call Fs.FilePutc(OutFile, Sc.GetByte(TByte))
+        Next
+
+        Address = Address + 64
+
+        Call WDTMR()
+    Next
+
+    Fs.FileClose(OutFile)
+
+    Call Sc.ProgressBox ("", 0, 0, "")
+    ReadMode = "Additionals"
+
+    FixAltEE = 1
+End Sub
+
+
+Sub WriteCard(Chunk)
+
+    Dim EEPROM
+    Dim TByte
+    Dim Address
+    Dim EEPROMBytes
+    Dim Multiplier
+
+    Address = 8192
+
+    If Chunk = 64 Then
+        Multiplier = 128
+    Else
+        Multiplier = 256
+    End If
+
+    Sc.Write("A2")
+    Call Fs.FileSeek(InFile, 0, fsoSEEK_SET)
+
+    If FirstBootload = 1 then
+        Call WDTMR
+    End IF
+    FirstBootload = 2
+
+    For EEPROM = 1 to Multiplier
+        EEPROMBytes = ""
+        For TByte = 1 to Chunk
+            EEPROMBytes = EEPROMBytes & HexString(Fs.FileGetc(InFile), 2)
+        Next
+
+        If Chunk = 64 Then
+            Sc.Write("49C2BF" & HexString(Address,4) & "FF" & EEPROMBytes & "0EFF8000")
+            Sc.Read(&h03)
+        Else
+            Sc.Write("28E29F" & HexString(Address,4) & EEPROMBytes & "0EFF8000")
+            Sc.Read(&h03)
+        End If
+
+        PercentageWrite = EEPROM * 100 / Multiplier
+        Call Sc.ProgressBox ("                               Writing EEPROM Memory..." & INT(PercentageWrite) & "%.", EEPROM, Multiplier, "                         Writing Eeprom To Card...")
+
+        Address = Address + Chunk
+    Next
+
+    Call Byte_Array()
+
+    Call WriteViaLoader("24A4","00000000","E")    ' Clear IRD # From Location 1
+    Call WriteViaLoader("2460","00000000","E")    ' Clear IRD # From Location 2
+
+    Fs.FileClose(InFile)
+    Call Sc.ProgressBox ("", 0, 0, "")
+    ReadMode = "Additionals"
+
+    FixAltEE = 1
+End Sub
+
+Sub CleanCard()
+
+    Dim CleanCounter
+
+    CleanCounter = 1
+
+    Sc.Write("A2")
+    If FirstBootload = 1 then
+       Call ExtractCardInfo()
+    End IF
+    FirstBootload = 2
+
+
+        PercentageClean = CleanCounter * 100 / 44
+    Call Sc.ProgressBox ("Cleaning Main Code..." & INT(PercentageClean) & "%.", CleanCounter, 44,"                                  Cleaning card")
+    Call WriteViaLoader("2014","25DA","D")                                ' Fuse
+    Call WriteViaLoader("2406","03E8","E")                                ' SpendingLimit
+    Call WriteViaLoader("240C","00000000","E")                            ' Password
+    Call WriteViaLoader("2416","0000000000000001","E")                    ' PPV info
+    Call WriteViaLoader("2420","00000000000000000000000100000000","E")    ' PPV Act
+    Call WriteViaLoader("2430","00000000000000000001000000000000","E")    ' Sub
+    Call WriteViaLoader("2440","00000000000000010000000000000000","E")    ' Sub
+    Call WriteViaLoader("2450","00000000000000000000000000000000","E")    ' Sub
+         CleanCounter = CleanCounter + 1
+         PercentageClean = CleanCounter * 100 / 44
+    Call Sc.ProgressBox ("Cleaning Main Code..." & INT(PercentageClean) & "%.", CleanCounter, 44,"                                  Cleaning card")
+    Call WriteViaLoader("2460","00000000","E")                            ' Ird Slot 1
+    Call WriteViaLoader("2464","090000","E")                              ' Rating
+    Call WriteViaLoader("24A4","00000001","E")                            ' Ird Slot 2
+    Call WriteViaLoader("24E1","01","E")                                ' Time Zone
+    Call WriteViaLoader("24E6","0000","E")                                ' DSW Counter
+    Call WriteViaLoader("2500","00FFFFFFFFFFFFFFFFFFFFFFFFFFFFFF","E")    ' Guide
+    Call WriteViaLoader("2510","FF","E")                                  ' Guide
+    Call WriteViaLoader("2512","00000000000000000000000000","E")        ' Guide
+    Call WriteViaLoader("2520","00000000000000000000000000000000","E")
+    Call WriteViaLoader("2530","00000000000000000000000000000000","E")
+         CleanCounter = CleanCounter + 1
+         PercentageClean = CleanCounter * 100 / 44
+    Call Sc.ProgressBox ("Cleaning Main Code..." & INT(PercentageClean) & "%.", CleanCounter, 44,"                                  Cleaning card")
+    Call WriteViaLoader("22F2","2210E37702270C8EE2B67610280575FC67D56A8CDCE712608EDB7E7D0029020B","D")
+    Call WriteViaLoader("2312","982A30EF1D6102038CD4B5F97D40BE060375FED28CD15C40010017C5AA0060AB","D")
+    Call WriteViaLoader("2332","0101C33D170FF5748028F98800603088003B327202068EE5ADF9726015882ACE","D")
+    Call WriteViaLoader("2352","2A720204E700098A2ACFB34D006102EAF912088E3C96F9C5AA2AF8D024AA3F50","D")
+         CleanCounter = CleanCounter + 1
+         PercentageClean = CleanCounter * 100 / 44
+    Call Sc.ProgressBox ("Cleaning Main Code..." & INT(PercentageClean) & "%.", CleanCounter, 44,"                                  Cleaning card")
+    Call WriteViaLoader("2372","13248E3C96C35D080FEEF900","D")
+    Call WriteViaLoader("23B3","982A30EF70012A8E3C96C704EDD70904E0D5088827052A8ED1B0F98ED21D8E","D")
+    Call WriteViaLoader("23D2","3C96F9C58E23F5F4CC2E2A0F0C8E23F5F4CC2A2E0F07223FE6D32CD32CC35D0C","D")
+    Call WriteViaLoader("23F2","0FE2F99A2CD02DD32C9A2CD02ED32CF9FFFFFFFF","D")
+    Call WriteViaLoader("2690","0000000000000000B3B8BDC2C7C7C7C7C7C7C7C7C7B3B3B3B3B3CCD1D1D1D1D1","D")
+    Call WriteViaLoader("26B0","D1D6DB06C9DC3E1306C9DC3E2B08C9DC3E4306C9DC3E6301C9DC3E7B04C9DC3E","D")
+         CleanCounter = CleanCounter + 1
+         PercentageClean = CleanCounter * 100 / 44
+    Call Sc.ProgressBox ("Cleaning Main Code..." & INT(PercentageClean) & "%.", CleanCounter, 44,"                                  Cleaning card")
+    Call WriteViaLoader("26D0","7F01C9DC3E8F01C9DC3E9303C9DC3E97FFC8A0CE0D16F082AC8602C081580703","D")
+    Call WriteViaLoader("26F0","0000FF40000000000000000000000000DFE1F01A00DFE1003800DF83043800D5","D")
+    Call WriteViaLoader("2710","13011800D912031800D597001820D59B001820DAE50B1800D8B1812820D7AF82","D")
+    Call WriteViaLoader("2730","3800385003D000289E051C00DFE1023800DABE122860D7B30328E0D6A1012860","D")
+         CleanCounter = CleanCounter + 1
+         PercentageClean = CleanCounter * 100 / 44
+    Call Sc.ProgressBox ("Cleaning Main Code..." & INT(PercentageClean) & "%.", CleanCounter, 44,"                                  Cleaning card")
+    Call WriteViaLoader("2750","DFE2002860D7F3822860D4110828E0D883003800DF7F00380028C50D28E0DEBA","D")
+    Call WriteViaLoader("2770","0228E0D834042860D8B8082860D8DE003800D8D7043800D90B033800D93B2338","D")
+    Call WriteViaLoader("2790","00D9CEF03800DAB7003860DAD0003820DAD4023860DB16043800D42A052860DB","D")
+    Call WriteViaLoader("27B0","2800181022F2F01800DFF0042860DD808D28E0D9CEF03800DB4C853860DFE101","D")
+         CleanCounter = CleanCounter + 1
+         PercentageClean = CleanCounter * 100 / 44
+    Call Sc.ProgressBox ("Cleaning Main Code..." & INT(PercentageClean) & "%.", CleanCounter, 44,"                                  Cleaning card")
+    Call WriteViaLoader("27D0","180028A1883C002308E12860D5E7821800D667842860DB9FD52860E002822860","D")
+    Call WriteViaLoader("27F0","DBD0813800D809D29000DFE1F09000383003F000D9608628E02FC79028A02F10","D")
+    Call WriteViaLoader("2810","8028A02ABF89D000DB4C8528E02F088428E0DE458C28E0DE548628E05507AA24","D")
+    Call WriteViaLoader("2830","B843000EAA2650130EF9D1FEFEAAFFFD8E3F3D2DF78C2F5C8E3F5812399B3012","D")
+         CleanCounter = CleanCounter + 1
+         PercentageClean = CleanCounter * 100 / 44
+    Call Sc.ProgressBox ("Cleaning Main Code..." & INT(PercentageClean) & "%.", CleanCounter, 44,"                                  Cleaning card")
+    Call WriteViaLoader("2850","3AF4EB0130F9B8C8D829D82AC5AA2AF0D007AA3F481307AB00DDC35D080FEE22","D")
+    Call WriteViaLoader("2870","A064AB00DDC35D100FF5C59A30AB00ED700130C33D060FF38C3039008CC2988C","D")
+    Call WriteViaLoader("2890","C0EC8C3EEB8C3B068C3B348C38198C39788CC27A8C3C968C393A8CE0748C2F43","D")
+    Call WriteViaLoader("28B0","8C37008CE30E8C3D128C37808C37708CE0438C3C968C3D568CD6B28C29C48C2F","D")
+         CleanCounter = CleanCounter + 1
+         PercentageClean = CleanCounter * 100 / 44
+    Call Sc.ProgressBox ("Cleaning Main Code..." & INT(PercentageClean) & "%.", CleanCounter, 44,"                                  Cleaning card")
+    Call WriteViaLoader("28D0","568C31818C3F378C2AC58C3B558C3B798C36EA8CC4308C33B78C2F9D8CD6F68C","D")
+    Call WriteViaLoader("28F0","31038CD3438C36F58C231E8C37738C3ED08C305C8CEC9C8C37728C377220203F","D")
+    Call WriteViaLoader("2910","EF00000000000000000000000000000000000000000000000000000000000000","D")
+    Call WriteViaLoader("2930","000000000000000000000000005CDA5EFA8F6152EA1CFED0C6043DA97745BB98","D")
+         CleanCounter = CleanCounter + 1
+         PercentageClean = CleanCounter * 100 / 44
+    Call Sc.ProgressBox ("Cleaning Main Code..." & INT(PercentageClean) & "%.", CleanCounter, 44,"                                  Cleaning card")
+    Call WriteViaLoader("2950","231803ECF766BD3570C1DF224A8EA4599B94A5B8FF490C27663B80DE52CD7AE1","D")
+    Call WriteViaLoader("2970","134DAAF79438C92552BC617F8016EE03DB01298401005C0A3C7D919AC5AA24B8","D")
+    Call WriteViaLoader("2990","AB00EDAA2650AB00F5C35D080FEFC522A064AB00DDC35D100FF58800ED2A8800","D")
+    Call WriteViaLoader("29B0","DD2C7210FD8E3EB272DD158824B02A721004E7F9C877202703757F2775EF2742","D")
+         CleanCounter = CleanCounter + 1
+         PercentageClean = CleanCounter * 100 / 44
+    Call Sc.ProgressBox ("Cleaning Main Code..." & INT(PercentageClean) & "%.", CleanCounter, 44,"                                  Cleaning card")
+    Call WriteViaLoader("29D0","2A0275F727751F02731F02D3024D04020F034204024C0204F750113215D80298","D")
+    Call WriteViaLoader("29F0","2A347780270DD105D50E322A8E283A3205000A77202703B50003AA0000764027","D")
+    Call WriteViaLoader("2A10","0ED0039A2AB81303D40315030206B99B2A740827C370012ADA02C7D402770827","D")
+    Call WriteViaLoader("2A30","07882AA72A8E2A9575F7273215F75011762027277780270DD105D50E32348E28","D")
+         CleanCounter = CleanCounter + 1
+         PercentageClean = CleanCounter * 100 / 44
+    Call Sc.ProgressBox ("Cleaning Main Code..." & INT(PercentageClean) & "%.", CleanCounter, 44,"                                  Cleaning card")
+    Call WriteViaLoader("2A50","3A32050003AA00007640270AD0039A341303150302059B34740827C3700134DA","D")
+    Call WriteViaLoader("2A70","02CED11577082707882AB32A8E2A9598342A7D0004020389FF45757F2775DF27","D")
+    Call WriteViaLoader("2A90","75BF27C4F9C59A2AAB00ED70012AC35D0C0FF38E00EDF9F76011F761118EE7AE","D")
+    Call WriteViaLoader("2AB0","8CE799F76211F763118EE7AE8CE7998EDCBB8CD5537702120225FE8CC89E0000","D")
+    Call WriteViaLoader("2EF8","A5A5A5A5A5A5A5A5A5A5A5A500FFFFFF7601D001F98CDE3A720504882ACE2A8E","D")
+         CleanCounter = CleanCounter + 1
+         PercentageClean = CleanCounter * 100 / 44
+    Call Sc.ProgressBox ("Cleaning Main Code..." & INT(PercentageClean) & "%.", CleanCounter, 44,"                                  Cleaning card")
+    Call WriteViaLoader("2F18","E6A0720C048824F42A8EE6A02202E377022701F9D5D08EE02F8824662E882406","D")
+    Call WriteViaLoader("2F38","2C8EC5078822F22E8CD8992D00F406E0938EE0F3771026034224938CE0D47223","D")
+    Call WriteViaLoader("2F58","038CC0C1062FAAFFFC2DD80628B4B4C4D50BF4D9002A0EC8322A8E2F8FC4D00E","D")
+    Call WriteViaLoader("2F78","AA006043000E440E0BC3D32A3D070FE2B4B4120BF932FE5507AA24C043000EAA","D")
+         CleanCounter = CleanCounter + 1
+         PercentageClean = CleanCounter * 100 / 44
+    Call Sc.ProgressBox ("Cleaning Main Code..." & INT(PercentageClean) & "%.", CleanCounter, 44, "                                  Cleaning card")
+    Call WriteViaLoader("2F98","2658130EF97DFF6002038CD9E51217021D7202078EDA993260CD5D030B10AA2A","D")
+    Call WriteViaLoader("2FB8","D01D6102060FE6770160E27480D3F98EDC9977022745C5AA0064AB00EDC35D0C","D")
+    Call WriteViaLoader("2FD8","0FF5AA297CAB00EDC35D100FF58829412A8800ED2C7210FD8E3EB2C5AA00EDD0","D")
+    Call WriteViaLoader("2FF8","0BAA0064130BAB0064C35D0C0FEE8824F42A720C047264158CDC54F9E2880100","D")
+    Call WriteViaLoader("3018","30E9D50BC5AA24F4D009AA2AE4130944000BC35D0C0FEE120B02032205E68CD0","D")
+         CleanCounter = CleanCounter + 1
+         PercentageClean = CleanCounter * 100 / 44
+    Call Sc.ProgressBox ("Cleaning Main Code..." & INT(PercentageClean) & "%.", CleanCounter, 44, "                                  Cleaning card")
+    Call WriteViaLoader("3038","0D225064AB00EDC35D100FF58800DD2A8800ED2C7206FD8E3EB298EE3AD42AD4","D")
+    Call WriteViaLoader("3058","29C4B4F975BFCF32BEAA3073D029AA3074D02A8EC37A9E2A8C3404C358CE77C7","D")
+    Call WriteViaLoader("3078","ECCFF8C358C358C358C358C358C7FBC358C358C358C358C358C358C358C358C3","D")
+    Call WriteViaLoader("3098","58C358C7F5CF56C806C6A4CCC43EDCC358CF08C983C358C358C358D0EED0EE30","D")
+    Call WriteViaLoader("30B8","143F20CE3F3710C6E4C358C358CEAD3BA1C9A0CEB83722C8A0C5498E311C9A2A","D")
+         CleanCounter = CleanCounter + 1
+         PercentageClean = CleanCounter * 100 / 44
+    Call Sc.ProgressBox ("Cleaning Main Code..." & INT(PercentageClean) & "%.", CleanCounter, 44, "                                  Cleaning card")
+    Call WriteViaLoader("30D8","D02B70012A9A2AD02C9E2C8ED27812088ED310D517120802088E23CED0178ED3","D")
+    Call WriteViaLoader("30F8","108CD25A7D87080FD200057D80080BF48A2ACE2D02020AF4CA2A270506032240","D")
+    Call WriteViaLoader("3118","E68CD242320855075A0788312F2A4B012A4900298CD1B03190F0382023693280","D")
+    Call WriteViaLoader("3138","CF382023632329D23810237C233D823800237CDFE1F038202369DFE1823800","D")
+    Call WriteViaLoader("3159","235982386023698E311C7D82080B258ED3AE770227058ED4079E194B17388C","D")
+    Call WriteViaLoader("3178","D3807D87080FE1000C7610B6032241E67D80080BED8CD36C220F8E32718824C8","D")
+         CleanCounter = CleanCounter + 1
+         PercentageClean = CleanCounter * 100 / 44
+    Call Sc.ProgressBox ("Cleaning Main Code..." & INT(PercentageClean) & "%.", CleanCounter, 44, "                                  Cleaning card")
+    Call WriteViaLoader("3198","3088009E32720206EB4D609E060A4261244C9F2402020314D39E4D609E060C4D","D")
+    Call WriteViaLoader("31B8","629F0607426124D3240001F9C5AA0063AB0090C35D0C0FF5C5AA0090AB0070C3","D")
+    Call WriteViaLoader("31D8","5D0C0FF5AA2931AB0090C35D100FF58829712A8800902C7210FD8E3EB2C5AA00","D")
+    Call WriteViaLoader("31F8","70D00EAA0090130EAB0090C35D100FEED72404C4D50BC5AA2EECD00EAA009043","D")
+    Call WriteViaLoader("3218","000E440E0BC35D0C0FED120B0202009B726315882EEC2A720C04E78800603088","D")
+         CleanCounter = CleanCounter + 1
+         PercentageClean = CleanCounter * 100 / 44
+    Call Sc.ProgressBox ("Cleaning Main Code..." & INT(PercentageClean) & "%.", CleanCounter, 44, "                                  Cleaning card")
+    Call WriteViaLoader("3238","24C832720206ED1217028022038E32714261FD98622A753F291260B7B7D0048E","D")
+    Call WriteViaLoader("3258","32717780FD0D88006030982A32420406ED00D4726015E700CE42170BD0178ED3","D")
+    Call WriteViaLoader("3278","D54C170B420B17F97440CF22038E3271126202042D040F01F98824E63088009E","D")
+    Call WriteViaLoader("3298","32720206EBF4CC9F610A057D0162021206E68824CA30EFB002DE2507B34D0062","D")
+    Call WriteViaLoader("32B8","06D698619F3262224CC702072231C7020222401D1706C1720C04882EF82A8EE6","D")
+         CleanCounter = CleanCounter + 1
+         PercentageClean = CleanCounter * 100 / 44
+    Call Sc.ProgressBox ("Cleaning Main Code..." & INT(PercentageClean) & "%.", CleanCounter, 44, "                                  Cleaning card")
+    Call WriteViaLoader("32D8","A03262D1FFC70658220C8E3271C5AA0060AB00DDC35D0C0FF5AA297CAB00DDC3","D")
+    Call WriteViaLoader("32F8","5D100FF58829412A8800DD2C7208FD8E3EB2C5AA0060D00EAA00DD130EAB00DD","D")
+    Call WriteViaLoader("3318","C35D0C0FEE72DD15882EE02A720C04E7882DE02A8E337C882E002A8E337C002B","D")
+    Call WriteViaLoader("3338","C7061A22118E327188006030882AD332721106ED882E202A8E337C000E882E40","D")
+    Call WriteViaLoader("3358","2A8E337C882E602A8E337C88009E308824E632720206ED12FF8824CA30EA75BF","D")
+         CleanCounter = CleanCounter + 1
+         PercentageClean = CleanCounter * 100 / 44
+    Call Sc.ProgressBox ("Cleaning Main Code..." & INT(PercentageClean) & "%.", CleanCounter, 44, "                                  Cleaning card")
+    Call WriteViaLoader("3378","CF89FF1422208E327188006030982A32722006EDF98824CA30EF2507F9B87260","D")
+    Call WriteViaLoader("3398","BE8E3537D4BE002512BE2D5C0BEF7640CFEB0019D7D78E338D2D030BEB000EC5","D")
+    Call WriteViaLoader("33B8","B5AB00DAC35D260FF812D706E722908CC38F52FF8E351F120B0239002C300100","D")
+    Call WriteViaLoader("33D8","60C5AA0101AB0061C33D600FF58824E63088009E32720206EBF4CC9F6202D300","D")
+    Call WriteViaLoader("33F8","088824CA30EFB002D48900AE768028F1F98CC27A5D0C06F9C5AA2951AB0100C3","D")
+         CleanCounter = CleanCounter + 1
+         PercentageClean = CleanCounter * 100 / 44
+    Call Sc.ProgressBox ("Cleaning Main Code..." & INT(PercentageClean) & "%.", CleanCounter, 44, "                                  Cleaning card")
+    Call WriteViaLoader("3418","5D100FF5882AD330EFD00BC5AA0063AB0100C33D0B0FF5C5AA0100AB0140C35D","D")
+    Call WriteViaLoader("3438","100FF58829612A8801002C7204FD8E3EB2223C8E3ECBD5DB32DBC2A801002C8E","D")
+    Call WriteViaLoader("3458","ECA58EECA5C59A2CD009AA014013099B2CF4EB102CAB0140D32CC35D100FE7D3","D")
+    Call WriteViaLoader("3478","DB7D04DB0FD28801402C8EECA58EECA5226A8E3ECBD509C5AA0140D00BAA0148","D")
+    Call WriteViaLoader("3498","130BAB0140D00BA82ADC30EF130B440009C35D080FE21209020D8EDED97701B8","D")
+         CleanCounter = CleanCounter + 1
+         PercentageClean = CleanCounter * 100 / 44
+    Call Sc.ProgressBox ("Cleaning Main Code..." & INT(PercentageClean) & "%.", CleanCounter, 44, "                                  Cleaning card")
+    Call WriteViaLoader("34B8","037217C689FF49C5AA0100D00BA82DE030EF130BAB0100C35D400FECC5A82AD4","D")
+    Call WriteViaLoader("34D8","30EFAB00DDC35D080FF3882AD330EFC01260B7B76CD0248800632A4B012AC53D","D")
+    Call WriteViaLoader("34F8","240B059A2AAB00DDD32AC35D080FF08E0100C5AA00DDD00BAA00A0130BAB00A0","D")
+    Call WriteViaLoader("3518","C35D080FEE009DD50BC5AA2EE0D00EAA2EF8130E44000BC35D0C0FEE120BF98E","D")
+         CleanCounter = CleanCounter + 1
+         PercentageClean = CleanCounter * 100 / 44
+    Call Sc.ProgressBox ("Cleaning Main Code..." & INT(PercentageClean) & "%.", CleanCounter, 44, "                                  Cleaning card")
+    Call WriteViaLoader("3538","3ED68A288B0207882F042A8EE68E8824CA30EFD01625072D03061C8E36A17260","D")
+    Call WriteViaLoader("3558","0C7202128EE4098EE41A882E802A8E36C18E36A18901212D04061E8E36A1882E","D")
+    Call WriteViaLoader("3578","803088010032726006EB72600C7202128EE41A8E36BD8900FF2D070259D5E926","D")
+    Call WriteViaLoader("3598","0102D9E98E36A18829812A8EC4AEC542E9EA5D060B02D9EAAA2EE015EAAB00DD","D")
+    Call WriteViaLoader("35B8","C35D0C0FEA222D8E3ECB8800DD2A22608EEBEF226A8E3ECBC5AA0100AB0060C3","D")
+         CleanCounter = CleanCounter + 1
+         PercentageClean = CleanCounter * 100 / 44
+    Call Sc.ProgressBox ("Cleaning Main Code..." & INT(PercentageClean) & "%.", CleanCounter, 44, "                                  Cleaning card")
+    Call WriteViaLoader("35D8","5D200FF572600C7202128EE4098EE41A8E36BD8C36907248948EED82D5DB32DB","D")
+    Call WriteViaLoader("35F8","5D400B06A82DE02A00225D480B06A82A942A00185D500B06A82A942A000E5D51","D")
+    Call WriteViaLoader("3618","0B06A82A832A0004A82DCF2A982A30EF8EEDA4C3129502095DB10FC4C88EEE89","D")
+    Call WriteViaLoader("3638","C4129606B9D1DB5DB10FB3C5AA0088AB00DDC35D0C0FF5AA297CAB00DDC35D10","D")
+         CleanCounter = CleanCounter + 1
+         PercentageClean = CleanCounter * 100 / 44
+    Call Sc.ProgressBox ("Cleaning Main Code..." & INT(PercentageClean) & "%.", CleanCounter, 44, "                                  Cleaning card")
+    Call WriteViaLoader("3658","0FF58829412A8800DD2C7208FD8E3EB2C5AA0088D00EAA00DD130EAB00DDC35D","D")
+    Call WriteViaLoader("3678","0C0FEE72DD15882EF82A720C04E78E351F020852028E3EA31216B38824CA30EA","D")
+    Call WriteViaLoader("3698","B5882F042A8EE68EF9882E202A726004C5982A349A34AB0100700134C33D040F","D")
+    Call WriteViaLoader("36B8","F38E36C4F9882E202A7260048801002C420422C59A2CAB006070012CC35D200F","D")
+         CleanCounter = CleanCounter + 1
+         PercentageClean = CleanCounter * 100 / 44
+    Call Sc.ProgressBox ("Cleaning Main Code..." & INT(PercentageClean) & "%.", CleanCounter, 44, "                                  Cleaning card")
+    Call WriteViaLoader("36D8","F388006030982A32722006ED7C202204E2F92D080604C58E3EA38CC3A3D002A6","D")
+    Call WriteViaLoader("36F8","013DFC80351302F97D54BE06087D400902032200E68CC1C9E2D0C18ED06A7260","D")
+    Call WriteViaLoader("3718","157240048826102AE7F9760112178ED06A770125058ECEFF00288ED04D882610","D")
+    Call WriteViaLoader("3738","2A7701101172400C8EE4098EE41A8801002A7601120DC59A2AE170012AC35D40","D")
+    Call WriteViaLoader("3758","0FF5F998C3AB8837D22A8E379BC5AA0088E1C35D080FF7F9D50BF93203AB0164","D")
+    Call WriteViaLoader("3778","B81202AB016CB4F92240522DAB0100C35D3F0FF81210AB01008826902A8E379F","D")
+         CleanCounter = CleanCounter + 1
+         PercentageClean = CleanCounter * 100 / 44
+    Call Sc.ProgressBox ("Cleaning Main Code..." & INT(PercentageClean) & "%.", CleanCounter, 44, "                                  Cleaning card")
+    Call WriteViaLoader("3798","8C376576011014C59A2A7D5ABE0601B2AB00A4C370012A5D080FED7248948EED","D")
+    Call WriteViaLoader("37B8","827D44BE020D7D56BE02088E37DA8E37DA00068E37F38E37F3F9E44425024554","D")
+    Call WriteViaLoader("37D8","14D4C5AA01008EEDA4C35D400FF5C5AA00A48EEDA4C35D080FF5F9C5A8010030","D")
+    Call WriteViaLoader("37F8","EE8EEDA4C35D2D0FF3AA01008EEDA4C35D400FF5C5AA00A48EEDA4C35D080FF5","D")
+    Call WriteViaLoader("3818","F9D513D50B7D36BE0201F972041E8E386622368E3CA000F28EDC0A88006230EE","D")
+         CleanCounter = CleanCounter + 1
+         PercentageClean = CleanCounter * 100 / 44
+    Call Sc.ProgressBox ("Cleaning Main Code..." & INT(PercentageClean) & "%.", CleanCounter, 44, "                                  Cleaning card")
+    Call WriteViaLoader("3838","272004302987D78A2ACE27010776401E03223EE68E3866F9302987D78A2ACE27","D")
+    Call WriteViaLoader("3858","0203223DE6D51E74801E8E3866F97201D977801E037200D98E39168E38B18838","D")
+    Call WriteViaLoader("3878","912A77801E048838A12AC59A2AAB00A0C370012A5D100FF3F950E75FA407240E","D")
+    Call WriteViaLoader("3898","C5A87738C1CBE7B663B3029E192FC4CF365AB16C722D1DB1BEF70038F7003AF7","D")
+    Call WriteViaLoader("38B8","803DFF5207F7083D8E38D9C704FA8839012C77801E0488390A2C8E38EE8E38D9","D")
+         CleanCounter = CleanCounter + 1
+         PercentageClean = CleanCounter * 100 / 44
+    Call Sc.ProgressBox ("Cleaning Main Code..." & INT(PercentageClean) & "%.", CleanCounter, 44, "                                  Cleaning card")
+    Call WriteViaLoader("38D8","F99A2AD0059A2E1305A6013DFC213070012A70012EF99A2C213270012C9A2C21","D")
+    Call WriteViaLoader("38F8","3470012C9A2C213DF902622C02403402442601642D01603401422F03403C121E","D")
+    Call WriteViaLoader("3918","25072704022504B2BC8826602A4B002A790029883F582E4B002E79002DF97410","D")
+    Call WriteViaLoader("3938","B6F9","D")
+    Call WriteViaLoader("393D","2240AB0100C35D400FF88E3ED6C5AA2688D024AA3F801324AB00A4","D")
+    Call WriteViaLoader("3958","C35D080FEE8E37B3C5D509E2D002AA00881302440009C35D080FF0120902BFF9","D")
+    Call WriteViaLoader("3978","8E3ED67D40BE061A8824503088009032720406EB129014910208720206880090","D")
+         CleanCounter = CleanCounter + 1
+         PercentageClean = CleanCounter * 100 / 44
+    Call Sc.ProgressBox ("Cleaning Main Code..." & INT(PercentageClean) & "%.", CleanCounter, 44, "                                  Cleaning card")
+    Call WriteViaLoader("3998","30E58E3A8375EFB68E3AE48E3F8872970A920A8EE7D1726A0A920A520C8E3AFC","D")
+    Call WriteViaLoader("39B8","7D67080601E25208A6013DFC80358E3CA0C704F4C5AA00A02DFB0F022CFBAB00","D")
+    Call WriteViaLoader("39D8","7CC35D080FEF12D988E91F30B0020488EA3F3098302A72A30A920A12D98EE89F","D")
+    Call WriteViaLoader("39F8","726A0A920AC5E2D007A8015C30EE1307AB0060C35D08020D7D670802E95D050F","D")
+    Call WriteViaLoader("3A18","E5D50700E4F7803DFFC5F7083DAA0060A6013DFC2130C35D070FF28839072C77","D")
+         CleanCounter = CleanCounter + 1
+         PercentageClean = CleanCounter * 100 / 44
+   Call Sc.ProgressBox ("Cleaning Main Code..." & INT(PercentageClean) & "%.", CleanCounter, 44, "                                  Cleaning card")
+    Call WriteViaLoader("3A38","801E048839102C8E38EE1267A6013DFC2130C5A6013DFC8035AB007CC35D080F","D")
+    Call WriteViaLoader("3A58","F2982A3072A30A920A12D9D5038EE8D5726A0A920A7D0803F406C27AB0021B77","D")
+    Call WriteViaLoader("3A78","021E0552018E3EA38CDCDF5208A6013DFC80358E3C96C704F4F97410B68800B0","D")
+    Call WriteViaLoader("3A98","2A88003B2E7202078EDBD87D40BE06D8F7803D88390A2CF7083D8E38EEF7283D","D")
+    Call WriteViaLoader("3AB8","C5AA00A0A6013DFC2130C35D070605F7243D00EDF7283D5D0F0FE68839132C8E","D")
+         CleanCounter = CleanCounter + 1
+         PercentageClean = CleanCounter * 100 / 44
+    Call Sc.ProgressBox ("Cleaning Main Code..." & INT(PercentageClean) & "%.", CleanCounter, 44, "                                  Cleaning card")
+    Call WriteViaLoader("3AD8","38EE12AFA6013DFC2130009C8839042C77801E0488390D2C8E38EE12D8A6013D","D")
+    Call WriteViaLoader("3AF8","FC2130F9B58E3CA012D8C704F8F932117D60BE06068EFFBC2317F912BE250F2D","D")
+    Call WriteViaLoader("3B18","0A061112D402038CFFB67620C1038CFF9E8CFFAE7D56BE02F58CFFA67D60BE06","D")
+    Call WriteViaLoader("3B38","05882E202AF912D402058825D02AF97620C1058825502AF98825902AF97D60BE","D")
+    Call WriteViaLoader("3B58","061A8E338D2D030605882E7F2CF92D040605882E4F2CF988007F2CF988264F2C","D")
+         CleanCounter = CleanCounter + 1
+         PercentageClean = CleanCounter * 100 / 44
+    Call Sc.ProgressBox ("Cleaning Main Code..." & INT(PercentageClean) & "%.", CleanCounter, 44, "                                  Cleaning card")
+    Call WriteViaLoader("3B78","F97D60BE061D8E338D2D030606F4CA2C2E4FF92D040606F4CA2C2E1FF9F4CA2C","D")
+    Call WriteViaLoader("3B98","005FF9F4CA2C260FF98E3ED67710B82FD508D5B87708D0087216087404B80051","D")
+    Call WriteViaLoader("3BB8","7640B54D880176308800A0327208068EE5B7D5A8D5A97401B88E3C74890096C5","D")
+    Call WriteViaLoader("3BD8","AA24F4D00BAA00A043000BAA2AE4130BAB00A0C35D0C0FE88EDED98EDF617D17","D")
+    Call WriteViaLoader("3BF8","C606037204B87708B8037402D17601B80FC5B5AB00A0AB0088C35D0A0FF50037","D")
+    Call WriteViaLoader("3C18","C58801762CA6013DFC80358E3CA0A8017630EE13D89B2C70012CC35D0A0FE688","D")
+    Call WriteViaLoader("3C38","01762CC59A2CAB00A0AB0088B59B2CC370012C5D0A0FED7740B7038E3D907601","D")
+         CleanCounter = CleanCounter + 1
+         PercentageClean = CleanCounter * 100 / 44
+    Call Sc.ProgressBox ("Cleaning Main Code..." & INT(PercentageClean) & "%.", CleanCounter, 44, "                                  Cleaning card")
+    Call WriteViaLoader("3C58","B604D5A8D5A98E3C74C5AA0088AB00A0C35D080FF598D6C398A7D6F942B5AA12","D")
+    Call WriteViaLoader("3C78","B82507D0AB32C734C802057401D2D5084208ACC5AA00A0E1C35D0D0FF7F9A601","D")
+    Call WriteViaLoader("3C98","3DFC21308E3CA0F9B8C8D5DBD5DCD0D87B05DC32DBAA00A81BD8AB00A8D0DAAA","D")
+    Call WriteViaLoader("3CB8","00A013DAAB00A013DC251FC0AA3CF2D0DA32DB5306AA00A813DAAB00A8B0BDD0","D")
+    Call WriteViaLoader("3CD8","DA32DB5305AA00A01CDAAB00A04300D8D3DB7D08DB0FB9C4B4F9BF12939242AF","D")
+    Call WriteViaLoader("3CF8","E7E3B2C6B89180B4E8739EF75DFDA082F96F25177D0B55970C8022678EE06F74","D")
+         CleanCounter = CleanCounter + 1
+         PercentageClean = CleanCounter * 100 / 44
+    Call Sc.ProgressBox ("Cleaning Main Code..." & INT(PercentageClean) & "%.", CleanCounter, 44, "                                  Cleaning card")
+    Call WriteViaLoader("3D18","042522088EE06F8E3A838E3AE48E3F8872970A920A8EE7D1726A0A920A520A8E","D")
+    Call WriteViaLoader("3D38","3AFC8839012C8E38EEC5A6013DFC80358E3C9612D88EE06FC35D080FEDF98EFA","D")
+    Call WriteViaLoader("3D58","27B006F98800683088245832720406EDC5AA2688D007AA3F80430007AA006013","D")
+    Call WriteViaLoader("3D78","07AB0060C35D080FE87260158826902A720804E77420D1F9882460308800ED32","D")
+    Call WriteViaLoader("3D98","720406EB720407D5063206AA00A0D0045503AA00EDD0053206C35507AA00A04B","D")
+         CleanCounter = CleanCounter + 1
+         PercentageClean = CleanCounter * 100 / 44
+    Call Sc.ProgressBox ("Cleaning Main Code..." & INT(PercentageClean) & "%.", CleanCounter, 44, "                                  Cleaning card")
+    Call WriteViaLoader("3DB8","0005C85503AA00EDD00932043C00553F8E3E0843000512041309BDB0BDC08E3E","D")
+    Call WriteViaLoader("3DD8","08BE1B05C4AB00A0C5D8F0AA00EDD002B0BFD003B4D8022580BE1403AB00EDC3","D")
+    Call WriteViaLoader("3DF8","770401E7B4D3067708069ED7070498F98EFFB67D00D406F78CFF9E0012010125","D")
+    Call WriteViaLoader("3E18","002008001E010124100808001A0101240602080013010125202008002D010124","D")
+    Call WriteViaLoader("3E38","08040800D0010124650108002E010124682008004E0101245C04080058010124","D")
+         CleanCounter = CleanCounter + 1
+         PercentageClean = CleanCounter * 100 / 44
+    Call Sc.ProgressBox ("Cleaning Main Code..." & INT(PercentageClean) & "%.", CleanCounter, 44, "                                  Cleaning card")
+    Call WriteViaLoader("3E58","E0010800F3010124A40408001901012464010800FE0101240C04080041010121","D")
+    Call WriteViaLoader("3E78","060408C9F400000045010124881C0800F8010120240908CA360000CA750000CA","D")
+    Call WriteViaLoader("3E98","B100000044010124E80C08B8A82AD02A9A2AB302038EE68EB4F9223C8E3ECB42","D")
+    Call WriteViaLoader("3EB8","04FED50E8EECA5D30E4DFD0E0FF642FE04226AD00A920AF98E3ED68CC1A47202","D")
+    Call WriteViaLoader("3ED8","058CC204E2C07604D10375BFD375F7CF8CC9597601CF1B2D7F06178E298C8EC2","D")
+    Call WriteViaLoader("3EF8","4C8A2F04020A882E202A72C0048EE6A0227F7D5EBE060E7D01120609D31D7D08","D")
+    Call WriteViaLoader("3F18","1D060222018CC00B770212108ED0EE8EDED97608B80375BFB48CCC4E8CCC3675","D")
+         CleanCounter = CleanCounter + 1
+         PercentageClean = CleanCounter * 100 / 44
+    Call Sc.ProgressBox ("Cleaning Main Code..." & INT(PercentageClean) & "%.", CleanCounter, 44, "                                  Cleaning card")
+    Call WriteViaLoader("3F38","FBB48CD59FF4CA2CCBB90603728646F9","D")
+    Call WriteViaLoader("3F58","12937D04060603751F938E2856D093F9","D")
+    Call WriteViaLoader("3F88","727B0252058E3FB8722902000A520FAA00A0BCF008D0028E3FB3AA00A0823FDF","D")
+    Call WriteViaLoader("3FA8","C522C72306724B024B02005203A40220AA00AA1B02AB00AAAA009FCAF3F91E72","D")
+    Call WriteViaLoader("3FC8","CB250299A866F0DA234B00F8F5A0ABA70005009FCAB9F95203AA00A0D002AA","D")
+    Call WriteViaLoader("3FE8","AC4B0002AA3F9413022B5ABE236BAB00ACCAE6A3FD20F9","D")
+         CleanCounter = CleanCounter + 1
+         PercentageClean = CleanCounter * 100 / 44
+    Call Sc.ProgressBox ("Cleaning PPV, Tiers..." & INT(PercentageClean) & "%.", CleanCounter, 44, "                                  Cleaning card")
+    Call WriteViaLoader("2024","000000000000000000000000","E")
+    Call WriteViaLoader("2030","0000000000000000000000000000000000000000000000000000000000000000","E")
+    Call WriteViaLoader("2050","0000000000000000000000000000000000000000000000000000000000000000","E")
+    Call WriteViaLoader("2070","0000000000000000000000000000000000000000000000000000000000000000","E")
+    Call WriteViaLoader("2090","0000000000000000000000000000000000000000000000000000000000000000","E")
+    Call WriteViaLoader("20B0","0000000000000000000000000000000000000000000000000000000000000000","E")
+         CleanCounter = CleanCounter + 1
+         PercentageClean = CleanCounter * 100 / 44
+    Call Sc.ProgressBox ("Cleaning PPV, Tiers..." & INT(PercentageClean) & "%.", CleanCounter, 44, "                                  Cleaning card")
+    Call WriteViaLoader("20D0","0000000000000000000000000000000000000000000000000000000000000000","E")
+    Call WriteViaLoader("20F0","0000000000000000000000000000000000000000000000000000000000000000","E")
+    Call WriteViaLoader("2110","0000000000000000000000000000000000000000000000000000000000000000","E")
+    Call WriteViaLoader("2130","0000000000000000000000000000000000000000000000000000000000000000","E")
+         CleanCounter = CleanCounter + 1
+         PercentageClean = CleanCounter * 100 / 44
+    Call Sc.ProgressBox ("Cleaning PPV, Tiers..." & INT(PercentageClean) & "%.", CleanCounter, 44, "                                  Cleaning card")
+    Call WriteViaLoader("2150","0000000000000000000000000000000000000000000000000000000000000000","E")
+    Call WriteViaLoader("2170","0000000000000000000000000000000000000000000000000000000000000000","E")
+    Call WriteViaLoader("2190","0000000000000000000000000000000000000000000000000000000000000000","E")
+    Call WriteViaLoader("21B0","0000000000000000000000000000000000000000000000000000000000000000","E")
+    Call WriteViaLoader("21D0","0000000000000000000000000000000000000000000000000000000000000000","E")
+    Call WriteViaLoader("21F0","0000000000000000000000000000000000000000000000000000000000000000","E")
+         CleanCounter = CleanCounter + 1
+         PercentageClean = CleanCounter * 100 / 44
+    Call Sc.ProgressBox ("Cleaning PPV, Tiers..." & INT(PercentageClean) & "%.", CleanCounter, 44, "                                  Cleaning card")
+    Call WriteViaLoader("2210","0000000000000000000000000000000000000000000000000000000000000000","E")
+    Call WriteViaLoader("2230","0000000000000000000000000000000000000000000000000000000000000000","E")
+    Call WriteViaLoader("2250","0000000000000000000000000000000000000000000000000000000000000000","E")
+    Call WriteViaLoader("2270","0000000000000000000000000000000000000000000000000000000000000000","E")
+    Call WriteViaLoader("2290","0000000000000000000000000000000000000000000000000000000000000000","E")
+    Call WriteViaLoader("22B0","0000000000000000000000000000000000000000000000000000000000000000","E")
+         CleanCounter = CleanCounter + 1
+         PercentageClean = CleanCounter * 100 / 44
+    Call Sc.ProgressBox ("Cleaning PPV, Tiers..." & INT(PercentageClean) & "%.", CleanCounter, 44, "                                  Cleaning card")
+    Call WriteViaLoader("22D0","0000000000000000000000000000000000000000000000000000000000000000","E")
+    Call WriteViaLoader("22F0","0000","E")
+    Call WriteViaLoader("2DC0","01172F15FFFF01FF07FF504C45415345205354414E4420425900000000000000","E")
+    Call WriteViaLoader("2DE0","0000000000000000000000000000000000000000000000000000000000000000","E")
+    Call WriteViaLoader("2E00","0000000000000000000000000000000000000000000000000000000000000000","E")
+    Call WriteViaLoader("2E20","0000000000000000000000000000000000000000000000000000000000000000","E")
+    Call WriteViaLoader("2E40","0000000000000000000000000000000000000000000000000000000000000000","E")
+    Call WriteViaLoader("2E60","0000000000000000000000000000000000000000000000000000000000000000","E")
+    Call WriteViaLoader("2E80","0000000000000000000000000000000000000000000000000000000000000000","E")
+    Call WriteViaLoader("2EA0","0000000000000000000000000000000000000000000000000000000000000000","E")
+    Call WriteViaLoader("2EC0","0000000000000000000000000000000000000000000000000000000000000000","E")
+         CleanCounter = CleanCounter + 1
+         PercentageClean = CleanCounter * 100 / 44
+    Call Sc.ProgressBox ("Cleaning Complete..." & INT(PercentageClean) & "%.", CleanCounter, 44, "                                  Cleaning card")
+
+    Call InstallUpdates()        ' Clean USW portion of code
+    Call Sc.ProgressBox ("", 0, 0, "")
+    ReadMode = "Additionals"
+
+    FixAltEE = 1
+End Sub
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+Sub InstallUpdates()
+
+    Dim USWH
+    Dim USWL
+    Dim USW
+    Dim Updates(8)
+
+    Sc.Write("06C20124C88200")
+    Sc.Read(&h02)
+    Sc.Read(&h03)
+
+    USWH = Sc.GetByte(0)
+    USWL = Sc.GetByte(1)
+    USWH = HexString(USWH Xor HexToDec(XORedByte(0)),2)
+    USWL = HexString(USWL Xor HexToDec(XORedByte(1)),2)
+    USW  = USWH & USWL
+    USW  = HexToDec(USW)
+
+    If USW = &h0000 OR USW = &h0001 Then
+        Call WriteViaLoader("2B00","0000000000000000000000000000000000000000000000000000000000000000","E")
+        Call WriteViaLoader("2B20","0000000000000000000000000000000000000000000000000000000000000000","E")
+        Call WriteViaLoader("2B40","0000000000000000000000000000000000000000000000000000000000000000","E")
+        Call WriteViaLoader("2B60","0000000000000000000000000000000000000000000000000000000000000000","E")
+        Call WriteViaLoader("2B80","0000000000000000000000000000000000000000000000000000000000000000","E")
+        Call WriteViaLoader("2BA0","0000000000000000000000000000000000000000000000000000000000000000","E")
+        Call WriteViaLoader("2BC0","0000000000000000000000000000000000000000000000000000000000000000","E")
+        Call WriteViaLoader("2BE0","0000000000000000000000000000000000000000000000000000000000000000","E")
+        Call WriteViaLoader("2C00","0000000000000000000000000000000000000000000000000000000000000000","E")
+        Call WriteViaLoader("2C20","0000000000000000000000000000000000000000000000000000000000000000","E")
+        Call WriteViaLoader("2C40","0000000000000000000000000000000000000000000000000000000000000000","E")
+        Call WriteViaLoader("2C60","0000000000000000000000000000000000000000000000000000000000000000","E")
+        Call WriteViaLoader("2C80","0000000000000000000000000000000000000000000000000000000000000000","E")
+        Call WriteViaLoader("2CA0","0000000000000000000000000000000000000000000000000000000000000000","E")
+        Call WriteViaLoader("2CC0","0000000000000000000000000000000000000000000000000000000000000000","E")
+        Call WriteViaLoader("2CE0","0000000000000000000000000000000000000000000000000000000000000000","E")
+        Call WriteViaLoader("2D00","0000000000000000000000000000000000000000000000000000000000000000","E")
+        Call WriteViaLoader("2D20","0000000000000000000000000000000000000000000000000000000000000000","E")
+        Call WriteViaLoader("2D40","0000000000000000000000000000000000000000000000000000000000000000","E")
+        Call WriteViaLoader("2D60","0000000000000000000000000000000000000000000000000000000000000000","E")
+        Call WriteViaLoader("2D80","0000000000000000000000000000000000000000000000000000000000000000","E")
+        Call WriteViaLoader("2DA0","0000000000000000000000000000000000000000000000000000000000000000","E")
+    End If
+
+    If USW => &h0100 Then
+        Call WriteViaLoader("2CE8","7D40BE0652F7803DFFFFC5F7083DAA2CE0A6013DFC2130C35D070FF28839072C","D")
+        Call WriteViaLoader("2D08","8E38EEAA2CE0A6013DFC2130","D")
+    End If
+
+    If USW => &h0200 Then
+        Call WriteViaLoader("2D14","D524C5AA24D8D002AA24C0430002AA2658430002A6013DFC80351302440024C3","D")
+        Call WriteViaLoader("2D34","5D030FDF122406037404288CC1C9","D")
+    End If
+
+    If USW => &h0300 Then
+        Call WriteViaLoader("2D42","760428038CD5138C2024","D")
+        Call WriteViaLoader("2CE0","21513C515063DE1E","D")
+    End If
+
+    If USW => &h0400 Then
+        Call WriteViaLoader("370E","2CE8","D")
+        Call WriteViaLoader("270F","2D42","D")
+        Call WriteViaLoader("2D4C","22F2008B23D50031","D")
+    End If
+
+    If USW => &h0500 Then
+        Call WriteViaLoader("2D54","2698007A271103BD2CD000102CE800642D4C00402D8C002B","D")
+        Call WriteViaLoader("2D6C","2F0801323039011E315907E1393D060B3F5800103F8800773FFF00013FFF0001","D")
+    End if
+
+    If USW => &h0600 Then
+        Call WriteViaLoader("2D8C","7D08E3060342DEDD7D10E3021DD3E370042EDEDD07EAC59A2EAB002970012EC3","D")
+        Call WriteViaLoader("2DAC","5704F470FF2C70FC2EC3F9","D")
+        Call WriteViaLoader("2CD0","5503AA013AD0DBD524882D482ED5E3F9","D")
+    End If
+
+    If USW = &h0700 Then
+        Call WriteViaLoader("2902","2932","D")
+        Call WriteViaLoader("2932","22C2B8227AB888305C43F9","D")
+        Call WriteViaLoader("2CEB","00","D")
+        Call WriteViaLoader("2D4A","C27A","D")
+    End If
+
+End Sub
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+Sub ExtractCardInfo()
+
+    Call WDTMR()
+    Call Byte_Array()
+
+End Sub
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+Sub WriteViaLoader(address,data,options)
+
+    ' Write up to 32 bytes at a time
+
+    Dim dLen
+    Dim tlen
+    Dim parm1
+    Dim parm2
+    Dim i,t
+    Dim datalen
+    Dim addresslow
+    Dim Xored
+    Dim datarray(31)
+    Dim datalength
+
+    dLen  = Len(data)
+    dLen  = dLen / 2
+    tLen  = Len(data)
+    tLen  = tlen + 16
+    tLen  = tlen / 2
+    tLen  = HexString(tlen,2)
+    parm1 = Hex(dLen + &hC2)
+    parm2 = Hex(dLen + &h7F)
+
+    If Ucase(options) = "E" Then
+        'Convert and Split up data String to an array
+
+        t = 0
+        For i = 1 To Len(data) Step 2
+            tmp = Mid(data, i, 2)
+            datarray(t) = (HexToDec(tmp))
+            t = (t + 1)
+        Next
+
+        addresslow = HexToDec(Mid(address, 3, 2))     'Get lower byte for offset
+        addresslow = (addresslow And &h7)             'Strip bits for offset 0-7
+
+        If UBound(datarray) > 32 Then
+            Exit Sub
+        End If
+
+        datalength = (Len(data) / 2)
+
+        'Encrypt
+        t = 0
+        For i = addresslow To datalength + addresslow - 1
+                Xored = Xored & HexString(datarray(t) Xor HexToDec(XoredByte(i)), 2)
+            t = (t + 1)
+        Next
+
+        data = Xored
+    End if
+
+    Sc.Write(tLen & " " & parm1 & " " & parm2 & " " & address & " " & data & " " & "0EFF8000")
+    Sc.Read(&h03)
+
+End Sub
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+Sub WDTMR()
+
+    Dim RetValue
+
+    Sc.Write("05150E108000")    'SET WDTMR
+    Sc.Delay(80)
+    Sc.Read(&h02)
+    RetValue = Sc.GetByte(&h01)
+    Sc.Read(RetValue)
+
+End Sub
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+Sub IsCardPresent()
+
+    Dim RetValue
+    Dim GotInput
+
+    Do
+        Sc.Write("A0")                ' Turn the LED off
+        Sc.Write("80")                ' Is card present?
+        Sc.Delay(100)
+        If Sc.BytesInBuffer > 0 Then
+            Sc.Read(&h01)
+            RetValue = Sc.GetByte(0)
+        End If
+
+        If RetValue = &h0 Then
+            Call Sc.ProgressBox ("*** Please insert your card... ***", 1, 999, "                            Card is not being detected!")
+            GotInput = False
+        Else
+            If RetValue = &hFF Then
+                GotInput = True
+            Else
+                If RetValue <> &h0 or RetValue <> &hFF Then
+                    Sc.Write("A0")                ' turn the LED off
+                    Sc.Write("020200")
+                    Sc.Delay(100)
+                    If Sc.BytesInBuffer > 1 Then
+                        Sc.Read(&h02)
+                        GotInput = False
+                    Else
+                        GotInput = False
+                    End If
+                End If
+            End If
+        End If
+    Loop Until GotInput = True
+
+End Sub
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+Function HexString(Number,Length)
+
+    ' This function takes 2 arguments, a number and a length.  It converts the decimal
+    ' number given by the first argument to a Hexidecimal string with its length
+    ' equal to the number of digits given by the second argument
+
+    Dim RetVal
+    Dim CurLen
+
+    RetVal=Hex(Number)
+    CurLen=Len(RetVal)
+    If CurLen<Length Then
+        RetVal=String(Length-CurLen,"0") & RetVal
+    End If
+    HexString=RetVal
+
+End Function
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+Function HexToDec(HexNumber)
+
+    ' This function takes a string as input, assuming it to be a Hexidecimal string,
+    ' and converts it to a decimal number.
+
+    HexNumber=Replace(UCase(HexNumber)," ","")
+    HexToDec=CLng("&H"+HexNumber)
+
+End Function
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+Function GetATR ()
+
+    Dim temp
+
+    Call Sc.ProgressBox(0,0,0,0)
+    Sc.Write("06100E10019300")
+    Sc.Delay(500)
+    Sc.Read(&h02)
+    temp = Sc.GetByte(&h01)
+    Sc.Read (temp)
+
+    If (temp <> 20) Then
+        GetATR = False
+    Else
+        GetATR = True
+    End If
+
+End Function
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+'
+'Bootcard for unlooping
+'
+' Final Mod by johnnyL
+'
+Function BootCard()
+
+    RANDOMIZE TIMER
+    sc.verbose = False
+
+DO
+
+  katr=0
+  mtries = mtries + 1
+  if mtries = 5000 then
+     call RndGr()
+     mtries = 0
+  end if
+
+  boot = 0
+
+    If Unloopchoice = 1 then       'omega scanner
+        '==============================================
+        'vcc + last 2 glitch 4 bootloader
+    Do
+    D2 = INT(RND * &h10) + &h29'41-56
+    Loop until D2 = &h29 or D2 = &h2B or D2 = &h2C or D2 = &h2E or D2 = &h31 or D2 = &h32 or D2 = &h33
+    D3 = INT(RND * &h03) + &h08'8-10
+    D4 = INT(RND * &h07) + &h8A'138-144
+    D9 = INT(RND * &h07) + &h35C'860-866
+
+           glchs = glchs +1
+           If glchs > 19 Then
+              atrlock = 0
+              Call Card_Reset
+           End if
+'==========================================
+' Atr glich point search range
+
+    if atrlock = 0 then
+        D7 = INT(RND * &h02) +&h1D '29-30
+        D8 = INT(RND * &h05) + &h38'56-60
+        Do
+        D1 = INT(RND * &h39) + &hB8'180-199
+        Loop until D1 = &hB8 or D1 = &hC2 or D1 = &hC3 or D1 = &hC4 or D1 = &hC6 or D1 = &hC7 or D1 = &hC8 or D1 = &HD6           ' OR D1 = &HF0
+'                        184          194          195          196          198          199          200          214           '          240
+        D5 = &h25E
+        Do
+        D6 = INT(RND * &h22) + &h38'56-89
+        Loop Until D6 > &h37 and D6 < &h44 or D6 = &h4C or D6 = &h4F or D6 = &h51 or D6 = &h53 or D6 = &h56 or D6 = &h57
+                                                                                                                                                                                                                                                             glchs = 0
+                                                                                                                                                                                                                                                             chglch = 0
+        end if
+    End If
+
+
+    If Unloopchoice = 2 then      'Mod2 range
+        '==============================================
+        'vcc + last 2 glitch 4 bootloader
+        D2 = INT(RND * &h08) + &h34      ' 52 -  59
+        D3 = INT(RND * &h05) + &h07      '  7 -  11
+        D4 = INT(RND * &h09) + &h97      '151 - 159
+        D9 = INT(RND * &h07) + &h35c     '860 - 866
+
+           glchs = glchs +1
+           If glchs > 19 Then
+              atrlock = 0
+              Call Card_Reset
+           End if
+        '==========================================
+        ' Atr glich point search range
+
+        if atrlock = 0 then
+        D7 = INT(RND * &h06) +&h19   ' 25 -  30
+        D8 = INT(RND * &h03) + &h39  ' 57 -  59
+        D1 = INT(RND * &h03) + &hB4  '180 - 183
+        D5 = INT(RND * &h03) + &h25c '604 - 606
+        D6 = INT(RND * &h07) + &h3c  ' 60 -  66
+                                                                                     glchs = 0
+                                                                                     chglch = 0
+        end if
+    End If
+
+    If Unloopchoice = 3 then    'Mod3 range
+        '==============================================
+        'vcc + last 2 glitch 4 bootloader
+        D2 = &h3C                    ' 60
+        D3 = INT(RND * &h05) + &h07  '  7 -  11<<<<The Hex value of 07 is added at a random number up to 04 not 5 cuz it always rounds down ie 4.87755 = 4
+        D4 = INT(RND * &h21) + &h83  '131 - 163
+        D9 = INT(RND * &h07) + &h35c '860 - 866
+
+           glchs = glchs +1
+           If glchs > 19 Then
+              atrlock = 0
+              Call Card_Reset
+           End if
+        '==========================================
+        ' Atr glich point search range
+
+        if atrlock = 0 then
+        D7 = &h1e  ' 30
+        D8 = INT(RND * &h0b) + &h3a  ' 58 -  68
+        D1 = INT(RND * &h0b) + &ha8  '168 - 178
+        D5 = &h25d '605
+        D6 = &h43                    ' 67
+                                                                                     glchs = 0
+                                                                                     chglch = 0
+        end if
+    End If
+
+    If Unloopchoice = 4 then    'Mod4 range
+        '==============================================
+        'vcc + last 2 glitch 4 bootloader
+        D2 = INT(RND * &h07) + &h38  ' 56 -  62   These are the glitch value ranges.
+        D3 = INT(RND * &h04) + &h08  '  8 -  11<<<<The Hex value of 07 is added at a random number up to 04 not 5 cuz it always rounds down ie 4.87755 = 4
+        D4 = INT(RND * &h39) + &h87  '135 - 191
+        D9 = INT(RND * &h05) + &h35e '862 - 866
+
+           glchs = glchs +1
+           If glchs > 19 Then
+              atrlock = 0
+              Call Card_Reset
+           End if
+        '==========================================
+        ' Atr glich point search range
+
+        if atrlock = 0 then
+        D7 = INT(RND * &h02) + &h1d  ' 29 -  30
+        D8 = INT(RND * &h03) + &h39  ' 57 -  59
+        D1 = INT(RND * &h08) + &ha8  '168 - 175
+        D5 = &h25e '606
+        D6 = INT(RND * &h05) + &h3f  ' 63 -  67
+                                                                                     glchs = 0
+                                                                                     chglch = 0
+        end if
+    End If
+
+    If Unloopchoice = 10 then  'Mod5 range
+        '==============================================
+        'vcc + last 2 glitch 4 bootloader
+        D2 = INT(RND * &h05) + &h39 ' 57 -  61
+        D3 = INT(RND * &h04) + &h08 '  8 -  11
+        D4 = INT(RND * &h3A) + &h88 '136 - 196
+        D9 = INT(RND * &h06) + &h35D'861 - 866
+
+           glchs = glchs +1
+           If glchs > 19 Then
+              atrlock = 0
+              Call Card_Reset
+           End if
+        '==========================================
+        ' Atr glich point search range
+
+        if atrlock = 0 then
+        D7 = INT(RND * &h04) + &h1B  ' 27 -  30
+        D8 = INT(RND * &h03) + &h39  ' 57 -  59
+        D1 = INT(RND * &h1c) + &ha2  '160 - 189
+        D5 = &h25d                   '605     INT(RND * &h02) + &h25D '605 - 606
+        D6 = INT(RND * &h19) + &h38  ' 56 -  81
+                                                                                     glchs = 0
+                                                                                     chglch = 0
+        end if
+    End If
+
+    If Unloopchoice = 6 then 'FinalMod range
+        '==============================================
+        'vcc + last 2 glitch 4 bootloader
+        D2 = INT(RND * &h02) + &h39 ' 57 -  58
+        D3 = INT(RND * &h03) + &h09 '  9 -  11
+        D4 = INT(RND * &h38) + &h89 '137 - 192
+        D9 = INT(RND * &h06) + &h35d'861 - 866
+
+           glchs = glchs +1
+           If glchs > 19 Then
+              atrlock = 0
+              Call Card_Reset
+           End if
+       '==========================================
+       ' Atr glich point search range
+
+       if atrlock = 0 then
+          Do
+              D7 = INT(RND * &h04) + &h1B  ' 27 or 30
+          Loop Until D7 = &h1B or D7 = &h1E
+          D8 = INT(RND * &h03) + &h39  ' 57 -  59
+          D1 = INT(RND * &h18) + &ha2  '162 - 185
+          D5 = &h25d '605
+          D6 = INT(RND * &h08) + &h3f  ' 63 -  70
+                                                                                     glchs = 0
+                                                                                     chglch = 0
+        end if
+    End If
+
+    If Unloopchoice = 8 then 'New FinalMod Fast
+        '==============================================
+        'vcc + last 2 glitch 4 bootloader
+        D2 = INT(RND * &h02) + &h39  ' 57 -  58
+        D3 = INT(RND * &h03) + &h09  '  9 -  11
+
+        Do
+            D4 = INT(RND * &h17) + &h89  '137 - 159
+        Loop until D4 = &h89 or D4 = &h9F '137 or 159
+
+        D9 = &h35d                   '861
+
+           glchs = glchs +1
+           If glchs > 19 Then
+              atrlock = 0
+              Call Card_Reset
+           End if
+        '==========================================
+        ' Atr glich point search range
+        if atrlock = 0 then
+
+        Do
+            D7 = INT(RND * &h04) + &h1B
+        Loop Until D7 = &h1B or D7 = &h1E ' 27 or 30
+
+        D8 = INT(RND * &h03) + &h39  ' 57 -  59
+
+        Do
+            D1 = INT(RND * &h06) + &hB7  '183 - 188
+        Loop Until D1 = &hB7 or D1 = &hBB or D1 = &hBC 'do until you get 183,187, or 188
+
+        D5 = &h25d                   '605
+        D6 = &h3f                    '63
+                                                                                     glchs = 0
+                                                                                     chglch = 0
+        end if
+    End If
+
+    If Unloopchoice = 9 then 'New FinalMod Medium
+        '==============================================
+        'vcc + last 2 glitch 4 bootloader
+        D2 = INT(RND * &h02) + &h39                   ' 57 -  58
+        D3 = INT(RND * &h03) + &h09                   '  9 -  11
+        Do
+            D4 = INT(RND * &h18) + &h89                   '137 - 160
+        Loop until D4 < &h92 or  D4 > &h97 and D4 < &hA1 '137 - 145, or 152 - 160
+
+        D9 = &h35d                    '861
+
+           glchs = glchs +1
+           If glchs > 19 Then
+              atrlock = 0
+              Call Card_Reset
+           End if
+        '==========================================
+        ' Atr glich point search range
+        if atrlock = 0 then
+            Do
+                D7 = INT(RND * &h04) + &h1B               ' 27 - 30
+            Loop Until D7 = &h1B or D7 = &h1E              ' 27 or 30
+
+            D8 = INT(RND * &h03) + &h39               ' 57 -  59
+
+            Do
+                D1 = INT(RND * &h06) + &hB7               '183 - 188
+            Loop Until D1 = &hB7 or D1 = &hBB or D1 = &hBC '183, or 187, or 188
+
+            D5 = &h25d '605
+            D6 = &h3f '63
+                                                                                     glchs = 0
+                                                                                     chglch = 0
+        end if
+    End If
+
+    call ProgUpdate(kp,atrlock)
+
+    sc.verbose = 0
+    sc.write("A1")
+    delay(10)
+
+    if Chk4Card() = 0 then
+       BootCard=0
+       Exit Function
+    end if
+
+    delay(30)
+
+    sc.write("B0" & HexString(D1,02))
+    glttl = glttl + 1
+    sc.write("0f1f0120" & HexString(D5,4) & "0c" & HexString(D7,2) & "20" & HexString(D6,4) & "0d00" & HexString(D8,2) & "0000")
+
+    Sc.Read(&h02)
+
+    cter=cter+1
+    cnt=0
+    Sc.Write("028000")
+    if Sc.Read(&h02) = 2 then
+       cnt = sc.getbyte(1)
+       if cnt = 1 then sc.read(1)
+    end if
+
+    if cter > 75 then
+       glcnt = glcnt + 1
+       if glcnt = 24 then
+          glcnt = 0
+          call RndGr()
+       end if
+       cter = 0
+       atrlock = 0
+    end if
+
+    if cnt > 0 then
+       kp=kp+1
+       if kp >33 then kp = 33
+       for b = 0 to 10
+           Sc.Write("028000")
+           if Sc.Read(&h02) = 2 then
+              cnt = sc.getbyte(1)
+           else
+              cnt = 0
+           end if
+
+           if cnt > 0 then
+              cnt = sc.read(cnt)
+              kk=sc.getbyte(0)
+              if kk = &h38 then
+'                 sc.print "38 "
+                 Sc.Write("028000")
+                 cnt = 0
+                 if Sc.Read(&h02) = 2 then
+                    cnt = sc.getbyte(1)
+                    if(cnt = 0) then exit for
+                    Sc.Read(cnt)
+                    if(sc.getbyte(0)) = &hb0 then
+                       d0 = d0 + 1
+                       katr    = 1
+                       cter    = 0
+                       glcnt   = 0
+                       atrlock = 1
+                       exit for
+                    end if
+                 end if
+              end if
+           end if
+
+'           sc.print HexString(kk,2) &" "
+           ATRtry = ATRtry & HexString(kk,2) & " "
+
+       next
+
+       if katr = 1 then
+          sc.write("B0"  & HexString(D4,02))
+          sc.write("071f800d" & HexString(D3,02)& HexString(D2,02)&"0000")
+          if Sc.Read(&h02) > 1 then
+             cnt = sc.getbyte(1)
+          else
+             cnt = 0
+          end if
+
+          if cnt > 0 then
+             cnt = sc.read(cnt)
+
+             for b = 0 to cnt - 1
+             next
+
+             Sc.Write("31eeFFFFfed18d52E0FD2266E1B9E17201CF725f0772FF14C5E2AB0100C3DA07F88C0100FFFFFFFFFFFFFFFFFFFFFFFF0000")
+             if Sc.Read(&h02)<2 then Sc.Read(&h02)
+             Sc.Write("11c060200350042001500320" & HexString(D9,04) & "0d010000")
+             Sc.Read(&h02)
+
+             for b = 0 to 8
+                Sc.Write("028000")
+                if Sc.Read(&h02) = 2 then
+                   cnt = sc.getbyte(1)
+                else
+                   cnt = 0
+                end if
+
+                if cnt > 0 then
+                   cnt = sc.read(cnt)
+                   kk=sc.getbyte(0)
+                   if kk = &h66 then
+                      Sc.Write("028000")
+                      cnt = 0
+                      if Sc.Read(&h02) = 2 then
+                         cnt = sc.getbyte(1)
+                         if(cnt = 0) then exit for
+                         Sc.Read(cnt)
+                         if(sc.getbyte(0)) = &h99 then
+                            boot=1
+                            ScriptEnd = Now
+                            Sc.Print VbTab & numberOFunloops & VbTab & VbTab & glttl & VbTab & VbTab & D0 & VbTab & VbTab & "ExtremeHU " & (HexString(D1,2)) & "," & (HexString(D2,2)) & "," & (HexString(D3,2)) & ", " & (HexString(D4,2)) & "," & (HexString(D5,3)) & "," & (HexString(D6,2)) & "," & (HexString(D7,2)) & "," & (HexString(D8,2)) & "," & (HexString(D9,3)) & VbTab & "" & FormatNumber((CDbl(ScriptEnd) - CDbl(ScriptStart)) * 24 * 60, 3, True, True, True) & " mins" & vbCr
+                               If D2 < &h0A or D3 < &h0A then
+                                  Set fso = CreateObject("Scripting.FileSystemObject")
+                                  Set ts = fso.OpenTextFile(GlitchFileSaved, 2, true, 0)
+                                  If Len(D2) < 2 Then
+                                     If Len(D3) < 2 Then
+                                        ts.WriteLine d1 & ",0" & d2 & ",0" & d3 & "," & d4 & "," & d5 & "," & d6 & "," & d7 & "," & d8 & "," & d9
+                                        Sc.Print "                                           Decimal " & D1 & ",0" & D2 & ",0" & D3 & "," & D4 & "," & D5 & "," & D6 & "," & D7 & "," & D8 & "," & D9 & "   " & RunTime & VbCr & VbCr
+                                     End If
+                                     If Len(D3) > 1 Then
+                                        ts.WriteLine d1 & ",0" & d2 & "," & d3 & "," & d4 & "," & d5 & "," & d6 & "," & d7 & "," & d8 & "," & d9
+                                        Sc.Print "                                           Decimal " & D1 & ",0" & D2 & "," & D3 & "," & D4 & "," & D5 & "," & D6 & "," & D7 & "," & D8 & "," & D9 & "   " & RunTime & VbCr & VbCr
+                                     End If
+                                   Else
+                           '       If Len(D2) > 1 Then
+                                     If Len(D3) < 2 Then
+                                        ts.WriteLine d1 & "," & d2 & ",0" & d3 & "," & d4 & "," & d5 & "," & d6 & "," & d7 & "," & d8 & "," & d9
+                                        Sc.Print "                                           Decimal " & D1 &  "," & D2 & ",0" & D3 & "," & D4 & "," & D5 & "," & D6 & "," & D7 & "," & D8 & "," & D9 & "   " & RunTime & VbCr & VbCr
+                                     End If
+                                     If Len(D3) > 1 Then
+                                        ts.WriteLine d1 & "," & d2 & "," & d3 & "," & d4 & "," & d5 & "," & d6 & "," & d7 & "," & d8 & "," & d9
+                                        Sc.Print "                                           Decimal " & D1 & ","  & D2 & "," & D3 & "," & D4 & "," & D5 & "," & D6 & "," & D7 & "," & D8 & "," & D9 & "   " & RunTime & VbCr & VbCr
+                                     End If
+                                   End If
+
+                                Else
+                                   Set fso = CreateObject("Scripting.FileSystemObject")
+                                   Set ts = fso.OpenTextFile(GlitchFileSaved, 2, true, 0)
+                                   ts.WriteLine d1 & "," & d2 & "," & d3 & "," & d4 & "," & d5 & "," & d6 & "," & d7 & "," & d8 & "," & d9
+                                   Sc.Print "                                           Decimal " & D1 & "," & D2 & "," & D3 & "," & D4 & "," & D5 & "," & D6 & "," & D7 & "," & D8 & "," & D9 & "   " & RunTime & VbCr & VbCr
+                                End if
+
+                               For i = 1 to SavedGlitches
+                                   ts.WriteLine array(i)
+                               Next
+                               ts.Close
+
+                               SavedGlitches = 0
+                            TotalUnloopTime = TotalUnloopTime + (ScriptEnd - ScriptStart)') * 24 * 60, 3, True, True, True)                         Sc.Print "Elapsed Time:  " + FormatNumber((CDbl(ScriptEnd) - CDbl(ScriptStart)) * 24 * 60, 3, True, True, True) & " Minutes" & vbCr
+                            exit for
+                         end if
+                      end if
+                   end if
+                else
+                   exit for
+                end if
+
+             next
+
+             if boot = 1 then
+                Sc.Write("021500")
+                Sc.Read(2)
+                Sc.Write("42FF225272FF14E1E2D007E2D029E2D02A77800716753F07D307F75011E29B2A70012ADA07F78E013A00D7D307D8078ECEFBD40770012ADA07F300C6F76211F7631100")
+                Sc.Read(2)
+                Sc.Write("21DE8E0149F76011F76111881c931270FF1203FBF70011728512DA12FDF70011F900")
+                Sc.Read(2)
+                BootCard=1
+                Exit Function
+             end if
+          end if
+     end if
+  else
+     kp=kp-1
+     if kp<1 then kp=1
+  end if
+loop
+
+End Function
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+Sub RndGr
+
+    Dim g1,g2,g3,g4,g5,g6
+    Dim dly,v
+
+    RANDOMIZE TIMER
+
+    sc.print VbCr & "Random gliching the card to whip it into shape" & VbCr
+    sc.verbose = false
+
+    for v = 1 to 800
+        g1 = INT(RND * &hFF)
+        g2 = INT(RND * &hFF)
+        g3 = INT(RND * &hFF)
+        g4 = INT(RND * &hFF)
+        g5 = INT(RND * &hFF)
+        g6 = INT(RND * &h4F) + &h80
+        dly= INT(RND * &h200)
+
+        sc.write("B0" & HexString(g6,2))
+
+        sc.write("111f0120" & HexString(dly,4) & "0c" & HexString(g1,2) & "0c" & HexString(g2,2) & "0a" & "0c" & HexString(g3,2) & "0c" & HexString(g4,2) & "0c" & HexString(g5,2) & "00")
+        sc.read(2)
+     next
+
+End Sub
+
+Sub Check2000() ' Modified From Canard's to check 4 bytes at 2000 for corruption
+    Dim Bytes
+    Dim Address
+    Dim i
+    Dim NumOfBytes
+    Dim Size
+
+    Address    = 2000
+    Size       =   4
+    NumOfBytes = HexToDec(Size)
+
+    Sc.Write("A2")
+'    Call LoadBootStrap()
+    Call ExtractCardInfo()
+
+    Sc.Write("06 C2 " & HexString(NumOfBytes - 1,2) & Address & HexString(&h80 + NumOfBytes - 1,2) & "00")
+    Sc.Delay(50)
+    Sc.Read(&h02)
+    NumOfBytes=Sc.Getbyte(&h01)
+    Sc.Read(NumOfBytes)
+
+    For i=0 to NumOfBytes-1
+        Bytes = Bytes & HexString(Sc.Getbyte(i),2)
+    Next
+    if Bytes = "00000000" or Bytes = "" Then
+       Sc.Print VbCr & "******** NOTE: 2000 Data on the card is '00000000' indicating some card specific bytes are messed up. *********" & VbCr & VbCr & VbCr
+    End If
+End Sub
+
+Sub UnMarryCard()
+
+    Sc.Write("A2")
+    If FirstBootload = 1 then
+       Call ExtractCardInfo()
+    End IF
+    FirstBootload = 2                                                                                                                                                                                                                                                                                                                                                                                                                   'RO12TT34IR56UD78Y90
+
+    Call Sc.ProgressBox ("UnMarrying Card...", 1, 1, "REPAIR UTILITY")
+    Call WriteViaLoader("24A4","00000000","E")    ' Clear IRD # From Location 1
+    Call WriteViaLoader("2460","00000000","E")    ' Clear IRD # From Location 2
+
+    Call Sc.ProgressBox ("", 0, 0, "")
+    ReadMode = "Additionals"
+
+    FixAltee = 1
+End Sub
+
+Sub CardIsLooped ()
+Sc.MsgBox("Card is not returning an ATR." &VbCr & "The card may not be fully Inserted" & VbCr &" or the card contacts may be dirty." & VbCr & "If everything is ok then the card is looped"&VbCr& "You must Unloop the card before using this option ")
+
+End Sub
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+Function ShowAtr(displaytype)
+
+    Dim b
+
+    Msg="                       !!!!! Unlooping results !!!!!"
+    tmp=""
+
+    sc.write("0610010E109300")
+
+    if Sc.Read(&h02) > 1 then
+        cnt = sc.getbyte(1)
+    else
+        cnt = 0
+    end if
+    if cnt > 0 then
+       cnt = sc.read(cnt)
+
+       if displaytype = 1 then
+          tmp = ""
+          tmp = tmp + "Card ATR Now:" & VbCr
+
+          for b = 0 to cnt -1
+              tmp=tmp & HexString(sc.getbyte(b),2) & " "
+          next
+
+          tmp = tmp & VbCr & VbCr & VbCr & "Total Time To Glitch Into Card: = = = = = = = = = = = = = = = =\/ \/" & VbCr & VbCr
+          tmp = tmp + "Insane Tester, That Always Trys To Be Faster, Elapsed Time " & FormatNumber((CDbl(ScriptEnd) - CDbl(ScriptStart)) * 24 * 60, 3, True, True, True) & " minutes. " & vbCr
+          tmp = tmp + "                                                 Normal Human" & Duration & VbCr & VbCr
+          tmp = tmp + "         Card Unlooped Successfully After " & glttl & " Glitches To The Card." & VbCr
+          tmp = tmp + "Bootload Attempts Made To The Card   " & D0 & "." & VbCr & VbCr & VbCr
+          tmp = tmp + "Successfull D1 - D9 Values Used:         \/ \/ \/ \/ \/" & VbCr
+          tmp = tmp + "ExtremeHU Values              " & (HexString(D1,2)) & ", " & (HexString(D2,2)) & ", " & (HexString(D3,2)) & ", " & (HexString(D4,2)) & ", " & (HexString(D5,3)) & ", " & (HexString(D6,2)) & ", " & (HexString(D7,2)) & ", " & (HexString(D8,2)) & ", " & (HexString(D9,3)) & VbCr
+
+          If D3 < 10 then
+             tmp = tmp + "Decimal Values                   " & D1 & ", " & D2 & ", 0" & D3 & ", " & D4 & ", " & D5 & ", " & D6 & ", " & D7 & ",  " & D8 & ", " & D9 & VbCr & VbCr
+          Else
+             tmp = tmp + "Decimal Values                   " & D1 & ", " & D2 & ", "  & D3 & ", " & D4 & ", " & D5 & ", " & D6 & ", " & D7 & ",  " & D8 & ", " & D9 & VbCr & VbCr
+          End if
+          cnt  = Sc.ButtonBox(tmp, 0, Msg, "Ok")
+
+       end if
+    else
+       tmp=""
+       tmp=tmp+"Card Did Not Return An ATR"+VbCr+"Try To Unloop The Card Again"+VbCr
+       tmp=tmp+"This Happens Sometimes When The Card"+VbCr
+       tmp=tmp+"Doesn't Take The Eeprom Write"
+       cnt = Sc.ButtonBox(tmp, 0,Msg , "Ok")
+    end if
+'***************************************
+        for b = 0 to cnt - 1
+           tmp=tmp & HexString(sc.getbyte(b),2) & " "
+        next
+        if displaytype <> 1 then
+           ShowAtr = tmp
+        end if
+'***********************************
+End Function
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+Sub ProgUpdate(kp,atrlock)
+
+    Call FormatTime
+
+    if atrlock = 1 then
+       Msg="Values Of D1-D9: " & D1 & ", " & D2 & ", " & D3 & ", " & D4 & ", " & D5 & ", " & D6 & ", " & D7 & ", " & D8 & ", " & D9 &vbcr
+       msg=Msg+"Current ATR:  " &  ATRtry & VbCr
+       Msg=Msg+"ATR Locked!                     " & vbtab & "  Bootloader Attempts: " & (d0) & VbCr
+    else
+       Msg="Values Of D1-D9: " & D1 & ", " & D2 & ", " & D3 & ", " & D4 & ", " & D5 & ", " & D6 & ", " & D7 & ", " & D8 & ", " & D9 &vbcr
+       msg=Msg+"Current ATR:  " & ATRtry & VbCr
+       Msg=Msg+"Attempting To Lock Onto ATR." & vbtab & "  Bootloader Attempts: " & (d0) & VbCr
+    end if
+
+    If ATRtry = "" then
+       Msg="Values Of D1-D9: " & D1 & ", " & D2 & ", " & D3 & ", " & D4 & ", " & D5 & ", " & D6 & ", " & D7 & ", " & D8 & ", " & D9 &vbcr
+       msg=Msg+"Current ATR:  " & "?? ?? ?? ??" & VbCr
+       Msg=Msg+"Attempting To Lock Onto ATR." & vbtab & "  Bootloader Attempts: " & (d0) & VbCr
+    End if
+
+    Call Sc.ProgressBox(Msg,kp,33,"Attempting To Unloop .." & "Glitch # " & glttl & "   Elapsed Time " & RunTime)
+    ATRtry = ""
+
+End Sub
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+Function FormatTime
+
+    TimeElapsed = FormatNumber((CDbl(Now) - CDbl(TempScriptStart)) * 24 * 60 * 60, 0, True, True, True)
+    If TimeElapsed > 59 then
+       TempScriptStart = Now
+       TimeInMinutes = TimeInMinutes + 1
+       TimeElapsed = 0
+    End If
+
+    If TimeInMinutes > 59 then
+       TempScriptStart = Now
+       TimeInHours = TimeInHours + 1
+       TimeElapsed   = 0
+       TimeInMinutes = 0
+    End If
+
+
+    If TimeInHours > 0 then
+
+       If TimeElapsed < 10 then
+          If TimeInMinutes < 10 then
+             RunTime="" & TimeInHours & ":0" & TimeInMinutes & ":0" & TimeElapsed
+          Else
+             RunTime="" & TimeInHours &  ":" & TimeInMinutes & ":0" & TimeElapsed
+          End If
+       else
+          If TimeInMinutes < 10 then
+             RunTime="" & TimeInHours & ":0" & TimeInMinutes & ":" & TimeElapsed
+          Else
+             RunTime="" & TimeInHours &  ":" & TimeInMinutes & ":" & TimeElapsed
+          End If
+       End If
+
+    else
+
+       If TimeElapsed < 10 then
+          If TimeInMinutes > 0 then
+             RunTime="" & TimeInMinutes & ":" & "0" & TimeElapsed
+          Else
+             RunTime="" & ":" & "0" & TimeElapsed
+          End If
+       Else
+          If TimeInMinutes > 0 then
+             RunTime="" & TimeInMinutes & ":" & TimeElapsed
+          Else
+             RunTime="" & ":" & TimeElapsed
+          End If
+       End If
+     End If
+
+End Function
+
+Function Chk4Card()
+
+    sc.write("80")
+    sc.delay(10)
+    if sc.read(1) = 1 then
+       tmp=sc.getbyte(0)
+       If tmp = &h0 then
+          Chk4Card=0
+          sc.write("A0")
+          Call Sc.ProgressBox(0,0,0,0)
+          sc.MsgBox("Card Removed Unlooping ended prematurely")
+       else
+          Chk4Card=1
+       end if
+    end if
+
+End Function
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+Function ChipVer()
+
+    ChipVer = 1
+
+    sc.write("90")
+    delay(80)
+
+    if sc.read(4) <> 4 then
+       ChipVer = 0
+       Exit Function
+    end if
+
+    if getbyte(0) <> &h55 then ChipVer = 0
+    if getbyte(1) <> &h4c then ChipVer = 0
+    if getbyte(2) <> &h34 then ChipVer = 0
+    if getbyte(3) <> &h53 then ChipVer = 0
+
+End Function
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+Sub FFTheCard ()        ' Taken from HUFF
+
+    Dim RetValue
+    Dim I
+
+    MenuPrompt = "Would You Like To FF The Card Before Unlooping? " & VbCr & VbCr
+    Choice = Sc.ButtonBox(MenuPrompt, 0, "                          FF The Card?", "Yes", "No")
+
+    Do
+       Select Case Choice
+          Case "1" ' FF the card
+          Case "2", "" ' Exit
+          Case Else
+                MenuPrompt = "Invalid Input!" & vbCrLf
+       End Select
+
+    Loop until choice = 1 or choice = 2
+    If choice = 2 then exit sub
+
+    Sc.Write("B0 80")
+    For I = &hA0 To &hD0
+        Call Sc.ProgressBox("FFing The Card", I-&h9F, &h30, "                                  FF The Card")
+        Sc.Write("0a 01 20 04 94 09 20 00 " + Hex(I) + " 09 00")'
+        Sc.Read(2)
+        RetValue = Sc.GetByte(1)
+        Sc.Delay (100)
+    Next
+
+    Call Sc.ProgressBox("",0,80,"")
+
+End Sub
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+Function ReadInfo()
+
+'This function taken from ATRDump by Testies and modified
+
+    Dim CAMIDHex
+    Dim CAMIDDec
+    Dim USWHex
+    Dim USWDec
+    Dim DSWHex
+    Dim DSWDec
+    Dim GuideHex
+    Dim GuideDec
+    Dim TimeHex
+    Dim TimeDec
+    Dim RatingHex
+    Dim RatingDec
+    Dim SpendingLimitHex
+    Dim SpendingLimitDec
+    Dim infobox
+    Dim actyear
+    Dim actmonth
+    Dim ActDateHex
+    Dim ActDateDec
+    Dim ZipHex
+    Dim PPVLimitHex
+    Dim PPVLimitDec
+    Dim SpentHex
+    Dim SpentDec
+    Dim Fuse
+    Dim IRDHex
+    Dim IRDDec
+    Dim RetValue
+    Dim ATR
+    Dim AtrShown
+
+    Sc.Write("0B 1A 0E 10 C4 48 2A 00 00 80 BF 00")
+    Sc.Delay(80)
+    Sc.Read(&h02)                                       ' see if command was accepted
+    RetValue = Sc.GetByte(&h01)
+    Sc.Read (RetValue)                              ' read the 0 - 63 bytes returned by Ins2A
+
+    ' Assign important parts of returned from Ins2A data here
+
+    USWHex = HexString(GetByte(29), 2) & HexString(GetByte(30), 2)
+    USWDec = HexToDec(USWHex)
+    If Len(USWDec) < 4 Then
+       USWDec = "000" & USWDec
+    End If
+
+    DSWHex = HexString(GetByte(33), 2) & HexString(GetByte(34), 2)
+    DSWDec = HexToDec(DSWHex)
+    If Len(DSWDec) < 4 Then
+       DSWDec = "000" & DSWDec
+    End If
+
+    RatingHex = HexString(GetByte(11), 2)
+    RatingDec = HexToDec(RatingHex)
+    If len(RatingDec) = 1 Then
+       RatingDec = "0" & RatingDec
+    End If
+
+    SpendingLimitHex = HexString(GetByte(12), 2) & HexString(GetByte(13), 2)
+    SpendingLimitDec = "$" & Int(HexToDec(SpendingLimitHex)/100)
+
+    ActDateHex = HexString(GetByte(14), 2) & HexString(GetByte(15), 2)
+    If ActDateHex = "0000" Then
+       ActDateDec = "Not Active"
+    Else
+        ActDateHex = HexString(GetByte(14), 2) & HexString(GetByte(15), 2)
+        ActYear = 2000 + Left(((GetByte(14) - 95) / 12 * 100),1)
+        ActMonth = Round((Right(Int((((GetByte(14) - 95)/12))*100),2)/100)*12)
+        ActDateDec = ActMonth & "." & GetByte(15) & "." & ActYear
+    End If
+
+    Fuse   = HexString(GetByte(1), 2) & HexString(GetByte(1) XOR &hFF,2)
+    IRDHex = Hexstring(GetByte(21) XOR GetByte(25),2) & Hexstring(GetByte(22) XOR GetByte(26),2) & Hexstring(GetByte(23) XOR GetByte(27),2) & Hexstring(GetByte(24) XOR GetByte(28),2)
+
+    If Len(IRDHex) <= 4 Then
+       IRDHex = "0000" & IRDHex
+    End If
+
+    IRDDec = HexToDec(IRDHex)
+    If IRDDec <= 1 Then
+       IRDDec = "0000000" & IRDDec
+    End If
+
+    ' 02 = 2 bytes to follow
+    ' BF = read next 64 bytes from card
+    ' 00 = execute above
+
+    Sc.Write("02BF00")
+    Sc.Delay(80)
+    Sc.Read(&h02)                                   ' see if command was accepted
+    RetValue = Sc.GetByte(&h01)
+    Sc.Read (RetValue)                          ' read 64 - 127 more bytes of 131 returned from Ins2A
+
+    PPVLimitHex = HexString(Sc.GetByte(23), 2) & HexString(Sc.GetByte(24), 2)
+    PPVLimitDec = "$" & Int(HexToDec(PPVLimitHex)/100)
+    SpentHex    = HexString(Sc.GetByte(21), 2) & HexString(Sc.GetByte(22), 2)
+    SpentDec    = "$" & Int(HexToDec(SpentHex)/100)
+
+    Sc.Write("028200")
+    Sc.Delay(80)
+    Sc.Read(&h02)                                   ' see if command was accepted
+    RetValue = Sc.GetByte(&h01)
+    Sc.Read (RetValue)                          ' read the final 3 bytes 128 - 130 of Ins2A
+
+    ' 08 = 8 bytes to follow
+    ' C4 = send next 5 bytes to card
+    ' 48 58 00 00 17 = Ins58 Send Card Info Command
+    ' 9B = Read 28 bytes from card
+    ' 00 = Execute above
+    Sc.Write("08C448580000179B00")
+    Sc.Delay(80)
+    Sc.Read(&h02)                                   ' see if command was accepted
+    RetValue = Sc.GetByte(&h01)
+    Sc.Read (RetValue)                          ' read bytes 0 - 25 bytes returned by Ins58
+
+    CAMIDHex = HexString(GetByte(2), 2) & HexString(GetByte(3), 2) & HexString(GetByte(4), 2) & HexString(GetByte(5), 2)
+    CAMIDDec = HexToDec(CAMIDHex) & "x"
+
+    ' Assign important pieces of information from Ins58 command
+    GuideHex = HexString(Sc.GetByte(13), 2)
+    GuideDec = HexToDec(GuideHex)
+    If GuideDec = 0 Then
+       GuideDec = "00"
+    End If
+
+    TimeHex = HexString(Sc.GetByte(11), 2)
+    TimeDec = HexToDec(TimeHex)
+
+    ' Print all info here
+    ATR = ShowAtr(2)
+    Msg = "                           Testies ATRDump Results"
+    infobox = ""
+    infobox = "ATR:  " & ATR & vbCrLf & vbcrlf
+    infobox = infobox & vbtab & vbtab & "Card Information"  & vbtab & vbtab & vbtab & "    Value" & VbCr
+    infobox = infobox & "---------------------------------------------------------------------------------------------------------------" & VbCr
+    infobox = infobox & vbtab & vbtab & "Card ID#(CAM#)"     & vbtab & vbtab & vbtab             & CAMIDDec         & VbCr
+    infobox = infobox & vbtab & vbtab & "IRD ID#"            & vbtab & vbtab & vbtab             & IRDDec           & VbCr
+    infobox = infobox & vbtab & vbtab & "Fuse Byte"          & vbtab & vbtab & vbtab & "     "   & Fuse             & VbCr
+    infobox = infobox & vbtab & vbtab & "Guide Byte"         & vbtab & vbtab & vbtab & "       " & GuideHex         & VbCr
+    infobox = infobox & vbtab & vbtab & "USW"        & vbtab & vbtab & vbtab & vbtab & "     "   & USWHex           & VbCr
+    infobox = infobox & vbtab & vbtab & "DSW"        & vbtab & vbtab & vbtab & vbtab & "     "   & DSWHex           & VbCr
+    infobox = infobox & vbtab & vbtab & "Rating Limit"       & vbtab & vbtab & vbtab & "       " & RatingHex        & VbCr
+    infobox = infobox & vbtab & vbtab & "Time Zone"          & vbtab & vbtab & vbtab & "       " & TimeHex          & VbCr
+    infobox = infobox & vbtab & vbtab & "Activation Date"    & vbtab & vbtab & vbtab & " "       & ActDateDec       & vbCr
+    infobox = infobox & vbtab & vbtab & "PPV Spending Limit" & vbtab & vbtab &         "       " & PPVLimitDec      & vbCr
+    infobox = infobox & vbtab & vbtab & "Amount Purchased"   & vbtab & vbtab &         "       " & SpentDec         & vbCr
+    infobox = infobox & vbtab & vbtab & "User Spending Limit"& vbtab & vbtab &         "       " & SpendingLimitDec & vbCr
+    infobox = infobox & "---------------------------------------------------------------------------------------------------------------" & VbCr
+    cnt = Sc.ButtonBox(infobox, 0,Msg , "Ok")
+
+    ReadInfo = 1
+
+End Function
+
+Sub Ask_User_Abort
+
+   MenuPrompt = "After " & attempts & " Glitches To The Card, We Have Received Good Values To Glitch Into This Card (From Lines 407 - 445 Of This Script)." & VbCr & VbCr & "                                     ins used: " & read & "           DAC1: " & (HexString(DAC1,2)) & "           DAC2: " & (HexString(DAC2,2)) & "           Delay: " & Delaye & "           Delay5C: " & (HexString(Delay5C,2))
+   Choice = Sc.ButtonBox(MenuPrompt, 0, "                                        Successful Values Received To Glitch Into The Card !!!", "Continue", "Abort")
+
+   Do
+      Select Case Choice
+         Case "1" ' Continue Read/Write to card
+         Case "2", "" ' Exit
+         Case Else
+              MenuPrompt = "Invalid Input!" & vbCrLf
+      End Select
+
+   Loop until choice = 1 or choice = 2
+
+End Sub
+
+Sub SSID_Abort
+
+   MenuPrompt = "      Would You Like To Continue" & VbCr & "               Writing This .bin? " & VbCr
+   Choice = Sc.ButtonBox(MenuPrompt, 0, "  What Do You Want To Do ???", "Continue", "Abort")
+
+   Do
+      Select Case Choice
+         Case "1" ' Continue Read/Write to card
+         Case "2", "" ' Exit
+         Case Else
+             MenuPrompt = "Invalid Input!" & vbCrLf
+      End Select
+
+   Loop until choice = 1 or choice = 2
+
+End Sub
+
+Sub SSID ' modified a lil bit here and there
+
+'-------------------------------------------------------------------------------------
+' SiCK's Script Identifier - SSID, Beta 1, Public Release, June 6, 2002
+'
+' This is Beta, it has only been tested by one person, Me.    Please refer bugs,
+' problems, strange things to one of the sites listed below.   This requires
+' WinExplorer 4.6 or greater.
+'
+' This will identify publicly released scripts in BIN files from your HARD DRIVE.
+' It will NOT read cards.
+'
+' This should have been released with a file named huscripts.sig    huscripts.sig is a
+' plain text file that can be read and edited with any text editor such as notepad.
+' The format of huscripts.sig should be self explanatory with a little big of looking.
+'
+' HuScripts contains signatures of scripts found in public releases from May 24th to
+' July 6th.    If you find a script that is not identified by this release, please
+' check one of the sites listed below at see if an update is available.
+'
+' This is not 100% full proof.  Anyone with a little big of knowledge may take a
+' public script and relocate it to fool this identifier.    Please have an expert
+' examine any new scripts/bins.
+'
+' Update and information may be obtained at any of these sites in the HU
+' discussion areas:
+'         http://www.pirateden.com/
+'         http://www.innermatrix.net/
+'         http://www.decodernews.com/
+'
+' SiCK
+'
+'-------------------------------------------------------------------------------------
+   Wx.ResetMode = 0             ' 0 = No Resets, 1 = ISO Reset (Expect a ATR), 2 = Device Reset (No ATR)
+   Wx.ResetLine = 0             ' 0 = Toggle RTS for Reset, 1 = Toggle DTR for Reset
+   Wx.IgnoreTimeouts = 1        ' 0 = Abort script on a receive timeout, 1 = Ignore all receive timeouts
+   Wx.ResetAfterTimeout = 0     ' 0 = Don't reset after a timeout, 1 = do a reset after a timeout  - Not used if "IgnoreTimeouts=0"
+   Wx.LogTransactions = 0       ' 0 = Don't log transactions, 1 = log transactions
+   Wx.DisplayUSW = 0            ' Display USW after script complete 0 = no, 1 = yes
+   Wx.DisplayFuse = 0           ' Display Fuse after script complete 0 = no, 1 = yes
+
+    Dim FileSize
+    Dim ThisByte
+    Dim TmpStr
+    dim line
+    dim name
+    dim matches
+    dim address
+    dim gotabyte
+    dim bytetocheck
+    dim bytes
+    dim x
+    dim offset
+    dim totalbyteschecked
+    dim gotbytes
+    dim tosay
+    dim summary
+    dim totalfound
+
+    If Fs.FileExists(FileName) = 0 Then
+       Sc.MsgBox("The file does not exist")
+       exit sub
+    Else
+       InFile = Fs.FileOpen(FileName, fsoOpenRead)
+    End If
+
+    FileSize = Fs.FileSeek(InFile, 0, fsoSEEK_END)
+    if FileSize<>8192 then
+       msgbox( "Invalid eeprom size")
+       Fs.FileClose(InFile)
+       exit sub
+    end if
+
+    call Fs.FileSeek(InFile, 0, fsoSEEK_SET)
+    For ThisByte = 0 to FileSize - 1
+        eeprom(ThisByte)= Fs.FileGetc(InFile)
+    Next
+    Fs.FileClose(InFile)
+
+    ' we have the eeprom in an array now
+    ' lets open the sig file
+
+    FileName = "huscripts.sig"
+    InFile = Fs.FileOpen(FileName, fsoOpenRead)
+    if Infile <= 0 then
+       FileName = Fs.FileOpenDialog(SigFilter, "                 Where Is The Signature (*.sig) File Located? ", "huscripts.sig")
+
+       If FileName <> "" Then
+          If Fs.FileExists(FileName) = 0 Then
+             Sc.MsgBox(".sig File Not Found.")
+             Exit Sub
+          Else
+             InFile = Fs.FileOpen(FileName, fsoOpenRead)
+          End If
+       Else
+          Sc.MsgBox("Check .bin For Known Scripts Aborted.")
+          exit sub
+       End If
+    End If
+
+    TotalScriptsBeingChecked = 0
+    ScriptsCheckedSoFar = 0
+
+    do
+       line=ltrim(rtrim(getline(InFile)))
+       If ucase(left(line,5))="NAME=" Then
+          TotalScriptsBeingChecked = TotalScriptsBeingChecked + 1
+       End If
+    loop while ucase(left(line,3))<>"EOF"
+    Fs.FileClose(InFile)
+
+    InFile = Fs.FileOpen(FileName, fsoOpenRead)
+
+    infilesize = Fs.FileSeek(InFile, 0, fsoSEEK_END)
+    call Fs.FileSeek(InFile, 0, fsoSEEK_SET)
+
+    do
+       line=ltrim(rtrim(getline(InFile)))
+       if ucase(left(line,5))="NAME=" or ucase(left(line,3))="EOF" then
+          if gotbytes<>0 then
+             if gotbytes/totalbyteschecked*100 > 50 then  ' > 50% then show it
+                totalfound=totalfound+1
+                Msg = "                              SiCKsScriptIdentifier Results"
+                tosay="This .bin has a script that is " + cstr(gotbytes/totalbyteschecked*100)
+                tosay=tosay + "% similar to " + name + vbCr
+                tosay=tosay + "(" + Summary + ")"
+                cnt = Sc.ButtonBox(tosay, 0,Msg , "Ok")
+
+             end if
+          end if
+          if ucase(left(line,5))="NAME=" then
+             name = right(line,len(line)-5)
+             matches           = 0
+             totalbyteschecked = 0
+             gotbytes          = 0
+             address = ""
+             bytes   = ""
+             summary = ""
+             ScriptsCheckedSoFar = ScriptsCheckedSoFar + 1
+          end if
+       elseif ucase(left(line,8))="SUMMARY=" then
+           summary=right(line,len(line)-8)
+       elseif ucase(left(line,8))="ADDRESS=" then
+           line=ucase(strip(line))
+           address=right(line,len(line)-8)
+       elseif ucase(left(line,6))="BYTES=" then
+           if address="" then
+              print "Syntax error: We have a BYTES= without an ADDRESS="
+              close(InFile)
+              exit sub
+           end if
+           line=ucase(strip(line))
+           bytes=right(line,len(line)-6)
+            ' we have the address and the bytes, lets see if we match
+            ' I think I lost it when I wrote this below
+           offset=hex2dec(address)-&h2000
+           for x=0 to len(bytes)/2 - 1
+               call Sc.ProgressBox("Checking against "+name, ScriptsCheckedSoFar, TotalScriptsBeingChecked, "            Checking Bin For " & TotalScriptsBeingChecked & " Known Script Signatures..")
+               bytetocheck=hex2dec(mid(bytes,x*2+1,2))
+
+                '                print vbCR & "At address "+hex(offset+x)+" checking input "+hex(bytetocheck)
+'                print " against eeprom "+hex(eeprom(offset+x))
+               totalbyteschecked=totalbyteschecked+1
+               if eeprom(offset+x)=bytetocheck then
+                  gotbytes=gotbytes+1
+               end if
+           next
+           bytes=""
+        end if
+        sc.delay 10
+    loop while ucase(left(line,3))<>"EOF" or infilecount=infilesize
+    call Sc.ProgressBox("",0,0,"")
+    if totalfound=0 then
+       Msg = "                         SiCKsScriptIdentifier Results"
+       tmp = "No matches found, you should still get this bin checked out by an expert."
+       cnt = Sc.ButtonBox(tmp, 0,Msg , "Ok")
+    end if
+    Fs.FileClose(InFile)
+
+End Sub
+
+Function getline(InFile)
+
+    dim inbyte
+    dim exitloop
+
+    Do
+        inbyte = Fs.FileGetc(InFile)
+        infilecount=infilecount + 1
+
+        if (inbyte = 13) or (inbyte = 10) or infilecount = infilesize then
+            exitloop = 1
+        else
+            getline = getline + chr(inbyte)
+        end if
+    Loop while exitloop = 0
+'    print "(Debug) Read line: "+getline+vbCR
+end function
+
+function strip(line)
+
+    dim x
+
+    for x = 1 to len(line)
+        if mid(line,x,1) <> " " then
+           strip = strip + mid(line,x,1)
+        end if
+    next
+end function
+
+Function Hex2Dec(HexNumber)
+    ' This function takes 1 argument, a string containing a hex value of any digit length
+    ' and returns the decimal equivalent
+    Dim DecimalValue
+    Dim DigitCount
+    Dim Digit
+    Dim HexDigit
+    Dim DigitCheck
+
+    HexNumber = Replace(UCase(HexNumber), " ", "")
+    DigitCount = Len(HexNumber)
+
+    For Digit = 1 To DigitCount
+        DigitCheck = 83 + 105 + 67 + 75
+        HexDigit = Mid(HexNumber, Digit, 1)
+        If Asc(HexDigit) < 58 Then
+            DecimalValue = HexDigit * 16 ^ (DigitCount - Digit)
+        Else
+            DecimalValue = (Asc(HexDigit) - 55) * 16 ^ (DigitCount - Digit)
+        End If
+        Hex2Dec = Hex2Dec + DecimalValue
+    Next
+
+End Function
+
+Sub Card_Glitch_Range_2Use
+
+    Do
+        MenuPrompt = "         Which Glitch Range Would You Like To Use To Glitch Into The Card?" & vbCrLf & vbCrLf
+        MenuPrompt = MenuPrompt & "                           Please Choose From The Following Choices:" & vbCrLf
+        Glrngchoice = Sc.ButtonBox(MenuPrompt, 0, "                       Read/Write/Clean Glitch Range. ", "Random", "Preset", "Exit")
+
+        Select Case Glrngchoice
+            Case "1"           'Random values
+            Case "2"           'Preset Values
+            Case "3", ""       'Exit program
+'                Exit Sub
+
+            Case Else
+                MenuPrompt = "Invalid Input!" & vbCrLf
+        End Select
+
+    Loop until Glrngchoice = 1 or Glrngchoice = 2 or Glrngchoice = 3
+End Sub
+
+Sub Unloop_Range
+
+    Do
+        MenuPrompt = "                                Which Glitch Range Would You Like To Use To Unloop The Card?" & vbCrLf & vbCrLf
+        MenuPrompt = MenuPrompt & "                                               Please Choose From The Following Choices:" & vbCrLf
+        Unloopchoice = Sc.ButtonBox(MenuPrompt, 0, "                                        Unlooping Glitch Range To Use. ", "FinalMod", "New", "Mod2", "Mod3", "More")
+
+        Select Case Unloopchoice
+            Case "1"            'johnnyL FinalMod
+            Case "2"            'johnnyL New
+            Case "3"            'johnnyL Mod2
+            Case "4"            'johnnyL Mod3
+            Case "5"            'johnnyL More
+
+            Case Else
+                MenuPrompt = "Invalid Input!" & vbCrLf
+        End Select
+
+    Loop until Unloopchoice > 0 And  Unloopchoice < 6
+
+    If         Unloopchoice = 1 then Unloopchoice = 6
+    If         Unloopchoice = 2 then Unloopchoice = 1
+    If         Unloopchoice = 3 then Unloopchoice = 2
+    If         Unloopchoice = 4 then Unloopchoice = 3
+    If         Unloopchoice = 5 then Call Unloop_Range2
+
+End Sub
+
+Sub Unloop_Range2
+
+    Do
+        MenuPrompt = "                                Which Glitch Range Would You Like To Use To Unloop The Card?" & vbCrLf & vbCrLf
+        MenuPrompt = MenuPrompt & "                                               Please Choose From The Following Choices:" & vbCrLf
+        Unloopchoice = Sc.ButtonBox(MenuPrompt, 0, "                                          Unlooping Glitch Range To Use. ", "Mod4", "Mod5", "NEW Mod6", "NEW Mod7", "Exit")
+
+        Select Case Unloopchoice
+            Case "1"            'johnnyL Mod4
+            Case "2"            'johnnyL Mod5
+            Case "3"            'johnnyL NEW Mod6
+            Case "4"            'johnnyL NEW Mod7
+            Case "5"            'Exit
+
+            Case Else
+                MenuPrompt = "Invalid Input!" & vbCrLf
+        End Select
+
+    Loop until Unloopchoice > 0 And  Unloopchoice < 6
+
+    If         Unloopchoice = 1 then Unloopchoice = 4
+    If         Unloopchoice = 2 then Unloopchoice = 10
+    If         Unloopchoice = 3 then Unloopchoice = 8
+    If         Unloopchoice = 2 then Unloopchoice = 9
+    If         Unloopchoice = 5 then Unloopchoice = 7
+
+End Sub
+
+
+Sub Read_Write_Clean_Aborted()
+
+    Sc.MsgBox("Function aborted !!!")
+
+End Sub
+
+Sub Card_Reset()
+
+    Dim RetVal
+
+    Sc.Write("A0")     ' Turn the LED off if it is on
+    Sc.Write("020200") ' Power down the card
+    Sc.Delay(1000)     ' Wait about 1 second
+    Sc.Read(&h02)
+'    Call Sc.Reset()    ' Power up the card
+'    RetVal=Sc.Flush()  ' Flush the receive buffer
+End Sub
+
+Sub DoubleCheckCard
+
+    sc.write("0610010E109300")
+    if Sc.Read(&h02) > 1 then
+       cnt = sc.getbyte(1)
+    else
+       cnt = 0
+    end if
+
+    if cnt > 0 then
+       cnt = sc.read(cnt)
+    end if
+
+    Call ReadInfo()
+End Sub
+
+Sub WipePPV()
+
+    Sc.Write("A2")
+    If FirstBootload = 1 then
+       Call ExtractCardInfo()
+    End IF
+    FirstBootload = 2
+
+    Call Sc.ProgressBox ("Wiping PPV...", 1, 1, "REPAIR UTILITY")
+    Call WriteViaLoader("2024","000000000000000000000000","E")
+    Call WriteViaLoader("2030","0000000000000000000000000000000000000000000000000000000000000000","E")
+    Call WriteViaLoader("2050","0000000000000000000000000000000000000000000000000000000000000000","E")
+    Call WriteViaLoader("2070","0000000000000000000000000000000000000000000000000000000000000000","E")
+    Call WriteViaLoader("2090","0000000000000000000000000000000000000000000000000000000000000000","E")
+    Call WriteViaLoader("20B0","0000000000000000000000000000000000000000000000000000000000000000","E")
+    Call WriteViaLoader("20D0","0000000000000000000000000000000000000000000000000000000000000000","E")
+    Call WriteViaLoader("20F0","000000000000000000000000000000000000000000","E")
+    Call WriteViaLoader("241C","0000","E")
+    Call WriteViaLoader("2424","0000","E")
+    Call Sc.ProgressBox ("", 0, 0, "")
+    ReadMode = "Additionals"
+
+    FixAltEE = 1
+End Sub
+
+Sub Ask_FF_Card
+
+    MenuPrompt = "Would You Like To FF The Card First? " & VbCr & VbCr
+    Choice = Sc.ButtonBox(MenuPrompt, 0, "                                        Would You Like To FF The Card First?", "Continue", "Abort")
+
+    Do
+        Select Case Choice
+            Case "1" ' FF the card
+            Case "2", "" ' Exit
+            Case Else
+                MenuPrompt = "Invalid Input!" & vbCrLf
+        End Select
+
+    Loop until choice = 1 or choice = 2
+
+End Sub
+
+Sub AreaInfo' Modified from SEMU's 3.2 release
+
+    Call GetZipCode()
+    IF ZipCode = "none" Then
+       Exit Sub
+    End If
+
+    Call ConvertZip()
+    Call getlocal()
+    If local = "none" Then
+       Exit Sub
+    End If
+
+    Call GetTimeZone()
+    If TZone = "none" Then
+       Exit Sub
+    End If
+
+    Call SetRating()
+    If rating = "none" Then
+       Exit Sub
+    End If
+
+    RetVal03=Sc.ButtonBox("Would you like to change your Fuse Bytes?"& VbCr &"",  vbDefaultButton2 + vbQuestion, "                    Change Fuse Bytes?", "Yes", "No")
+
+    If RetVal03 = 1 then
+       Call GetFuseBytes()
+       If FuseBytes = "none" Then
+          Exit Sub
+       End If
+    End If
+
+    If FirstBootload = 1 then
+        Call ExtractCardInfo()
+    End IF
+    FirstBootload = 2
+
+    Call ChangeAreaSettings()
+
+End Sub
+
+Function GetZipCode()
+
+    Dim InputValid1
+    Dim PromptString
+    Dim Abort
+    Dim Default_ZipCode
+
+    Default_ZipCode = 12345
+    InputValid1     = False
+    PromptString    =  ""
+    Do
+       PromptString = PromptString & "     Please enter your five digit zip code:"
+       ZipCode = Sc.InputBox(PromptString, "               Enter Zip Code", Default_ZipCode)
+
+       If IsNumeric(ZipCode) And Len(Zipcode) = 5 Then 'If Zipcode is Numeric and length is equal to 5 Then
+          GetZipCode = ZipCode
+          InputValid1 = True
+       ElseIf ZipCode = "" Then
+          'Abort = Sc.MsgBox("Would you like to abort the script?" & vbCrLf & "(It is safe to do so at this point.)", vbYesNo + vbQuestion)
+          'If Abort = vbYes Then
+          'Sc.Log("Cancelled at zipcode selection.")
+          ' Sc.Print(vbCrLf & "Cancelled at zipcode selection.")
+          ZipCode = "none" 'ZipCode = Default_ZipCode
+          Exit Function
+          'End If
+          PromptString = ""
+       Else
+          PromptString = "Invalid input!" & vbCrLf & vbCrLf
+       End If
+    Loop Until InputValid1 = True
+
+End Function
+
+'SEMU's Zip converter
+'Start the ZipCode function; Grrrr! Why are you looking at my code you dirty little person!
+Function ConvertZip()
+
+Dim ZipLoop
+Dim ZPcounter
+
+ZPtemp1   =  0
+ZPtemp2   =  0
+ZPtemp3   =  0
+ZPtemp4   =  0
+ZPtemp5   =  0
+ZipLoop   = True
+ZPtemp    = ZipCode / 10000
+ZPcounter =  0 'reset ZPcounter to Zero every time this function called
+
+    'Convert ZipCode to 3x3x3x3x3x
+Do
+    IF ZPcounter = 1 Then
+       ZPtemp1   = ZPtempx
+       ZPtemp    = ZPtemp * 10
+    End If
+
+    IF ZPcounter = 2 Then
+       ZPtemp2   = ZPtempx
+       ZPtemp    = ZPtemp * 10
+    End If
+
+    IF ZPcounter = 3 Then
+       ZPtemp3   = ZPtempx
+       ZPtemp    = ZPtemp * 10
+    End If
+
+    IF ZPcounter = 4 Then
+       ZPtemp4   = ZPtempx
+       ZPtemp    = ZPtemp * 10
+    End If
+
+    IF ZPcounter = 5 Then
+       ZPtemp5   = ZPtempx
+       ZPCode    = ZPtemp1 & ZPtemp2 & ZPtemp3 & ZPtemp4 & ZPtemp5
+       ZipLoop   = False 'We now have our Zipcode Bytes, End the Loop
+       Exit Function
+    End If
+
+    If ZPtemp  > 8.9999 and ZPtemp < 10 Then
+       ZPtempx = 39
+       ZPtemp  = ZPtemp - 9
+
+       Else If ZPtemp > 7.9999 and ZPtemp < 9 Then
+          ZPtempx     = 38
+          ZPtemp      = ZPtemp - 8
+
+          Else If ZPtemp > 6.9999 and ZPtemp < 8 Then
+             ZPtempx     = 37
+             ZPtemp      = ZPtemp - 7
+
+             Else If ZPtemp > 5.9999 and ZPtemp < 7 Then
+                ZPtempx     = 36
+                ZPtemp      = ZPtemp - 6
+
+                Else If ZPtemp > 4.9999 and ZPtemp < 6 Then
+                   ZPtempx     = 35
+                   ZPtemp      = ZPtemp - 5
+
+                   Else If ZPtemp > 3.9999 and ZPtemp < 5 Then
+                      ZPtempx     = 34
+                      ZPtemp      = ZPtemp - 4
+
+                      Else If ZPtemp > 2.9999 and ZPtemp < 4 Then
+                         ZPtempx     = 33
+                         ZPtemp      = ZPtemp - 3
+
+                         Else If ZPtemp > 1.9999 and ZPtemp < 3 Then
+                            ZPtempx     = 32
+                            ZPtemp      = ZPtemp - 2
+
+                            Else If ZPtemp > 0.9999 and ZPtemp < 2 Then
+                               ZPtempx     = 31
+                               ZPtemp      = ZPtemp - 1
+
+                               Else If ZPtemp =< 0.9999 Then
+                                  ZPtempx     = 30
+                                  ZPtemp      = ZPtemp
+                               End IF
+                            End IF
+                         End IF
+                      End IF
+                   End IF
+                End IF
+             End IF
+          End IF
+       End IF
+    End IF
+
+    ZPcounter = ZPcounter + 1
+
+  Loop Until ZipLoop = False
+  ' From SEMU  \/  \/  \/  \/  \/
+  'Obviously you must think I am Crazy to do this whole ZipCode thing like this;
+  'Unless you don't know how it works-
+  'Well yes, I am crazy, but at least I can say I wrote it!
+
+End Function
+
+Function getlocal()
+
+    Dim RetVala2
+    Dim PromptString
+    Dim GotInput
+    Dim Default_Local
+
+    Default_Local = "00"
+    GotInput = False
+
+    Do
+        PromptString = "                                       Please make a selection from the following list:" & vbCrlf & vbCrlf
+        PromptString = PromptString & "00: No Locals" & vbtab & vbtab & vbtab & "01: Atlanta, GA" & vbtab & vbtab & vbtab & "02: Boston, MA" & vbCrlf
+        PromptString = PromptString & "03: Chicago, IL" & vbtab & vbtab & vbtab & "04: Clevland, OH" & vbtab & vbtab & "05: Dallas, TX" & vbCrlf
+        PromptString = PromptString & "06: Denver, CO" & vbtab & vbtab & vbtab & "07: Detroit, MI" & vbtab & vbtab & vbtab & "08: Houston, TX" & vbCrlf
+        PromptString = PromptString & "09: Los Angeles, CA" & vbtab & vbtab & "0A: Maimi, FL" & vbtab & vbtab & vbtab & "0B: Minneapolis, MN" & vbCrlf
+        PromptString = PromptString & "0C: New York, NY" & vbtab & vbtab & "0D: Orlando, FL" & vbtab & vbtab & vbtab & "0E: Philadelphia, PA" & vbCrlf
+        PromptString = PromptString & "0F: Phoenix, AZ" & vbtab & vbtab & vbtab & "10: Sacramento, CA" & vbtab & vbtab & "11: San Francisco, CA" & vbcrlf
+        PromptString = PromptString & "12: Seattle, WA" & vbtab & vbtab & vbtab & "13: St. Louis, MO" & vbtab & vbtab & "14: Tampa, FL" & vbCrlf
+        PromptString = PromptString & "15: Washington DC" & vbtab & vbtab & "16: Greenville, SC" & vbtab & vbtab & "17: Raleigh, NC" & vbCRlf
+        PromptString = PromptString & "18: Salt Lake City, UT" & vbtab & vbtab & "19: Austin, TX" & vbtab & vbtab & vbtab & "1A: Baltimore, MD" & vbCrlf
+        PromptString = PromptString & "1B: Birmingham, AL" & vbtab & vbtab & "1C: Charlotte, NC" & vbtab & vbtab & "1D: Cincinnati, OH" & vbCrlf
+        PromptString = PromptString & "1E: Columbus, OH" & vbtab & vbtab & "1F: Greensboro, NC" & vbtab & vbtab & "20: Indianapolis, IN" & vbCrlf
+        PromptString = PromptString & "21: Kansas City, MO" & vbtab & vbtab & "22: Memphis, TN" & vbtab & vbtab & "23: Milwaukee, WI" & vbCrlf
+        PromptString = PromptString & "24: Nashville, TN" & vbtab & vbtab & "25: Pittsburgh, PA" & vbtab & vbtab & "26: Portland, OR" & vbCrlf
+        PromptString = PromptString & "27: San Antonio, TX" & vbtab & vbtab & "28: San Diego, CA" & vbtab & vbtab & "29: West Palm Beach, FL" & vbCrlf
+
+        RetVala2 = Sc.InputBox(PromptString, "                                      Select Locals Market", Default_Local)
+
+        If RetVala2 = "" then
+            GotInput = True
+            local = "none"
+            'Sc.Print(vbCrLf & "Cancelled at Local Area selection.")
+            Exit Function
+        End If
+
+        if len(RetVala2) <> 2 then 'If length is less than or greater than 2 Then...
+            GotInput = false
+            local = "none"
+        else
+          RetVala2 = UCase(RetVala2)
+          Select Case left(RetVala2, 1)
+             case "0", "1"
+             Select Case Right(RetVala2, 1)
+                Case "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "A", "B", "C", "D", "E", "F"
+                GotInput = true
+                getlocal = RetVala2
+                local = getlocal
+                End Select
+                Case "2"
+                   Select Case Right(RetVala2, 1)
+                      Case "0", "1", "2", "3", "4", "5", "6", "7", "8", "9"
+                      GotInput = true
+                      getlocal = RetVala2
+                      local = getlocal
+                      End Select
+                End Select
+        End If
+    Loop until GotInput = True
+
+    If GETLOCAL = "00" Then GUIDEbyte="FB"
+    If GETLOCAL = "01" Then GUIDEbyte="02"
+    If GETLOCAL = "02" Then GUIDEbyte="41"
+    If GETLOCAL = "03" Then GUIDEbyte="10"
+    If GETLOCAL = "04" Then GUIDEbyte="40"
+    If GETLOCAL = "05" Then GUIDEbyte="28"
+    If GETLOCAL = "06" Then GUIDEbyte="60"
+    If GETLOCAL = "07" Then GUIDEbyte="08"
+    If GETLOCAL = "08" Then GUIDEbyte="01"
+    If GETLOCAL = "09" Then GUIDEbyte="11"
+    If GETLOCAL = "0A" Then GUIDEbyte="02"
+    If GETLOCAL = "0B" Then GUIDEbyte="28"
+    If GETLOCAL = "0C" Then GUIDEbyte="28"
+    If GETLOCAL = "0D" Then GUIDEbyte="01"
+    If GETLOCAL = "0E" Then GUIDEbyte="60"
+    If GETLOCAL = "0F" Then GUIDEbyte="08"
+    If GETLOCAL = "10" Then GUIDEbyte="40"
+    If GETLOCAL = "11" Then GUIDEbyte="28"
+    If GETLOCAL = "12" Then GUIDEbyte="10"
+    If GETLOCAL = "13" Then GUIDEbyte="08"
+    If GETLOCAL = "14" Then GUIDEbyte="08"
+    If GETLOCAL = "15" Then GUIDEbyte="12"
+    If GETLOCAL = "16" Then GUIDEbyte="28"
+    If GETLOCAL = "17" Then GUIDEbyte="01"
+    If GETLOCAL = "18" Then GUIDEbyte="02"
+    If GETLOCAL = "19" Then GUIDEbyte="20"
+    If GETLOCAL = "1A" Then GUIDEbyte="02"
+    If GETLOCAL = "1B" Then GUIDEbyte="01"
+    If GETLOCAL = "1C" Then GUIDEbyte="48"
+    If GETLOCAL = "1D" Then GUIDEbyte="20"
+    If GETLOCAL = "1E" Then GUIDEbyte="28"
+    If GETLOCAL = "1F" Then GUIDEbyte="08"
+    If GETLOCAL = "20" Then GUIDEbyte="02"
+    If GETLOCAL = "21" Then GUIDEbyte="01"
+    If GETLOCAL = "22" Then GUIDEbyte="40"
+    If GETLOCAL = "23" Then GUIDEbyte="01"
+    If GETLOCAL = "24" Then GUIDEbyte="10"
+    If GETLOCAL = "25" Then GUIDEbyte="01"
+    If GETLOCAL = "26" Then GUIDEbyte="01"
+    If GETLOCAL = "27" Then GUIDEbyte="02"
+    If GETLOCAL = "28" Then GUIDEbyte="10"
+    If GETLOCAL = "29" Then GUIDEbyte="20"
+
+End Function
+
+Function GetTimeZone()
+
+  Dim RetVal
+  Dim GotInput
+  Dim PromptString
+  Dim TZT
+  Dim TZ
+  Dim TimeZone
+
+    GotInput = False
+    Do
+        PromptString = VbCr & "                                         This will determine the correct time on your receiver." & VbCr & VbCr
+        PromptString = PromptString + "                                                    If you don't see your option click More..." & VbCr
+        RetVal = Sc.ButtonBox(PromptString,, "                                               Select your Time Zone", "Pacific", "Mountain", "Central", "Eastern", "More...")
+
+        Select Case    UCase(RetVal)
+        Case "1"
+            TZ = &h0
+            TimeZone = "Pacific"
+            GotInput = True
+        Case "2"
+            TZ = &h2
+            TimeZone = "Mountain"
+            GotInput = True
+         Case "3"
+            TZ = &h4
+            TimeZone = "Central"
+            GotInput = True
+         Case "4"
+            TZ = &h6
+            TimeZone = "Eastern"
+            GotInput = True
+         Case "5"
+            Do
+               PromptString = "                 If you don't see your option click Back..." & vbCrLf
+               RetVal = Sc.ButtonBox(PromptString,, "                     Select your Time Zone", "Atlantic", "NewFoundland", "Back...")
+
+               Select Case    UCase(RetVal)
+               Case "1"
+                  TZ = &h8
+                  TimeZone = "Atlantic"
+                  GotInput = True
+               Case "2"
+                  TZ = &h9
+                  TimeZone = "NewFoundland"
+                  GotInput = True
+               Case "3"
+                  Exit Do
+               End Select
+            Loop Until GotInput = True
+         Case "0"
+            'RetVal = Sc.MsgBox("Would you like to abort this operation?" & vbCrLf & "(It is safe to do so at this point.)", vbYesNo + vbQuestion, "ABORT?")
+            'If RetVal = vbYes Then
+                'Sc.Print("Cancelled at Time Zone selection." & vbCrLF)
+                GetTimeZone = vbCancel
+                Exit Function
+            'End If
+        End Select
+    Loop Until GotInput = True
+
+    'Get Day light savings Time or Standard Time
+    GotInput = False
+    Do
+        PromptString = ""
+        RetVal = Sc.ButtonBox(PromptString, 0, " Select DayLight Savings Time or Standard Time", "DayLight", "Standard", "Cancel")
+
+        Select Case UCase(RetVal)
+        Case "1"
+            TZT = &hA0
+            TimeZone = TimeZone & "/DayLight Savings"
+            GotInput = True
+        Case "2"
+            TZT = &h20
+            TimeZone = TimeZone & "/Standard"
+            GotInput = True
+        Case "3", ""
+            'RetVal = Sc.MsgBox("Would you like to abort this operation?" & vbCrLf & "(It is safe to do so at this point.)", vbYesNo + vbQuestion, "ABORT?")
+           'If RetVal = vbYes Then
+                'Sc.Print("Cancelled at Time Zone selection." & vbCrLF)
+                GetTimeZone = vbCancel
+                TZone = "none"
+                Exit Function
+            'End If
+        End Select
+    Loop Until GotInput = True
+
+    GetTimeZone = Hex(TZT + TZ)
+    TZone       = Hex(TZT + TZ)
+End Function
+
+Function SetRating()
+
+    Dim RetVal02
+    Dim PromptString
+    Dim GotInput1
+    Dim Default_Rating
+
+    Default_Rating =  "09"
+    GotInput1      = False
+
+    Do
+        PromptString = "Please make a Rating Limit selection from the following list:" & vbCrlf & vbCrlf
+        PromptString = PromptString & vbtab & vbtab & "00: All Locked" & vbCrlf
+        PromptString = PromptString & vbtab & vbtab & "01: NR"         & vbCrlf
+        PromptString = PromptString & vbtab & vbtab & "02: G"          & vbCrlf
+        PromptString = PromptString & vbtab & vbtab & "04: PG"         & vbCrlf
+        PromptString = PromptString & vbtab & vbtab & "06: PG13"       & vbCrlf
+        PromptString = PromptString & vbtab & vbtab & "07: NR Content" & vbcrlf
+        PromptString = PromptString & vbtab & vbtab & "09: R"          & vbCrlf
+        PromptString = PromptString & vbtab & vbtab & "0B: NR Mature"  & vbCRlf
+        PromptString = PromptString & vbtab & vbtab & "0D: NC17"       & vbCrlf
+
+        RetVal02 = Sc.InputBox(PromptString, "                  Select Rating Limit", Default_Rating)
+        If RetVal02  = "" then
+           GotInput1 =  True
+           rating    = "none"
+           Exit Function
+        End If
+
+        if len(RetVal02) <> 2 then 'If length is less than or greater than 2 Then...
+           GotInput1 = false
+           rating    = "none"
+        else
+          RetVal02   = UCase(RetVal02)
+
+        Select Case left(RetVal02, 1)
+           case "0"
+                Select Case Right(RetVal02, 1)
+                  Case "0", "1", "2", "4", "6", "7", "9", "B", "D"
+                    GotInput1 =  true
+                    SetRating = RetVal02
+                    rating    = SetRating
+                End Select
+            Case "2"
+                Select Case Right(RetVal02, 1)
+                  Case "0", "1", "2", "4", "6", "7", "9", "B", "D"
+                    GotInput1 =  true
+                    SetRating = RetVal02
+                    rating    = SetRating
+                End Select
+        End Select
+        End If
+    Loop until GotInput1 = True
+
+End Function
+
+Sub GetFuseBytes()
+
+    Dim InputValid
+    Dim PromptString
+    Dim Fuse1
+    Dim Fuse2
+    Dim Default_FuseByte
+
+    Default_FuseByte = "25DA"
+    PromptString     =  ""
+    InputValid       = False
+    Do
+        PromptString = "Please enter the fuse bytes you wish to use:" & vbCrlf & vbCrlf
+        PromptString = PromptString & vbtab & "20DF: Virgin, unactivated" & vbCrlf
+        PromptString = PromptString & vbtab & "25DA: Activated, married"  & vbCrlf
+        FuseBytes = Sc.InputBox(PromptString, "          Change Fuse Bytes", Default_FuseByte)
+
+        If FuseBytes  =  "" Then
+           FuseBytes  = "none"
+           InputValid = True
+           Exit Sub
+        End If
+
+        PromptString = ""
+        Fuse1 = Mid(FuseBytes,1,2)
+        Fuse2 = Mid(FuseBytes,3,4)
+        If HexString(Hex2Dec(Fuse1) Xor Hex2Dec(Fuse2),2) = "FF" Then
+            InputValid = True
+        Else
+            PromptString = "Invalid Fuse Bytes!" & vbCrLf & vbCrLf
+        End If
+    Loop Until InputValid = True
+End Sub
+''''''''''''''''''''''''''''''''''''''''''
+Sub ChangeAreaSettings()
+
+Dim TZone2
+Dim ZipCode2
+Dim local2
+Dim GUIDEbyte2
+Dim rating2
+Dim FuseBytes2
+
+    TZone2     = TZone
+    ZipCode2   = ZipCode
+    local2     = local
+    GUIDEbyte2 = GUIDEbyte
+    rating2    = rating
+    FuseBytes2 = FuseBytes
+
+    Sc.Write("A2")
+    Call Sc.ProgressBox ("Changing Area Settings...", 1, 1,"                 Changing Area Settings...")
+
+    If RetVal03 = 1 then
+       Call WriteViaLoader("2014",FuseBytes,"D")              ' set Fuse Bytes
+    End If
+    Call WriteViaLoader("240C","00000000","E")             ' Clear Password
+    Call WriteViaLoader("2410","55" & ZPCode & "2020","E") ' Set Zipcode
+    Call WriteViaLoader("2460","00000000" & rating,"E")    ' Clear IRD # From Location 1 and set rating
+    Call WriteViaLoader("24A4","00000000","E")             ' Clear IRD # From Location 1
+    Call WriteViaLoader("24E0",TZone,"E")                  ' Set Time Zone
+    Call WriteViaLoader("2511",local,"E")                  ' Set Local Bytes
+    If RetVal03 = 1 then
+       Call WriteViaLoader("251F",GUIDEbyte,"E")              ' Set Guide Bytes
+    End If
+    Call WriteViaLoader("2690","0000000000000000","D")     ' Clear card swap key
+    Call Sc.ProgressBox ("", 0, 0, "")
+
+    sc.Print(vbCr &    "Time Zone    Set to: " & TZone2)
+    sc.Print(vbCr &    "Zip Code     Set to: " & ZipCode2)
+    sc.Print(vbCr &    "Local Byte   Set to: " & local2)
+    sc.Print(vbCr &    "Guide Byte   Set to: " & GUIDEbyte2)
+    If RetVal03 = 1 then
+       sc.Print(vbCr & "Fuse  Byte   Set to: " & FuseBytes2)
+    End If
+    sc.Print(vbCr &    "Rating Limit Set to: " & rating2 & "  And the Password Was Cleared.")
+    sc.Print(vbCr & VbCr & "Area Settings Change Was Successfull!!")
+    sc.Print(vbCr &        "Card Is Unmarried From The IRD !!" & vbCr)
+
+    FixAltEE = 1
+
+End Sub
+
+Sub Card_options()
+
+If Unlooped = 0 Then
+   Do
+      MenuPrompt = ""
+      MenuPrompt = MenuPrompt + "                 !!! DO NOT REMOVE THE CARD UNTIL YOU CLICK EXIT ON THIS SCREEN!!!" & VbCr & VbCr & VbCr
+      MenuPrompt = MenuPrompt + "Clean The Card    Write .bin /.hex To Card   Read/Save Card     More Options                   Exit"
+      CCChoice = Sc.ButtonBox(MenuPrompt, 0, "                                           !!! Bootstrap Is Activated !!! ", "Clean Card", "Write Card", "Read/Save .bin", "More Options", "Exit")
+      Select Case CCChoice
+
+      Case "1"           'Clean Card
+           Sc.Print VbCr & "Cleaning The Card ....."
+           Call CleanCard()
+           Sc.Print VbCr & "The Card Has Been Cleaned!!!" & VbCr
+
+
+      Case "2"         'Write bin to card
+           Fs.FileClose(InFile)
+           HUBinfile = False
+           MenuPrompt = ""
+           MenuPrompt = MenuPrompt + "                !!! DO NOT REMOVE THE CARD !!!" & VbCr & VbCr & VbCr
+           MenuPrompt = MenuPrompt + "Write .bin To Card    Write .hex To Card              Exit"
+           writeChoice = Sc.ButtonBox(MenuPrompt, 0, "                 !!! Bootstrap Is Activated !!! ", "Write .BIN", "Write .HEX", "Exit")
+           Select Case writeChoice
+
+           Case "1"           'write .bin to card
+
+               Call GetFile()
+               If HUBinFile = True Then
+                  Call SSID
+                  Call SSID_Abort
+                  If Choice = 1 Then
+                     Attempts  = 0
+                     Sc.Print VbCr & "Writing The .bin To The Card ....."
+                     InFile = Fs.FileOpen(TesterFileName, fsoOpenRead)
+                     Call WriteCard(64)
+                     Sc.Print VbCr & "The .bin Was Written To The Card!!!" & VbCr
+                  End IF
+               End IF
+
+           Case "2"           'write .hex to card
+               call Install_hex()
+
+           Case "3", ""
+                   End select
+
+      Case "3"           'read card
+           Fs.FileClose(OutFile)
+           HUBinfile = False
+           Call GetFileName()
+           If HUBinFile = True Then
+              Sc.Print VbCr & "Reading The Bin From The Card ....."
+              Call ReadCard()
+              Sc.Print VbCr & "The .bin Was Read From The Card!!!" & VbCr
+              FileName = TesterFileName
+              Call SSID
+           End If
+
+
+      Case "4"           'More Options
+           Do
+              MenuPrompt = "Unmarry The Card,    Clean off PPV's,      Change Area Info,  Fix 4TH Byte Of ATR,      Return Back"
+              MBLChoice  = Sc.ButtonBox(MenuPrompt, 0, "Bootstrap Is Activated!!        DO NOT REMOVE THE CARD !!!", "Unmarry Card", "Wipe PPV's", "Change time/zip", "Fix 4TH Byte", "Back")
+              Select Case MBLChoice
+
+              Case "1"           'Unmarry Card From Receiver
+                   Sc.Print VbCr & "Unmarrying Card ....."
+                   Call UnMarryCard()
+                   Sc.Print VbCr & "The Card Has Been Unmarried From The Receiver!!!" & VbCr
+
+              Case "2"         'Clean off PPV's
+                   Sc.Print VbCr & "Wiping The PPV's From The Card ....."
+                   Call WipePPV()
+                   Sc.Print VbCr & "The PPV's Have Been Wiped From The Card!!!" & VbCr
+
+              Case "3", ""
+                   Call AreaInfo
+                   ReadMode = "Additionals"
+                   FixAltEE = 1
+
+              Case "4", ""
+                   Sc.Print VbCr & "Fixing The 4th Byte of The ATR ....."
+                   If FirstBootload = 1 then Call ExtractCardInfo()
+                   FirstBootload    = 2
+                   Call WriteViaLoader("2465","0000","E")    ' FIX 4TH BYTE OF ATR
+                   Sc.Print VbCr & "The 4th Byte Of The Atr Was Fixed." & VbCr
+                   ReadMode = "Additionals"
+                   FixAltEE = 1
+
+              Case "5", ""
+                   End select
+           Loop until MBLChoice = 5
+
+
+      Case "5", ""
+           If FixAltEE = 1 then
+              Sc.Print VbCr & "Fixing Alt-EEprom Area of Card..."
+              Call WriteAltEE()
+           End If
+           Call Sc.ProgressBox ("", 0, 0, "")
+           Call Card_Reset()
+'           Call ReadInfo()
+           End Select
+   Loop until CCChoice = 5
+    Call Sc.ProgressBox ("", 0, 0, "")
+
+Else
+
+   Do
+      MenuPrompt = ""
+      MenuPrompt = MenuPrompt + "                 !!! DO NOT REMOVE THE CARD UNTIL YOU CLICK EXIT ON THIS SCREEN!!!" & VbCr & VbCr & VbCr
+      MenuPrompt = MenuPrompt + "Apply .hex file,    Write .bin To Card,     Read/Save Card,        More Options,                  Exit"
+      CCChoice = Sc.ButtonBox(MenuPrompt, 0, "                                           !!! Bootstrap Is Activated !!! ", "Write .hex", "Write .bin", "Read/Save .bin", "More Options", "Exit")
+      Select Case CCChoice
+
+      Case "1"           'apply a .hex file to card
+           call Install_hex()
+
+      Case "2"         'Write bin to card
+           Fs.FileClose(InFile)
+           HUBinfile = False
+           Call GetFile()
+           If HUBinFile = True Then
+              Call SSID
+              Call SSID_Abort
+              If Choice = 1 Then
+                 Attempts =  0
+                 Sc.Print VbCr & "Writing The .bin To The Card ....."
+                 InFile = Fs.FileOpen(TesterFileName, fsoOpenRead)
+                 Call WriteCard(64)
+                 Sc.Print VbCr & "The .bin Was Written To The Card!!!" & VbCr
+              End IF
+           End IF
+
+      Case "3"           'read card
+           Fs.FileClose(OutFile)
+           HUBinfile = False
+           Call GetFileName()
+           If HUBinFile = True Then
+              Sc.Print VbCr & "Reading The Bin From The Card ....."
+              Call ReadCard()
+              Sc.Print VbCr & "The .bin Was Read From The Card!!!" & VbCr
+              FileName = TesterFileName
+              Call SSID
+           End If
+
+      Case "4"           'More Options
+           Do
+              MenuPrompt = "Unmarry The Card,    Clean off PPV's,      Change Area Info,  Fix 4TH Byte Of ATR,      Return Back"
+              MBLChoice  = Sc.ButtonBox(MenuPrompt, 0, "Bootstrap Is Activated!!        DO NOT REMOVE THE CARD !!!", "Unmarry Card", "Wipe PPV's", "Change time/zip", "Fix 4TH Byte", "Back")
+              Select Case MBLChoice
+
+              Case "1"           'Unmarry Card From Receiver
+                   Sc.Print VbCr & "Unmarrying Card ....."
+                   Call UnMarryCard()
+                   Sc.Print VbCr & "The Card Has Been Unmarried From The Receiver!!!" & VbCr
+
+              Case "2"         'Clean off PPV's
+                   Sc.Print VbCr & "Wiping The PPV's From The Card ....."
+                   Call WipePPV()
+                   Sc.Print VbCr & "The PPV's Have Been Wiped From The Card!!!" & VbCr
+
+              Case "3", ""
+                   Call AreaInfo
+                   ReadMode = "Additionals"
+                   FixAltEE = 1
+
+              Case "4", ""
+                   Sc.Print VbCr & "Fixing The 4th Byte of The ATR ....."
+                   If FirstBootload = 1 then Call ExtractCardInfo()
+                   FirstBootload    = 2
+                   Call WriteViaLoader("2465","0000","E")    ' FIX 4TH BYTE OF ATR
+                   Sc.Print VbCr & "The 4th Byte Of The Atr Was Fixed." & VbCr
+                   ReadMode = "Additionals"
+                   FixAltEE = 1
+
+              Case "5", ""
+                   End select
+           Loop until MBLChoice = 5
+
+
+      Case "5", ""
+           If FixAltEE = 1 then
+              Sc.Print VbCr & "Fixing Alt-EEprom Area of Card..."
+              Call WriteAltEE()
+           End If
+           Call Sc.ProgressBox ("", 0, 0, "")
+           Call Card_Reset()
+'           Call ReadInfo()
+           End Select
+   Loop until CCChoice = 5
+End If
+
+End Sub
+
+Sub Install_hex()
+    Dim InFile
+
+    Fs.FileClose(InFile)
+    FileName = Fs.FileOpEndialog(HexFilter, "    Please select a .hex(*.hex) file to write to the card", "3m.hex")
+
+    If FileName <> "" Then
+        If Fs.FileExists(FileName) = 0 Then
+            Sc.MsgBox("The file does not exist")
+        Else
+            Sc.Print VbCr & "Applying Hex File To Card ....." & VbCr & VbCr
+            InFile = Fs.FileOpen(FileName, fsoOpenRead)
+            FileSize = Fs.FileSeek(InFile, 0, fsoSEEK_END)
+            Fs.FileClose(InFile)
+
+            Call Include(FileName)
+            sc.delay(300)
+            Call Sc.ProgressBox ("", 0, 0, "")
+            sc.print VbCr & FileName & " Installed Successfully." & VbCr
+            FixAltEE = 0
+        End If
+    End If
+End Sub
+
+Function Include(vbsFile)
+
+    Dim fso, ts, x, regEx, buf
+    Dim Tail, ByteCnt, BitCnt, Addr, sData
+
+    Set fso = CreateObject("Scripting.FileSystemObject")
+    Set ts = fso.OpenTextFile(vbsFile)
+    Set regEx = New RegExp
+
+    TotalHexBytesReadSoFar = 0
+    RegEx.Global  = True
+    RegEx.Pattern = ":"
+
+    sc.print "Bytes" & VbTab & "" & VbCr
+    sc.print "Addr" & VbTab & "Data" & VbCr & VbCr
+
+    If FirstBootload = 1 then
+        Call ExtractCardInfo()
+    End IF
+    FirstBootload = 2
+
+    Sc.Write("A1")
+
+    Do While Not ts.AtEndOfStream
+              ThisStr = ts.ReadLine
+
+              If not Left(ThisStr, 1) = "#" Then
+                 If not ThisStr = ":00000001FF" Then
+                    If Left(ThisStr, 2) = "::" Then
+                       Tail = "E"
+                    Else
+                       Tail = "D"
+                    End If
+
+                    ThisStr = ThisStr + Tail
+                    TotalHexBytesReadSoFar = TotalHexBytesReadSoFar + Len(ThisStr)
+                    ThisStr = regEx.Replace (ThisStr,"")
+                    ByteCnt = Mid(ThisStr,1,2)
+                    BitCnt = Hex2Dec(ByteCnt) * 2
+                    Addr = Mid(ThisStr,3,4)
+                    sc.print Addr & VbTab ' Debug Ok
+                    sData = Mid(ThisStr,9,BitCnt)
+                    sc.print sData & VbCr ' Debug Ok
+
+                    Call WriteViaLoader(Addr,sData,Tail)
+                 Else
+                    TotalHexBytesReadSoFar = TotalHexBytesReadSoFar + Len(ThisStr)
+                 End If
+              Else
+                 TotalHexBytesReadSoFar = TotalHexBytesReadSoFar + Len(ThisStr)
+              End If
+              PercentageHex = TotalHexBytesReadSoFar * 100 / FileSize
+              Call Sc.ProgressBox ("                                      Writing Hex File..." & INT(PercentageHex) & "%.", TotalHexBytesReadSoFar, FileSize, "                         Writing Hex File To Card...")
+    loop
+    ts.Close
+    Sc.Write("A0")
+
+End Function
+
+Sub Continue2LoadBootStrap()
+
+    TimeElapsed   = 0
+    TimeInMinutes = 0
+    TimeInHours   = 0
+
+    Call IsCardPresent()
+    If (GetATR = False) Then
+       Call CardIsLooped()
+    Else
+       RDwriteCLEANglitchCOUNTER = 0
+       bootstraploads = 1
+       ScriptStart = Now
+       Sc.Print "----------------------------------------------------------------" & vbCr
+       Sc.Print "Start: " & ScriptStart & vbCr     'main screen
+       Sc.Print "----------------------------------------------------------------" & vbCr
+       Sc.Print VbCr & "Attempting To Load The Bootstrap ....." & vbCr & vbCr
+       Sc.Print "  Attempt #    INS Used      Dac1  " & vbCr
+       Sc.Print "  =========    ========      ====  " & VbCr & vbCr
+
+       for bootstraploads = 1 to HOWmanyTIMESloadBOOTSTRAP
+           Call LoadBootStrap()
+       Next
+
+       If Fix4thBYTE = "yes" Then
+          Call ExtractCardInfo()
+          Sc.Print VbCr & "Fixing The 4th Byte of The ATR ....."
+          Call WriteViaLoader("2465","0000","E")    ' FIX 4TH BYTE OF ATR
+          Sc.Print VbCr & "The 4th Byte Of The Atr Was Fixed." & VbCr
+          Fix4thBYTE = ""
+          FirstBootload = 2
+       End If
+
+       AvgGlitchRead = RDwriteCLEANglitchCOUNTER / HOWmanyTIMESloadBOOTSTRAP
+       Sc.Print VbCr & VbCr & "Average # Of Glitches Required To Enter The Card: " & AvgGlitchRead & " Glitches." & VbCr
+
+       Call Card_options()
+    End If
+End Sub
+
+Sub Byte_Array()
+
+    Dim RetValue
+    Dim XByte(15)
+
+    Sc.Write("06C20724C08800")
+    Sc.Read(&h02)
+    RetValue = Sc.GetByte(&h01)
+    Sc.Read(RetValue)
+
+    XByte(0) = Sc.GetByte(0)
+    XByte(1) = Sc.GetByte(1)
+    XByte(2) = Sc.GetByte(2)
+    XByte(3) = Sc.GetByte(3)
+    XByte(4) = Sc.GetByte(4)
+    XByte(5) = Sc.GetByte(5)
+    XByte(6) = Sc.GetByte(6)
+    XByte(7) = Sc.GetByte(7)
+
+    Sc.Write("06C20726588800")
+    Sc.Read(&h02)
+    RetValue = Sc.GetByte(&h01)
+    Sc.Read(RetValue)
+
+    XByte(8) = Sc.GetByte(0)
+    XByte(9) = Sc.GetByte(1)
+    XByte(10) = Sc.GetByte(2)
+    XByte(11) = Sc.GetByte(3)
+    XByte(12) = Sc.GetByte(4)
+    XByte(13) = Sc.GetByte(5)
+    XByte(14) = Sc.GetByte(6)
+    XByte(15) = Sc.GetByte(7)
+
+    Sc.Write("06C20B2AE48C00")
+    Sc.Read(&h02)
+    RetValue = Sc.GetByte(&h01)
+    Sc.Read(RetValue)
+
+    Key12Byte(0)  = Sc.GetByte(&h0)
+    Key12Byte(1)  = Sc.GetByte(&h01)
+    Key12Byte(2)  = Sc.GetByte(&h02)
+    Key12Byte(3)  = Sc.GetByte(&h03)
+    Key12Byte(4)  = Sc.GetByte(&h04)
+    Key12Byte(5)  = Sc.GetByte(&h05)
+    Key12Byte(6)  = Sc.GetByte(&h06)
+    Key12Byte(7)  = Sc.GetByte(&h07)
+    Key12Byte(8)  = Sc.GetByte(&h08)
+    Key12Byte(9)  = Sc.GetByte(&h09)
+    Key12Byte(10) = Sc.GetByte(&h0A)
+    Key12Byte(11) = Sc.GetByte(&h0B)
+
+    XORedByte(0)  = HexString(XByte(0) XOR XByte(8), 2)
+    XORedByte(1)  = HexString(XByte(1) XOR XByte(9), 2)
+    XORedByte(2)  = HexString(XByte(2) XOR XByte(10), 2)
+    XORedByte(3)  = HexString(XByte(3) XOR XByte(11), 2)
+    XORedByte(4)  = HexString(XByte(4) XOR XByte(12), 2)
+    XORedByte(5)  = HexString(XByte(5) XOR XByte(13), 2)
+    XORedByte(6)  = HexString(XByte(6) XOR XByte(14), 2)
+    XORedByte(7)  = HexString(XByte(7) XOR XByte(15), 2)
+    XoredByte(8)  = XoredByte(0)
+    XoredByte(9)  = XoredByte(1)
+    XoredByte(10) = XoredByte(2)
+    XoredByte(11) = XoredByte(3)
+    XoredByte(12) = XoredByte(4)
+    XoredByte(13) = XoredByte(5)
+    XoredByte(14) = XoredByte(6)
+    XoredByte(15) = XoredByte(7)
+    XoredByte(16) = XoredByte(0)
+    XoredByte(17) = XoredByte(1)
+    XoredByte(18) = XoredByte(2)
+    XoredByte(19) = XoredByte(3)
+    XoredByte(20) = XoredByte(4)
+    XoredByte(21) = XoredByte(5)
+    XoredByte(22) = XoredByte(6)
+    XoredByte(23) = XoredByte(7)
+    XoredByte(24) = XoredByte(0)
+    XoredByte(25) = XoredByte(1)
+    XoredByte(26) = XoredByte(2)
+    XoredByte(27) = XoredByte(3)
+    XoredByte(28) = XoredByte(4)
+    XoredByte(29) = XoredByte(5)
+    XoredByte(30) = XoredByte(6)
+    XoredByte(31) = XoredByte(7)
+
+End Sub
+
+Sub LoadGlitchFile
+
+    Dim fso, ts
+    Dim firstATRlock
+    Dim D2original
+
+    Set fso = CreateObject("Scripting.FileSystemObject")
+    Set ts = fso.OpenTextFile(GlitchFile)
+
+    ScriptStart = Now
+    RANDOMIZE TIMER
+
+    glttl         =  1 'total glitches to card
+'    atrlock       =  0
+    firstATRlock  =  0
+'    cter          =  0
+'    glcnt         =  0
+'    mtries        =  0
+'    d0            =  0
+    SavedGlitch   =  0
+    sc.verbose = False
+
+ Do While Not ts.AtEndOfStream
+
+   ThisStr = ts.ReadLine
+   SavedGlitch = SavedGlitch +1
+
+   D1 = Left(ThisStr, 3)
+   D2original = Mid(ThisStr,5,2)
+   D3 =  Mid(ThisStr,8,2)
+   D4 =  Mid(ThisStr,11,3)
+   D5 =  Mid(ThisStr,15,3)
+   D6 =  Mid(ThisStr,19,2)
+   D7 =  Mid(ThisStr,22,2)
+   D8 =  Mid(ThisStr,25,2)
+   D9 =  Mid(ThisStr,28,3)
+   firstATRlock = 0
+                                                                                     glchs = 0
+                                                                                     chglch = 0
+   Do
+
+      katr=0
+      mtries = mtries + 1
+      if mtries = 5000 then
+         call RndGr()
+         mtries = 0
+      end if
+
+      boot = 0
+      D2 = D2original
+      if atrlock = 1 then
+
+         if firstATRlock = 0 then
+            D2original = D2original - 4
+            firstATRlock = firstATRlock + 1
+         end if
+
+         D2 = INT(RND * 08) + D2original
+         D3 = INT(RND * &h05) + &h07      '  7 -  11
+         D4 = INT(RND * &h3A) + &h88'136-196
+         D9 = INT(RND * &h07) + &h35c     '860 - 866
+
+         glchs = glchs +1
+
+      End If
+
+      Call FormatTime
+
+      if atrlock = 1 then
+         Msg="Values Of D1-D9: " & D1 & ", " & D2 & ", " & D3 & ", " & D4 & ", " & D5 & ", " & D6 & ", " & D7 & ", " & D8 & ", " & D9 &vbcr
+         msg=Msg+"Current ATR:  " &  ATRtry & VbCr
+         Msg=Msg+"ATR Locked!                     " & vbtab & "  Bootloader Attempts: " & (d0) & VbCr
+      else
+         Msg="Values Of D1-D9: " & D1 & ", " & D2 & ", " & D3 & ", " & D4 & ", " & D5 & ", " & D6 & ", " & D7 & ", " & D8 & ", " & D9 &vbcr
+         msg=Msg+"Current ATR:  " & ATRtry & VbCr
+         Msg=Msg+"Attempting To Lock Onto ATR." & vbtab & "  Bootloader Attempts: " & (d0) & VbCr
+      end if
+
+      If ATRtry = "" then
+         Msg="Values Of D1-D9: " & D1 & ", " & D2 & ", " & D3 & ", " & D4 & ", " & D5 & ", " & D6 & ", " & D7 & ", " & D8 & ", " & D9 &vbcr
+         msg=Msg+"Current ATR:  " & "?? ?? ?? ??" & VbCr
+         Msg=Msg+"Attempting To Lock Onto ATR." & vbtab & "  Bootloader Attempts: " & (d0) & VbCr
+      End if
+
+      Call Sc.ProgressBox(Msg,kp,33,"Saved Glitch#" & SavedGlitch & " Total Glitches " & glttl & "  Elapsed Time " & RunTime)
+      ATRtry = ""
+
+      sc.verbose = 0
+      sc.write("A1")
+      delay(10)
+
+      if Chk4Card() = 0 then
+         BootCard=0
+         Exit Sub
+      end if
+
+      delay(30)
+
+      sc.write("B0" & HexString(D1,02))
+      glttl = glttl + 1
+      sc.write("0f1f0120" & HexString(D5,4) & "0c" & HexString(D7,2) & "20" & HexString(D6,4) & "0d00" & HexString(D8,2) & "0000")
+
+      Sc.Read(&h02)
+
+      cter=cter+1
+      cnt=0
+      Sc.Write("028000")
+      if Sc.Read(&h02) = 2 then
+         cnt = sc.getbyte(1)
+         if cnt = 1 then sc.read(1)
+      end if
+
+      if cter > 75 then
+         glcnt = glcnt + 1
+         if glcnt = 24 then
+            glcnt = 0
+            call RndGr()
+         end if
+         cter = 0
+         atrlock = 0
+      end if
+
+      if cnt > 0 then
+
+         kp=kp+1
+         if kp >33 then kp = 33
+         for b = 0 to 10
+             Sc.Write("028000")
+             if Sc.Read(&h02) = 2 then
+                cnt = sc.getbyte(1)
+             else
+                cnt = 0
+             end if
+
+             if cnt > 0 then
+                cnt = sc.read(cnt)
+                kk=sc.getbyte(0)
+                if kk = &h38 then
+'                  sc.print "38 "
+                   Sc.Write("028000")
+                   cnt = 0
+                   if Sc.Read(&h02) = 2 then
+                      cnt = sc.getbyte(1)
+                      if(cnt = 0) then exit for
+                      Sc.Read(cnt)
+                      if(sc.getbyte(0)) = &hb0 then
+                          d0 = d0 + 1
+                          katr    = 1
+                          cter    = 0
+                          glcnt   = 0
+                          atrlock = 1
+                       exit for
+                    end if
+                 end if
+              end if
+           end if
+
+'          sc.print HexString(kk,2) &" "
+           ATRtry = ATRtry & HexString(kk,2) & " "
+         next
+
+         if katr = 1 then
+            sc.write("B0"  & HexString(D4,02))
+            sc.write("071f800d" & HexString(D3,02)& HexString(D2,02)&"0000")
+            if Sc.Read(&h02) > 1 then
+               cnt = sc.getbyte(1)
+            else
+               cnt = 0
+            end if
+
+            if cnt > 0 then
+               cnt = sc.read(cnt)
+
+               Sc.Write("31eeFFFFfed18d52E0FD2266E1B9E17201CF725f0772FF14C5E2AB0100C3DA07F88C0100FFFFFFFFFFFFFFFFFFFFFFFF0000")
+               if Sc.Read(&h02)<2 then Sc.Read(&h02)
+               Sc.Write("11c060200350042001500320" & HexString(D9,04) & "0d010000")
+               Sc.Read(&h02)
+
+               for b = 0 to 8
+                   Sc.Write("028000")
+                   if Sc.Read(&h02) = 2 then
+                      cnt = sc.getbyte(1)
+                   else
+                      cnt = 0
+                   end if
+
+                   if cnt > 0 then
+                      cnt = sc.read(cnt)
+                      kk=sc.getbyte(0)
+                      if kk = &h66 then
+                         Sc.Write("028000")
+                         cnt = 0
+                         if Sc.Read(&h02) = 2 then
+                            cnt = sc.getbyte(1)
+                            if(cnt = 0) then exit for
+                            Sc.Read(cnt)
+                            if(sc.getbyte(0)) = &h99 then
+                               boot=1
+                               ScriptEnd = Now
+                               Sc.Print VbTab & numberOFunloops & VbTab & VbTab & glttl & VbTab & VbTab & D0 & VbTab & VbTab & "ExtremeHU " & (HexString(D1,2)) & "," & (HexString(D2,2)) & "," & (HexString(D3,2)) & ", " & (HexString(D4,2)) & "," & (HexString(D5,3)) & "," & (HexString(D6,2)) & "," & (HexString(D7,2)) & "," & (HexString(D8,2)) & "," & (HexString(D9,3)) & VbTab & "" & FormatNumber((CDbl(ScriptEnd) - CDbl(ScriptStart)) * 24 * 60, 3, True, True, True) & " mins" & vbCr
+                               If D2 < &h0A or D3 < &h0A then
+                                  Set fso = CreateObject("Scripting.FileSystemObject")
+                                  Set ts = fso.OpenTextFile(GlitchFileSaved, 2, true, 0)
+                                  If Len(D2) < 2 Then
+                                     If Len(D3) < 2 Then
+                                        ts.WriteLine d1 & ",0" & d2 & ",0" & d3 & "," & d4 & "," & d5 & "," & d6 & "," & d7 & "," & d8 & "," & d9
+                                        Sc.Print "                                           Decimal " & D1 & ",0" & D2 & ",0" & D3 & "," & D4 & "," & D5 & "," & D6 & "," & D7 & "," & D8 & "," & D9 & "   " & RunTime & VbCr & VbCr
+                                     End If
+                                     If Len(D3) > 1 Then
+                                        ts.WriteLine d1 & ",0" & d2 & "," & d3 & "," & d4 & "," & d5 & "," & d6 & "," & d7 & "," & d8 & "," & d9
+                                        Sc.Print "                                           Decimal " & D1 & ",0" & D2 & "," & D3 & "," & D4 & "," & D5 & "," & D6 & "," & D7 & "," & D8 & "," & D9 & "   " & RunTime & VbCr & VbCr
+                                     End If
+                                   Else
+                           '       If Len(D2) > 1 Then
+                                     If Len(D3) < 2 Then
+                                        ts.WriteLine d1 & "," & d2 & ",0" & d3 & "," & d4 & "," & d5 & "," & d6 & "," & d7 & "," & d8 & "," & d9
+                                        Sc.Print "                                           Decimal " & D1 &  "," & D2 & ",0" & D3 & "," & D4 & "," & D5 & "," & D6 & "," & D7 & "," & D8 & "," & D9 & "   " & RunTime & VbCr & VbCr
+                                     End If
+                                     If Len(D3) > 1 Then
+                                        ts.WriteLine d1 & "," & d2 & "," & d3 & "," & d4 & "," & d5 & "," & d6 & "," & d7 & "," & d8 & "," & d9
+                                        Sc.Print "                                           Decimal " & D1 & ","  & D2 & "," & D3 & "," & D4 & "," & D5 & "," & D6 & "," & D7 & "," & D8 & "," & D9 & "   " & RunTime & VbCr & VbCr
+                                     End If
+                                   End If
+
+                                Else
+                                   Set fso = CreateObject("Scripting.FileSystemObject")
+                                   Set ts = fso.OpenTextFile(GlitchFileSaved, 2, true, 0)
+                                   ts.WriteLine d1 & "," & d2 & "," & d3 & "," & d4 & "," & d5 & "," & d6 & "," & d7 & "," & d8 & "," & d9
+                                   Sc.Print "                                           Decimal " & D1 & "," & D2 & "," & D3 & "," & D4 & "," & D5 & "," & D6 & "," & D7 & "," & D8 & "," & D9 & "   " & RunTime & VbCr & VbCr
+                                End if
+
+                               For i = 1 to SavedGlitches
+                                   ts.WriteLine array(i)
+                               Next
+                               ts.Close
+
+                               SavedGlitches = 0
+                               TotalUnloopTime = TotalUnloopTime + (ScriptEnd - ScriptStart)') * 24 * 60, 3, True, True, True)                         Sc.Print "Elapsed Time:  " + FormatNumber((CDbl(ScriptEnd) - CDbl(ScriptStart)) * 24 * 60, 3, True, True, True) & " Minutes" & vbCr
+                               exit for
+                            end if
+                         end if
+                      end if
+                   else
+                      exit for
+                   end if
+
+               next
+
+               if boot = 1 then
+                  Sc.Write("021500")
+                  Sc.Read(2)
+                  Sc.Write("42FF225272FF14E1E2D007E2D029E2D02A77800716753F07D307F75011E29B2A70012ADA07F78E013A00D7D307D8078ECEFBD40770012ADA07F300C6F76211F7631100")
+                  Sc.Read(2)
+                  Sc.Write("21DE8E0149F76011F76111881c931270FF1203FBF70011728512DA12FDF70011F900")
+                  Sc.Read(2)
+
+                  InFile = Fs.FileOpen(TesterFileName, fsoOpenRead)
+                  FirstBootload = 1
+                  GlitchFileWorked = 1
+                  Call WriteCard(32)
+                  Exit Sub
+
+               end if
+            end if
+        end if
+     else
+        kp=kp-1
+        if kp<1 then kp=1
+     end if
+         If glchs > 2 Then
+            atrlock = 0
+            Call Card_Reset
+            glchs = 0
+         End if
+  loop until atrLock = 0
+
+loop
+ts.Close
+
+FirstBootload = 1
+End Sub
+
+Sub GetGlitchFileName()
+
+    GlitchFile = Fs.FileOpEndialog(TxtFilter, "          Please select a .txt(*.txt) file to use to glitch the card", "GoodGlitchesFile.txt")
+    If GlitchFile <> "" Then
+       If Fs.FileExists(GlitchFile) = 0 Then
+          Sc.MsgBox("Glitch File Not Found.")
+          Exit Sub
+       Else
+          UseGlitchFile = 1
+       End If
+    Else
+       Sc.MsgBox("Glitch File Will Not Be Used To Unloop The Card.")
+       exit sub
+    End If
+
+End Sub
+
+Sub WhereToSaveGoodGlitches()
+
+    Do
+       GlitchFileSaved = Fs.FileOpEndialog(TxtFilter, "   Name Of The Glitch(*.txt) File To Save Successful D1-D9 To?", "HuUnloopGlitchFile.txt")
+       If GlitchFileSaved <> "" Then
+          If Fs.FileExists(GlitchFileSaved) = 0 Then
+             Sc.MsgBox("Glitch File Not Found.")
+             Exit Sub
+          End If
+       End If
+    Loop until GlitchFileSaved <> "" and Fs.FileExists(GlitchFileSaved) <> 0
+
+End Sub
+
+Sub WriteAltEE()
+
+Call Sc.ProgressBox ("Extracting Card Information...", 1, 8, "AltEE Fix")
+Call ExtractCardInfo2()
+
+Call Sc.ProgressBox ("Writing Temporary Code...", 2, 8, "AltEE Fix")
+Sc.Write("25E2 9F 2B10 5220AA2B78AB015FCAF85260AA2B26AB004FCAF88C00508820002A8801602C52 00")
+Sc.Read(&h02)
+Call WDTMR()
+
+Call Sc.ProgressBox ("Writing Temporary Code...", 3, 8, "AltEE Fix")
+Sc.Write("25E2 9F 2B30 20F75011F760139A2C9B2A70012A70012CCAF4F72211F723118F0014F72011F7 00")
+Sc.Read(&h02)
+Call WDTMR()
+
+Call Sc.ProgressBox ("Writing Temporary Code...", 4, 8, "AltEE Fix")
+Sc.Write("25E2 9F 2B50 21118F000BF70013B4B47230518C01008800002E70012E7D2F2D09F8F7001172 00")
+Sc.Read(&h02)
+Call WDTMR()
+
+Call Sc.ProgressBox ("Writing Temporary Code...", 5, 8, "AltEE Fix")
+Sc.Write("25E2 9F 2B70 9004DA04FDF70011F900000000AA0000000000000000F300F3FFFFFFFFFFFFFF 00")
+Sc.Read(&h02)
+Call WDTMR()
+
+Call Sc.ProgressBox ("Writing Temporary Code...", 6, 8, "AltEE Fix")
+Sc.Write("25E2 9F 2B90 FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF0000000000F300F3FFFFFFFFFFFFFF 00")
+Sc.Read(&h02)
+Call WDTMR()
+
+Call Sc.ProgressBox ("Completing Fix...", 7, 8, "AltEE Fix")
+Sc.Write("05 C2 41 2B10 00")
+sc.delay(1000)
+Sc.Read(&h02)
+
+Call Sc.ProgressBox ("Completing Fix...", 8, 8, "AltEE Fix")
+Sc.Write("05150E108000")'SET WDTMR
+Sc.Read(&h03)
+
+Sc.delay(200)
+
+   Call Card_Reset
+
+End Sub
+
+'******************************MODIFIED EXTRACT CARD INFO************************
+Sub ExtractCardInfo2()
+
+    Dim RetValue
+    Dim XByte(15)
+
+    If ReadMode <> "Additionals" then
+       Call WDTMR()
+
+       Sc.Write("06C20724C08800")
+       Sc.Read(&h02)
+       RetValue = Sc.GetByte(&h01)
+       Sc.Read(RetValue)
+
+    XByte(0) = Sc.GetByte(0)
+    XByte(1) = Sc.GetByte(1)
+    XByte(2) = Sc.GetByte(2)
+    XByte(3) = Sc.GetByte(3)
+    XByte(4) = Sc.GetByte(4)
+    XByte(5) = Sc.GetByte(5)
+    XByte(6) = Sc.GetByte(6)
+    XByte(7) = Sc.GetByte(7)
+
+    Sc.Write("06C20726588800")
+    Sc.Read(&h02)
+        RetValue = Sc.GetByte(&h01)
+        Sc.Read(RetValue)
+
+    XByte(8) = Sc.GetByte(0)
+    XByte(9) = Sc.GetByte(1)
+    XByte(10) = Sc.GetByte(2)
+    XByte(11) = Sc.GetByte(3)
+    XByte(12) = Sc.GetByte(4)
+    XByte(13) = Sc.GetByte(5)
+    XByte(14) = Sc.GetByte(6)
+    XByte(15) = Sc.GetByte(7)
+
+    Sc.Write("06C20B2AE48C00")
+    Sc.Read(&h02)
+        RetValue = Sc.GetByte(&h01)
+        Sc.Read(RetValue)
+
+    Key12Byte(0)  = Sc.GetByte(&h0)
+    Key12Byte(1)  = Sc.GetByte(&h01)
+    Key12Byte(2)  = Sc.GetByte(&h02)
+    Key12Byte(3)  = Sc.GetByte(&h03)
+    Key12Byte(4)  = Sc.GetByte(&h04)
+    Key12Byte(5)  = Sc.GetByte(&h05)
+    Key12Byte(6)  = Sc.GetByte(&h06)
+    Key12Byte(7)  = Sc.GetByte(&h07)
+    Key12Byte(8)  = Sc.GetByte(&h08)
+    Key12Byte(9)  = Sc.GetByte(&h09)
+    Key12Byte(10) = Sc.GetByte(&h0A)
+    Key12Byte(11) = Sc.GetByte(&h0B)
+
+    XORedByte(0)  = HexString(XByte(0) XOR XByte(8), 2)
+    XORedByte(1)  = HexString(XByte(1) XOR XByte(9), 2)
+    XORedByte(2)  = HexString(XByte(2) XOR XByte(10), 2)
+    XORedByte(3)  = HexString(XByte(3) XOR XByte(11), 2)
+    XORedByte(4)  = HexString(XByte(4) XOR XByte(12), 2)
+    XORedByte(5)  = HexString(XByte(5) XOR XByte(13), 2)
+    XORedByte(6)  = HexString(XByte(6) XOR XByte(14), 2)
+    XORedByte(7)  = HexString(XByte(7) XOR XByte(15), 2)
+    XoredByte(8)  = XoredByte(0)
+    XoredByte(9)  = XoredByte(1)
+    XoredByte(10) = XoredByte(2)
+    XoredByte(11) = XoredByte(3)
+    XoredByte(12) = XoredByte(4)
+    XoredByte(13) = XoredByte(5)
+    XoredByte(14) = XoredByte(6)
+    XoredByte(15) = XoredByte(7)
+    XoredByte(16) = XoredByte(0)
+    XoredByte(17) = XoredByte(1)
+    XoredByte(18) = XoredByte(2)
+    XoredByte(19) = XoredByte(3)
+    XoredByte(20) = XoredByte(4)
+    XoredByte(21) = XoredByte(5)
+    XoredByte(22) = XoredByte(6)
+    XoredByte(23) = XoredByte(7)
+    XoredByte(24) = XoredByte(0)
+    XoredByte(25) = XoredByte(1)
+    XoredByte(26) = XoredByte(2)
+    XoredByte(27) = XoredByte(3)
+    XoredByte(28) = XoredByte(4)
+    XoredByte(29) = XoredByte(5)
+    XoredByte(30) = XoredByte(6)
+    XoredByte(31) = XoredByte(7)
+    End If
+'    Sc.Print"Alt-EEprom Was Fixed!"
+End Sub
+
+Sub LoadSavedGlitchFileIntoArray
+
+    Set fso = CreateObject("Scripting.FileSystemObject")
+    Set ts = fso.OpenTextFile(GlitchFileSaved)
+
+    Do While Not ts.AtEndOfStream
+       ThisStr = ts.ReadLine
+        SavedGlitches = SavedGlitches + 1
+        array(SavedGlitches) = ThisStr
+    loop
+    ts.Close
+End Sub

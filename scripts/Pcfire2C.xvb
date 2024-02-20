@@ -1,0 +1,1881 @@
+'
+' VB Script File - Created 10/18/00 Version 2C
+'
+' USE AT YOUR OWN RISK ! ! !
+'
+' This is just a hobby
+' For education purpose only
+' This flavor of the script was started by Petfire and PCman 01-03-00 from Version 1.01
+' LRC Added by BOB and Petfire 4-14-00 Was release on Version 1.04
+' Tools and Error check for response Lenght added by Petfire 04-18-00 Version 1.05
+' C0 and C1 are from Dishfarm Team GREAT WORK GUYS Version 2x
+' This (61) was made by Petfire and Pcman added on Version 2x
+'
+' For reading E* Nagra cards
+' This is a very good tool to start learnin on E* Nagra cam
+' Some data might be wrong or not up to date let me know
+' You can reach me on irc but please READ faqs available first
+' Get the faqs from your favorite forum most of them have something on this
+' Requirements: A) Farside Interface or anyway that can read the E* cam 1.2288 or 3.68 osc mod
+'               B) Winexplorer by dexter i'm using 4.4 and Farside was the most reliable way so far
+'                  Setting With Farside :
+'                  Data reset 115200, reset baud 9600, parity ODD, Rec time 200,
+'                  Byte delay 200, reset delay 200, stop bits 2, inverse
+'                  program setting nothing check there
+'                  advanced no card reset only is check
+'               C) YOU MUST give us feedback and contribute or they
+'                  WONT BE another version available.
+' Use setup in Winexplorer as describe by Farside or in the MCG file
+' And MAKE SURE flush buffer before writes is check for those long loops
+' This did take a lot of time and research to accomplish so get to work and dont just demand
+' Get those loggers out. Another good way to learn and contribute
+' I made it as simple as i could for you to learn
+'
+' Thanks to everyone that made research on this Subject and made those findings public
+' A special thank for the faqs available for this stuff STUNTGUY DID A WONDERFULL JOB
+' If you dont have his FAQ yet just go get it NOW
+' Same Special Thanks to Dishfarm Team And to Farside for his Interface
+' Also SCP that start it all and dexter for the winexplorer software
+' Without those peoples work none of this would be possible
+' If i forgot Someone You know who you are :) :) :) Let me know i will correct it
+'
+'*************************************************************************
+Option Explicit
+Dim Strng,Strng1,Strng2,Pass,TopPass,ChkL,Value,Status,SubCmd
+Dim Rtv,Rtv0,Rtv1,Rtv2,Rtv3
+Sc.Verbose = False
+Sub main()
+Sc.Reset
+
+Sc.Print"                                  ^^"+ vbcr
+Sc.Print"                       If this is 60 Then it is a 288-01 card" & vbcr
+Sc.Print"                       If this is 64 Then it is a 288-02 or higher card"
+Call CmdMain()
+Menu
+End Sub
+'**********************************
+Sub Menu()
+     Dim PromptString,Choice,MenuPrompt
+     Do
+
+        MenuPrompt = "Please Choose from the following choices:" & vbcr & vbCrLf _
+                     & "Click on the X up right Corner to Exit" & vbcr & vbCrLf _
+                     & "1: Reset" & vbCrLf _
+                     & "2: Systeme Information" & vbCrLf _
+                     & "3: More Information For Testers" & vbCrLf _
+                     & "4: Miscalanious" & vbCrLf _
+                     & "5: Tools" & vbCrLf
+     Choice = Sc.ButtonBox(MenuPrompt, vbInformation, "Main Menu", "1", "2", "3", "4", "5" )
+     Select Case Choice
+     Case "1"
+            Call Calibrate()
+     Case "2"
+            Call GetInfo()
+     Case "3"
+            Call GetDump()
+     Case "4"
+            Call Write()
+     Case "5"
+            Call Tools()
+     Case "0"
+            Sc.Log("")
+            Sc.Msgbox  "Thanks for using Pcfire's script", VbOkOnly
+            Exit Sub
+     End Select
+     Loop While 1
+End Sub
+'**************************************
+Sub Calibrate()
+     Dim PromptString,Choice,MenuPrompt
+     Do
+        MenuPrompt = "Please Choose from the following Calibration:" & vbcr & vbCrLf _
+                     & "1: Reset Card" & vbCrLf _
+                     & "2: Simulate Ird Reset" & vbCrLf _
+                     & "3: Change to 58 packet size" & vbCrLf _
+                     & "4: Change to 68 packet size" & vbCrLf
+     Choice = Sc.ButtonBox(MenuPrompt, vbInformation, "Main Menu", "1", "2", "3", "4", "Cancel" )
+     Select Case Choice
+     Case "1"
+            Call CmdResetVB()
+     Case "2"
+            Call CmdResync()
+     Case "3"
+            Call CmdMain()
+     Case "4"
+            Call CmdMain1()
+     Case "0" , "5"
+            Exit Sub
+     End Select
+     Loop While 1
+     Menu
+End Sub
+'**************************************
+Sub GetInfo()
+     Dim PromptString,Choice,MenuPrompt
+     Do
+        MenuPrompt = "Please Choose from the following choices:" & vbcr & vbCrLf _
+                     & "1: Cam Information" & vbCrLf _
+                     & "2: IRD Information" & vbCrLf _
+                     & "3: Cam and Blackout Info" & vbCrLf _
+                     & "4: Total PPV Purchase Info" & vbCrLf
+     Choice = Sc.ButtonBox(MenuPrompt, vbInformation, "Main Menu", "1", "2", "3", "4", "Cancel" )
+     Select Case Choice
+     Case "1"
+            Call Cmd12()
+     Case "2"
+            Call Cmd2101()
+     Case "3"
+            Call Cmd2006()
+     Case "4"
+            Call Cmd200C()
+     Case "0" , "5"
+            Exit Sub
+     End Select
+     Loop While 1
+     Menu
+End Sub
+'*************************************
+Sub GetDump()
+     Dim PromptString,Choice,MenuPrompt
+     Do
+        MenuPrompt = "Please Choose from the following Info you want:" & vbcr & vbCrLf _
+                     & "Click on the X up right Corner to Return to Previous Menu" & vbcr & vbCrLf _
+                     & "1: Cmd C0 Demo (Cam Status)" & vbCrLf _
+                     & "2: Bot Sequence" & vbCrLf _
+                     & "3: 30 31 Cmds Need to Enter the First Byte For Sys ID on Next Screen" & vbCrLf _
+                     & "4: Cmd 13 Note: Demo Need Cmd 03 Prior to Return Good Value Use Tool Section And Your Log" & vbCrLf _
+                     & "5: Cmd 60 Note: Demo Need to be setup by 00 Cmd First Use Tool Section And Your Log" & vbCrLf
+     Choice = Sc.ButtonBox(MenuPrompt, vbInformation, "Main Menu", "1", "2", "3", "4", "5" )
+     Select Case Choice
+     Case "1"
+            Call CmdC0Demo()
+     Case "2"
+            Call CmdStart()
+     Case "3"
+            Call Cmd30()
+     Case "4"
+            Call Cmd13()
+     Case "5"
+            Call Cmd60()
+     Case "0"
+            Exit Sub
+     End Select
+     Loop While 1
+     Menu
+End Sub
+'*************************************
+Sub Write()
+     Dim PromptString,Choice,MenuPrompt
+     Do
+        MenuPrompt = "This Area Write To The Card Be Carefull" & vbcr & vbCrLf _
+                     & "1: Change IRD # and Ascii Info" & vbCrLf
+     Choice = Sc.ButtonBox(MenuPrompt, vbInformation, "Main Menu", "1", "Cancel" )
+     Select Case Choice
+     Case "1"
+            Call Caution()
+     Case "0" , "2"
+            Exit Sub
+     End Select
+     Loop While 1
+     Menu
+End Sub
+'*************************************
+Sub Tools()
+     Dim PromptString,Choice,MenuPrompt
+     Do
+        MenuPrompt = "Please Choose from the following Tools:"  & vbcr & vbCrLf _
+                     & "1: Command Testing" & vbCrLf _
+                     & "2: Call a Command" & vbCrLf
+    Choice = Sc.ButtonBox(MenuPrompt, vbInformation, "Main Menu", "1", "2", "Cancel" )
+    Select Case Choice
+     Case "1"
+            Call CmdTest()
+     Case "2"
+            Call CmdCall()
+     Case "0", "3"
+            Exit Sub
+     End Select
+     Loop While 1
+     Menu
+End Sub
+'*************************************
+Sub CmdResetVB()
+        Sc.Verbose = True
+        Sc.Print (vbCrLf & "Resetting the card")
+        Sc.Reset
+        Sc.Delay(100)
+End Sub
+'*************************************
+Sub CmdResync()
+        Sc.Print (vbcr & vbcr & "Simulating Reset from IRD")
+        Sc.Verbose = True
+        Sc.Write ("21 C0 00 E1")
+        Sc.Delay(100)
+        ChkL = Sc.BytesInBuffer
+        If (ChkL <> 4) Then
+        Sc.Print(vbcr & vbcr & ">>>>>ERROR READING<<<<<")
+        Exit Sub
+        End If
+        Sc.Verbose = True
+        Sc.Read(4)
+End Sub
+'*************************************
+Sub CmdMain()
+        Sc.Verbose = False
+        Sc.Write ("21 C1 01 58 B9")
+        Sc.Delay(100)
+        ChkL = Sc.BytesInBuffer
+        If (ChkL <> 5) Then
+        Sc.Print(vbcr & vbcr & ">>>>>ERROR READING<<<<<")
+        Exit Sub
+        End If
+        Sc.Verbose = True
+        Sc.Read(5)
+        Sc.Print "         The packet size is set to: " & Hex(Sc.GetByte(3))
+End Sub
+'*************************************
+Sub CmdMain1()
+        Sc.Verbose = False
+        Sc.Write ("21 C1 01 68 89")
+        Sc.Delay(100)
+        ChkL = Sc.BytesInBuffer
+        If (ChkL <> 5) Then
+        Sc.Print(vbcr & vbcr & ">>>>>ERROR READING<<<<<")
+        Exit Sub
+        End If
+        Sc.Verbose = True
+        Sc.Read(5)
+        Sc.Print "         The packet size is set to: " & Hex(Sc.GetByte(3))
+End Sub
+'*************************************
+Sub CmdCall()
+        Strng =  Ucase(Sc.InputBox("Just enter the command# Ex: 2001 or 12 or 60", "Enter the Command to Call"))
+        If Strng = "" Then Exit Sub
+        Strng2 = ("Call Cmd" & Strng & "()" )
+        Execute (Strng2)
+        CmdCall
+End Sub
+'*************************************
+Sub Caution()
+     Dim Caution
+        Caution = Sc.Msgbox("Do you wish to continue", vbYesNO + vbExclamation, "WARNING THIS AREA CAN WRITES CHANGES TO YOUR YOUR CARD")
+        If Caution = 7 Then Menu
+        If Caution = 6 Then Cmd61()
+End Sub
+'************************************
+Function LRC()
+'Added by BOB and Petfire 4-14-00
+     Dim Chk
+        Sc.Verbose = False
+        Sc.Debug = True
+        Sc.DebugBufferStuff(Strng)
+        Sc.Read Sc.BytesInBuffer
+        Chkl = Sc.BytesInBuffer
+        For Value = 0 to (Chkl-1)
+        Rtv = Sc.GetByte(Value)
+        Chk = Rtv xor Chk
+        Next
+        LRC = Hex(Chk)
+        Sc.Debug = False
+End Function
+'*************************************
+Sub CmdStart()
+        Sc.Print (vbcr & vbcr & "Initiating Start Sequence")
+        Call Cmd12
+        Call Cmd14
+        Call CmdC0
+End Sub
+'*************************************
+Sub CmdTest()
+        Strng = Ucase(Sc.InputBox("Enter it With the Checksum" , "Enter the Command to test"))
+        If Strng = "" Then Exit Sub
+        Sc.Verbose = True
+        Sc.Write Strng
+        Sc.Delay(800)
+        Sc.Read Bytesinbuffer
+        Call CmdC0
+End Sub
+'*************************************
+Sub CmdC0demo()
+        Sc.Print (vbcr & vbcr & "         The output following this is from a C0 command")
+        Sc.Verbose = False
+        Sc.Write ("21 00 08 A0 CA 00 00 02 C0 00 06 87")
+        Sc.Delay(100)
+        ChkL = Sc.BytesInBuffer
+        If (ChkL <> 12) Then
+        Sc.Print(vbcr & vbcr & ">>>>>ERROR READING<<<<<")
+        Exit Sub
+        End If
+        Sc.Verbose = True
+        Sc.Read(3)
+        Sc.Print "----> Standard header"
+        Sc.Read(1)
+        Sc.Print "----------> Response code"
+        Sc.Read(1)
+        Sc.Print "----------> Response data length"
+        Sc.Read(1)
+        Sc.Print "----------> 08 means its ready to send data"
+        Sc.Read(1)
+        Sc.Print "----------> CAM Status flag 1"
+        Sc.Read(1)
+        Sc.Print "----------> CAM Status flag 2"
+        Sc.Read(1)
+        Sc.Print "----------> CAM Status flag 3"
+        Sc.Read(2)
+        Sc.Print "-------> SW1/SW2: 90 00 is a good reply"
+        Sc.Read(1)
+        Sc.Print "----------> Checksum"
+End Sub
+'*************************************
+Sub CmdC0()
+     Dim Flag1,Flag2,Flag3,Verify
+     Flag1 = &H00
+     Flag2 = &H00
+     Flag3 = &H00
+     Verify = &H00
+        Sc.Print (vbcr & vbcr & "  The output following this is from a C0 command")
+        Sc.Verbose = False
+        Sc.Write ("21 00 08 A0 CA 00 00 02 C0 00 06 87")
+        Sc.Delay(200)
+        ChkL = Sc.BytesInBuffer
+        If (ChkL <> 12) Then
+        Sc.Print(vbcr & vbcr & ">>>>>ERROR READING<<<<<")
+        Exit Sub
+        End If
+        Sc.Verbose = True
+        Sc.Read(12)
+        Verify = Hex(Sc.GetByte(2))
+        Flag1 = Sc.GetByte(6)
+        Flag2 = Sc.GetByte(7)
+        Flag3 = Sc.GetByte(8)
+        If Verify <> 8 Then
+        Sc.Print(vbcr & vbcr & "Wrong Response From Cmd C0 , " & vbcr & "expected 08 but got " & Hex(Verify))
+        Exit Sub
+        End If
+        If (Flag2 And 32) Then
+        Sc.Print vbcr & vbcr & "Flag2=" &(Flag2)&  " Cmd60 allowed "
+        Call Cmd60()
+        End If
+        If (Flag2 And 1) Then Sc.Print(vbcr & vbcr & "Flag2=" &(Flag2)& " Suggest Cmd02")
+        If (Flag3 And 32) Then Sc.Print(vbcr & vbcr & "Flag3=" &(Flag3)& " Cmd02 in progress")
+        If (Flag3 And 64) Then Sc.Print(vbcr & vbcr & "Flag3=" &(Flag3)& " Cmd02 complete")
+        If (Flag3 And 128) Then Sc.Print(vbcr & vbcr & "Flag3=" &(Flag3)& " Cmd02 failed")
+        If (Flag1 And 8) Then
+        Sc.Print(vbcr & vbcr & "Flag1=" &(Flag1)& " Suggest Cmd30")
+        Call Cmd30()
+        End If
+        If (Flag2 And 8) Then Sc.Print(vbcr & vbcr & "Flag2=" &(Flag2)& " Cmd30 in progress")
+        If (Flag2 And 16) Then Sc.Print(vbcr & vbcr & "Flag2=" &(Flag2)& " Ready for Cmd31")
+        If (Flag1 And 4) Then
+        Sc.Print(vbcr & vbcr & "Flag1=" &(Flag1)& " Suggest Cmd31")
+        Call Cmd31()
+        End If
+        If (Flag2 And 2) Then Sc.Print(vbcr & vbcr & "Flag2=" &(Flag2)& " Cmd00/01 received")
+        If (Flag2 And 4) Then Sc.Print(vbcr & vbcr & "Flag2=" &(Flag2)& " Cmd00/01 complete")
+        If (Flag3 And 2) Then Sc.Print(vbcr & vbcr & "Flag3=" &(Flag3)& " Encrypted ECM data ready")
+        If (Flag3 And 4) Then Sc.Print(vbcr & vbcr & "Flag3=" &(Flag3)& " Cleartext ECM data ready")
+        If (Flag3 And 1) Then Sc.Print(vbcr & vbcr & "Flag3=" &(Flag3)& " Cmd03 in progress")
+        If (Flag1 And 2) Then Sc.Print(vbcr & vbcr & "Flag3=" &(Flag1)& " Cam was Reset")
+        If (Flag1 And 1) Then
+        Sc.Print(vbcr & vbcr & "Flag1=" &(Flag1)& " Request CmdC1")
+        Call CmdC1
+        End If
+End Sub
+'*************************************
+Sub CmdC1()
+     Dim Flag1,Flag2,Verify
+     Verify = &H00
+     Flag1 = &H00
+     Flag2 = &H00
+        Sc.Print (vbcr & vbcr & "  The output following this is from a C1 command")
+        Sc.Verbose = False
+        Sc.Write ("21 00 08 A0 CA 00 00 02 C1 00 04 84")
+        Sc.Delay(200)
+        ChkL = Sc.BytesInBuffer
+        If (ChkL <> 10) Then
+        Sc.Print(vbcr & vbcr & ">>>>>ERROR READING<<<<<")
+        Exit Sub
+        End If
+        Sc.Verbose = True
+        Sc.Read(10)
+        Verify=Sc.GetByte(2)
+        Flag1 = Sc.GetByte(5)
+        Flag2 = Sc.GetByte(6)
+        If (Verify <> 6) Then
+        Sc.Print(vbcr & vbcr & "CmdC1 returned incorrect packet size, " & vbcr & "expected 6 but got " & Verify)
+        Exit Sub
+        End If
+        If (Flag2 AND 1) Then
+        Sc.Print(vbcr & vbcr & "Flag2=" &(Flag2)& " Request Cmd2001")
+        Call Cmd2001()
+        End If
+        If (Flag2 AND 2) Then
+        Sc.Print(vbcr & vbcr & "Flag2=" &(Flag2)& " Request Cmd2002")
+        Call Cmd2002()
+        End If
+        If (Flag2 AND 4) Then
+        Sc.Print(vbcr & vbcr & "Flag2=" &(Flag2)& " Request Cmd2003")
+        Call Cmd2003()
+        End If
+        If (Flag2 AND 8) Then
+        Sc.Print(vbcr & vbcr & "Flag2=" &(Flag2)& " Request Cmd2004")
+        Call Cmd2004()
+        End If
+        If (Flag2 AND 16) Then
+        Sc.Print(vbcr & vbcr & "Flag2=" &(Flag2)& " Request Cmd2005")
+        Call Cmd2005()
+        End If
+        If (Flag2 AND 32) Then
+        Sc.Print(vbcr & vbcr & "Flag2=" &(Flag2)& " Request Cmd2006")
+        Call Cmd2006()
+        End If
+        If (Flag2 AND 64) Then
+        Sc.Print(vbcr & vbcr & "Flag2=" &(Flag2)& " Request Cmd2007")
+        Call Cmd2007()
+        End If
+        If (Flag2 AND 128) Then
+        Sc.Print(vbcr & vbcr & "Flag2=" &(Flag2)& " Request Cmd2008")
+        Call Cmd2008()
+        End If
+        If (Flag1 AND 1) Then
+        Sc.Print(vbcr & vbcr & "Flag1=" &(Flag1)& " Request Cmd2009")
+        Call Cmd2009()
+        End If
+        If (Flag1 AND 2) Then
+        Sc.Print(vbcr & vbcr & "Flag1=" &(Flag1)& " Request Cmd200A")
+        Call Cmd200A()
+        End If
+        If (Flag1 AND 4) Then
+        Sc.Print(vbcr & vbcr & "Flag1=" &(Flag1)& " Request Cmd200B")
+        Call Cmd200B()
+        End If
+        If (Flag1 AND 8) Then
+        Sc.Print(vbcr & vbcr & "Flag1=" &(Flag1)& " Request Cmd200C")
+        Call Cmd200C()
+        End If
+        If (Flag1 AND 128) Then
+        Sc.Print(vbcr & vbcr & "Flag1=" &(Flag1)& " Request Cmd2010")
+        Call Cmd2010()
+        End If
+        If (Flag1 AND 64) Then
+        Sc.Print(vbcr & vbcr & "Flag1=" &(Flag1)& " Request Cmd2011")
+        Call Cmd2011()
+        End If
+        Call Cmd40()
+End Sub
+'*************************************
+Sub Cmd12()
+        Sc.Print (vbcr & vbcr & "  The output following this is from a 12 command")
+        Sc.Verbose = False
+        Sc.Write ("21 00 08 A0 CA 00 00 02 12 00 06 55")
+        Sc.Delay(100)
+        ChkL = Sc.BytesInBuffer
+        If (ChkL <> 12) Then
+        Sc.Print(vbcr & vbcr & ">>>>>ERROR READING<<<<<")
+        Exit Sub
+        End If
+        Sc.Verbose = True
+        Sc.Read(3)
+        Sc.Print "----> Standard header"
+        Sc.Read(1)
+        Sc.Print "----------> Response code"
+        Sc.Read(1)
+        Sc.Print "----------> Response data length"
+        Sc.Read(4)
+        Sc.Print "-> Your Card Number = "
+        Sc.Read(2)
+        Sc.Print "-------> SW1/SW2: 90 00 is a good reply"
+        Sc.Read(1)
+        Sc.Print "----------> Checksum"
+End Sub
+'*************************************
+Sub Cmd13()
+        Sc.Print (vbcr & vbcr & "  The output following this is from a 13 command")
+        Sc.Verbose = False
+        Sc.Write ("21 00 09 A0 CA 00 00 03 13 01 03 19 49")
+        Sc.Delay(100)
+        ChkL = Sc.BytesInBuffer
+        If (ChkL <> 31) Then
+        Sc.Print(vbcr & vbcr & ">>>>>ERROR READING<<<<<")
+        Exit Sub
+        End If
+        Sc.Verbose = True
+        Sc.Read(3)
+        Sc.Print "----> Standard header"
+        Sc.Read(1)
+        Sc.Print "----------> Response code"
+        Sc.Read(1)
+        Sc.Print "----------> Response data length"
+        Sc.Read(2)
+        Sc.Print "-------> B1 01 = Packet OK"
+        Sc.Read(1)
+        Sc.Print ("----------> Count Sequence Same Then the one on the 03 Response" & Sc.GetByte(0) & VbCr _
+                 & " ")
+        Sc.Read(1)
+        Sc.Print "----------> Video Key 1"
+        Sc.Read(1)
+        Sc.Print "----------> Video Key Lenght"
+        Sc.Read(8)
+        Sc.Print ("-> Encrypted key1" & VbCr _
+                 & " ")
+        Sc.Read(1)
+        Sc.Print "----------> Video Key 2"
+        Sc.Read(1)
+        Sc.Print "----------> Video Key Lenght"
+        Sc.Read(8)
+        Sc.Print ("-> Encrypted key2" & VbCr _
+                 & " ")
+        Sc.Read(2)
+        Sc.Print "-------> SW1/SW2: 90 00 is a good reply"
+        Sc.Read(1)
+        Sc.Print "----------> Checksum"
+End Sub
+'*************************************
+Sub Cmd14()
+        Sc.Print (vbcr & vbcr & "  The output following this is from a 14 command")
+        Sc.Verbose = False
+        Sc.Write ("21 40 08 A0 CA 00 00 02 14 00 06 13")
+        Sc.Delay(100)
+        ChkL = Sc.BytesInBuffer
+        If (ChkL <> 12) Then
+        Sc.Print(vbcr & vbcr & ">>>>>ERROR READING<<<<<")
+        Exit Sub
+        End If
+        Sc.Verbose = True
+        Sc.Read(3)
+        Sc.Print "----> Standard header"
+        Sc.Read(1)
+        Sc.Print "----------> Response code"
+        Sc.Read(1)
+        Sc.Print "----------> Response data length"
+        Sc.Read(4)
+        Sc.Print "-> ??"
+        Sc.Read(2)
+        Sc.Print "-------> SW1/SW2: 90 00 is a good reply"
+        Sc.Read(1)
+        Sc.Print "----------> Checksum"
+End Sub
+'*************************************
+Sub Cmd2001()
+        Pass = &H00
+        TopPass = &H00
+        Sc.Verbose = False
+        Sc.Print (vbcr & vbcr & "  The output following this is from a 20-01 command")
+        Sc.Write ("21 00 0C A0 CA 00 00 06 20 04 01 02 FF FF 03 65")
+        Sc.Delay(100)
+        ChkL = Sc.BytesInBuffer
+        If (ChkL <> 9) Then
+        Sc.Print(vbcr & vbcr & ">>>>>ERROR READING<<<<<")
+        Exit Sub
+        End If
+        Sc.Verbose = True
+        Sc.Read(3)
+        Sc.Print "----> Standard header"
+        Sc.Read(1)
+        Sc.Print "----------> Response code"
+        Sc.Read(1)
+        Sc.Print "----------> Response data length"
+        Sc.Read(1)
+        Sc.Print "----------> Number of data items to return"
+        TopPass=Sc.GetByte(0)
+        Sc.Read(2)
+        Sc.Print "-------> SW1/SW2: 90 00 is a good reply"
+        Sc.Read(1)
+        Sc.Print "----------> Checksum"
+        If TopPass <> 0 Then Call Cmd2101()
+End Sub
+'*************************************
+Sub Cmd2101()
+        Do
+        Sc.Print (vbcr & vbcr & "  The output following this is from a 21-01 command Pass# " & ((Pass) + 1))
+        Strng = ("21 00 0D A0 CA 00 00 07 21 05 01 03 FF FF " & Hex(Pass) & " 20")
+        Strng1 = (Strng & LRC())
+        Sc.Write (Strng1)
+        Sc.Delay(800)
+        ChkL = Sc.BytesInBuffer
+        If (ChkL < 36) Then
+        Sc.Print(vbcr & vbcr & ">>>>>ERROR READING<<<<<")
+        Exit Sub
+        End If
+        Sc.Verbose = True
+        Sc.Read(3)
+        Sc.Print "----> Standard header"
+        Sc.Read(1)
+        Sc.Print "----------> Response code"
+        Sc.Read(1)
+        Sc.Print "----------> Response data length"
+        Sc.Read(2)
+        Sc.Print "-------> If 00 01 = E* / 08 01 = Vu / 40 01 = Via Dig"
+        Sc.Read(1)
+        Rtv0 = Sc.GetByte(0)
+        Status = Get_Status
+        Sc.Print "----------> IRD Status Byte" & Status
+        Sc.Read(1)
+        Sc.Print "----------> Free Access Group"
+        Sc.Read(4)
+        Sc.Print "-> Zip code"
+        Sc.Read(1)
+        Sc.Print "----------> TimeZone"
+        Sc.Read(1)
+        Sc.Print "----------> (00) ? Devation Byte"
+        Sc.Read(4)
+        Sc.Print "-> IRD number this card is married to"
+        Sc.Read(8)
+        Sc.Print "-> Boot Strap Ascii Info"
+        For Value = 0 to 7
+        Rtv =  Sc.GetByte(value)
+        If Rtv = 0 Then Rtv = 48
+        Sc.Print Chr(Rtv)
+        Next
+        Sc.Read(8)
+        Sc.Print "-> Software Revision Ascii Info  = "
+        For Value = 0 to 7
+        Rtv =  Sc.GetByte(value)
+        If Rtv = 0 Then Rtv = 48
+        Sc.Print Chr(Rtv)
+        Next
+        Sc.Read(2)
+        Sc.Print "-------> SW1/SW2: 90 00 is a good reply"
+        Sc.Read(1)
+        Sc.Print "----------> Checksum"
+        Pass = Pass + &H01
+        Loop Until Pass >= TopPass
+        Pass = &H00
+End Sub
+'*************************************
+Sub Cmd2002()
+        Pass = &H00
+        TopPass = &H00
+        Sc.Verbose = False
+        Sc.Print (vbcr & vbcr & "  The output following this is from a 20-02 command")
+        Sc.Write ("21 00 0C A0 CA 00 00 06 20 04 02 02 FF FF 03 66")
+        Sc.Delay(100)
+        ChkL = Sc.BytesInBuffer
+        If (ChkL <> 9) Then
+        Sc.Print(vbcr & vbcr & ">>>>>ERROR READING<<<<<")
+        Exit Sub
+        End If
+        Sc.Verbose = True
+        Sc.Read(3)
+        Sc.Print "----> Standard header"
+        Sc.Read(1)
+        Sc.Print "----------> Response code"
+        Sc.Read(1)
+        Sc.Print "----------> Response data length"
+        Sc.Read(1)
+        Sc.Print "----------> Number of data items to return"
+        TopPass=Sc.GetByte(0)
+        Sc.Read(2)
+        Sc.Print "-------> SW1/SW2: 90 00 is a good reply"
+        Sc.Read(1)
+        Sc.Print "----------> Checksum"
+        If TopPass <> 0 Then Call Cmd2102()
+End Sub
+'*************************************
+Sub Cmd2102()
+        Do
+        Sc.Print (vbcr & vbcr & "  The output following this is from a 21-02 command Pass# " & ((Pass) + 1))
+        Strng = ("21 00 0D A0 CA 00 00 07 21 05 02 03 FF FF " & Hex(Pass) & " 1E")
+        Strng1 = (Strng & LRC())
+        Sc.Write (Strng1)
+        Sc.Delay(100)
+        ChkL = Sc.BytesInBuffer
+        If (ChkL < 12) Then
+        Sc.Print(vbcr & vbcr & ">>>>>ERROR READING<<<<<")
+        Exit Sub
+        End If
+        Sc.Verbose = True
+        Sc.Read(3)
+        Sc.Print "----> Standard header"
+        Sc.Read(1)
+        Sc.Print "----------> Response code"
+        Sc.Read(1)
+        Sc.Print "----------> Response data length"
+        Sc.Read(2)
+        Sc.Print "-------> Systeme ID"
+        Sc.Read(1)
+        Rtv0 = Sc.GetByte(0)
+        Status = Get_Status
+        Sc.Print "----------> IRD Status Byte" & Status
+        Sc.Read(1)
+        Sc.Print "----------> ??"
+        Sc.Read(8)
+        Sc.Print "-> ??"
+        Sc.Read(8)
+        Sc.Print "-> ??"
+        Sc.Read(8)
+        Sc.Print "-> ??"
+        Sc.Read(2)
+        Sc.Print "-------> SW1/SW2: 90 00 is a good reply"
+        Sc.Read(1)
+        Sc.Print "----------> Checksum"
+        Pass = Pass + &H01
+        Loop Until Pass >= TopPass
+        Pass = &H00
+End Sub
+'*************************************
+Sub Cmd2003()
+        Pass = &H00
+        TopPass = &H00
+        Sc.Verbose = False
+        Sc.Print (vbcr & vbcr & "  The output following this is from a 20-03 command")
+        Sc.Write ("21 00 0C A0 CA 00 00 06 20 04 03 02 FF FF 03 67")
+        Sc.Delay(100)
+        ChkL = Sc.BytesInBuffer
+        If (ChkL <> 9) Then
+        Sc.Print(vbcr & vbcr & ">>>>>ERROR READING<<<<<")
+        Exit Sub
+        End If
+        Sc.Verbose = True
+        Sc.Read(3)
+        Sc.Print "----> Standard header"
+        Sc.Read(1)
+        Sc.Print "----------> Response code"
+        Sc.Read(1)
+        Sc.Print "----------> Response data length"
+        Sc.Read(1)
+        Sc.Print "----------> Number of data items to return"
+        TopPass=Sc.GetByte(0)
+        Sc.Read(2)
+        Sc.Print "-------> SW1/SW2: 90 00 is a good reply"
+        Sc.Read(1)
+        Sc.Print "----------> Checksum"
+        If TopPass <> 0 Then Call Cmd2103()
+End Sub
+'*************************************
+Sub Cmd2103()
+        Do
+        Sc.Print (vbcr & vbcr & "  The output following this is from a 21-03 command Pass# " & ((Pass) + 1))
+        Strng = ("21 00 0D A0 CA 00 00 07 21 05 03 03 FF FF " & Hex(Pass) & " 0E")
+        Strng1 = (Strng & LRC())
+        Sc.Write (Strng1)
+        Sc.Delay(100)
+        ChkL = Sc.BytesInBuffer
+        If (ChkL < 20) Then
+        Sc.Print(vbcr & vbcr & ">>>>>ERROR READING<<<<<")
+        Exit Sub
+        End If
+        Sc.Verbose = True
+        Sc.Read(3)
+        Sc.Print "----> Standard header"
+        Sc.Read(1)
+        Sc.Print "----------> Response code"
+        Sc.Read(1)
+        Sc.Print "----------> Response data length"
+        Sc.Read(2)
+        Sc.Print "-------> Systeme ID"
+        Sc.Read(3)
+        Sc.Print "----> ??"
+        Sc.Read(2)
+        Sc.Print "-------> ??"
+        Sc.Read(3)
+        Sc.Print "----> ??"
+        Sc.Read(2)
+        Sc.Print "-------> ??"
+        Sc.Read(2)
+        Sc.Print "-------> SW1/SW2: 90 00 is a good reply"
+        Sc.Read(1)
+        Sc.Print "----------> Checksum"
+        Pass = Pass + &H01
+        Loop Until Pass >= TopPass
+        Pass = &H00
+End Sub
+'*************************************
+Sub Cmd2004()
+        Pass = &H00
+        TopPass = &H00
+        Sc.Verbose = False
+        Sc.Print (vbcr & vbcr & "  The output following this is from a 20-04 command")
+        Sc.Write ("21 00 0C A0 CA 00 00 06 20 04 04 02 FF FF 03 60")
+        Sc.Delay(100)
+        ChkL = Sc.BytesInBuffer
+        If (ChkL <> 9) Then
+        Sc.Print(vbcr & vbcr & ">>>>>ERROR READING<<<<<")
+        Exit Sub
+        End If
+        Sc.Verbose = True
+        Sc.Read(3)
+        Sc.Print "----> Standard header"
+        Sc.Read(1)
+        Sc.Print "----------> Response code"
+        Sc.Read(1)
+        Sc.Print "----------> Response data length"
+        Sc.Read(1)
+        Sc.Print "----------> Number of data items to return"
+        TopPass=Sc.GetByte(0)
+        Sc.Read(2)
+        Sc.Print "-------> SW1/SW2: 90 00 is a good reply"
+        Sc.Read(1)
+        Sc.Print "----------> Checksum"
+        If TopPass <> 0 Then Call Cmd2104()
+End Sub
+'*************************************
+Sub Cmd2104()
+        Do
+        Sc.Print (vbcr & vbcr & "  The output following this is from a 21-04 command Pass# " & ((Pass) + 1))
+        Strng = ("21 00 0D A0 CA 00 00 07 21 05 04 03 FF FF " & Hex(Pass) & " 0C")
+        Strng1 = (Strng & LRC())
+        Sc.Write (Strng1)
+        Sc.Delay(100)
+        ChkL = Sc.BytesInBuffer
+        If (ChkL < 18) Then
+        Sc.Print(vbcr & vbcr & ">>>>>ERROR READING<<<<<")
+        Exit Sub
+        End If
+        Sc.Verbose = True
+        Sc.Read(3)
+        Sc.Print "----> Standard header"
+        Sc.Read(1)
+        Sc.Print "----------> Response code"
+        Sc.Read(1)
+        Sc.Print "----------> Response data length"
+        Sc.Read(2)
+        Sc.Print "-------> ??"
+        Sc.Read(2)
+        Sc.Print "-------> ??"
+        Sc.Read(2)
+        Sc.Print "-------> ??"
+        Sc.Read(2)
+        Sc.Print "-------> ??"
+        Sc.Read(2)
+        Sc.Print "-------> ??"
+        Sc.Read(2)
+        Sc.Print "-------> SW1/SW2: 90 00 is a good reply"
+        Sc.Read(1)
+        Sc.Print "----------> Checksum"
+        Pass = Pass + &H01
+        Loop Until Pass >= TopPass
+        Pass = &H00
+End Sub
+'*************************************
+Sub Cmd2005()
+        Pass = &H00
+        TopPass = &H00
+        Sc.Verbose = False
+        Sc.Print (vbcr & vbcr & "  The output following this is from a 20-05 command")
+        Sc.Write ("21 00 0C A0 CA 00 00 06 20 04 05 02 FF FF 03 61")
+        Sc.Delay(100)
+        ChkL = Sc.BytesInBuffer
+        If (ChkL <> 9) Then
+        Sc.Print(vbcr & vbcr & ">>>>>ERROR READING<<<<<")
+        Exit Sub
+        End If
+        Sc.Verbose = True
+        Sc.Read(3)
+        Sc.Print "----> Standard header"
+        Sc.Read(1)
+        Sc.Print "----------> Response code"
+        Sc.Read(1)
+        Sc.Print "----------> Response data length"
+        Sc.Read(1)
+        Sc.Print "----------> Number of data items to return"
+        TopPass=Sc.GetByte(0)
+        Sc.Read(2)
+        Sc.Print "-------> SW1/SW2: 90 00 is a good reply"
+        Sc.Read(1)
+        Sc.Print "----------> Checksum"
+        If TopPass <> 0 Then Call Cmd2105()
+End Sub
+'*************************************
+Sub Cmd2105()
+        Do
+        Sc.Print (vbcr & vbcr & "  The output following this is from a 21-05 command Pass# " & ((Pass) + 1))
+        Strng = ("21 00 0D A0 CA 00 00 07 21 05 05 03 FF FF " & Hex(Pass) & " 0E")
+        Strng1 = (Strng & LRC())
+        Sc.Write (Strng1)
+        Sc.Delay(100)
+        ChkL = Sc.BytesInBuffer
+        If (ChkL < 20) Then
+        Sc.Print(vbcr & vbcr & ">>>>>ERROR READING<<<<<")
+        Exit Sub
+        End If
+        Sc.Verbose = True
+        Sc.Read(3)
+        Sc.Print "----> Standard header"
+        Sc.Read(1)
+        Sc.Print "----------> Response code"
+        Sc.Read(1)
+        Sc.Print "----------> Response data length"
+        Sc.Read(2)
+        Sc.Print "-------> System ID"
+        Sc.Read(1)
+        Rtv0 = Sc.GetByte(0)
+        Status = Get_Status
+        Sc.Print "----------> Ird Status Byte" & Status
+        Sc.Read(1)
+        Sc.Print "----------> ??"
+        Sc.Read(2)
+        Sc.Print "-------> ??"
+        Sc.Read(2)
+        Sc.Print "-------> ??"
+        Sc.Read(2)
+        Sc.Print "-------> ??"
+        Sc.Read(2)
+        Sc.Print "-------> ??"
+        Sc.Read(2)
+        Sc.Print "-------> SW1/SW2: 90 00 is a good reply"
+        Sc.Read(1)
+        Sc.Print "----------> Checksum"
+        Pass = Pass + &H01
+        Loop Until Pass >= TopPass
+        Pass = &H00
+End Sub
+'*************************************
+Sub Cmd2006()
+        Pass = &H00
+        TopPass = &H00
+        Sc.Verbose = False
+        Sc.Print (vbcr & vbcr & "  The output following this is from a 20-06 command")
+        Sc.Write ("21 00 0C A0 CA 00 00 06 20 04 06 02 FF FF 03 62")
+        Sc.Delay(100)
+        ChkL = Sc.BytesInBuffer
+        If (ChkL <> 9) Then
+        Sc.Print(vbcr & vbcr & ">>>>>ERROR READING<<<<<")
+        Exit Sub
+        End If
+        Sc.Verbose = True
+        Sc.Read(3)
+        Sc.Print "----> Standard header"
+        Sc.Read(1)
+        Sc.Print "----------> Response code"
+        Sc.Read(1)
+        Sc.Print "----------> Response data length"
+        Sc.Read(1)
+        Sc.Print "----------> Number of data items to return"
+        TopPass=Sc.GetByte(0)
+        Sc.Read(2)
+        Sc.Print "-------> SW1/SW2: 90 00 is a good reply"
+        Sc.Read(1)
+        Sc.Print "----------> Checksum"
+        If TopPass <> 0 Then Call Cmd2106()
+End Sub
+'*************************************
+Sub Cmd2106()
+        Do
+        Sc.Print (vbcr & vbcr & "  The output following this is from a 21-06 command Pass# " & ((Pass) + 1))
+        Strng = ("21 00 0D A0 CA 00 00 07 21 05 06 03 FF FF " & Hex(Pass) & " 29")
+        Strng1 = (Strng & LRC())
+        Sc.Write (Strng1)
+        Sc.Delay(800)
+        ChkL = Sc.BytesInBuffer
+        If (ChkL < 37) Then
+        Sc.Print(vbcr & vbcr & ">>>>>ERROR READING<<<<<")
+        Exit Sub
+        End If
+        Sc.Verbose = True
+        Sc.Read(3)
+        Sc.Print "----> Standard header"
+        Sc.Read(1)
+        Sc.Print "----------> Response code"
+        Sc.Read(1)
+        Sc.Print "----------> Response data length"
+        Sc.Read(1)
+        Sc.Print "----------> Provider"
+        Sc.Read(1)
+        Sc.Print "----------> ??"
+        Sc.Read(1)
+        Rtv0 = Sc.GetByte(0)
+        Status = Get_Status
+        Sc.Print "----------> IRD Status Byte " & Status
+        Sc.Read(4)
+        Sc.Print "-> Cam ID"
+        Sc.Read(5)
+        Sc.Print "Callback Phone # "
+        Sc.Read(5)
+        Sc.Print "Callback Phone # "
+        Sc.Read(1)
+        Sc.Print "----------> Callback Period = " & Sc.GetByte(0) & "(hrs)"
+        Sc.Read(2)
+        Sc.Print "-------> Next Regular Callback Date "
+        Sc.Read(2)
+        Sc.Print "-------> Next Regular Callback Time "
+        Sc.Read(2)
+        Sc.Print "-------> Immediate Callback Date "
+        Sc.Read(2)
+        Sc.Print "-------> Immediate Callback Time "
+        Sc.Read(1)
+        Sc.Print "----------> Call Back Retry Period " & Sc.GetByte(0) & "(hr or Min or Sec ??)"
+        Sc.Read(4)
+        Sc.Print "-> Blackout Info Pass# 2"
+        Sc.Read(4)
+        Sc.Print "-> Blackout Info Pass# 2"
+        Sc.Read(4)
+        Sc.Print "-> Blackout Info Pass# 2"
+        Sc.Read(2)
+        Sc.Print "-------> SW1/SW2: 90 00 is a good reply"
+        Sc.Read(1)
+        Sc.Print "----------> Checksum"
+        Pass = Pass + &H01
+        Loop Until Pass >= TopPass
+        Pass = &H00
+End Sub
+'*************************************
+Sub Cmd2007()
+        Pass = &H00
+        TopPass = &H00
+        Sc.Verbose = False
+        Sc.Print (vbcr & vbcr & "  The output following this is from a 20-07 command")
+        Sc.Write ("21 00 0C A0 CA 00 00 06 20 04 07 02 FF FF 03 63")
+        Sc.Delay(100)
+        ChkL = Sc.BytesInBuffer
+        If (ChkL <> 9) Then
+        Sc.Print(vbcr & vbcr & ">>>>>ERROR READING<<<<<")
+        Exit Sub
+        End If
+        Sc.Verbose = True
+        Sc.Read(3)
+        Sc.Print "----> Standard header"
+        Sc.Read(1)
+        Sc.Print "----------> Response code"
+        Sc.Read(1)
+        Sc.Print "----------> Response data length"
+        Sc.Read(1)
+        Sc.Print "----------> Number of data items to return"
+        TopPass=Sc.GetByte(0)
+        Sc.Read(2)
+        Sc.Print "-------> SW1/SW2: 90 00 is a good reply"
+        Sc.Read(1)
+        Sc.Print "----------> Checksum"
+        If TopPass <> 0 Then Call Cmd2107()
+End Sub
+'*************************************
+Sub Cmd2107()
+        Do
+        Sc.Print (vbcr & vbcr & "  The output following this is from a 21-07 command Pass# " & ((Pass) + 1))
+        Strng = ("21 00 0D A0 CA 00 00 07 21 05 07 03 FF FF " & Hex(Pass) & " 50")
+        Strng1 = (Strng & LRC())
+        Sc.Write (Strng1)
+        Sc.Delay(800)
+        ChkL = Sc.BytesInBuffer
+        If (ChkL < 36) Then
+        Sc.Print(vbcr & vbcr & ">>>>>ERROR READING<<<<<")
+        Exit Sub
+        End If
+        Sc.Verbose = True
+        Sc.Read(3)
+        Sc.Print "----> Standard header"
+        Sc.Read(1)
+        Sc.Print "----------> Response code"
+        Sc.Read(1)
+        Sc.Print "----------> Response data length"
+        Sc.Read (bytesinbuffer)
+        Sc.Print "->??"
+        Pass = Pass + 1
+        Loop Until Pass >= TopPass
+        Pass = &H00
+End Sub
+'*************************************
+Sub Cmd2008()
+        Pass = &H00
+        TopPass = &H00
+        Sc.Verbose = False
+        Sc.Print (vbcr & vbcr & "  The output following this is from a 20-08 command")
+        Sc.Write ("21 00 0C A0 CA 00 00 06 20 04 08 02 FF FF 03 6C")
+        Sc.Delay(100)
+        ChkL = Sc.BytesInBuffer
+        If (ChkL <> 9) Then
+        Sc.Print(vbcr & vbcr & ">>>>>ERROR READING<<<<<")
+        Exit Sub
+        End If
+        Sc.Verbose = True
+        Sc.Read(3)
+        Sc.Print "----> Standard header"
+        Sc.Read(1)
+        Sc.Print "----------> Response code"
+        Sc.Read(1)
+        Sc.Print "----------> Response data length"
+        Sc.Read(1)
+        Sc.Print "----------> Number of data items to return"
+        TopPass=Sc.GetByte(0)
+        Sc.Read(2)
+        Sc.Print "-------> SW1/SW2: 90 00 is a good reply"
+        Sc.Read(1)
+        Sc.Print "----------> Checksum"
+        If TopPass <> 0 Then Call Cmd2108()
+End Sub
+'*************************************
+Sub Cmd2108()
+        Do
+        Sc.Print (vbcr & vbcr & "  The output following this is from a 21-08 command Pass# " & ((Pass) + 1))
+        Strng = ("21 00 0D A0 CA 00 00 07 21 05 08 03 FF FF " & Hex(Pass) & " 1E")
+        Strng1 = (Strng & LRC())
+        Sc.Write (Strng1)
+        Sc.Delay(100)
+        ChkL = Sc.BytesInBuffer
+        If (ChkL <> 36) Then
+        Sc.Print(vbcr & vbcr & ">>>>>ERROR READING<<<<<")
+        Exit Sub
+        End If
+        Sc.Verbose = True
+        Sc.Read(3)
+        Sc.Print "----> Standard header"
+        Sc.Read(1)
+        Sc.Print "----------> Response code"
+        Sc.Read(1)
+        Sc.Print "----------> Response data length"
+        Sc.Read(2)
+        Sc.Print "-------> Systeme ID"
+        Sc.Read(1)
+        Rtv0 = Sc.GetByte(0)
+        Status = Get_Status
+        Sc.Print "----------> IRD Status " & Status
+        Sc.Read(3)
+        Sc.Print "----> Rights Identifier"
+        Sc.Read(1)
+        Sc.Print "----------> String ID 00 = No String"
+        Sc.Read(3)
+        Sc.Print "----> Impulse Subscription Price"
+        Sc.Read(2)
+        Sc.Print "-------> Modification Date "
+        Sc.Read(2)
+        Sc.Print "-------> Begin Date "
+        Sc.Read(2)
+        Sc.Print "-------> Expire Date "
+        Sc.Read(2)
+        Sc.Print "-------> Rights Date "
+        Sc.Read(2)
+        Sc.Print "-------> Min. Tier Authorized"
+        Sc.Read(2)
+        Sc.Print "-------> Max. Tier Authorized"
+        Sc.Read(2)
+        Sc.Print "-------> ??"
+        Sc.Read(1)
+        Sc.Print "----------> ??"
+        Sc.Read(2)
+        Sc.Print "-------> ??"
+        Sc.Read(1)
+        Sc.Print "----------> ??"
+        Sc.Read(2)
+        Sc.Print "-------> SW1/SW2: 90 00 is a good reply"
+        Sc.Read(1)
+        Sc.Print "----------> Checksum"
+        Pass = Pass + &H01
+        Loop Until Pass >= TopPass
+        Pass = &H00
+End Sub
+'*************************************
+Sub Cmd2009()
+        Pass = &H00
+        TopPass = &H00
+        Sc.Verbose = False
+        Sc.Print (vbcr & vbcr & "  The output following this is from a 20-09 command")
+        Sc.Write ("21 00 0C A0 CA 00 00 06 20 04 09 02 FF FF 03 6D")
+        Sc.Delay(100)
+        ChkL = Sc.BytesInBuffer
+        If (ChkL <> 9) Then
+        Sc.Print(vbcr & vbcr & ">>>>>ERROR READING<<<<<")
+        Exit Sub
+        End If
+        Sc.Verbose = True
+        Sc.Read(3)
+        Sc.Print "----> Standard header"
+        Sc.Read(1)
+        Sc.Print "----------> Response code"
+        Sc.Read(1)
+        Sc.Print "----------> Response data length"
+        Sc.Read(1)
+        Sc.Print "----------> Number of data items to return"
+        TopPass=Sc.GetByte(0)
+        Sc.Read(2)
+        Sc.Print "-------> SW1/SW2: 90 00 is a good reply"
+        Sc.Read(1)
+        Sc.Print "----------> Checksum"
+        If TopPass <> 0 Then Call Cmd2109()
+End Sub
+'*************************************
+Sub Cmd2109()
+        Do
+        Sc.Print (vbcr & vbcr & "  The output following this is from a 21-09 command Pass# " & ((Pass) + 1))
+        Strng = ("21 00 0D A0 CA 00 00 07 21 05 09 03 FF FF " & Hex(Pass) & " 27")
+        Strng1 = (Strng & LRC())
+        Sc.Write (Strng1)
+        Sc.Delay(100)
+        ChkL = Sc.BytesInBuffer
+        If (ChkL < 9) Then
+        Sc.Print(vbcr & vbcr & ">>>>>ERROR READING<<<<<")
+        Exit Sub
+        End If
+        Sc.Verbose = True
+        Sc.Read(3)
+        Sc.Print "----> Standard header"
+        Sc.Read(1)
+        Sc.Print "----------> Response code"
+        Sc.Read(1)
+        Sc.Print "----------> Response data length"
+        Sc.Read(2)
+        Sc.Print "-------> Systeme ID"
+        Sc.Read(1)
+        Rtv0 = Sc.GetByte(0)
+        Status = Get_Status
+        Sc.Print "----------> IRD Status " & Status
+        Sc.Read(3)
+        Sc.Print "----> ??"
+        Sc.Read(1)
+        Sc.Print "----------> ??"
+        Sc.Read(3)
+        Sc.Print "----> ??"
+        Sc.Read(2)
+        Sc.Print "-------> ??"
+        Sc.Read(2)
+        Sc.Print "-------> ??"
+        Sc.Read(2)
+        Sc.Print "-------> ??"
+        Sc.Read(2)
+        Sc.Print "-------> ??"
+        Sc.Read(2)
+        Sc.Print "-------> ??"
+        Sc.Read(3)
+        Sc.Print "----> ??"
+        Sc.Read(4)
+        Sc.Print "-> ??"
+        Sc.Read(2)
+        Sc.Print "-------> ??"
+        Sc.Read(2)
+        Sc.Print "-------> ??"
+        Sc.Read(2)
+        Sc.Print "-------> ??"
+        Sc.Read(1)
+        Sc.Print "----------> ??"
+        Sc.Read(2)
+        Sc.Print "-------> ??"
+        Sc.Read(1)
+        Sc.Print "----------> ??"
+        Sc.Read(2)
+        Sc.Print "-------> SW1/SW2: 90 00 is a good reply"
+        Sc.Read(1)
+        Sc.Print "----------> Checksum"
+        Pass = Pass + &H01
+        Loop Until Pass >= TopPass
+        Pass = &H00
+End Sub
+'*************************************
+Sub Cmd200A()
+        Pass = &H00
+        TopPass = &H00
+        Sc.Verbose = False
+        Sc.Print (vbcr & vbcr & "  The output following this is from a 20-0A command")
+        Sc.Write ("21 00 0C A0 CA 00 00 06 20 04 0A 02 FF FF 03 6E")
+        Sc.Delay(100)
+        ChkL = Sc.BytesInBuffer
+        If (ChkL <> 9) Then
+        Sc.Print(vbcr & vbcr & ">>>>>ERROR READING<<<<<")
+        Exit Sub
+        End If
+        Sc.Verbose = True
+        Sc.Read(3)
+        Sc.Print "----> Standard header"
+        Sc.Read(1)
+        Sc.Print "----------> Response code"
+        Sc.Read(1)
+        Sc.Print "----------> Response data length"
+        Sc.Read(1)
+        Sc.Print "----------> Number of data items to return"
+        TopPass=Sc.GetByte(0)
+        Sc.Read(2)
+        Sc.Print "-------> SW1/SW2: 90 00 is a good reply"
+        Sc.Read(1)
+        Sc.Print "----------> Checksum"
+        If TopPass <> 0 Then Call Cmd210A()
+End Sub
+'*************************************
+Sub Cmd210A()
+        Do
+        Sc.Print (vbcr & vbcr & "  The output following this is from a 21-0A command Pass# " & ((Pass) + 1))
+        Strng = ("21 00 0D A0 CA 00 00 07 21 05 0A 03 FF FF " & Hex(Pass) & " 2A")
+        Strng1 = (Strng & LRC())
+        Sc.Write (Strng1)
+        Sc.Delay(100)
+        ChkL = Sc.BytesInBuffer
+        If (ChkL < 9) Then
+        Sc.Print(vbcr & vbcr & ">>>>>ERROR READING<<<<<")
+        Exit Sub
+        End If
+        Sc.Verbose = True
+        Sc.Read(3)
+        Sc.Print "----> Standard header"
+        Sc.Read(1)
+        Sc.Print "----------> Response code"
+        Sc.Read(1)
+        Sc.Print "----------> Response data length"
+        Sc.Read(2)
+        Sc.Print "-------> Systeme ID"
+        Sc.Read(1)
+        Rtv0 = Sc.GetByte(0)
+        Status = Get_Status
+        Sc.Print "----------> IRD Status " & Status
+        Sc.Read(3)
+        Sc.Print "----> ??"
+        Sc.Read(1)
+        Sc.Print "----------> ??"
+        Sc.Read(3)
+        Sc.Print "----> ??"
+        Sc.Read(2)
+        Sc.Print "------->??"
+        Sc.Read(2)
+        Sc.Print "-------> ??"
+        Sc.Read(2)
+        Sc.Print "-------> ??"
+        Sc.Read(2)
+        Sc.Print "-------> ??"
+        Sc.Read(2)
+        Sc.Print "-------> ??"
+        Sc.Read(3)
+        Sc.Print "----> ??"
+        Sc.Read(4)
+        Sc.Print "-> ??"
+        Sc.Read(2)
+        Sc.Print "-------> ??"
+        Sc.Read(2)
+        Sc.Print "-------> ??"
+        Sc.Read(2)
+        Sc.Print "-------> ??"
+        Sc.Read(3)
+        Sc.Print "----> ??"
+        Sc.Read(4)
+        Sc.Print "-> ??"
+        Sc.Read(2)
+        Sc.Print "-------> SW1/SW2: 90 00 is a good reply"
+        Sc.Read(1)
+        Sc.Print "----------> Checksum"
+        Pass = Pass + &H01
+        Loop Until Pass >= TopPass
+        Pass = &H00
+End Sub
+'*************************************
+Sub Cmd200B()
+        Pass = &H00
+        TopPass = &H00
+        Sc.Verbose = False
+        Sc.Print (vbcr & vbcr & "  The output following this is from a 20-0B command")
+        Sc.Write ("21 00 0C A0 CA 00 00 06 20 04 0B 02 FF FF 03 6F")
+        Sc.Delay(100)
+        ChkL = Sc.BytesInBuffer
+        If (ChkL <> 9) Then
+        Sc.Print(vbcr & vbcr & ">>>>>ERROR READING<<<<<")
+        Exit Sub
+        End If
+        Sc.Verbose = True
+        Sc.Read(3)
+        Sc.Print "----> Standard header"
+        Sc.Read(1)
+        Sc.Print "----------> Response code"
+        Sc.Read(1)
+        Sc.Print "----------> Response data length"
+        Sc.Read(1)
+        Sc.Print "----------> Number of data items to return"
+        TopPass=Sc.GetByte(0)
+        Sc.Read(2)
+        Sc.Print "-------> SW1/SW2: 90 00 is a good reply"
+        Sc.Read(1)
+        Sc.Print "----------> Checksum"
+        If TopPass <> 0 Then Call Cmd210B()
+End Sub
+'*************************************
+Sub Cmd210B()
+        Do
+        Sc.Print (vbcr & vbcr & "  The output following this is from a 21-0B command Pass# " & ((Pass) + 1))
+        Strng = ("21 00 0D A0 CA 00 00 07 21 05 0B 03 FF FF " & Hex(Pass) & " 24")
+        Strng1 = (Strng & LRC())
+        Sc.Write (Strng1)
+        Sc.Delay(100)
+        ChkL = Sc.BytesInBuffer
+        If (ChkL < 42) Then
+        Sc.Print(vbcr & vbcr & ">>>>>ERROR READING<<<<<")
+        Exit Sub
+        End If
+        Sc.Verbose = True
+        Sc.Read(3)
+        Sc.Print "-> Standard header"
+        Sc.Read(1)
+        Sc.Print "----------> Response code"
+        Sc.Read(1)
+        Sc.Print "----------> Response data length"
+        Sc.Read(2)
+        Sc.Print "-------> Systeme ID"
+        Sc.Read(1)
+        Rtv0 = Sc.GetByte(0)
+        Status = Get_Status
+        Sc.Print "----------> IRD Status " & Status
+        Sc.Read(3)
+        Sc.Print "----> PPV ID Code"
+        Sc.Read(1)
+        Sc.Print "----------> PPV ID in card = "& Hex(Sc.GetByte(0))
+        Sc.Read(3)
+        Sc.Print "----> Amount = " & Sc.GetByte(1)&"."& Hex(Sc.GetByte(2))&" $"
+        Sc.Read(2)
+        Sc.Print "-------> Event Start"
+        Sc.Read(2)
+        Sc.Print "-------> Event End"
+        Sc.Read(1)
+        Sc.Print "----------> String ID 00 = No String"
+        Sc.Read(2)
+        Sc.Print "-------> Min. Authorized"
+        Sc.Read(2)
+        Sc.Print "-------> Max. Authorized"
+        Sc.Read(2)
+        Sc.Print "-------> ??"
+        Sc.Read(3)
+        Sc.Print "----> Theme Lowest PPV ID"
+        Sc.Read(4)
+        Sc.Print "-> Theme Highest PPV ID"
+        Sc.Read(2)
+        Sc.Print "-------> Odometer"
+        Sc.Read(2)
+        Sc.Print "-------> Event Start Date"
+        Sc.Read(2)
+        Sc.Print "-------> Event Start Time"
+        Sc.Read(2)
+        Sc.Print "-------> SW1/SW2: 90 00 is a good reply"
+        Sc.Read(1)
+        Sc.Print "----------> Checksum"
+        Pass = Pass + &H01
+        Loop Until Pass >= TopPass
+        Pass = &H00
+End Sub
+'*************************************
+Sub Cmd200C()
+        Pass = &H00
+        TopPass = &H00
+        Sc.Verbose = False
+        Sc.Print (vbcr & vbcr & "  The output following this is from a 20-0C command")
+        Sc.Write ("21 00 0C A0 CA 00 00 06 20 04 0C 02 FF FF 03 68")
+        Sc.Delay(100)
+        ChkL = Sc.BytesInBuffer
+        If (ChkL <> 9) Then
+        Sc.Print(vbcr & vbcr & ">>>>>ERROR READING<<<<<")
+        Exit Sub
+        End If
+        Sc.Verbose = True
+        Sc.Read(3)
+        Sc.Print "----> Standard header"
+        Sc.Read(1)
+        Sc.Print "----------> Response code"
+        Sc.Read(1)
+        Sc.Print "----------> Response data length"
+        Sc.Read(1)
+        Sc.Print "----------> Number of data items to return"
+        TopPass=Sc.GetByte(0)
+        Sc.Read(2)
+        Sc.Print "-------> SW1/SW2: 90 00 is a good reply"
+        Sc.Read(1)
+        Sc.Print "----------> Checksum"
+        If TopPass <> 0 Then Call Cmd210C()
+End Sub
+'*************************************
+Sub Cmd210C()
+        do
+        Sc.Print (vbcr & vbcr & "  The output following this is from a 21-0C command Pass# " & ((Pass) + 1))
+        Strng = ("21 40 0D A0 CA 00 00 07 21 05 0C 03 FF FF " & Hex(Pass) & " 13")
+        Strng1 = (Strng & LRC())
+        Sc.Write (Strng1)
+        Sc.Delay(100)
+        ChkL = Sc.BytesInBuffer
+        If (ChkL <> 25) Then
+        Sc.Print(vbcr & vbcr & ">>>>>ERROR READING<<<<<")
+        Exit Sub
+        End If
+        Sc.Verbose = True
+        Sc.Read(3)
+        Sc.Print "----> Standard header"
+        Sc.Read(1)
+        Sc.Print "----------> Response code"
+        Sc.Read(1)
+        Sc.Print "----------> Response data length"
+        Sc.Read(2)
+        Sc.Print "-------> Systeme ID"
+        Sc.Read(1)
+        Rtv0 = Sc.GetByte(0)
+        Status = Get_Status
+        Sc.Print "----------> IRD Status " & Status
+        Sc.Read(3)
+        Sc.Print "----> Rights Identifier"
+        Sc.Read(2)
+        Sc.Print "-------> Last Date Of Operation on Cash "
+        Sc.Read(3)
+        Sc.Print "----> Purchased = " & Sc.GetByte(1)&"."& Hex(Sc.GetByte(2))&" $"
+        Sc.Read(4)
+        Sc.Print "-> Debit in Cash = " & Sc.GetByte(2)&"."& Hex(Sc.GetByte(3))&" $"
+        Sc.Read(2)
+        Sc.Print "-------> Max allowed B4 Phone Home = " & Sc.GetByte(1)&" $"
+        Sc.Read(2)
+        Sc.Print "-------> SW1/SW2: 90 00 is a good reply"
+        Sc.Read(1)
+        Sc.Print "----------> Checksum"
+        Pass = Pass + &H01
+        Loop Until Pass >= TopPass
+        Pass = &H00
+End Sub
+'*************************************
+Sub Cmd2010()
+        Pass = &H00
+        TopPass = &H00
+        Sc.Verbose = False
+        Sc.Print (vbcr & vbcr & "  The output following this is from a 20-10 command")
+        Sc.Write ("21 00 0C A0 CA 00 00 06 20 04 10 02 FF FF 03 74")
+        Sc.Delay(100)
+        ChkL = Sc.BytesInBuffer
+        If (ChkL <> 9) Then
+        Sc.Print(vbcr & vbcr & ">>>>>ERROR READING<<<<<")
+        Exit Sub
+        End If
+        Sc.Verbose = True
+        Sc.Read(3)
+        Sc.Print "----> Standard header"
+        Sc.Read(1)
+        Sc.Print "----------> Response code"
+        Sc.Read(1)
+        Sc.Print "----------> Response data length"
+        Sc.Read(1)
+        Sc.Print "----------> Number of data items to return"
+        TopPass=Sc.GetByte(0)
+        Sc.Read(2)
+        Sc.Print "-------> SW1/SW2: 90 00 is a good reply"
+        Sc.Read(1)
+        Sc.Print "----------> Checksum"
+        If TopPass <> 0 Then Call Cmd2110()
+End Sub
+'*************************************
+Sub Cmd2110()
+        do
+        Sc.Print (vbcr & vbcr & "  The output following this is from a 21-10 command Pass# " & ((Pass) + 1))
+        Strng = ("21 00 0D A0 CA 00 00 07 21 05 10 03 FF FF " & Hex(Pass) & " 24")
+        Strng1 = (Strng & LRC())
+        Sc.Write (Strng1)
+        Sc.Delay(100)
+        ChkL = Sc.BytesInBuffer
+        If (ChkL < 13) Then
+        Sc.Print(vbcr & vbcr & ">>>>>ERROR READING<<<<<")
+        Exit Sub
+        End If
+        Sc.Verbose = True
+        Sc.Read(3)
+        Sc.Print "----> Standard header"
+        Sc.Read(1)
+        Sc.Print "----------> Response code"
+        Sc.Read(1)
+        Sc.Print "----------> Response data length"
+        Sc.Read(8)
+        Sc.Print "-> ??"
+        Sc.Read (bytesinbuffer)
+        Sc.Print "-> ??"
+        Pass = Pass + &H01
+        Loop Until Pass >= TopPass
+        Pass = &H00
+End Sub
+'*************************************
+Sub Cmd2011()
+        Pass = &H00
+        TopPass = &H00
+        Sc.Verbose = False
+        Sc.Print (vbcr & vbcr & "  The output following this is from a 20-11 command")
+        Sc.Write ("21 00 0C A0 CA 00 00 06 20 04 11 02 FF FF 03 75")
+        Sc.Delay(100)
+        ChkL = Sc.BytesInBuffer
+        If (ChkL <> 9) Then
+        Sc.Print(vbcr & vbcr & ">>>>>ERROR READING<<<<<")
+        Exit Sub
+        End If
+        Sc.Verbose = True
+        Sc.Read(3)
+        Sc.Print "----> Standard header"
+        Sc.Read(1)
+        Sc.Print "----------> Response code"
+        Sc.Read(1)
+        Sc.Print "----------> Response data length"
+        Sc.Read(1)
+        Sc.Print "----------> Number of data items to return"
+        TopPass=Sc.GetByte(0)
+        Sc.Read(2)
+        Sc.Print "-------> SW1/SW2: 90 00 is a good reply"
+        Sc.Read(1)
+        Sc.Print "----------> Checksum"
+        If TopPass <> 0 Then Call Cmd2111()
+End Sub
+'*************************************
+Sub Cmd2111()
+        do
+        Value = &H00
+        Sc.Print (vbcr & vbcr & "  The output following this is from a 21-11 command Pass# " & ((Pass) + 1))
+        Strng = ("21 00 0D A0 CA 00 00 07 21 05 11 03 FF FF " & Hex(Pass) & " 04")
+        Strng1 = (Strng & LRC())
+        Sc.Write (Strng1)
+        Sc.Delay(100)
+        ChkL = Sc.BytesInBuffer
+        If (ChkL < 10) Then
+        Sc.Print(vbcr & vbcr & ">>>>>ERROR READING<<<<<")
+        Exit Sub
+        End If
+        Sc.Verbose = True
+        Sc.Read(3)
+        Sc.Print "----> Standard header"
+        Sc.Read(1)
+        Sc.Print "----------> Response code"
+        Sc.Read(1)
+        Sc.Print "----------> Response Length"
+        Sc.Read(2)
+        Sc.Print "----> ??"
+        Sc.Read(2)
+        Sc.Print "-------> SW1/SW2: 90 00 is a good reply"
+        Sc.Read(1)
+        Sc.Print "----------> Checksum"
+        Pass = Pass + &H01
+        Loop Until Pass >= TopPass
+        Pass = &H00
+End Sub
+'*************************************
+Sub Cmd30()
+     Dim SID
+        SID =  Ucase(Sc.InputBox("Just enter the First Byte# Ex: 01 for Dish, 41 for Sky, 09 for Vu etc...", "Enter the SID"))
+        If SubCmd < 16  Then
+        Sc.Print(vbcr & vbcr & "SID = " & SID    & "  SubCmd = 0" & Hex(SubCmd))
+        Else
+        Sc.Print(vbcr & vbcr & "SID = " & SID    & "  SubCmd = " & Hex(SubCmd))
+        End If
+        Strng = ("21 00 0B A0 CA 00 00 05 30 03 " & Sid & " 01 " & Hex(SubCmd)& " 05")
+        Strng1 = (Strng & LRC())
+        Sc.Verbose = True
+        Sc.Write (Strng1)
+        Sc.Delay(800)
+        Sc.Read BytesInBuffer
+        Sc.Write ("21 00 08 A0 CA 00 00 02 C0 00 06 87")
+        Sc.Delay(100)
+        Sc.Read BytesInBuffer
+        Call Cmd31()
+End Sub
+'*************************************
+Sub Cmd31()
+        Sc.Print (vbcr & vbcr & "  The output following this is from a 31 command")
+        Sc.Verbose = False
+        Sc.Write ("21 00 08 A0 CA 00 00 02 31 00 52 22")
+        Sc.Delay(400)
+        ChkL = Sc.BytesInBuffer
+        If (ChkL <> 88) Then
+        Sc.Print(vbcr & vbcr & ">>>>>ERROR READING<<<<<")
+        Exit Sub
+        End If
+        Sc.Verbose = True
+        Sc.Read(3)
+        Sc.Print "----> Standard header"
+        Sc.Read(1)
+        Sc.Print "----------> Response code"
+        Sc.Read(1)
+        Sc.Print "----------> Response data length"
+        Sc.Read(2)
+        Sc.Print "-------> B1 01 = Packet OK"
+        Sc.Read(1)
+        Sc.Print "----------> Count Sequence Same Then the one on the 30 Response"
+        Sc.Read(1)
+        Sc.Print "----------> Lenght of Status bytes"
+        Sc.Read(4)
+        Sc.Print "-> Status of Encode"
+        Sc.Read(8)
+        Sc.Print "-> Valid Hash"
+        Sc.Read(8)
+        Sc.Print "-> Encrypt 1"
+        Sc.Read(8)
+        Sc.Print "-> Encrypt 2"
+        Sc.Read(8)
+        Sc.Print "-> Encrypt 3"
+        Sc.Read(8)
+        Sc.Print "-> Encrypt 4"
+        Sc.Read(8)
+        Sc.Print "-> Encrypt 5"
+        Sc.Read(8)
+        Sc.Print "-> Encrypt 6"
+        Sc.Read(8)
+        Sc.Print "-> Encrypt 7"
+        Sc.Read(8)
+        Sc.Print "-> Encrypt 8"
+        Sc.Read(2)
+        Sc.Print "-------> SW1/SW2: 90 00 is a good reply"
+        Sc.Read(1)
+        Sc.Print "----------> Checksum"
+        Sc.Read (bytesinbuffer)
+End Sub
+'*************************************
+Sub Cmd40()
+        Sc.Print (vbcr & vbcr & "  The output following this is from a 40 command")
+        Sc.Verbose = False
+        Sc.Write ("21 00 08 A0 CA 00 00 02 40 00 04 05")
+        Sc.Delay(100)
+        ChkL = Sc.BytesInBuffer
+        If (ChkL <> 10) Then
+        Sc.Print(vbcr & vbcr & ">>>>>ERROR READING<<<<<")
+        Exit Sub
+        End If
+        Sc.Verbose = True
+        Sc.Read(3)
+        Sc.Print "----> Standard header"
+        Sc.Read(1)
+        Sc.Print "----------> Response code"
+        Sc.Read(1)
+        Sc.Print "----------> Response data length"
+        Sc.Read(2)
+        Sc.Print "-------> EEPROM Space avalaible"
+        Sc.Read(2)
+        Sc.Print "-------> SW1/SW2: 90 00 is a good reply"
+        Sc.Read(1)
+        Sc.Print "----------> Checksum"
+End Sub
+'*************************************
+Sub Cmd60()
+        Sc.Print (vbcr & vbcr & "  The output following this is from a 60 command")
+        Sc.Verbose = True
+        Sc.Write ("21 00 08 A0 CA 00 00 02 60 00 42 63")
+        Sc.Delay(100)
+        ChkL = Sc.BytesInBuffer
+        If (ChkL < 66) Then
+        Sc.Print(vbcr & vbcr & ">>>>>ERROR READING<<<<<")
+        Exit Sub
+        End If
+        Sc.Verbose = True
+        Sc.Read(3)
+        Sc.Print "----------------> Standard header"
+        Sc.Read(1)
+        Sc.Print "----------------------> Response code"
+        Sc.Read(1)
+        Sc.Print "----------------------> Response data length"
+        Sc.Read(8)
+        Sc.Print "-> Rom Area Start"
+        Sc.Read(8)
+        Sc.Print "-> Rom Area"
+        Sc.Read(8)
+        Sc.Print "-> Rom Area"
+        Sc.Read(8)
+        Sc.Print "-> Rom Area"
+        Sc.Read(8)
+        Sc.Print "-> Rom Area"
+        Sc.Read(8)
+        Sc.Print "-> Rom Area"
+        Sc.Read(8)
+        Sc.Print "-> Rom Area"
+        Sc.Read(8)
+        Sc.Print "-> Rom Area End"
+        Sc.Read(2)
+        Sc.Print "-------------------> SW1/SW2: 90 00 is a good reply"
+        Sc.Read(1)
+        Sc.Print "----------------------> Checksum"
+End Sub
+'*************************************
+Sub Cmd61()
+     Dim Ascii,Confirm,IRD,Choose
+     IRD = Enter_IRD()
+     If IRD = "" Then Exit Sub
+     Ascii = Bst_Vers()
+     If Ascii = "" Then Exit Sub
+        Choose = "IRD Number chosen is  "  & IRD &  vbcr & vbcr & "Ascii Info Chosen is  " & Ascii  & vbcr & vbcr & "Do you wish to continue?"
+        Confirm = Sc.Msgbox(Choose , vbYesNo + vbQuestion + vbDefaultButton1, "Final Confirmation")
+        If Confirm = vbno Then Exit Sub
+        Strng = ("21 00 1C A0 CA 00 00 16 61 14 " & IRD & " "& Ascii &" 03 ")
+        Strng1 = (Strng & LRC())
+        Sc.Write (Strng1)
+        Sc.Delay(100)
+        ChkL = Sc.BytesInBuffer
+        If (ChkL <> 9) Then
+        Sc.Print(vbcr & vbcr & ">>>>>ERROR READING<<<<<")
+        Exit Sub
+        End If
+        Sc.Read(9)
+        Sc.Write ("21 00 0D A0 CA 00 00 07 21 05 01 03 FF FF 00 20 47")
+        Sc.Delay(100)
+        ChkL = Sc.BytesInBuffer
+        If (ChkL < 38) Then
+        Sc.Print(vbcr & vbcr & ">>>>>ERROR READING<<<<<")
+        Exit Sub
+        End If
+        Sc.Read(15)
+        Sc.Verbose = True
+        Sc.Read(4)
+        Sc.Print "------------->The New IRD Number"
+        Sc.Read(8)
+        Sc.Print "->The New Bootstrap Info"
+        Sc.Read(8)
+        Sc.Print "->The New Software Revision Info"
+End Sub
+'*************************************
+Function Bst_Vers()
+     Dim Ascii,Data
+     Data = Get_Ascii()
+        Do
+        Ascii =  Ucase(Sc.InputBox("                 Enter 16 Hex bytes without spaces                 ", "Boot Strap and Software Revision" , Data))
+        If Ascii = "" Then Exit Function
+        If Len(Ascii) <> 32 Then
+        Sc.Msgbox "Not The Right Amount of Digits", vbokonly, "    ERROR -- Try Again"
+        End If
+        If IsHex(Ascii) = False And Len(Ascii) = 32 Then
+        Sc.Msgbox "         Invalid Hex Digits", vbokonly, "     ERROR -- Try Again"
+        End If
+        Loop Until Len(Ascii) = 32 And IsHex(Ascii) <> False
+        Bst_Vers = Ascii
+End Function
+'*************************************
+Function Enter_IRD()
+     Dim IRD,data
+     Data = Get_IRD()
+        Do
+        IRD = Ucase(Sc.InputBox("Enter the NEW IRD number backwards in Hex without spaces" & vbcr & vbcr _
+                                & "Your original IRD number from the card is shown !", "Change IRD Number" , Data))
+        If IRD = "" Then Exit Function
+        If Len(IRD) <>  8  Then
+        Sc.Msgbox "Not Right Amount of Digits" , vbokonly, "    ERROR -- Try Again"
+        End If
+        If IsHex(IRD) = False And Len(IRD)= 8 Then
+        Sc.Msgbox "         Invalid Hex Digits", vbokonly, "    ERROR -- Try Again"
+        End If
+        Loop Until Len(IRD) = 8 And IsHex(IRD) <> False
+        Enter_IRD = IRD
+End Function
+'*************************************
+Function Get_Ascii()
+     Dim Rtv,Data
+        Sc.Verbose = False
+        Sc.Write ("21 00 0D A0 CA 00 00 07 21 05 01 03 FF FF 00 20 47")
+        Sc.Delay(100)
+        ChkL = Sc.BytesInBuffer
+        If (ChkL < 38) Then
+        Sc.Print(vbcr & vbcr & ">>>>>ERROR READING<<<<<")
+        Exit Function
+        End If
+        Sc.Read(38)
+        For Value = 19 to 34
+        Rtv =  Hex(Sc.GetByte(value))
+        If Len(Rtv) = 1  Then Rtv = "0" & Rtv
+        Data = Data & Rtv
+        Next
+        Get_Ascii = Data
+End Function
+'*************************************
+Function Get_IRD()
+    Dim Data
+        Sc.Verbose = False
+        Sc.Write ("21 00 0D A0 CA 00 00 07 21 05 01 03 FF FF 00 20 47")
+        Sc.Delay(100)
+        ChkL = Sc.BytesInBuffer
+        If (ChkL < 38) Then
+        Sc.Print(vbcr & vbcr & ">>>>>ERROR READING<<<<<")
+        Exit Function
+        End If
+        Sc.Read(38)
+        For Value = 15 to 18
+        Rtv =  Hex(Sc.GetByte(Value))
+        If Len(Rtv) = 1  Then Rtv = "0" & Rtv
+        Data = Data & Rtv
+        Next
+        Get_IRD = Data
+End Function
+'*************************************
+Function Get_Status()
+    Dim Flag1,Data
+        Data = ""
+        Flag1 = Rtv0
+        If (Flag1 AND 1) Then Data = "PPV Charged"
+        If (Flag1 AND 2) Then Data = Data & " Data item compressed"
+        If (Flag1 AND 4) Then Data = Data & " Predifined Message(Email)"
+        If (Flag1 AND 8) Then Data = Data & " High Priority(Email)"
+        If (Flag1 AND 16) Then Data = Data & " PPV Watched"
+        If (Flag1 AND 32) Then Data = Data & " Impulse Channel"
+        If (Flag1 AND 64) Then Data = Data & " Callback Performed"
+        If (Flag1 AND 128) Then Data = Data & " Sub Suspended"
+        Get_Status = Data
+End Function
+'*************************************

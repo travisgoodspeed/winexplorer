@@ -1,0 +1,846 @@
+' New VB Script File - Created 11/02/04
+' FOR Bev rom 10 A81 rev STREAMLOCKED only.
+' Use Newd9 for this script!!!
+'************************************************* *************************************
+' A81U_Winex Unlocker
+' Special credits go for..
+' No1b4me, Penga....
+' Tnx also for AGNX Group and their members...
+' IvanX, WilsonRCA, AlexIS...
+' Cardcoders Staff and members...
+' As always use this script at your own risk
+'
+' Dish A23 by Anarky, Thanks
+' Bev A81 by cmce
+'
+'************************************************* *************************************
+'
+Option Explicit
+Dim Bytes
+dim bytes2
+Dim BR2(5)
+Dim VCCStart
+Dim VCCLimit
+Dim VCC
+Dim DelayEnd
+Dim DelayStart
+Dim GlitchType
+Dim TryCnt
+DIM TryLimit
+DIM TRYCNT2
+DIM RT
+DIM TestMode
+Dim ScriptStart
+Dim ScriptEnd
+Dim TempScriptStart
+Dim TimeInMinutes
+Dim TimeInHours
+Dim TimeElapsed
+Dim RunTime
+Dim ATR
+Dim MenuPrompt
+Dim SWChoice
+Dim RChoice
+Dim FIXChoice
+Dim RWChoice
+Dim ErrorString
+Dim DChoice
+Dim EChoice
+Dim Choice
+Dim PromptString
+Dim RetValue
+Dim GotInput
+Dim ThisChar
+Dim Version
+Dim Password
+Dim Cchoice
+TRYCNT2=1
+' These are the variables you can change for rom 10 Bev A81
+
+VCCStart = &h18 'YOU CAN CHANGE THIS FROM 18-30
+VCCLimit = &h10 'YOU CAN CHANGE THIS FROM 10-20
+DelayStart=&h12CA 'BEV A81 is 12CA- could be as low as 1100
+DelayEnd = &H12F9 'BEV A81 IS 12F9- could be as high as 13FF
+TryCnt = 100 'Number of tries per delay FROM 5-50000
+TestMode = 1 'TestMode, 1 = ON, 0 = OFF
+'TestMode is used to find a glitch point on a Bev A81 cam. Once you find the
+'delay and vcc settings on cam then set TestMode = 0, and open the cam.
+' end of variables
+Sub Main()
+If Sc.Version < 4.6 Then
+ErrorString = "You need version 4.5 or greater of WinExplorer to run this script"
+Sc.MsgBox ErrorString, vbCritical
+Err.Raise 1050, , ErrorString
+End If
+call SetupUnlocker
+if ReceiveATR() > 0 Then
+'MenuPrompt = "ATR : " & ATR
+Call Sc.Msgbox ("ATR: " & ATR, VbInformation, "Good ATR detected , Script will continue.. Click *Ok* button..")
+sc.print "ATR : " & ATR & VbCrLF
+else
+Call OopsNoATR()
+End if
+Do
+menuprompt=""
+MenuPrompt = MenuPrompt & "1. Default Script" & vbCrLf
+MenuPrompt = MenuPrompt & "2. Mod Script, Fixed VCC " & vbCrLf
+MenuPrompt = MenuPrompt & "3. Mod Script, Random Delays" & vbCrLf
+MenuPrompt = MenuPrompt & "4. Mod Script, Random VCC and Delays" & vbCrLf
+RWChoice = Sc.ButtonBox(MenuPrompt, VbInformation, "A81U_Winex: Select operation or click X to Exit------->", "Default", "Fixed VCC", "RND Delay", "RND VCC/DLY")
+Select Case RWChoice
+Case "0"
+Exit Sub
+''''''''''''''''''''''''''''''''''''''''''''
+Case "1"
+call Default1
+Case "2"
+call Defaultmod1
+Case "3"
+call Defaultmod2
+Case "4"
+call Defaultmod3
+End Select
+Loop While True = True
+End Sub ' End Sub Main()
+Sub Default1()
+ScriptStart = Now
+TimeElapsed = 0
+TimeInMinutes = 0
+TimeInHours = 0
+VCC = VCCStart
+RT = DelayStart
+sc.verbose=TRUE
+Sc.Write("12 15 AB 21 00 08 A0 CA 00 00 02 12 00 06 55 0E 03 85 00")
+Sc.Read(02)
+Bytes = Sc.Getbyte(1)
+if Bytes > 5 then
+Sc.Read(6)
+end if
+print
+if TestMode = 1 then
+print " You are in testmode, cam will not open in this mode!!!" & vbcr
+print " set TestMode = 0 to open cam " & vbcr & vbcr
+end if
+sc.verbose=false
+Do
+VCC = VCC - &h1
+if VCC < VCCLimit then
+VCC = VCCStart
+END IF
+Sc.Write("B0" & HexString(VCC, 2))
+SC.DELAY(11)
+Sc.Write("48 03 15 E0")
+Sc.Write("21 00 3D A0 CA 00 00 37 03 35 08 01 10 31 15 00")
+Sc.Write("00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00")
+Sc.Write("00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00")
+Sc.Write("00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 05")
+Sc.Write("4F 0E 03 85 00")
+Sc.Read(02)
+Bytes = Sc.Getbyte(1)
+if Bytes > 5 then
+Sc.Read(6)
+end if
+SC.DELAY(70)
+Sc.Write("6A 15 FF 21 00")
+Sc.Write("5CA0CA0000560354080C108405CC00CC")
+Sc.Write("00CC00CC000CCD320C5AEA2D2D0CCD32")
+Sc.Write("0C5AEA2D2DB1C445F4E12014808D4CF0")
+Sc.Write("AAA61D0DAA1DF497652E884E250CCD32")
+Sc.Write("0C0CCD320C5AEA2D2DA9CD65B74832C8")
+Sc.Write("EFFFFFFFFFA9CD65B74832C8EFF3 20" & HexString(RT, 4) & "09 0E 05 85 00")
+
+Sc.Read(02)
+Bytes = Sc.Getbyte(1)
+if Bytes > 4 then
+Sc.Read(5)
+bytes=sc.getbyte(3)
+call progupdate(trycnt2 , RT, VCC, bytes)
+TryCnt2 = TryCnt2 + 1
+if trycnt2 > trycnt then
+RT = RT + 1
+TRYCNT2 = 0
+if rt > DelayEnd then
+rt = DelayStart
+END IF
+END IF
+if bytes = &H83 then
+print
+print
+print "*********** Glitch Successfull *************"& VbCr
+PRINT "Answer= " & HEXSTRING(SC.GETBYTE(0),2) & HEXSTRING(SC.GETBYTE(1),2) & HEXSTRING(SC.GETBYTE(2),2) & HEXSTRING(SC.GETBYTE(3),2)& HEXSTRING(SC.GETBYTE(4),2)& VbCr
+Sc.Print "********************************************" & VbCr
+PRINT HexString(bytes, 2)
+print " was hit at " & HexString(RT, 4) & " delay ----VCC WAS " & HexString(VCC, 2)& vbcr
+Sc.Print "********************************************" & VbCr
+SC.DELAY(2500)
+Call Sc.ProgressBox ("", 0, 0, "")
+sc.print "Elapsed Time: " + FormatNumber((CDbl(Now) - CDbl(ScriptStart)) * 24 * 60, 2, True, True, True) + " minutes" & vbcr
+if TestMode = 0 then
+sc.verbose=TRUE
+Sc.Write("12 15 AB 21 00 08 A0 CA 00 00 02 C0 00 06 87 0E 03 85 00")
+SC.READ(2)
+Bytes = Sc.Getbyte(1)
+if Bytes > 5 then
+Sc.Read(6)
+bytes=sc.getbyte(3)
+END IF
+sc.delay(150)
+Sc.Write("0A 15 A3 21 98 00 B9 0E 03 85 00")
+SC.READ(2)
+Bytes = Sc.Getbyte(1)
+if Bytes > 5 then
+Sc.Read(6)
+bytes=sc.getbyte(3)
+END IF
+sc.delay(150)
+Sc.Write("0A 15 A3 21 92 00 B3 0E 04 85 00")
+SC.READ(2)
+Bytes = Sc.Getbyte(1)
+if Bytes > 4 then
+Sc.Read(5)
+bytes=sc.getbyte(3)
+END IF
+SC.DELAY(30)
+PRINT "***************************" & VBCR
+PRINT "* A81 CAM should be OPEN  *" & VBCR
+PRINT "* test in Nagra to see.   *" & VBCR
+PRINT "* if not, try again.      *" & VBCR
+PRINT "***************************" & VBCR
+exit sub
+end if
+sc.verbose=false
+end if
+else
+PRINT " RESET "
+Card_reset
+GetAtr
+End if
+Sc.Write("08 0e 03 10 01 01 03 9a 00") 'reset card
+sc.read(02)
+sc.delay(5)
+LOOP
+End Sub
+'************************************************* ********
+Sub DefaultMod1()
+ScriptStart = Now
+TimeElapsed = 0
+TimeInMinutes = 0
+TimeInHours = 0
+VCC = VCCStart
+RT = DelayStart
+sc.verbose=TRUE
+trycnt2=60
+Sc.Write("12 15 AB 21 00 08 A0 CA 00 00 02 12 00 06 55 0E 03 85 00")
+Sc.Read(02)
+Bytes = Sc.Getbyte(1)
+if Bytes > 5 then
+Sc.Read(6)
+end if
+print
+if TestMode = 1 then
+print " You are in testmode, cam will not open in this mode!!!" & vbcr
+print " set TestMode = 0 to open cam " & vbcr & vbcr
+end if
+sc.verbose=false
+Do
+
+Sc.Write("B0" & HexString(VCC, 2))
+SC.DELAY(11)
+Sc.Write("48 03 15 E0")
+Sc.Write("21 00 3D A0 CA 00 00 37 03 35 08 01 10 31 15 00")
+Sc.Write("00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00")
+Sc.Write("00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00")
+Sc.Write("00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 05")
+Sc.Write("4F 0E 03 85 00")
+Sc.Read(02)
+Bytes = Sc.Getbyte(1)
+if Bytes > 5 then
+Sc.Read(6)
+end if
+SC.DELAY(70)
+Sc.Write("6A 15 FF 21 00")
+Sc.Write("5CA0CA0000560354080C108405CC00CC")
+Sc.Write("00CC00CC000CCD320C5AEA2D2D0CCD32")
+Sc.Write("0C5AEA2D2DB1C445F4E12014808D4CF0")
+Sc.Write("AAA61D0DAA1DF497652E884E250CCD32")
+Sc.Write("0C0CCD320C5AEA2D2DA9CD65B74832C8")
+Sc.Write("EFFFFFFFFFA9CD65B74832C8EFF3 20" & HexString(RT, 4) & "09 0E 05 85 00")
+
+Sc.Read(02)
+Bytes = Sc.Getbyte(1)
+if Bytes > 4 then
+Sc.Read(5)
+bytes=sc.getbyte(3)
+call progupdate(trycnt2 , RT, VCC, bytes)
+
+TryCnt2 = TryCnt2 + 1
+if trycnt2 > trycnt then
+RT = RT + 1
+TRYCNT2 = 0
+if rt > DelayEnd then
+rt = DelayStart
+END IF
+END IF
+if bytes = &H83 then
+print
+print
+print "*********** Glitch Successfull *************"& VbCr
+PRINT "Answer= " & HEXSTRING(SC.GETBYTE(0),2) & HEXSTRING(SC.GETBYTE(1),2) & HEXSTRING(SC.GETBYTE(2),2) & HEXSTRING(SC.GETBYTE(3),2)& HEXSTRING(SC.GETBYTE(4),2)& VbCr
+Sc.Print "********************************************" & VbCr
+PRINT HexString(bytes, 2)
+print " was hit at " & HexString(RT, 4) & " delay ----VCC WAS " & HexString(VCC, 2)& vbcr
+Sc.Print "********************************************" & VbCr
+print
+SC.DELAY(2500)
+Call Sc.ProgressBox ("", 0, 0, "")
+sc.print "Elapsed Time: " + FormatNumber((CDbl(Now) - CDbl(ScriptStart)) * 24 * 60, 2, True, True, True) + " minutes" & vbcr
+if TestMode = 0 then
+sc.verbose=TRUE
+Sc.Write("12 15 AB 21 00 08 A0 CA 00 00 02 C0 00 06 87 0E 03 85 00")
+SC.READ(2)
+Bytes = Sc.Getbyte(1)
+if Bytes > 5 then
+Sc.Read(6)
+bytes=sc.getbyte(3)
+END IF
+sc.delay(150)
+Sc.Write("0A 15 A3 21 98 00 B9 0E 03 85 00")
+SC.READ(2)
+Bytes = Sc.Getbyte(1)
+if Bytes > 5 then
+Sc.Read(6)
+bytes=sc.getbyte(3)
+END IF
+sc.delay(150)
+Sc.Write("0A 15 A3 21 92 00 B3 0E 04 85 00")
+SC.READ(2)
+Bytes = Sc.Getbyte(1)
+if Bytes > 4 then
+Sc.Read(5)
+bytes=sc.getbyte(3)
+END IF
+SC.DELAY(30)
+
+PRINT "***************************" & VBCR
+PRINT "* A81 CAM should be OPEN  *" & VBCR
+PRINT "* test in Nagra to see.   *" & VBCR
+PRINT "* if not, try again.      *" & VBCR
+PRINT "***************************" & VBCR
+exit sub
+end if
+sc.verbose=false
+end if
+else
+PRINT " RESET "
+Card_reset
+GetAtr
+End if
+Sc.Write("08 0e 03 10 01 01 03 9a 00") 'reset card
+sc.read(02)
+sc.delay(5)
+LOOP
+End Sub
+'************************************************* ********
+'************************************************* ********
+Sub ProgUpdate(CnTv,DlYv,VCCv,ByteSv)
+Dim mtries
+Dim i
+Dim Msg
+Call FormatTime
+Msg="Sending glitches to card with the following information: " & vblf & "Delay= " & hexstring(RT,4) & " VCC= " & hexstring(vcc,2) & " Response= "& hexstring(BytesV,2) & vblf & "Elapsed Time: " + FormatNumber((CDbl(Now) - CDbl(ScriptStart)) * 24 * 60, 2, True, True, True) + " minutes"
+Call Sc.ProgressBox(Msg,CnTv,350,"A81U_Winex: " & "Glitch # " & CnTv )
+End Sub
+'************************************************* ********
+Function FormatTime
+TimeElapsed = FormatNumber((CDbl(Now) - CDbl(TempScriptStart)) * 24 * 60 * 60, 0, True, True, True)
+If TimeElapsed > 59 then
+TempScriptStart = Now
+TimeInMinutes = TimeInMinutes + 1
+TimeElapsed = 0
+End If
+If TimeInMinutes > 59 then
+TempScriptStart = Now
+TimeInHours = TimeInHours + 1
+TimeElapsed = 0
+TimeInMinutes = 0
+End If
+If TimeInHours > 0 then
+If TimeElapsed < 10 then
+If TimeInMinutes < 10 then
+RunTime="" & TimeInHours & ":0" & TimeInMinutes & ":0" & TimeElapsed
+Else
+RunTime="" & TimeInHours & ":" & TimeInMinutes & ":0" & TimeElapsed
+End If
+else
+If TimeInMinutes < 10 then
+RunTime="" & TimeInHours & ":0" & TimeInMinutes & ":" & TimeElapsed
+Else
+RunTime="" & TimeInHours & ":" & TimeInMinutes & ":" & TimeElapsed
+End If
+End If
+else
+If TimeElapsed < 10 then
+If TimeInMinutes > 0 then
+RunTime="" & TimeInMinutes & ":" & "0" & TimeElapsed
+Else
+RunTime="" & ":" & "0" & TimeElapsed
+End If
+Else
+If TimeInMinutes > 0 then
+RunTime="" & TimeInMinutes & ":" & TimeElapsed
+Else
+RunTime="" & ":" & TimeElapsed
+End If
+End If
+End If
+End Function
+'************************************************* ********
+'************************************************* ********
+Sub DefaultMod2()
+ScriptStart = Now
+TimeElapsed = 0
+TimeInMinutes = 0
+TimeInHours = 0
+VCC = VCCStart
+RT = DelayStart
+sc.verbose=TRUE
+Sc.Write("12 15 AB 21 00 08 A0 CA 00 00 02 12 00 06 55 0E 03 85 00")
+Sc.Read(02)
+Bytes = Sc.Getbyte(1)
+if Bytes > 5 then
+Sc.Read(6)
+end if
+print
+if TestMode = 1 then
+print " You are in testmode, cam will not open in this mode!!!" & vbcr
+print " set TestMode = 0 to open cam " & vbcr & vbcr
+end if
+sc.verbose=false
+Do
+
+RT=INT(RND * (DelayEnd-DelayStart)) + DelayStart
+Sc.Write("B0" & HexString(VCC, 2))
+SC.DELAY(11)
+Sc.Write("48 03 15 E0")
+Sc.Write("21 00 3D A0 CA 00 00 37 03 35 08 01 10 31 15 00")
+Sc.Write("00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00")
+Sc.Write("00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00")
+Sc.Write("00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 05")
+Sc.Write("4F 0E 03 85 00")
+Sc.Read(02)
+Bytes = Sc.Getbyte(1)
+if Bytes > 5 then
+Sc.Read(6)
+end if
+SC.DELAY(70)
+Sc.Write("6A 15 FF 21 00")
+Sc.Write("5CA0CA0000560354080C108405CC00CC")
+Sc.Write("00CC00CC000CCD320C5AEA2D2D0CCD32")
+Sc.Write("0C5AEA2D2DB1C445F4E12014808D4CF0")
+Sc.Write("AAA61D0DAA1DF497652E884E250CCD32")
+Sc.Write("0C0CCD320C5AEA2D2DA9CD65B74832C8")
+Sc.Write("EFFFFFFFFFA9CD65B74832C8EFF3 20" & HexString(RT, 4) & "09 0E 05 85 00")
+
+Sc.Read(02)
+Bytes = Sc.Getbyte(1)
+if Bytes > 4 then
+Sc.Read(5)
+bytes=sc.getbyte(3)
+call progupdate(trycnt2 , RT, VCC, bytes)
+TryCnt2 = TryCnt2 + 1
+if trycnt2 > trycnt then
+' RT = RT + 1
+TRYCNT2 = 0
+VCC = VCC - &h1
+if VCC < VCCLimit then
+VCC = VCCStart
+END IF
+END IF
+if bytes = &H83 then
+print
+print
+print "*********** Glitch Successfull *************"& VbCr
+PRINT "Answer= " & HEXSTRING(SC.GETBYTE(0),2) & HEXSTRING(SC.GETBYTE(1),2) & HEXSTRING(SC.GETBYTE(2),2) & HEXSTRING(SC.GETBYTE(3),2)& HEXSTRING(SC.GETBYTE(4),2)& VbCr
+Sc.Print "********************************************" & VbCr
+PRINT HexString(bytes, 2)
+print " was hit at " & HexString(RT, 4) & " delay ----VCC WAS " & HexString(VCC, 2)& vbcr
+Sc.Print "********************************************" & VbCr
+print
+SC.DELAY(2500)
+Call Sc.ProgressBox ("", 0, 0, "")
+sc.print "Elapsed Time: " + FormatNumber((CDbl(Now) - CDbl(ScriptStart)) * 24 * 60, 2, True, True, True) + " minutes" & vbcr
+if TestMode = 0 then
+sc.verbose=TRUE
+Sc.Write("12 15 AB 21 00 08 A0 CA 00 00 02 C0 00 06 87 0E 03 85 00")
+SC.READ(2)
+Bytes = Sc.Getbyte(1)
+if Bytes > 5 then
+Sc.Read(6)
+bytes=sc.getbyte(3)
+END IF
+sc.delay(150)
+Sc.Write("0A 15 A3 21 98 00 B9 0E 03 85 00")
+SC.READ(2)
+Bytes = Sc.Getbyte(1)
+if Bytes > 5 then
+Sc.Read(6)
+bytes=sc.getbyte(3)
+END IF
+sc.delay(150)
+Sc.Write("0A 15 A3 21 92 00 B3 0E 04 85 00")
+SC.READ(2)
+Bytes = Sc.Getbyte(1)
+if Bytes > 4 then
+Sc.Read(5)
+bytes=sc.getbyte(3)
+END IF
+SC.DELAY(30)
+PRINT "***************************" & VBCR
+PRINT "* A81 CAM should be OPEN  *" & VBCR
+PRINT "* test in Nagra to see.   *" & VBCR
+PRINT "* if not, try again.      *" & VBCR
+PRINT "***************************" & VBCR
+exit sub
+end if
+sc.verbose=false
+end if
+else
+PRINT " RESET "
+Card_reset
+GetAtr
+End if
+Sc.Write("08 0e 03 10 01 01 03 9a 00") 'reset card
+sc.read(02)
+sc.delay(5)
+LOOP
+End Sub
+'************************************************* ********
+'************************************************* ********
+Sub DefaultMod3()
+ScriptStart = Now
+TimeElapsed = 0
+TimeInMinutes = 0
+TimeInHours = 0
+VCC = VCCStart
+RT = DelayStart
+sc.verbose=TRUE
+Sc.Write("12 15 AB 21 00 08 A0 CA 00 00 02 12 00 06 55 0E 03 85 00")
+Sc.Read(02)
+Bytes = Sc.Getbyte(1)
+if Bytes > 5 then
+Sc.Read(6)
+end if
+print
+if TestMode = 1 then
+print " You are in testmode, cam will not open in this mode!!!" & vbcr
+print " set TestMode = 0 to open cam " & vbcr & vbcr
+end if
+sc.verbose=false
+Do
+
+VCC=INT(RND * (VCCstart-VCCLimit)) + VCCLimit
+RT=INT(RND * (DelayEnd-DelayStart)) + DelayStart
+
+Sc.Write("B0" & HexString(VCC, 2))
+SC.DELAY(11)
+Sc.Write("48 03 15 E0")
+Sc.Write("21 00 3D A0 CA 00 00 37 03 35 08 01 10 31 15 00")
+Sc.Write("00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00")
+Sc.Write("00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00")
+Sc.Write("00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 05")
+Sc.Write("4F 0E 03 85 00")
+Sc.Read(02)
+Bytes = Sc.Getbyte(1)
+if Bytes > 5 then
+Sc.Read(6)
+end if
+SC.DELAY(70)
+Sc.Write("6A 15 FF 21 00")
+Sc.Write("5CA0CA0000560354080C108405CC00CC")
+Sc.Write("00CC00CC000CCD320C5AEA2D2D0CCD32")
+Sc.Write("0C5AEA2D2DB1C445F4E12014808D4CF0")
+Sc.Write("AAA61D0DAA1DF497652E884E250CCD32")
+Sc.Write("0C0CCD320C5AEA2D2DA9CD65B74832C8")
+Sc.Write("EFFFFFFFFFA9CD65B74832C8EFF3 20" & HexString(RT, 4) & "09 0E 05 85 00")
+
+Sc.Read(02)
+Bytes = Sc.Getbyte(1)
+if Bytes > 4 then
+Sc.Read(5)
+bytes=sc.getbyte(3)
+call progupdate(trycnt2 , RT, VCC, bytes)
+TryCnt2 = TryCnt2 + 1
+if trycnt2 > trycnt then
+' RT = RT + 1
+TRYCNT2 = 0
+VCC = VCC - &h1
+if VCC < VCCLimit then
+VCC = VCCStart
+END IF
+END IF
+if bytes = &H83 then
+print
+print
+print "*********** Glitch Successfull *************"& VbCr
+PRINT "Answer= " & HEXSTRING(SC.GETBYTE(0),2) & HEXSTRING(SC.GETBYTE(1),2) & HEXSTRING(SC.GETBYTE(2),2) & HEXSTRING(SC.GETBYTE(3),2)& HEXSTRING(SC.GETBYTE(4),2)& VbCr
+Sc.Print "********************************************" & VbCr
+PRINT HexString(bytes, 2)
+print " was hit at " & HexString(RT, 4) & " delay ----VCC WAS " & HexString(VCC, 2)& vbcr
+Sc.Print "********************************************" & VbCr
+print
+SC.DELAY(2500)
+Call Sc.ProgressBox ("", 0, 0, "")
+sc.print "Elapsed Time: " + FormatNumber((CDbl(Now) - CDbl(ScriptStart)) * 24 * 60, 2, True, True, True) + " minutes" & vbcr
+if TestMode = 0 then
+sc.verbose=TRUE
+Sc.Write("12 15 AB 21 00 08 A0 CA 00 00 02 C0 00 06 87 0E 03 85 00")
+SC.READ(2)
+Bytes = Sc.Getbyte(1)
+if Bytes > 5 then
+Sc.Read(6)
+bytes=sc.getbyte(3)
+END IF
+sc.delay(150)
+Sc.Write("0A 15 A3 21 98 00 B9 0E 03 85 00")
+SC.READ(2)
+Bytes = Sc.Getbyte(1)
+if Bytes > 5 then
+Sc.Read(6)
+bytes=sc.getbyte(3)
+END IF
+sc.delay(150)
+Sc.Write("0A 15 A3 21 92 00 B3 0E 04 85 00")
+SC.READ(2)
+Bytes = Sc.Getbyte(1)
+if Bytes > 4 then
+Sc.Read(5)
+bytes=sc.getbyte(3)
+END IF
+SC.DELAY(30)
+PRINT "***************************" & VBCR
+PRINT "* A81 CAM should be OPEN  *" & VBCR
+PRINT "* test in Nagra to see.   *" & VBCR
+PRINT "* if not, try again.      *" & VBCR
+PRINT "***************************" & VBCR
+exit sub
+end if
+sc.verbose=false
+end if
+else
+PRINT " RESET "
+Card_reset
+GetAtr
+End if
+Sc.Write("08 0e 03 10 01 01 03 9a 00") 'reset card
+sc.read(02)
+sc.delay(5)
+LOOP
+End Sub
+'************************************************* ********
+'************************************************* ********
+Sub ProgUpdate(CnTv,DlYv,VCCv,ByteSv)
+Dim mtries
+Dim i
+Dim Msg
+Call FormatTime
+Msg="Sending glitches to card with the following information: " & vblf & "Delay= " & hexstring(RT,4) & " VCC= " & hexstring(vcc,2) & " Response= "& hexstring(BytesV,2) & vblf & "Elapsed Time: " + FormatNumber((CDbl(Now) - CDbl(ScriptStart)) * 24 * 60, 2, True, True, True) + " minutes"
+Call Sc.ProgressBox(Msg,CnTv,350,"A81U_Winex: " & "Glitch # " & CnTv )
+End Sub
+'************************************************* ********
+Function FormatTime
+TimeElapsed = FormatNumber((CDbl(Now) - CDbl(TempScriptStart)) * 24 * 60 * 60, 0, True, True, True)
+If TimeElapsed > 59 then
+TempScriptStart = Now
+TimeInMinutes = TimeInMinutes + 1
+TimeElapsed = 0
+End If
+If TimeInMinutes > 59 then
+TempScriptStart = Now
+TimeInHours = TimeInHours + 1
+TimeElapsed = 0
+TimeInMinutes = 0
+End If
+If TimeInHours > 0 then
+If TimeElapsed < 10 then
+If TimeInMinutes < 10 then
+RunTime="" & TimeInHours & ":0" & TimeInMinutes & ":0" & TimeElapsed
+Else
+RunTime="" & TimeInHours & ":" & TimeInMinutes & ":0" & TimeElapsed
+End If
+else
+If TimeInMinutes < 10 then
+RunTime="" & TimeInHours & ":0" & TimeInMinutes & ":" & TimeElapsed
+Else
+RunTime="" & TimeInHours & ":" & TimeInMinutes & ":" & TimeElapsed
+End If
+End If
+else
+If TimeElapsed < 10 then
+If TimeInMinutes > 0 then
+RunTime="" & TimeInMinutes & ":" & "0" & TimeElapsed
+Else
+RunTime="" & ":" & "0" & TimeElapsed
+End If
+Else
+If TimeInMinutes > 0 then
+RunTime="" & TimeInMinutes & ":" & TimeElapsed
+Else
+RunTime="" & ":" & TimeElapsed
+End If
+End If
+End If
+End Function
+'************************************************* ********
+'************************************************* ********
+Function GetATR ()
+verbose = 0
+Dim temp
+Call Sc.ProgressBox(0,0,0,0)
+Sc.Write("07 0e 03 10 01 03 9a 00")
+Sc.Delay(300)
+Sc.Read(&h02)
+temp = Sc.GetByte(&h01)
+Sc.Read (temp)
+if(temp <> 20) then
+GetATR = False
+else
+GetATR = True
+End if
+End Function
+'************************************************* ********
+Function ReceiveATR()
+Dim i
+Dim RetValue
+sc.verbose=false
+Sc.Write("07 0e 03 10 01 03 9a 00")
+Sc.Delay(80)
+If sc.BytesInBuffer > 0 then
+Sc.Read(&h02)
+else
+Call Sc.ProgressBox ("", 0, 0, "")
+Call OopsNoATR()
+'Exit Function
+end if
+RetValue = Sc.GetByte(&h01)
+Sc.Read (RetValue)
+ATR = ""
+For i = 0 to RetValue -1
+ATR = ATR & HexString(Sc.GetByte(i), 2) & " "
+Next
+If(RetValue < 20) Then
+ReceiveATR = 0
+Else
+ReceiveATR = 1
+End If
+End Function
+'************************************************* ********************
+Sub OopsNoATR()
+Sc.MsgBox(" Card is not returning an ATR " &VbCr & " The card may not be fully Inserted " & VbCr &" Loader flash 8 or 9 is needed " )
+End Sub
+'************************************************* ****************
+Sub Card_Reset()
+Dim RetValue
+sc.verbose=false
+sc.print "Doing card reset..."& vbcr
+Sc.Write("A0") ' Turn the LED off if it is on
+Sc.Write("020200") ' Power down the card
+Sc.Delay(1000) ' Wait about 1 second
+Call Sc.Reset() ' Power up the card
+RetValue=Sc.Flush() ' Flush the receive buffer
+End Sub
+'************************************************* ****************
+Sub IsCardPresent()
+Dim RetValue
+Dim GotInput
+ScriptStart = Now
+Sc.Print "----------------------------------------------------------------" & vbCr
+Sc.Print "Start: " & ScriptStart & vbCr 'main screen
+Sc.Print "----------------------------------------------------------------" & vbCr
+Do
+sc.verbose=false
+Call Sc.Reset() ' Power up the card
+Sc.Write("A0") ' turn the LED off
+Sc.Write("80") 'Is card present?
+Sc.Delay(100)
+If Sc.BytesInBuffer > 0 then
+Sc.Read(&h01)
+RetValue = Sc.GetByte(0)
+end if
+If RetValue = &h0 then
+Call Sc.ProgressBox ("No Card Detected!" & VbCr & "Please insert your card!.....", 1, 999, "A81U_WNX")
+GotInput = False
+Else
+If RetValue = &hFF then
+GotInput = True
+else
+If RetValue <> &h0 or RetValue <> &hFF then
+Sc.Write("A0") ' turn the LED off
+Sc.Write("020200")
+Sc.Delay(100)
+If Sc.BytesInBuffer > 1 then
+Sc.Read(&h02)
+GotInput = False
+else
+GotInput = False
+end if
+end if
+End if
+End if
+Loop Until GotInput = True
+Call Sc.ProgressBox ("", 0, 0, "")
+end sub
+'************************************************* ********
+Function HexString(Number,Length)
+' This function takes 2 arguments, a number and a length. It converts the decimal
+' number given by the first argument to a Hexidecimal string with its length
+' equal to the number of digits given by the second argument
+Dim RetVal
+Dim CurLen
+RetVal=Hex(Number)
+CurLen=Len(RetVal)
+If CurLen<Length Then
+RetVal=String(Length-CurLen,"0") & RetVal
+End If
+HexString=RetVal
+End Function
+'************************************************* ********
+Function Hex2Dec(HexNumber)
+Dim DecimalValue
+Dim DigitCount
+Dim Digit
+Dim HexDigit
+HexNumber = Replace(UCase(HexNumber), " ", "")
+DigitCount = Len(HexNumber)
+For Digit = 1 To DigitCount
+HexDigit = Mid(HexNumber, Digit, 1)
+If Asc(HexDigit) < 58 Then
+DecimalValue = HexDigit * 16 ^ (DigitCount - Digit)
+Else
+DecimalValue = (Asc(HexDigit) - 55) * 16 ^ (DigitCount - Digit)
+End If
+Hex2Dec = Hex2Dec + DecimalValue
+Next
+End Function
+'************************************************* ********
+Function setupunlocker()
+sc.print "Setting up Winex for Unlocker Script" & VbCr
+Wx.BaudRate = 115200
+Wx.ResetBaudRate = 115200
+Wx.Parity = 0 ' 0 = None, 1 = Odd, 2 = Even, 3 = Mark, 4 = Space
+Wx.StopBits = 0 ' 0 = 1 stop bit, 1 = 1.5 stop bits, 2 = 2 stop bits
+Wx.DTRControl = 0 ' Initial state of DTR 0 = off, 1 = on
+Wx.RTSControl = 1 ' Initial state of RTS 0 = off, 1 = on
+Wx.ResetDelay = 100 ' In microseconds
+Wx.ByteDelay = 10 ' In microseconds
+Wx.RxByteTimeout = 500 ' In milliseconds
+Wx.ResetMode = 2 ' 0 = No Resets, 1 = ISO Reset (Expect a ATR), 2 = Device Reset (No ATR)
+Wx.ResetLine = 0 ' 0 = Toggle RTS for Reset, 1 = Toggle DTR for Reset
+Wx.ByteConvention = 1 ' 0 = Inverse, 1 = Direct
+Wx.FlushEchoByte = 0 ' 0 = no flush, 1 = flush - A Phoenix interface will echo each byte transmitted.
+Wx.FlushBeforeWrite = 1 ' 0 = no flush, 1 = flush - Flush the receive buffer before each write to strip off Null bytes.
+Wx.IgnoreTimeouts = 1 ' 0 = Abort script on a receive timeout, 1 = Ignore all receive timeouts
+Wx.ResetAfterTimeout = 0 ' 0 = Don't reset after a timeout, 1 = do a reset after a timeout - Not used if "IgnoreTimeouts=0"
+Wx.LogTransactions = 0 ' 0 = Don't log transactions, 1 = log transactions
+Wx.DisplayUSW = 0 ' Display USW after script complete 0 = no, 1 = yes
+Wx.DisplayFuse = 0 ' Display Fuse after script complete 0 = no, 1 = yes
+End function

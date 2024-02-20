@@ -1,0 +1,688 @@
+'*************************************************
+'              S02 Reader/Writer
+'                Low Rev Only
+'
+'*************************************************
+
+Option Explicit
+    Const FileFilter = "S02 Binary File (*.bns02)|*.bns02;|BIN Files (*.bns02)|*.bns02"
+    Const fsoError = -1
+    Const fsoOpenRead = 0
+    Const fsoOpenWrite = 1
+    Const fsoOpenReadWrite = 2
+    Const fsoSEEK_SET = 0
+    Const fsoSEEK_CUR = 1
+    Const fsoSEEK_END = 2
+    Const ofReadOnly               = &H00000001
+    Const ofHideReadOnly           = &H00000004
+    Const ofPathMustExist          = &H00000800
+    Const ofFileMustExist          = &H00001000
+
+    DIM U, W, X, Y, Z, ZZ, L, R, CS, CMD2
+    Dim EEPROMFileName
+    Dim StartDate
+    Dim FileName
+    Dim FileHandle
+    Dim OutFileHndl
+    Dim OutFile
+    Dim CMD
+    Dim MsgPrompt
+    Dim MainMenu
+    Dim Bytes
+    Dim Bytes1
+    Dim Bytes2
+    Dim ByteOut
+    Dim InitDelay
+    Dim EndDelay
+    Dim InitVcc
+    Dim CurVCC
+    Dim LowVcc
+    Dim GlitchType
+    Dim Count
+    Dim i
+    Dim Dump
+    dim Comando15
+    dim boot1
+    dim bootext
+    dim countx
+    dim temp
+    dim Tries
+    dim Curdelay
+    Dim GlitchFail
+
+
+'S01
+'    InitDelay = &H0100
+'    EndDelay  = &H02B0
+
+'S02
+    InitDelay = &H0100
+    EndDelay  = &H02B0
+
+    GlitchType = &H9
+  '  InitVcc = &H5A
+  '  LowVcc  = &H56
+    initvcc = &H45
+    lowvcc = &H0F
+
+
+Call SetupLoader()
+
+
+Sub Main()
+
+
+ If CheckChipVer <> 1 then
+     Sc.MsgBox("Flash your Loader with NewD13.hex")
+     Exit Sub
+   End if
+
+    sc.verbose = 1
+    Sc.Write("A0")
+    Clearoutputwindow
+
+        StartDate = Now()
+
+
+    Dump = &H3000
+    'ext clk ack, int clk dumper
+
+'S01 UART test:
+
+'        boot1 = "21606DA0CA00008F048D00018600AAAE554FCF0DF6C70DF7A602C70DE8A614CD43D31B68201B9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9C71003F6C3F4E0B62041C6CAD0220F01B62AE90C60DF9A1FF26B5CD7EC50DFA015080202B9D9D9D9D9D9D9D9D9D9D22"
+'        bootext ="2100289D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D0296"
+
+         boot1 = "210095A0CA00008F048D0001000000AE554FCF0DF6C70DF7A602C70DE8A614CD43D31B62201B9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9C71003F6C3F4E0B62041C6CAD0220F01B62AE90C60DF9A1FF26B5CD7EC50DFA015080202B9D9D9D9D9D9D9D9D9D9D"
+         bootext ="9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D0203"
+
+
+
+GlitchFail = false
+
+    Do
+    Call Glitch
+    if GlitchFail = False then Exit Do
+    Loop
+
+
+    End Sub
+
+    Comando15="210008A0CA000002150086D2"
+
+'===============================================================================================================
+Sub EepromTools()
+Dim MenuDisplay
+Dim MenuDisplaytxt
+MenuDisplaytxt="                               BOOTLOADER ACTIVE!!!!!!!!!"
+
+   Do
+    MainMenu = Sc.ButtonBox(MenuDisplaytxt,vbDefaultButton3 , "                        ROMS02 Eeprom Utility", "Read Eeprom", "Write Eeprom", "Exit")
+
+    Select Case MainMenu
+        Case 0
+            Exit Sub
+        Case 1
+            ReadEep()
+        Case 2
+            WriteEep()
+        Case 3
+            Exit Sub
+        End Select
+    Loop
+
+End Sub
+'===============================================================================================================
+Sub Tstboot()
+    sc.verbose = true
+
+    Bytes = "21001BA0FF7180CD7EC530000DF840A640B753CD43849A3F583F59CC0100"
+
+    CMD = Bytes
+    CMD_CS
+    Bytes = CMD
+
+    sc.write("26 601E" & Bytes & "0E15 5043 00")
+
+    Sc.Delay(50)
+
+    Sc.Read(02)
+
+    Bytes = Sc.Getbyte(1)
+
+    If Bytes > 15 Then
+        print vbcr & "Everything ok, Bootloader IS Active!"
+        GlitchFail = False
+    call EepromTools
+
+    else
+
+        Print VbCr & "--- A0FF Bootloader not installed ---"
+        GlitchFail = true
+        Exit Sub
+    End if
+
+
+    sc.verbose = false
+End Sub
+'===============================================================================================================
+Sub ReadEep()
+
+Dim Address
+Dim AddyStart
+Dim AddyEnd
+Dim PBCounter
+
+
+            sc.verbose = true
+
+    GetEEPROMFileName()
+
+
+            PBCounter = 1
+
+
+    Sc.Delay(20)
+    AddyStart = &h3000
+    AddyEnd = &h37C0
+    Address = &h3000
+
+
+    Do
+'    Bytes = "21000AA0FF" & hexstring(Address, 4) & "400000000000"
+
+    Bytes = "21001BA0FF7180CD7EC5" & hexstring(Address, 4) & "0DF840A640B753CD43849A3F583F59CC0100"
+
+    CMD = Bytes
+    CMD_CS
+    Bytes = CMD
+
+'    Sc.Write("15 600D" & Bytes & "0E15 5043 00")
+
+    sc.write("26 601E" & Bytes & "0E15 5043 00")
+    Sc.Delay(50)
+
+    Sc.Read(02)
+
+    Bytes = Sc.Getbyte(1)
+
+    If Bytes = 0 Then
+        Print VbCr & "--- Eeprom Read Failed, A0FF Bootloader not installed ---"
+            Call Sc.MsgBox("--- Eeprom Read Failed, A0FF Bootloader not installed ---")
+                Exit Sub
+    else
+
+        Sc.Read(Bytes)
+            For i = 3 to 66
+                Call Fs.FilePutc(OutFileHndl, Sc.GetByte(i))
+        'print hexstring(Sc.getbyte(i), 2)
+            Next
+
+            Call Sc.ProgressBox ("Block: $" & Hexstring(Address,4), PBCounter, 288, "Saving RomS02 Eeprom...")
+    End If
+
+    PBCounter = PBCounter + 1
+    Address = Address + &h40
+
+    If Address = &h3800 then
+    Address = 32768
+    End If
+
+    If Address = 48128 then
+    Call Sc.ProgressBox("", 0, 288)
+    Fs.FileClose(OutFileHndl)
+          Print VbCr & "--- RomS02 Eeprom 3000-BBFF has been read ---"
+            Call Sc.MsgBox("--- RomS02 Eeprom 3000-BBFF has been read ---")
+    Exit sub
+    End If
+    sc.verbose = false
+    Loop
+
+
+End Sub
+
+'===================================================================================================================
+Sub WriteEep()
+
+ Dim Address
+ Dim BytesToWrite
+ Dim Results
+ Dim Bytes
+ Dim FileSize
+ Dim PbCounter
+ Dim Starting
+ Dim Ending
+ Dim OffsetAddress
+
+
+FileName = ""
+
+        Call GetFile()
+        If FileName = "" then
+            print "Someone didnt have the balls to try and write an S02"
+                Exit Sub
+        else
+            OffsetAddress   =&h3000
+            Starting        =&h30C0
+            Ending          = 48128
+
+              Sc.Print("Writing RomS01 Eeprom")
+        End If
+
+Call Fs.FileSeek(FileHandle, Starting - OffsetAddress, fsoSEEK_SET)
+
+Sc.Verbose = true
+PbCounter = 1
+
+
+For Address = Starting to Ending  Step 64
+
+    If Address = 14336 then
+        Address = 32768
+    End If
+
+    If Address = 48128 then
+        Call Sc.ProgressBox("", 0, 288)
+        Fs.FileClose(FileHandle)
+        Print VbCr & "--- RomS02 Eeprom Eeprom Write is complete ---"
+        Call Sc.MsgBox("--- RomS02 Eeprom Write is complete ---")
+        Exit Sub
+    End If
+
+
+    BytesToWrite = ""
+    For I = 0 to 63
+         BytesToWrite= BytesToWrite & HexString( Fs.FileGetc(FileHandle),2)
+    Next
+
+    If HexString(Address, 4) > "3000" and HexString(Address, 4) < "30E0" Then
+
+    if left(bytestowrite, 12) = "000000000000" then
+            call Sc.MsgBox("An error has occured opening the bin file, please close any other programs using the file, and try again.")
+            Print "ERROR WRITE AT: " & vbcr & HexString(Address, 4) & ": " & bytestowrite
+            exit sub
+    end if
+    end if
+
+
+    if Address < 41472 then
+
+        Call Sc.ProgressBox ("Skipping Block: $" & HexString(Address, 4), PBCounter, 288, "Writing RomS02 Eeprom...")
+        PbCounter = PbCounter + 1
+    else
+        Call Sc.ProgressBox ("Writing Block: $" & HexString(Address, 4), PBCounter, 288, "Writing RomS02 Eeprom...")
+        PbCounter = PbCounter + 1
+
+
+
+     Bytes = "21006DA0FF9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D7180CD7EC5017B008040A64BB76C1860CD7E09" & hexstring(address, 4) & "8040A690CC00D0" & bytestowrite
+
+         CMD = Bytes
+         CMD_CS
+        Bytes = CMD
+
+
+        sc.write("78 6070 " + Bytes + "0E50 500300")
+        Sc.Delay(80)
+         Sc.Read(02)
+
+     Bytes = Sc.Getbyte(1)
+         If Bytes > 2 Then
+               Sc.Read(Bytes)
+               Bytes = Sc.Getbyte(0)
+               Bytes2 = Sc.Getbyte(3)
+
+               If Bytes2 = &h6F Then
+                        Print VbCr & "--- Eeprom Write Failed, A0FF intercept Boot has failed ---"
+                        Call Sc.MsgBox("--- Eeprom Write Failed, A0FF intercept Boot has failed ---")
+                        Exit Sub
+               End If
+     else
+               Print VbCr & "--- Eeprom Write Failed, A0FF intercept Boot has failed ---"
+               Call Sc.MsgBox("--- Eeprom Write Failed, A0FF intercept Boot has failed ---")
+               Exit Sub
+         End If
+
+         Sc.Delay(20)
+     End If
+
+print hexstring(address, 4) & vbcr
+Next
+
+End Sub
+'==============================================================================================================
+Sub Glitch ()
+CurVCC = InitVCC
+CurDelay = InitDelay
+
+Sc.Write("73 0A 70" + boot1 + "00")
+Sc.Read(2)
+
+
+count = 0
+Print"Initial Parameters = Delay:" & HexString(InitDelay, 4) & "  VCC:" & HexString(CurVCC, 2) & "  Glitch Type:" & HexString(GlitchType, 2) & vbCr & vbCr
+ Do
+    Sc.Write("B0" & HexString(CurVCC, 2))
+
+
+   Do
+
+    Sc.Write("06100103501A00")'reset
+    Sc.Read(2)
+    Bytes = Sc.Getbyte(1)
+
+    If Bytes > 25 then
+    Sc.Read(Bytes)
+    countx=0
+    Exit Do
+    Else
+    Count = Count + 1
+    End If
+
+
+    If Count > 100 Then
+    ok = MsgBox("Card Maybe Looped - NO ATR - ", vbOKOnly, "RomS02 Reader/Writer")
+    Exit Sub
+    End If
+
+ Loop
+
+
+       Sc.verbose =0
+
+       Sc.Write("02 15 00")                    'set Tx/Rx to 32 cycles per bit
+       Sc.Read(02)
+
+       'Set Packet Size
+       Sc.write("0A  6004 21C1018061 500400")
+       Sc.Read(2)
+       Bytes = Sc.Getbyte(1)
+       Sc.Read(Bytes)
+
+
+      'cmd $04 - Load dumper code at $0C98
+
+        Sc.Write("2F 0B6028" + bootext + "500700")
+
+        Sc.Read(2)
+        Bytes = Sc.Getbyte(1)
+        if Bytes > 0 then
+            Bytes = Sc.Read(Bytes)
+            Bytes1 = Sc.Getbyte(0)
+            Bytes2 = Sc.Getbyte(5)
+            '--------check response to make sure = 12 00 04 84 00 90 00 02--------
+            if Bytes1 = &h12 and Bytes2 = &h90 then
+                sc.verbose = false
+            else
+                print "-Rsp04 "
+
+            end if
+        else
+            print "-Rsp04 "
+
+        End if
+
+       'cmd $2A - for non-zero response set cmd $2A/2B flag $DA2 to $80
+       Sc.write("13  600B 210008A0CA0000022A004229 0e04 504700")
+
+        Sc.Read(2)
+        Bytes = Sc.Getbyte(1)
+        if Bytes > 0 then
+            Bytes = Sc.Read(Bytes)
+            Bytes1 = Sc.Getbyte(2)
+            Bytes2 = Sc.Getbyte(5)
+            '--------check response to make sure len $44 non-zero 12 00 44 AA 40 XX XX XX --------
+           ' print hexstring(bytes1, 2) & hexstring(bytes2, 2)
+            if Bytes1 = &h44 and Bytes2 <> &h00 then
+                sc.verbose = false
+            else
+                print "-Rsp2A "
+               ' exit sub
+            end if
+        else
+            print "-Rsp2A "
+           ' exit sub
+        End if
+
+
+      'cmd $2B loader glitch packet
+
+
+        sc.write("5C15604B 214048A0CA0000422B4000009D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9DCD7EC50C9800CE9002D4" & "     20ffff 20ffff 20 "& hexstring(InitDelay,4)& "09 500500")
+
+
+'       sc.write("5C15604B 214048A0CA0000422B4000009D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D5FD60C98D700CE5A26F702E7" & "     20ffff 20ffff 20 "& hexstring(CurDelay,4)& "09 500500")
+
+
+       sc.read(2)
+       Bytes = Sc.Getbyte(1)
+       Sc.Read(Bytes)
+
+       Bytes2 =&h12
+       byteout=&h12
+
+       if bytes > 3 then
+            byteout=Sc.getbyte(3)
+'            sc.print  HexString(byteout,2)
+            If byteout <> &h12 then
+                bytes2 = byteout
+             ' bytes2 = sc.getbyte(2)
+            End if
+
+
+       End if
+
+        If Bytes2 = &H55 Then
+
+    print vbcr
+        Print " : ACK Received ....." & vbcr
+        Print  "***************************************" & vbcr
+        Print  "     " & HexString(Bytes2, 2) & " Was Glitch at:  Delay:" & HexString(CurDelay, 4) & " VCC:" & HexString(CurVcc, 2) & " GlitchType:" & HexString(GlitchType, 2) & vbcr
+        Print  "     Delay Range: " & HexString(CurDelay, 4) & " to " & HexString(EndDelay, 4) & vbcr
+        Print  "     Elapsed: " & TimeDiff(StartDate, Now()) & vbcr
+        Print  "********************************" & vbcr
+        Print  "*       Glitch Success!!!      *" & vbcr
+        Print  "*                              *" & vbcr
+        Print  "*    Bootloader Now Active!    *" & vbcr
+        Print  "********************************" & vbcr
+        Call Tstboot
+        Exit Sub
+        End If
+
+       If ByteOut <> &H55 Then
+          if Byteout = &HAB then
+        print "-"
+            curVcc = curvcc - .1
+              If curVcc < LowVcc Then
+                 curVcc = initvcc
+              end if
+      elseif Byteout = &HFF then
+        print "+"
+            curVcc = curVcc + .1
+            if CurVcc > InitVcc then
+                curVcc = InitVcc
+            end if
+      else
+         print HexString(byteout, 2)
+      end if
+
+      tries = tries + 1
+
+              If tries = 5 Then
+                 tries = 0
+                 CurDelay = Curdelay + 1
+                 Print  vbcr & "Delay:" & HexString(CurDelay, 4) & "  VCCStart:" & HexString(curVcc, 2) & "  Glitch Type:" & HexString(GlitchType, 2)
+                 Print  "Elapsed = " & TimeDiff(StartDate, Now()) & vbcr
+              End If
+       End If
+
+       If CurDelay > EndDelay Then
+            Curdelay = InitDelay
+            GlitchType = GlitchType
+            If GlitchType > &H9 Then
+                GlitchType = &H9
+            End If
+       End If
+
+Loop
+End Sub
+'===============================================================================================================
+Function HexString(Number,Length)
+    Dim RetVal
+    Dim CurLen
+    RetVal=Hex(Number)
+    CurLen=Len(RetVal)
+    If CurLen<Length Then
+    RetVal=String(Length-CurLen,"0") & RetVal
+    End If
+    HexString=RetVal
+End Function
+'===============================================================================================================
+Function CheckChipVer()
+    CheckChipVer = 1
+    sc.write("90")
+    delay(80)
+    If sc.read(4) <> 4 then
+     CheckChipVer = 0
+     Exit Function
+    End if
+    If getbyte(0) <> &H4E then CheckChipVer = 0
+    If getbyte(1) <> &H44 then CheckChipVer = 0
+    If getbyte(2) <> &H31 then CheckChipVer = 0
+    If getbyte(3) <> &H33 then CheckChipVer = 0
+
+End Function
+'===============================================================================================================
+Function TimeDiff (StartTime, EndTime)
+    Dim Hours, Minutes, Seconds
+    Seconds = DateDiff("s", StartTime, EndTime)
+    If Seconds > 90000 Then Seconds = 90000
+    If Seconds < 0 Then Seconds = 0
+    Minutes = Seconds / 60
+    Minutes = Fix(Minutes)
+    Seconds = Seconds - (Minutes * 60)
+    Hours = Minutes / 60
+    Hours = Fix(Hours)
+    Minutes = Minutes - (Hours * 60)
+    Seconds = CStr(Seconds)
+    Minutes = CStr(Minutes)
+    Hours = CStr(Hours)
+    If Len(Seconds) = 1 Then Seconds = "0" + Seconds
+    If Len(Minutes) = 1 Then Minutes = "0" + Minutes
+    If Len(Hours) = 1 Then Hours = "0" + Hours
+    TimeDiff = Hours & ":" & Minutes & ":" & Seconds
+End Function
+
+'===============================================================================================================
+Sub CMD_CS 'Calculate checksum of CMD$ bytes and append it to the end
+X=LEN(CMD)
+X=X+1
+X=X/2
+ZZ=2
+Z=1
+ FOR Y=1 TO X STEP + 1
+  W=MID(CMD,Z,ZZ)
+  L=LEFT(W,2)
+  R=RIGHT(W,1)
+  R=ASC(R)
+  L=ASC(L)
+
+       If L < 58 Then L=L-48
+       If L > 58 Then L=L-55
+       If R < 58 Then R=R-48
+       If R > 58 Then R=R-55
+  L=L*16
+  U=L+R
+   If Len(U) < 2 Then
+     U="0" & U
+     CMD2=CMD2 & U
+   End If
+
+  CS=CS XOR U
+  Z=Z+2
+ Next
+ CMD2=""
+  CS= Hex(CS)
+  If Len(CS) < 2 Then
+    CS="0" & CS
+  end if
+  CMD=CMD & CS
+  CS=0
+End Sub
+'===============================================================================================================
+Function LRC(Cmd)
+
+Dim CmdLen
+Dim j
+
+    CmdLen = Len(Cmd)
+    For j = 1 to CmdLen Step 2
+        LRC = "&h" & mid(Cmd,j,2) Xor LRC
+    Next
+
+    LRC = Right("0" + Hex(LRC), 2)
+
+End Function
+'===============================================================================================================
+Function CheckChipVer()
+
+    CheckChipVer = 1
+
+    sc.write("90")
+    sc.delay(80)
+
+    if sc.read(4) <> 4 then
+        CheckChipVer = 0
+        Exit Function
+     End if
+
+    if getbyte(0) <> &H4E then CheckChipVer = 0
+    if getbyte(1) <> &H44 then CheckChipVer = 0
+    if getbyte(2) <> &H31 then CheckChipVer = 0
+    if getbyte(3) <> &H33 then CheckChipVer = 0
+
+End Function
+'===============================================================================================================
+sub GetFile()
+
+    Call Sc.MsgBox("--- Make sure you ONLY use a RomS01 17k file ---")
+    FileName = Fs.FileOpenDialog(FileFilter, "Please select an 17k RomS01 file", "RomS02_3000-BBFF.bns02")
+    If FileName <> "" Then
+        Sc.Print(vbcr & "File Selected - " & FileName & vbcr)
+        If Fs.FileExists(FileName) = 0 Then
+            Sc.MsgBox("The file does not exist")
+        Else
+            FileHandle = Fs.FileOpen(FileName, fsoOpenRead)
+        End If
+   End if
+End sub
+'==============================================================================================================
+Sub GetEEPROMFileName()
+    EEPROMFileName = Fs.FileSaveDialog(FileFilter, "Please select a filename for the saved EEPROM file", "RomS02_3000-BBFF.bns02")
+    If EEPROMFileName <> "" Then
+        OutFilehndl = Fs.FileCreate(EEPROMFileName)
+    End If
+
+End Sub
+'===============================================================================================================
+Function SetupLoader()
+sc.print "****************** Setting up WinExplorer ************************" & VbCr
+Wx.BaudRate = 115200
+Wx.ResetBaudRate = 115200
+Wx.Parity = 0
+Wx.StopBits = 0
+Wx.DTRControl = 0
+Wx.RTSControl = 1
+Wx.ResetDelay = 0
+Wx.ByteDelay = 0
+Wx.RxByteTimeout = 2500
+Wx.ResetMode = 2
+Wx.ResetLine = 1
+Wx.ByteConvention = 1
+Wx.FlushEchoByte = 0
+Wx.FlushBeforeWrite = 1
+Wx.IgnoreTimeouts = 1
+Wx.ResetAfterTimeout = 0
+Wx.LogTransactions = 0
+Wx.DisplayUSW = 0
+Wx.DisplayFuse = 0
+End function

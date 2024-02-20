@@ -1,0 +1,330 @@
+' Rom 2 For backdoor and ATR problems
+' By The Saxman @ www.satspies.com
+
+
+const retry_constant = 10
+const initdelay=2000
+
+
+Sub Main ()
+sc.verbose = false
+
+
+
+
+ClearOutputWindow
+
+sc.print "Sending packet.1.." & vbcr & "=================" & vbcr
+sc.write("93 CC FC 88 56 03 D6 BB 50 0B C0 C3 4B 79 0C A3")
+sc.print "Response from card: " & vbcr
+sc.delay(80)
+answer = read_answer()
+sc.print
+sc.delay(initdelay)
+
+sc.print "Sending packet.2.." & vbcr & "=================" & vbcr
+sc.write("93 CC FC 88 56 03 D6 BB 50 0B C0 C3 4B 79 0C A3")
+sc.print "Response from card: " & vbcr
+sc.delay(80)
+answer = read_answer()
+sc.print
+sc.delay(initdelay)
+
+sc.print "Sending packet.3.." & vbcr & "=================" & vbcr
+sc.write("93 CC FC 88 56 03 D6 BB 50 0B C0 C3 4B 79 0C A3")
+sc.print "Response from card: " & vbcr
+sc.delay(80)
+answer = read_answer()
+sc.print
+sc.delay(initdelay)
+
+sc.print "Sending packet.4.." & vbcr & "=================" & vbcr
+sc.write("93 CC FC 88 56 03 D6 BB 50 0B C0 C3 4B 79 0C A3")
+sc.print "Response from card: " & vbcr
+sc.delay(80)
+answer = read_answer()
+sc.print
+sc.delay(initdelay)
+
+sc.print "Sending packet.5.." & vbcr & "=================" & vbcr
+sc.write("93 CC FC 88 56 03 D6 BB 50 0B C0 C3 4B 79 0C A3")
+sc.print "Response from card: " & vbcr
+sc.delay(80)
+answer = read_answer()
+sc.print
+sc.delay(initdelay)
+
+sc.print "Sending packet.6.." & vbcr & "=================" & vbcr
+sc.write("93 CC FC 88 56 03 D6 BB 50 0B C0 C3 4B 79 0C A3")
+sc.print "Response from card: " & vbcr
+sc.delay(80)
+answer = read_answer()
+sc.print
+sc.delay(initdelay)
+
+sc.print "Sending packet.7.." & vbcr & "=================" & vbcr
+sc.write("93 CC FC 88 56 03 D6 BB 50 0B C0 C3 4B 79 0C A3")
+sc.print "Response from card: " & vbcr
+sc.delay(80)
+answer = read_answer()
+sc.print
+sc.delay(initdelay)
+
+sc.print "Sending packet.8.." & vbcr & "=================" & vbcr
+sc.write("93 CC FC 88 56 03 D6 BB 50 0B C0 C3 4B 79 0C A3")
+sc.print "Response from card: " & vbcr
+sc.delay(80)
+answer = read_answer()
+sc.print
+sc.delay(initdelay)
+
+sc.print "Sending packet.9.." & vbcr & "=================" & vbcr
+sc.write("93 CC FC 88 56 03 D6 BB 50 0B C0 C3 4B 79 0C A3")
+sc.print "Response from card: " & vbcr
+sc.delay(80)
+answer = read_answer()
+sc.print
+sc.delay(initdelay)
+
+sc.print "Sending packet.10.." & vbcr & "=================" & vbcr
+sc.write("93 CC FC 88 56 03 D6 BB 50 0B C0 C3 4B 79 0C A3")
+sc.print "Response from card: " & vbcr
+sc.delay(80)
+answer = read_answer()
+sc.print
+sc.delay(initdelay)
+
+sc.print "Sending packet.11.." & vbcr & "=================" & vbcr
+sc.write("93 CC FC 88 56 03 D6 BB 50 0B C0 C3 4B 79 0C A3")
+sc.print "Response from card: " & vbcr
+sc.delay(80)
+answer = read_answer()
+sc.print
+sc.delay(initdelay)
+
+
+sc.print "Sending packet.12.." & vbcr & "=================" & vbcr
+sc.write("93 CC FC 88 56 03 D6 BB 50 0B C0 C3 4B 79 0C A3")
+sc.print "Response from card: " & vbcr
+sc.delay(80)
+answer = read_answer()
+sc.print
+sc.delay(initdelay)
+
+sc.print "Sending packet.13.." & vbcr & "=================" & vbcr
+sc.write("93 CC FC 88 56 03 D6 BB 50 0B C0 C3 4B 79 0C A3")
+sc.print "Response from card: " & vbcr
+sc.delay(80)
+answer = read_answer()
+sc.print
+sc.delay(initdelay)
+
+sc.print "Sending packet.14.." & vbcr & "=================" & vbcr
+sc.write("93 CC FC 88 56 03 D6 BB 50 0B C0 C3 4B 79 0C A3")
+sc.print "Response from card: " & vbcr
+sc.delay(80)
+answer = read_answer()
+sc.print
+sc.delay(initdelay)
+
+sc.print "Sending packet.15.." & vbcr & "=================" & vbcr
+sc.write("93 CC FC 88 56 03 D6 BB 50 0B C0 C3 4B 79 0C A3")
+sc.print "Response from card: " & vbcr
+sc.delay(80)
+answer = read_answer()
+sc.print
+sc.delay(initdelay)
+
+sc.print "Sending packet.16.." & vbcr & "=================" & vbcr
+sc.write("93 CC FC 88 56 03 D6 BB 50 0B C0 C3 4B 79 0C A3")
+sc.print "Response from card: " & vbcr
+sc.delay(80)
+answer = read_answer()
+sc.print
+sc.delay(initdelay)
+
+sc.print "Sending packet.17.." & vbcr & "=================" & vbcr
+sc.write("93 CC FC 88 56 03 D6 BB 50 0B C0 C3 4B 79 0C A3")
+sc.print "Response from card: " & vbcr
+sc.delay(80)
+answer = read_answer()
+sc.print
+sc.delay(initdelay)
+
+sc.print "Sending packet.18.." & vbcr & "=================" & vbcr
+sc.write("93 CC FC 88 56 03 D6 BB 50 0B C0 C3 4B 79 0C A3")
+sc.print "Response from card: " & vbcr
+sc.delay(80)
+answer = read_answer()
+sc.print
+sc.delay(initdelay)
+
+sc.print "Sending packet.19.." & vbcr & "=================" & vbcr
+sc.write("93 CC FC 88 56 03 D6 BB 50 0B C0 C3 4B 79 0C A3")
+sc.print "Response from card: " & vbcr
+sc.delay(80)
+answer = read_answer()
+sc.print
+sc.delay(initdelay)
+
+sc.print "Sending packet.20.." & vbcr & "=================" & vbcr
+sc.write("21 00 07 A0 B1 11 00 02 00 40 64")
+sc.print "Response from card: " & vbcr
+sc.delay(80)
+answer = read_answer()
+sc.print
+sc.delay(initdelay)
+
+
+
+sc.print "Sending packet.21.." & vbcr & "=================" & vbcr
+sc.write("21 00 07 A0 B1 11 40 02 00 40 24")
+sc.print "Response from card: " & vbcr
+sc.delay(80)
+answer = read_answer()
+sc.print
+sc.delay(initdelay)
+
+sc.print "Sending packet.22.." & vbcr & "=================" & vbcr
+sc.write("21 00 07 A0 B1 11 80 02 00 40 E4")
+sc.print "Response from card: " & vbcr
+sc.delay(80)
+answer = read_answer()
+sc.print
+sc.delay(initdelay)
+
+sc.print "Sending packet.23.." & vbcr & "=================" & vbcr
+sc.write("21 00 07 A0 B1 11 C0 02 00 40 A4")
+sc.print "Response from card: " & vbcr
+sc.delay(80)
+answer = read_answer()
+sc.print
+sc.delay(initdelay)
+
+sc.print "Sending packet.24.." & vbcr & "=================" & vbcr
+sc.write("93 CC FC 88 56 03 D6 BB 50 0B C0 C3 4B 79 0C A3")
+sc.print "Response from card: " & vbcr
+sc.delay(80)
+answer = read_answer()
+sc.print
+sc.delay(initdelay)
+
+sc.print "Sending packet.25.." & vbcr & "=================" & vbcr
+sc.write("21 00 07 A0 B1 12 00 02 00 40 67")
+sc.print "Response from card: " & vbcr
+sc.delay(80)
+answer = read_answer()
+sc.print
+sc.delay(initdelay)
+
+
+sc.print "Sending packet.26.." & vbcr & "=================" & vbcr
+sc.write("93 CC FC 88 56 03 D6 BB 50 0B C0 C3 4B 79 0C A3")
+sc.print "Response from card: " & vbcr
+sc.delay(80)
+answer = read_answer()
+sc.print
+sc.delay(initdelay)
+
+sc.print "Sending packet.27.." & vbcr & "=================" & vbcr
+sc.write("21 00 07 A0 B1 12 40 02 00 40 27")
+sc.print "Response from card: " & vbcr
+sc.delay(80)
+answer = read_answer()
+sc.print
+sc.delay(initdelay)
+
+sc.print "Sending packet.28.." & vbcr & "=================" & vbcr
+sc.write("21 00 07 A0 B1 10 00 02 00 40 65")
+sc.print "Response from card: " & vbcr
+sc.delay(80)
+answer = read_answer()
+sc.print
+sc.delay(initdelay)
+
+sc.print "Sending packet.29.." & vbcr & "=================" & vbcr
+sc.write("21 00 07 A0 B1 10 00 02 00 40 65")
+sc.print "Response from card: " & vbcr
+sc.delay(80)
+answer = read_answer()
+sc.print
+sc.delay(initdelay)
+
+sc.print "Sending packet.30.." & vbcr & "=================" & vbcr
+sc.write("21 00 07 A0 B1 10 40 02 00 40 25")
+sc.print "Response from card: " & vbcr
+sc.delay(80)
+answer = read_answer()
+sc.print
+sc.delay(initdelay)
+
+sc.print "Sending packet.31.." & vbcr & "=================" & vbcr
+sc.write("21 00 07 A0 B1 10 40 02 00 40 25")
+sc.print "Response from card: " & vbcr
+sc.delay(80)
+answer = read_answer()
+sc.print
+sc.delay(initdelay)
+
+sc.print "Sending packet.32.." & vbcr & "=================" & vbcr
+sc.write("21 00 07 A0 B1 10 C0 02 00 40 A5")
+sc.print "Response from card: " & vbcr
+sc.delay(80)
+answer = read_answer()
+sc.print
+sc.delay(initdelay)
+
+
+    wx.closeport
+    sc.delay(initdelay)
+    wx.openport
+
+
+sc.print
+sc.print "Card should now be unlocked! Open Nagraedit and try One Step Backup. Enjoy!" & vbcr
+sc.print
+sc.print "Note: If you still get Backdoor Reported Disable then run again." & vbcr
+sc.print
+sc.print "Note: By The Saxman----www.satspies.com." & vbcr
+sc.print
+End sub
+
+function read_answer()
+length = sc.bytesinbuffer
+sc.read(length)
+if length = 0 then
+    answer=""
+    sc.print("(No answer)")
+else
+    For X = 0 to length - 1
+        ThisByte = Hex(Sc.GetByte(X))
+        if Len(ThisByte) = 1 then ThisByte = "0" & ThisByte
+        Thisbyte = Thisbyte & " "
+        res = res & Thisbyte
+        Sc.Print(ThisByte)
+    Next
+end if
+Sc.Print
+read_answer = answer
+end function
+
+Wx.ResetDelay = 150
+Wx.ByteDelay = 0
+Wx.RxByteTimeout = 50
+Wx.CommPort = "com1:"
+Wx.BaudRate = 115200
+Wx.ResetBaudRate = 9600
+Wx.Parity = 1
+Wx.StopBits = 2
+Wx.DTRControl = 1
+Wx.RTSControl = 0
+Wx.ResetMode = 1
+Wx.ResetLine = 0
+Wx.ByteConvention = 0
+Wx.FlushEchoByte = 1
+Wx.FlushBeforeWrite = 1
+Wx.IgnoreTimeouts = 0
+Wx.ResetAfterTimeout = 0
+Wx.LogTransactions = 0
+Wx.DisplayUSW = 0
+Wx.DisplayFuse = 0

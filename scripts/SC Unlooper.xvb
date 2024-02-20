@@ -1,0 +1,2174 @@
+
+' ************************************************
+' * Nuevo Script para administracion del         *
+' * Firmware para el Testeo en Visas SC          *
+' * SCv1.1                                       *
+' *                                              *
+' * Su desarrollo es solo para Uso Educativo     *
+' *                                              *
+' *               01 / 06 / 2004                 *
+' *                                              *
+' * Sitios para informacion adicional:           *
+' * http://www.hsa-team.com/foro/index.php?s=    *
+' * http://www.apanostv.net/foro/index.php?s=    *
+' ************************************************
+' By dantec :D
+
+Option Explicit
+
+    Const fsoError = -1          ' Constantes para manejo de files
+    Const fsoOpenRead = 0
+    Const fsoOpenWrite = 1
+    Const fsoOpenReadWrite = 2
+    Const fsoOpenCreate = 3
+    Const fsoSEEK_SET = 0
+    Const fsoSEEK_CUR = 1
+    Const fsoSEEK_END = 2
+
+    Const VersionString = "SC Unlooper v1.1 Rev 0"
+
+    Const FRECCCARD = 4608000
+    Const FRECCAVR = 9216000
+
+    Const PTMAXIMO = 1000
+
+    Const MINIMADIFF = 3
+
+    Dim Variables_XPL(4)
+
+Sub Main
+  Call SCunlooper()
+End Sub
+
+Sub SCunlooper()
+
+    Dim ErrorString
+    Dim RetVal
+    Dim MenuPrompt
+    Dim Choice
+
+    Sc.Verbose = True
+
+    If Sc.Version < 5.0 Then
+        ErrorString = "Necesitas el WinExplorer version 5.0 o superior para correr este script"
+        Sc.MsgBox ErrorString, vbCritical
+        Err.Raise 1050, , ErrorString
+    End If
+
+    Sc.Print(VersionString)
+    Do
+        MenuPrompt = ""
+        MenuPrompt = MenuPrompt & "Programa para prueba y manejo del unlooper" & VbCr
+        MenuPrompt = MenuPrompt & "Operacion a realizar?"
+
+        Choice = Sc.ButtonBox(MenuPrompt, 0, VersionString,"Consola", "Utilerias", "Salir")
+
+        Select Case Choice
+          Case "1" 'CMD
+            Call SendCMD(0)
+          Case "2" 'Utilerias
+            Call Utilerias()
+          Case "3"
+            Exit Sub
+          Case Else
+            MenuPrompt = ""
+            MenuPrompt = MenuPrompt + "Entrada invalida!" & vbCrLf
+        End Select
+
+    Loop While True = True
+
+End Sub
+
+Sub SendCMD(mode)
+
+    Dim Oldstate
+    Dim MenuPrompt
+    Dim templine,Choice
+    Dim ok,Length,i,j
+
+    Oldstate = Sc.Verbose
+    Sc.Verbose = True
+
+    ok = 0
+    Do
+        templine = ""
+
+        If mode = 1 Then
+          MenuPrompt = ""
+          MenuPrompt = MenuPrompt & "======================={ " & VersionString & " }=======================" & vbCrLf & vbCrLf & vbCrLf
+          MenuPrompt = MenuPrompt & "Dame la cadena de valores a enviar al Unlooper en valores HEX" & vbCr
+          MenuPrompt = MenuPrompt & "automaticamente se agregara el primer (num de bytes) y ultimo (00) byte" & vbCrLf & vbCrLf
+          MenuPrompt = MenuPrompt & "00: End Ins" & vbCr
+          MenuPrompt = MenuPrompt & "01: Reset card" & vbCr
+          MenuPrompt = MenuPrompt & "02: Disconect card" & vbCr
+          MenuPrompt = MenuPrompt & "03: Pull i/o to low" & vbCr
+          MenuPrompt = MenuPrompt & "04: Pull i/o to high" & vbCr
+          MenuPrompt = MenuPrompt & "05: Abort If i/o high" & vbCr
+          MenuPrompt = MenuPrompt & "06: Abort If i/o low" & vbCr
+          MenuPrompt = MenuPrompt & "07: Wait i/o for low" & vbCr
+          MenuPrompt = MenuPrompt & "08: Wait i/o for high" & vbCr
+          MenuPrompt = MenuPrompt & "09: Glitch Clock & Vcc" & vbCr
+          MenuPrompt = MenuPrompt & "0A: Glitch Clock" & vbCr
+          MenuPrompt = MenuPrompt & "0B: Glitch Vcc" & vbCr
+          MenuPrompt = MenuPrompt & "0C XX: Glitch Vcc, delay XX cycles, Glitch Vcc" & vbCr
+          MenuPrompt = MenuPrompt & "0D XX: Glitch Clock, delay XX cycles, Glitch Vcc" & vbCr
+          MenuPrompt = MenuPrompt & "0E XX: Watch dog XX" & vbCr
+          MenuPrompt = MenuPrompt & "0F WW AA AA NN [XX..XX]: Send worms (nagra)" & vbCr
+          MenuPrompt = MenuPrompt & "10: Slot0 for RX/TX" & vbCr
+          MenuPrompt = MenuPrompt & "15: Slot1 for RX/TX" & vbCr
+          MenuPrompt = MenuPrompt & "1A: Slot2 for RX/TX" & vbCr
+          MenuPrompt = MenuPrompt & "1F: Slot3 for RX/TX" & vbCr
+          MenuPrompt = MenuPrompt & "2x XX XX: Delay 0x XX XX cycles" & vbCr
+          MenuPrompt = MenuPrompt & "3x XX XX: Delay 1x XX XX cycles" & vbCr
+          MenuPrompt = MenuPrompt & "4x XX XX: Delay 2x XX XX cycles" & vbCr
+          MenuPrompt = MenuPrompt & "5x XX XX: Delay 3x XX XX cycles" & vbCr
+          MenuPrompt = MenuPrompt & "6x Extended nanos 6x" & vbCr
+          MenuPrompt = MenuPrompt & "7x Extended nanos 7x" & vbCr
+          MenuPrompt = MenuPrompt & "8X: Read X+ 1 bytes" & vbCr
+          MenuPrompt = MenuPrompt & "9X: Read X+17 bytes" & vbCr
+          MenuPrompt = MenuPrompt & "AX: Read X+33 bytes" & vbCr
+          MenuPrompt = MenuPrompt & "BX: Read X+49 bytes" & vbCr
+          MenuPrompt = MenuPrompt & "CX: Write X+ 1 bytes" & vbCr
+          MenuPrompt = MenuPrompt & "DX: Write X+17 bytes" & vbCr
+          MenuPrompt = MenuPrompt & "EX: Write X+33 bytes" & vbCr
+          MenuPrompt = MenuPrompt & "FX: Write X+49 bytes" & vbCr
+        Else
+          MenuPrompt = ""
+          MenuPrompt = MenuPrompt & "====================================={ " & VersionString & " }=====================================" & vbCrLf & vbCrLf
+          MenuPrompt = MenuPrompt & "Dame la cadena de valores a enviar al Unlooper en valores HEX" & vbCrLf & vbCrLf
+          MenuPrompt = MenuPrompt & "80: Check card switch" & vbCr
+          MenuPrompt = MenuPrompt & "9x: Get ATMEL version" & vbCr
+          MenuPrompt = MenuPrompt & "       90: Get UNLOOPER version" & vbCr
+          MenuPrompt = MenuPrompt & "       91: Get SC UNLOOPER version" & vbCr
+          MenuPrompt = MenuPrompt & "A0: Set LEDs" & vbCr
+          MenuPrompt = MenuPrompt & "       A0: Led off" & vbCr
+          MenuPrompt = MenuPrompt & "       A1: Led on Green" & vbCr
+          MenuPrompt = MenuPrompt & "       A2: Led on Red" & vbCr
+          MenuPrompt = MenuPrompt & "B0: Set Voltaje" & vbCr
+          MenuPrompt = MenuPrompt & "       B0 XX: Set glitch voltaje to XX in 8 bit mode" & vbCr
+          MenuPrompt = MenuPrompt & "       (voltaje = 5.0v * XX / 255)" & vbCr
+          MenuPrompt = MenuPrompt & "       BX XX: Set glitch voltaje to XXX in 10 bit mode" & vbCr
+          MenuPrompt = MenuPrompt & "       (voltaje = 5.0v * XXX / 1023)" & vbCr
+          MenuPrompt = MenuPrompt & "C0: Unlooper Control" & vbCr
+          MenuPrompt = MenuPrompt & "       C0 XX" & vbCr
+          MenuPrompt = MenuPrompt & "            0x: Set UNLOOPER mode x" & vbCr
+          MenuPrompt = MenuPrompt & "              0..4 Defined UNLOOPER modes (eeprom presets 0..4)" & vbCr
+          MenuPrompt = MenuPrompt & "            10: Get UNLOPER mode" & vbCr
+          MenuPrompt = MenuPrompt & "            70: Soft Reset" & vbCr
+          MenuPrompt = MenuPrompt & "D0: EEPROM            write  (D0 AA AA NN DD's  : Write NN bytes in AAAA eeprom addrees)" & vbCr
+          MenuPrompt = MenuPrompt & "D4: FLASH                write  (D4 AA AA NN DD's  : Write NN bytes in AAAA flash addrees)" & vbCr
+          MenuPrompt = MenuPrompt & "D8: RAM/SFR           write  (D8 AA AA NN DD's  : Write NN bytes in AAAA ram/sfr addrees)" & vbCr
+          MenuPrompt = MenuPrompt & "E0: EEPROM            read   (E0 AA AA NN           : Read NN bytes in AAAA eeprom addrees)" & vbCr
+          MenuPrompt = MenuPrompt & "E4: FLASH                read   (E4 AA AA NN           : Read NN bytes in AAAA flash addrees)" & vbCr
+          MenuPrompt = MenuPrompt & "E8: RAM/SFR           read   (E8 AA AA NN           : Read NN bytes in AAAA ram/sfr address)" & vbCr
+          MenuPrompt = MenuPrompt & "F0: Send Special packet to card (F0 SS TT RR DD's : SS bytes to send, TT delay before recibe, RR bytes to recibe, DD data)" & vbCr
+        End If
+        templine = Sc.InputBox(MenuPrompt, VersionString)
+
+        if templine = "" Then
+          ok = 1
+          Exit Sub
+        End If
+
+        Choice = Replace(UCase(templine), " ", "")
+        Select Case Choice
+          Case "CLS"
+            Sc.ClearOutputWindow()
+            Sc.Print(VersionString)
+          Case "INS"
+            mode = 1
+          Case "CMD"
+            mode = 0
+          Case "ON"
+            Call ProcessXPLLine("a1", 1, 3,0)
+            Call ProcessXPLLine("b080", 2, 3,0)
+            Call ProcessXPLLine("u0E10019F", 3, 3,0)
+            Call ReciveFromUnlooper(1)
+            Call Sc.ProgressBox("", 0, 0)
+          Case "OFF"
+            Call ProcessXPLLine("u02", 1, 2,0)
+            Call ProcessXPLLine("a0", 2, 2,0)
+            Call ReciveFromUnlooper(1)
+            Call Sc.ProgressBox("", 0, 0)
+          Case "ATR"
+            Call AutoATR(1)
+          Case "AUTO"
+            Call ProcessXPLLine("a1", 1, 3,4)
+            Call ProcessXPLLine("b080", 2, 3,4)
+            Call AutoATR(0)
+          Case "EXPL"
+            Call SendXPL()
+          Case Else
+            Call ProcessXPLLine(templine, 1, 2,0)
+            Call ReciveFromUnlooper(mode)
+            Call Sc.ProgressBox("", 0, 0)
+        End Select
+
+        If Sc.BytesInBuffer > 0 Then Sc.Read(Sc.BytesInBuffer)
+    Loop Until ok = 1
+
+    Sc.Verbose = Oldstate
+
+End Sub
+
+Sub SendXPL()
+
+    Dim FileName
+    Dim FileSize
+    Dim ThisByte
+    Dim Infile
+
+    FileName = Fs.FileOpenDialog("Archivos XPL (*.xpl)|*.xpl|Todos (*.*)|*.*", "Porfavor selecciona un archivo de comandos ...", "script.xpl")
+    If FileName <> "" Then
+        If Fs.FileExists(FileName) = 0 Then
+            Sc.MsgBox("El archivo no existe")
+        Else
+            InFile = Fs.FileOpen(FileName, fsoOpenRead)
+        End If
+    End If
+
+    FileSize = Fs.FileSeek(InFile, 0, fsoSEEK_END)
+    If FileSize < 1 Then
+        Sc.MsgBox("Este no es un archivo valido XPL" & vbcr & "o el archivo esta abierto por otro programa")
+        Fs.FileClose(InFile)
+        Exit Sub
+    End If
+
+    Call AsignaVariable("w",0)
+    Call AsignaVariable("x",0)
+    Call AsignaVariable("y",0)
+    Call AsignaVariable("z",0)
+
+    Dim CurByte
+    Dim CurLine
+
+    CurLine = ""
+
+    Dim WritingLines
+    WritingLines = 0
+    Call Fs.FileSeek(InFile, 0, fsoSEEK_SET)
+    For ThisByte = 0 to (FileSize) + 1
+        CurByte = Fs.FileGetc(InFile)
+        If CurByte = 13 or CurByte = 10 Then
+            If CurLine <> "" Then
+                If CountXPLLine(CurLine) = True Then
+                    WritingLines = WritingLines + 1
+                End If
+                CurLine = ""
+            End If
+        Else
+            CurLine = CurLine & Chr(CurByte)
+        End if
+    Next
+    If CurLine <> "" Then
+      If CountXPLLine(CurLine) = True Then
+        WritingLines = WritingLines + 1
+      End If
+      CurLine = ""
+    End If
+
+    Dim CurLineNum
+    CurLineNum = 0
+    CurLine = ""
+
+    Call ProcessXPLLine(";", CurLineNum, WritingLines,0)
+    Call ProcessXPLLine("; " & FileName, CurLineNum, WritingLines,0)
+    Call ProcessXPLLine(";", CurLineNum, WritingLines,0)
+    Call Fs.FileSeek(InFile, 0, fsoSEEK_SET)
+    For ThisByte = 0 to (FileSize) + 1
+        CurByte = Fs.FileGetc(InFile)
+        If CurByte = 13 or CurByte = 10 Then
+            If CurLine <> "" Then
+                If CountXPLLine(CurLine) = True Then
+                    CurLineNum = CurLineNum + 1
+                    Call ProcessXPLLine(CurLine, CurLineNum, WritingLines,0)
+                End If
+
+                CurLine = ""
+            End If
+        Else
+            CurLine = CurLine & Chr(CurByte)
+        End if
+    Next
+    If CurLine <> "" Then
+      If CountXPLLine(CurLine) = True Then
+        CurLineNum = CurLineNum + 1
+        Call ProcessXPLLine(CurLine, CurLineNum, WritingLines,0)
+      End If
+      CurLine = ""
+    End If
+    Call ProcessXPLLine(";", CurLineNum, WritingLines,0)
+    Call ProcessXPLLine("; " & VersionString, CurLineNum, WritingLines,0)
+    Call ProcessXPLLine(";", CurLineNum, WritingLines,0)
+
+    Fs.FileClose(InFile)
+
+    Call Sc.ProgressBox ("", 0, 0, "")
+
+End Sub
+
+Function CountXPLLine(CurLineX)
+
+    Dim FirstByte
+
+    CurLineX = DeleteSpaces(CurLineX)
+    FirstByte = Mid(CurLineX, 1, 1)
+
+    CountXPLLine = False
+
+    FirstByte = UCase(FirstByte)
+    If CheckValidChar(FirstByte,"*+-;0123456789ABCDEFRUINSWXYZ") = True Then
+      CountXPLLine = True
+    End If
+
+End Function
+
+Sub ProcessXPLLine(CurLineX, LineNum, OutOf, modo)
+
+    Dim FirstByte
+    Dim DataLen
+    Dim Data
+    Dim DataRem
+    Dim PrintableData
+    Dim OldState
+    Dim i,ttemp
+
+    OldState=Sc.Verbose
+    Sc.verbose = True
+
+    CurLineX = DeleteSpaces(CurLineX)
+    FirstByte = Mid(CurLineX, 1, 1)
+    DataLen = Len(CurLineX)
+
+    If FirstByte = "S" or FirstByte = "s" Then
+      Data = Mid(CurLineX, 2, DataLen-1)
+      DataRem = GetRem(Data)
+      Data = DeleteRem(Data)
+      i = int(Data)
+      PrintableData = "Haciendo una pausa de " & i & " milisegundos" & vbCr & CurLineX & vbCr
+      If modo < 4 Then Call Sc.ProgressBox (PrintableData, LineNum, OutOf, VersionString)
+      If DataRem <> "" Then Sc.Print vbCr & DataRem
+      Sc.Delay(i)
+    End If
+
+    If FirstByte = "R" or FirstByte = "r" Then
+      Data = Mid(CurLineX, 2, DataLen-1)
+      DataRem = GetRem(Data)
+      Data = DeleteRem(Data)
+      Data = RemplazaVariables(Data)
+      i = Hex2Dec(Data)
+      PrintableData = "Recibiendo " & i & " bytes de la card" & vbCr & CurLineX & vbCr
+      If modo < 4 Then Call Sc.ProgressBox (PrintableData, LineNum, OutOf, VersionString)
+      If i > Sc.BytesInBuffer Then
+        i = Sc.BytesInBuffer
+        If i <> 0 Then Sc.Read(i) Else Sc.Print vbCr & "(NO SE RECIBIERON DATOS) "
+      Else
+        Sc.Read(i)
+      End If
+      If DataRem <> "" Then Sc.Print DataRem
+    End If
+
+    If FirstByte = "U" or FirstByte = "u" Then
+      Data = Mid(CurLineX, 2, DataLen-1)
+      DataRem = GetRem(Data)
+      Data = DeleteRem(Data)
+      Data = Data + "00"
+      Data = RemplazaVariables(Data)
+      DataLen = CuentaDatos(Data)
+      Data = HexString(DataLen,2)+Data
+      PrintableData = "Enviando paquetes de unlooper" & vbCr & CurLineX & vbCr
+      If modo < 4 Then Call Sc.ProgressBox (PrintableData, LineNum, OutOf, VersionString)
+      Call ExpandPacket(Data,DataRem,modo)
+    End If
+
+    If FirstByte = "I" or FirstByte = "i" Then
+      Data = Mid(CurLineX, 2, DataLen-1)
+      DataRem = GetRem(Data)
+      Data = DeleteRem(Data)
+      Data = RemplazaVariables(Data)
+      DataLen = CuentaDatos(Data)
+      If DataLen > 0 Then
+        If DataLen > 64 Then
+          Data = "F0"+HexString(DataLen,2)+"0170"+Data
+        Else
+          ttemp = (DataLen - 1) / 16
+          ttemp = (ttemp * &h10) + &hC0
+          Data = HexString(ttemp,2) + Data
+          Data = Data + "BF00"
+          DataLen = DataLen + 3
+          Data = HexString(DataLen,2) + Data
+        End If
+        PrintableData = "Enviando comandos tipo ISO T0 en unlooper" & vbCr & CurLineX & vbCr
+        If modo < 4 Then Call Sc.ProgressBox (PrintableData, LineNum, OutOf, VersionString)
+        Call ExpandPacket(Data,DataRem,modo)
+      End If
+    End If
+
+    If FirstByte = "N" or FirstByte = "n" Then
+      Data = Mid(CurLineX, 2, DataLen-1)
+      DataRem = GetRem(Data)
+      Data = DeleteRem(Data)
+      Data = RemplazaVariables(Data)
+      DataLen = CuentaDatos(Data)
+      If DataLen > 0 Then
+        If DataLen > 63 Then
+          Data = "F0"+HexString(DataLen+1,2)+"0170GG"+Data+"HH"
+        Else
+          ttemp = ((DataLen) / 16)
+          ttemp = (ttemp * &h10) + &hC0
+          Data = HexString(ttemp,2) + "GG" + Data
+          Data = Data + "HHBF00"
+          DataLen = DataLen + 4
+          Data = HexString(DataLen,2) + Data
+        End If
+        PrintableData = "Enviando comandos tipo ISO T1 en unlooper" & vbCr & CurLineX & vbCr
+        If modo < 4 Then Call Sc.ProgressBox (PrintableData, LineNum, OutOf, VersionString)
+        Call ExpandPacket(Data,DataRem,modo)
+      End If
+    End If
+
+    If CheckValidChar(FirstByte,"0123456789ABCDEFabcdef[") = True Then
+      Data = Mid(CurLineX, 1, DataLen)
+      DataRem = GetRem(Data)
+      Data = DeleteRem(Data)
+      Data = RemplazaVariables(Data)
+      PrintableData = "Enviando datos o comandos directos" & vbCr & CurLineX & vbCr
+      If modo < 4 Then Call Sc.ProgressBox (PrintableData, LineNum, OutOf, VersionString)
+      Call ExpandPacket(Data,DataRem,modo)
+    End If
+
+    If FirstByte = ";" Then
+      Data = Mid(CurLineX, 2, DataLen-1)
+      PrintableData = CurLineX & vbCr
+      Sc.Print vbCr & CurLineX
+      If modo < 4 Then Call Sc.ProgressBox (PrintableData, LineNum, OutOf, VersionString)
+    End If
+
+    If FirstByte = "*" Then
+      Data = Mid(CurLineX, 2, DataLen-1)
+      PrintableData = "Enviando comandos de repeticion con rastreo" & vbCr & CurLineX & vbCr
+      If modo < 4 Then Call Sc.ProgressBox (PrintableData, LineNum, OutOf, VersionString)
+      Call ProcessXPLLine(Data, LineNum, OutOf, 1)
+    End If
+
+    If FirstByte = "+" Then
+      Data = Mid(CurLineX, 2, DataLen-1)
+      PrintableData = "Enviando comandos de repeticion con rastreo" & vbCr & CurLineX & vbCr
+      If modo < 4 Then Call Sc.ProgressBox (PrintableData, LineNum, OutOf, VersionString)
+      Call ProcessXPLLine(Data, LineNum, OutOf, 2)
+    End If
+
+    If FirstByte = "-" Then
+      Data = Mid(CurLineX, 2, DataLen-1)
+      PrintableData = "Enviando comandos de repeticion con rastreo" & vbCr & CurLineX & vbCr
+      If modo < 4 Then Call Sc.ProgressBox (PrintableData, LineNum, OutOf, VersionString)
+      Call ProcessXPLLine(Data, LineNum, OutOf, 3)
+    End If
+
+    If CheckValidChar(FirstByte,"WXYZwxyz") = True Then
+      Data = Mid(CurLineX, 2, DataLen-1)
+      DataRem = GetRem(Data)
+      Data = DeleteRem(Data)
+      Data = RemplazaVariables(Data)
+      i = int(Data)
+      PrintableData = "Asignando " & i & " recibidos a variable" & vbCr & CurLineX & vbCr
+      If modo < 4 Then Call Sc.ProgressBox (PrintableData, LineNum, OutOf, VersionString)
+
+      If i > Sc.BytesInBuffer Then
+        i = Sc.BytesInBuffer
+        If i <> 0 Then
+          Sc.Read(i)
+          Call AsignaVariable(FirstByte,i)
+        Else
+          Sc.Print vbCr & "(NO SE RECIBIERON DATOS) "
+          Call AsignaVariable(FirstByte,0)
+        End If
+      Else
+        Sc.Read(i)
+        Call AsignaVariable(FirstByte,i)
+      End If
+      If DataRem <> "" Then Sc.Print DataRem
+    End If
+
+    Sc.verbose = OldState
+
+End Sub
+
+Sub ExpandPacket(strtemp,DataRem,modo)
+
+    Dim Oldstate
+    Dim templine,tempins
+    Dim P1,P2,P3,P4,P5
+    Dim PL(5),PH(5),PS(5),PV(5)
+    Dim PB(6)
+    Dim i,j,l,p,valid,ret
+    Dim text,ttext
+
+    Oldstate = Sc.Verbose
+    Sc.Verbose = True
+
+    templine = strtemp
+
+    if templine = "" Then
+      Exit Sub
+    End If
+
+    templine = Replace(UCase(templine), " ", "")
+
+      If CheckValidChar(templine,"0123456789ABCDEF[]-,GH") Then
+        i = 1
+        l = Len(templine)
+        valid = true
+
+        For p = 0 to 4
+          PB(p) = ""
+          PV(p) = false
+          PL(p) = 0
+          PH(p) = 0
+          PS(p) = 1
+
+          j = find(templine,i,"[")
+          If j <> -1 Then
+            PB(p) = Mid(templine, i, j)
+            i=i+j+1
+            valid = true
+          Else
+            If valid = true Then
+              j = l - i + 1
+              PB(p) = Mid(templine, i, j)
+              If PB(p) = "[" Then PB(p) = ""
+              If PB(p) = "]" Then PB(p) = ""
+              If PB(p) = "-" Then PB(p) = ""
+              If PB(p) = "," Then PB(p) = ""
+              i=i+j+1
+              valid = false
+            End If
+          End If
+
+          If valid = true Then
+              PV(p) = true
+              j = find(templine,i,"-")
+              If j <> -1 Then
+                PL(p) = Hex2Dec(Mid(templine, i, j))
+                i=i+j+1
+                j = find(templine,i,",")
+                If j <> -1 Then
+                  PH(p) = Hex2Dec(Mid(templine, i, j))
+                  i=i+j+1
+                  j = find(templine,i,"]")
+                  If j <> -1 Then
+                    PS(p) = Hex2Dec(Mid(templine, i, j))
+                    i=i+j+1
+                  Else
+                    j = l - i + 1
+                    PS(p) = Hex2Dec(Mid(templine, i, j))
+                    i=i+j+1
+                    valid = false
+                  End If
+                Else
+                  j = find(templine,i,"]")
+                  If j <> -1 Then
+                    PH(p) = Hex2Dec(Mid(templine, i, j))
+                    i=i+j+1
+                  Else
+                    j = l - i + 1
+                    PH(p) = Hex2Dec(Mid(templine, i, j))
+                    i=i+j+1
+                    valid = false
+                  End If
+                End If
+              Else
+                j = find(templine,i,"]")
+                If j <> -1 Then
+                  PL(p) = Hex2Dec(Mid(templine, i, j))
+                  PH(p) = PL(p)
+                  i=i+j+1
+                Else
+                  j = l - i + 1
+                  PL(p) = Hex2Dec(Mid(templine, i, j))
+                  PH(p) = PL(p)
+                  PV(p) = false
+                  i=i+j+1
+                  valid = false
+                End If
+              End If
+          End If
+        Next
+        If valid = true And i <= l Then
+          PB(p) = Mid(templine, i, (l-i+1))
+        End IF
+
+        Dim total_conteo,actual_conteo,divisor_conteo,conteo
+
+        total_conteo = 1
+        For p = 0 to 4
+          If PH(p) < PL(p) Then
+            PS(p) = PS(p) * -1
+            total_conteo = total_conteo * (PL(p) - PH(p))
+          Else
+            If PH(p) <> PL(p) Then total_conteo = total_conteo * (PH(p) - PL(p))
+          End If
+        Next
+
+        divisor_conteo = int(total_conteo / 25)
+        actual_conteo = 0
+        conteo = 1
+        ttext = ""
+
+        If total_conteo > 1 And modo < 4 Then Call Sc.ProgressBox("Secuencia de envios al Unlooper ... " & vbCr & "0%",conteo,26,VersionString)
+        If modo = 3 Then Sc.Verbose = False
+
+        For P1 = PL(0) to PH(0) step PS(0)
+          For P2 = PL(1) to PH(1) step PS(1)
+            For P3 = PL(2) to PH(2) step PS(2)
+              For P4 = PL(3) to PH(3) step PS(3)
+                For P5 = PL(4) to PH(4) step PS(4)
+                  actual_conteo = actual_conteo + 1
+                  tempins = CompletHex(PB(0))
+                  If PV(0) = True Then tempins = tempins + HexString(P1,2)
+                  tempins = tempins + CompletHex(PB(1))
+                  If PV(1) = True Then tempins = tempins + HexString(P2,2)
+                  tempins = tempins + CompletHex(PB(2))
+                  If PV(2) = True Then tempins = tempins + HexString(P3,2)
+                  tempins = tempins + CompletHex(PB(3))
+                  If PV(3) = True Then tempins = tempins + HexString(P4,2)
+                  tempins = tempins + CompletHex(PB(4))
+                  If PV(4) = True Then tempins = tempins + HexString(P5,2)
+                  tempins = tempins + CompletHex(PB(5))
+                  tempins = VerificaCheckSum(tempins)
+                  ret = SendToUnlooper(tempins,DataRem)
+                  Select Case modo
+                    Case 0 ' Normal con progress bar
+                      If total_conteo > 1 Then
+                        If ret > 0 Then Sc.Read(ret)
+                        If actual_conteo >= divisor_conteo Then
+                          Call Sc.ProgressBox("Secuencia de envios al Unlooper ... " & vbCr & (conteo*4) & "%",conteo+1,26,VersionString)
+                          conteo = conteo + 1
+                          actual_conteo = 0
+                        End If
+                      End If
+                    Case 1 ' Da resultado simple con progress bar individual
+                      If ret > 0 Then Sc.Read(ret)
+                      If actual_conteo >= divisor_conteo Then
+                        Call Sc.ProgressBox("Secuencia de envios al Unlooper ... " & vbCr & (conteo*4) & "%",conteo+1,26,VersionString)
+                        conteo = conteo + 1
+                        actual_conteo = 0
+                      End If
+                    Case 2 ' Da resultado desglozado con progress bar individual (RASTREO)
+                      If ret > 0 Then Sc.Read(ret)
+                      text = GetSCHex(ret)
+                      If text <> ttext And ret > MINIMADIFF Then
+                        Sc.Print("<--------  **** Diferencia encontrada! ****")
+                        ttext = text
+                      End If
+                      Call ReciveFromUnlooper(0)
+                      If actual_conteo >= divisor_conteo Then
+                        Call Sc.ProgressBox("Secuencia de envios al Unlooper ... " & vbCr & (conteo*4) & "%",conteo+1,26,VersionString)
+                        conteo = conteo + 1
+                        actual_conteo = 0
+                      End If
+                    Case 3 ' Da resultado desglozado con progress bar individual (RASTREO)
+                      If ret > 0 Then Sc.Read(ret)
+                      text = GetSCHex(ret)
+                      If text <> ttext And ret > MINIMADIFF Then
+                        Sc.Verbose = True
+                        ret = SendToUnlooper(tempins,DataRem)
+                        Sc.Read(ret)
+                        Sc.Print("<--------  **** Diferencia encontrada! ****")
+                        Sc.Verbose = False
+                        ttext = text
+                      End If
+                      Call ReciveFromUnlooper(0)
+                      If actual_conteo >= divisor_conteo Then
+                        Call Sc.ProgressBox("Secuencia de envios al Unlooper ... " & vbCr & (conteo*4) & "%",conteo+1,26,VersionString)
+                        conteo = conteo + 1
+                        actual_conteo = 0
+                      End If
+                    Case 4 ' Normal sin progress bar
+                    Case Else
+                  End Select
+                Next
+              Next
+            Next
+          Next
+        Next
+      End If
+
+    Sc.Verbose = Oldstate
+
+End Sub
+
+Sub AsignaVariable(FirstByte,i)
+
+    Dim a,b
+
+    Select Case FirstByte
+      Case "W","w":
+        a = 0
+      Case "X","x":
+        a = 1
+      Case "Y","y":
+        a = 2
+      Case "Z","z":
+        a = 3
+    End Select
+
+    If i = 0 Then
+      Variables_XPL(a) = ""
+      Exit Sub
+    End If
+
+    For b = 0 to (i-1)
+      Variables_XPL(a) = Variables_XPL(a) + HexString(Sc.GetByte(b),2)
+    Next
+
+End Sub
+
+Function RemplazaVariables(temp)
+  Dim tempstrb,tempstr,tempstre
+  Dim i,j,l
+
+  temp = Replace(UCase(temp), " ", "")
+  tempstr = temp
+  i = Find(tempstr,1,"W")
+  If i <> -1 Then
+    l = len(tempstr)
+    tempstrb = Mid(tempstr, 1, i)
+    tempstre = Mid(tempstr, i+2, l-i)
+    tempstr = tempstrb + Variables_XPL(0) + tempstre
+  End If
+  i = Find(tempstr,1,"X")
+  If i <> -1 Then
+    l = len(tempstr)
+    tempstrb = Mid(tempstr, 1, i)
+    tempstre = Mid(tempstr, i+2, l-i)
+    tempstr = tempstrb + Variables_XPL(1) + tempstre
+  End If
+  i = Find(tempstr,1,"Y")
+  If i <> -1 Then
+    l = len(tempstr)
+    tempstrb = Mid(tempstr, 1, i)
+    tempstre = Mid(tempstr, i+2, l-i)
+    tempstr = tempstrb + Variables_XPL(2) + tempstre
+  End If
+  i = Find(tempstr,1,"Z")
+  If i <> -1 Then
+    l = len(tempstr)
+    tempstrb = Mid(tempstr, 1, i)
+    tempstre = Mid(tempstr, i+2, l-i)
+    tempstr = tempstrb + Variables_XPL(3) + tempstre
+  End If
+
+  RemplazaVariables = tempstr
+End Function
+
+Function CuentaDatos(temp)
+  Dim i,j,l,c
+  Dim Valid
+
+  temp = Replace(UCase(temp), " ", "")
+  c = 0
+  Valid = True
+  l = len(temp)
+  For i = 1 to l
+    j = Mid(temp, i, 1)
+    If CheckValidChar(j,"0123456789ABCDEF") = True And Valid = True Then c = c + 1
+    If CheckValidChar(j,"[") = True And Valid = True Then
+      c = c + 2
+      Valid = False
+    End If
+    If CheckValidChar(j,"]") = True Then Valid = True
+  Next
+  c = c / 2
+
+  CuentaDatos = c
+End Function
+
+Function VerificaCheckSum(temp)
+  Dim respuesta,tempstrb,tempstr,tempstre,tempcs
+  Dim i,j,l
+
+  respuesta = temp
+  i = Find(temp,1,"G")
+  If i <> -1 Then
+    l = len(temp)
+    tempstrb = Mid(temp, 1, i)
+    j = Find(temp,1,"H")
+    If j <> -1 Then
+      tempstr = Mid(temp, i+3, j-(i+2))
+      tempstre = Mid(temp, j+3, l-j)
+    Else
+      tempstre = Mid(temp, i+3, l-i)
+    End If
+    tempcs = HexString(T1_EnvioCheckSum(tempstr),2)
+    respuesta = tempstrb + tempstr + tempcs + tempstre
+  End If
+
+  VerificaCheckSum = respuesta
+End Function
+
+Function T1_EnvioCheckSum(st)
+Dim cadena
+Dim i,j,retval
+
+  retval = 0
+  cadena = st
+  cadena = Replace(UCase(cadena), ",", "")
+  cadena = Replace(UCase(cadena), " ", "")
+  j = Len(cadena) / 2
+  For i = 0 to (j-1)
+    retval = retval Xor Hex2Dec(Mid(cadena,(i*2)+1,2))
+  Next
+  T1_EnvioCheckSum = retval
+
+End Function
+
+Function CompletHex(CurLineX)
+
+    Dim tempstr
+
+    If (Len(CurLineX) mod 2) = 0 Then
+      tempstr = CurLineX
+    Else
+      tempstr = "0" & CurLineX
+    End If
+
+    CompletHex = tempstr
+End Function
+
+Function DeleteSpaces(CurLineX)
+
+    Dim i,l
+    Dim tempstr
+
+    tempstr = CurLineX
+    i = Mid(tempstr,1,1)
+    Do
+      l = Len(tempstr)
+      If i = " "  Or i = Chr(09) Then
+        tempstr = Mid(tempstr,2,l-1)
+        i = Mid(tempstr,1,1)
+      End If
+    Loop Until i <> " "
+
+    DeleteSpaces = tempstr
+
+End Function
+
+Function DeleteRem(CurLineX)
+
+    Dim i
+    Dim tempstr
+
+    tempstr = CurLineX
+    i = Find(CurLineX,1,";")
+    If i <> -1 Then
+      tempstr = Mid(CurLineX, 1, i)
+    End If
+    tempstr = Replace(UCase(tempstr), " ", "")
+
+    DeleteRem = tempstr
+
+End Function
+
+Function GetRem(CurLineX)
+
+    Dim i,j
+    Dim tempstr
+
+    tempstr = ""
+    j = Len(CurLineX)
+    i = Find(CurLineX,1,";")
+    If i <> -1 Then
+      tempstr = Mid(CurLineX, i+1, j-i+1)
+    End If
+
+    GetRem = tempstr
+End Function
+
+Function Find(line,pos,value)
+    Dim ok
+    Dim l,a
+    Dim ThisByte
+
+    l = Len(line)
+    If pos < 1 Then pos = 1
+    If pos > l Then pos = l
+
+    ok = -1
+    If line = "" Then Exit Function
+    For a = pos To l
+      ThisByte = Mid(line, a, 1)
+      If ThisByte = value And ok = -1 Then
+        ok = a - pos
+      End If
+    Next
+    find = ok
+End Function
+
+Function CheckValidHex(HexNumber)
+
+    Dim DecimalValue
+    Dim DigitCount
+    Dim Digit
+    Dim HexDigit
+    Dim ok
+
+
+    HexNumber = Replace(UCase(HexNumber), " ", "")
+    DigitCount = Len(HexNumber)
+
+    ok = True
+    For Digit = 1 To DigitCount
+
+        HexDigit = Mid(HexNumber, Digit, 1)
+        If HexDigit <> "0" and HexDigit <> "1" and HexDigit <> "2" and HexDigit <> "3" and HexDigit <> "4" and HexDigit <> "5" and HexDigit <> "6" and HexDigit <> "7" and HexDigit <> "8" and HexDigit <> "9" and HexDigit <> "A" and HexDigit <> "B" and HexDigit <> "C" and HexDigit <> "D" and HexDigit <> "E" and HexDigit <> "F" Then
+            ok = False
+        End If
+    Next
+    CheckValidHex = ok
+
+End Function
+
+Function CheckValidChar(CharString,ValidChar)
+
+    Dim CharCount
+    Dim i
+    Dim CurrentChar
+    Dim ok
+
+    CharCount = Len(CharString)
+
+    ok = True
+    For i = 1 To CharCount
+      CurrentChar = Mid(CharString, i, 1)
+      If Find(ValidChar,1,CurrentChar) = -1 Then
+        ok = False
+      End If
+    Next
+
+    CheckValidChar = ok
+
+End Function
+
+Function Hex2Dec(HexNumber)
+
+    Dim DecimalValue
+    Dim DigitCount
+    Dim Digit
+    Dim HexDigit
+
+
+    HexNumber = Replace(UCase(HexNumber), " ", "")
+    DigitCount = Len(HexNumber)
+
+    For Digit = 1 To DigitCount
+
+        HexDigit = Mid(HexNumber, Digit, 1)
+        If Asc(HexDigit) < 58 Then
+            DecimalValue = HexDigit * 16 ^ (DigitCount - Digit)
+        Else
+            DecimalValue = (Asc(HexDigit) - 55) * 16 ^ (DigitCount - Digit)        End If
+        Hex2Dec = Hex2Dec + DecimalValue
+    Next
+
+End Function
+
+Function Hex2Asc(s)
+
+  Dim t
+  Dim i
+
+  For i = 1 To Len(s) Step 2
+    If Hex2Dec(Mid(s, i, 2)) > &H1F Then
+      t = t & Chr(Hex2Dec(Mid(s, i, 2)))
+    Else
+      t = t & " "
+    End If
+    t = t & " "
+  Next
+  Hex2Asc = t
+
+End Function
+
+Function HexString(Number,Length)
+
+    Dim RetVal
+    Dim CurLen
+    RetVal=Hex(Number)
+    CurLen=Len(RetVal)
+    If CurLen<Length Then
+        RetVal=String(Length-CurLen,"0") & RetVal
+    End If
+    HexString=RetVal
+
+End Function
+
+Function DecString(Number,Length)
+
+    Dim RetVal
+    Dim CurLen
+    RetVal=Number
+    CurLen=Len(RetVal)
+    If CurLen<Length Then
+        RetVal=String(Length-CurLen,"0") & RetVal
+    End If
+    DecString=RetVal
+
+End Function
+
+Sub Utilerias()
+
+    Dim MenuPrompt
+    Dim Choice
+
+    Do
+        MenuPrompt = ""
+        MenuPrompt = MenuPrompt & "Utilerias para el manejo y administracion del unlooper" & VbCr
+        MenuPrompt = MenuPrompt & "Operacion a realizar?"
+
+        Choice = Sc.ButtonBox(MenuPrompt, 0, VersionString,"Calcular Timing", "Tablas SC", "Regresar")
+
+        Select Case Choice
+          Case "1"
+            Call CalcTiming()
+          Case "2"
+            Call AdminUnlooper()
+          Case "3"
+            Exit Sub
+          Case Else
+            MenuPrompt = ""
+            MenuPrompt = MenuPrompt + "Entrada invalida!" & vbCrLf
+        End Select
+
+    Loop While True = True
+
+End Sub
+
+Sub AdminUnlooper()
+
+  Dim MenuPrompt
+  Dim ttext
+  Dim dtext
+  Dim cadena(16)
+  Dim i,j
+  Dim Choice
+
+  Do
+    MenuPrompt = ""
+    MenuPrompt = MenuPrompt & "Administracion del unlooper SC" & VbCr
+    MenuPrompt = MenuPrompt & "Seleccione su operacion a relaizar"
+
+    Choice = Sc.ButtonBox(MenuPrompt, 0, VersionString, "Tablas ID", "Tablas Unlooper", "Tablas Timing", "Regresar")
+
+    Select Case Choice
+      Case "1"
+        MenuPrompt = ""
+        MenuPrompt = MenuPrompt & "Administracion de Tablas de ID" & VbCr
+        MenuPrompt = MenuPrompt & "Seleccione su operacion a relaizar"
+
+        Choice = Sc.ButtonBox(MenuPrompt, 0, VersionString,"Ver Slots", "Grabar Slot", "Regresar")
+
+        Select Case Choice
+          Case "1"
+            Sc.Write("E0000810")
+            MenuPrompt = "==== Tabla de ID's para cada modo ====" & VbCr & VbCr
+            For i = 0 to 3
+              Sc.Read(4)
+              MenuPrompt = MenuPrompt & "Modo " & HexString(i,2) & "  :  " & GetSCHex(4)
+              If GetSCHex(4) = "00  00  00  00  " Then
+                MenuPrompt = MenuPrompt & "    (libre)" & vbCr
+              Else
+                MenuPrompt = MenuPrompt & "    '" & GetSCAsc(4) & "'" & vbCr
+              End If
+            Next
+            Call Sc.MsgBox(MenuPrompt,, "Tabla de ID's")
+          Case "2"
+            ttext = EnterGenericHex(1,"Valores validos del 00 al 03","Dame el slot de la tabla de ID's que deses")
+            If ttext <> "" Then
+              dtext = Hex2Dec(ttext)
+              dtext = dtext * 4
+              dtext = dtext + 8
+              ttext = EnterGenericHex(4,"Cadena en HEX, ej. 01020304","Dame el nuevo ID para este modo de unlooper")
+              If ttext <> "" Then
+                Sc.Write("D000" & HexString(dtext,2) & "04" & ttext)
+                Sc.Delay(100)
+              End If
+              Sc.Write("E000" & HexString(dtext,2) & "04")
+              Sc.Read(4)
+            End If
+        End Select
+      Case "2"
+        MenuPrompt = ""
+        MenuPrompt = MenuPrompt & "Administracion de Tablas de Unlooper" & VbCr
+        MenuPrompt = MenuPrompt & "Seleccione su operacion a relaizar"
+
+        Choice = Sc.ButtonBox(MenuPrompt, 0, VersionString,"Ver Presets", "Grabar Preset", "Regresar")
+
+        Select Case Choice
+          Case "1"
+            Sc.Write("E0001828")
+            MenuPrompt = "==== Tabla de definicion de modo unlooper ====" & VbCr & VbCr
+            For i = 0 to 4
+              Sc.Read(8)
+              MenuPrompt = MenuPrompt & "Modo " & HexString(i,2) & "  :  " & GetSCHex(8)
+              If GetSCHex(8) = "00  00  00  00  00  00  00  00  " Or GetSCHex(8) = "F0  F0  F0  F0  F0  F0  F0  F0  " Or GetSCHex(8) = "FF  FF  FF  FF  FF  FF  FF  FF  " Then
+                MenuPrompt = MenuPrompt & "    (libre)" & vbCr
+              Else
+                MenuPrompt = MenuPrompt & VbCr
+              End If
+            Next
+            Call Sc.MsgBox(MenuPrompt,, "Tabla de modo de unlooper")
+          Case "2"
+            ttext = EnterGenericHex(1,"Valores validos del 00 al 04","Dame el preset de la tabla de modo de unlooper que deses")
+            If ttext <> "" Then
+              dtext = Hex2Dec(ttext)
+              dtext = dtext * 8
+              dtext = dtext + &h18
+              ttext = EnterGenericHex(8,"Cadena en HEX, compuesta por" & VbCr & "bandera+slot ej. F0F0F0F0F0F0F0F0","Dame la tabla de modo de unlooper completa")
+              If ttext <> "" Then
+                Sc.Write("D000" & HexString(dtext,2) & "08" & ttext)
+                Sc.Delay(100)
+              End If
+              Sc.Write("E000" & HexString(dtext,2) & "08")
+              Sc.Read(8)
+            End If
+        End Select
+      Case "3"
+        MenuPrompt = ""
+        MenuPrompt = MenuPrompt & "Administracion de Tablas de Timing" & VbCr
+        MenuPrompt = MenuPrompt & "Seleccione su operacion a relaizar"
+
+        Choice = Sc.ButtonBox(MenuPrompt, 0, VersionString,"Ver Slots", "Grabar Slot", "Graba RXactual", "Graba TXactual", "Regresar")
+
+        Select Case Choice
+          Case "1"
+            Sc.Write("E0004040")
+            MenuPrompt = "==== Tabla de Timing para RX/TX ====" & VbCr & VbCr
+            For i = 0 to 15
+              Sc.Read(4)
+              MenuPrompt = MenuPrompt & "Slot " & HexString(i,2) & "  :  " & GetSCHex(4)
+              If GetSCHex(4) = "00  00  00  00  " Then
+                MenuPrompt = MenuPrompt & "    (libre)" & vbCr
+              Else
+                MenuPrompt = MenuPrompt & GetSCEtus() & VbCr
+              End If
+            Next
+            Call Sc.MsgBox(MenuPrompt,, "Tabla de Timings")
+          Case "2"
+            ttext = EnterGenericHex(1,"Valores validos del 00 al 0F","Dame el slot de la tabla de timing RX/TX que deses")
+            If ttext <> "" Then
+              dtext = Hex2Dec(ttext)
+              dtext = dtext * 4
+              dtext = dtext + &h40
+              ttext = EnterGenericHex(4,"Cadena en HEX, compuesta por" & VbCr & "timings de B+GB ej. 02C40727","Dame la tabla de timing completa")
+              If ttext <> "" Then
+                Sc.Write("D000" & HexString(dtext,2) & "04" & ttext)
+                Sc.Delay(100)
+              End If
+              Sc.Write("E000" & HexString(dtext,2) & "04")
+              Sc.Read(4)
+            End If
+          Case "3"
+            ttext = EnterGenericHex(1,"Valores validos del 00 al 0F","Dame el slot de la tabla de timing RX/TX que deses")
+            If ttext <> "" Then
+              dtext = Hex2Dec(ttext)
+              dtext = dtext * 4
+              dtext = dtext + &h40
+              Sc.Write("E8000104")
+              Sc.Read(4)
+              ttext = GetSCHex(4)
+              Sc.Write("D000" & HexString(dtext,2) & "04" & ttext)
+              Sc.Delay(100)
+              Sc.Write("E000" & HexString(dtext,2) & "04")
+              Sc.Read(4)
+            End If
+          Case "4"
+            ttext = EnterGenericHex(1,"Valores validos del 00 al 0B","Dame el slot de la tabla de timing RX/TX que deses")
+            If ttext <> "" Then
+              dtext = Hex2Dec(ttext)
+              dtext = dtext * 4
+              dtext = dtext + &h40
+              Sc.Write("E8000504")
+              Sc.Read(4)
+              ttext = GetSCHex(4)
+              Sc.Write("D000" & HexString(dtext,2) & "04" & ttext)
+              Sc.Delay(100)
+              Sc.Write("E000" & HexString(dtext,2) & "04")
+              Sc.Read(4)
+            End If
+        End Select
+      Case Else
+        Exit Sub
+    End Select
+  Loop While True = True
+
+End Sub
+
+Function GetSCHex(num)
+  Dim i
+  Dim tempchar
+
+  tempchar = ""
+    For i = 0 to (num-1)
+      tempchar = tempchar + HexString(Sc.GetByte(i),2) + "  "
+    Next
+
+  GetSCHex = tempchar
+End Function
+
+Function GetSCAsc(num)
+  Dim i
+  Dim tempchar
+
+  tempchar = ""
+    For i = 0 to (num-1)
+      If Sc.GetByte(i) > &H1F Then
+        tempchar = tempchar + Chr(Sc.GetByte(i))
+      Else
+        tempchar = tempchar + " "
+      End If
+    Next
+
+  GetSCAsc = tempchar
+End Function
+
+Function GetSCEtus()
+  Dim i,bt,gt
+  Dim tempchar
+
+  tempchar = HexString(Sc.GetByte(0),2) + HexString(Sc.GetByte(1),2)
+  bt = Hex2Dec(tempchar)
+
+  tempchar = HexString(Sc.GetByte(2),2) + HexString(Sc.GetByte(3),2)
+  gt = Hex2Dec(tempchar)
+
+  gt = int(gt / bt)
+  bt = int(bt * FRECCCARD / FRECCAVR)
+
+  GetSCEtus = "  |  " & DecString(bt,3) & " etus, " & DecString(gt,2) & " gbit  |"
+End Function
+
+Sub CalcTiming()
+
+    Dim MenuPrompt,templine,ATR
+    Dim i,j,ret
+    Dim Choice
+    Dim tavr,ttemp
+    Dim rxdata,rxguard
+    Dim Protocol_flag,Convenction_flag
+
+    Protocol_flag = 1
+    Convenction_flag = 1
+    tavr = 1/FRECCAVR
+    ttemp = 0.0
+    rxdata = 0.0
+    rxguard = 0.0
+
+    Do
+    MenuPrompt = ""
+    MenuPrompt = MenuPrompt & "Como desea calcular los timing, Automaticamente o dando los datos manualamente" & VbCr
+    MenuPrompt = MenuPrompt & "Forma de calculo?"
+
+    Choice = Sc.ButtonBox(MenuPrompt, 0, VersionString,"Auto ATR", "Manual ATR", "Manual ETU", "Manual BAUD", "Regresar")
+
+    Select Case Choice
+      Case "1" 'Auto ATR
+        ATR = AutoATR(1)
+
+        templine = ATRanalisys(ATR,3)
+        If templine = "" Then templine = "11"
+        ttemp = GetETU(templine)
+        rxdata = ttemp / FRECCCARD
+        templine = ATRanalisys(ATR,5)
+        If templine = "" Then templine = "00"
+        ttemp = Hex2Dec(templine)
+        If templine = "FF" Then ttemp = -1
+        ttemp = ttemp + 2
+        rxguard = ttemp * rxdata
+        templine = ATRanalisys(ATR,6)
+        If templine = "" Then templine = "00"
+        ttemp = Hex2Dec(templine)
+        ttemp = ttemp And &h0F
+        If ttemp = 0 Then
+          Protocol_flag = 1
+        Else
+          Protocol_flag = 0
+        End If
+      Case "2" 'Manual ATR
+        ATR = EnterGenericHex(0,"3F 70 11 25 00","Dame el ATR a analizar")
+        Sc.Print ATRanalisys(ATR,0)
+        templine = ATRanalisys(ATR,3)
+        If templine = "" Then templine = "11"
+        ttemp = GetETU(templine)
+        rxdata = ttemp / FRECCCARD
+        templine = ATRanalisys(ATR,5)
+        If templine = "" Then templine = "00"
+        ttemp = Hex2Dec(templine)
+        If templine = "FF" Then ttemp = -1
+        ttemp = ttemp + 2
+        rxguard = ttemp * rxdata
+        templine = ATRanalisys(ATR,6)
+        If templine = "" Then templine = "00"
+        ttemp = Hex2Dec(templine)
+        ttemp = ttemp And &h0F
+        If ttemp = 0 Then
+          Protocol_flag = 1
+        Else
+          Protocol_flag = 0
+        End If
+      Case "3" 'Manual ETU
+        MenuPrompt = ""
+        MenuPrompt = MenuPrompt & "Dame la relacion para el ETU del que deseas calcular los timing" & VbCr
+        MenuPrompt = MenuPrompt & "en decimal"
+        templine = Sc.InputBox(MenuPrompt, "Dame los ETU deseados " & VersionString)
+        If templine = "" Then templine = "00"
+        ttemp = templine
+        rxdata = ttemp / FRECCCARD
+        MenuPrompt = ""
+        MenuPrompt = MenuPrompt & "Dame la cantidad de BITs que usaras como guard time extra" & VbCr
+        MenuPrompt = MenuPrompt & "en ETUs (decimal equivalente al TC1)"
+        templine = Sc.InputBox(MenuPrompt, "Dame los BITS de guardtime extra" & VersionString)
+        If templine = "" Then templine = "00"
+        ttemp = 0
+        ttemp = templine
+        ttemp = ttemp + 2
+        rxguard = ttemp * rxdata
+        If UseMsgGeneric("Deseas usar 'convection invert' para la comunicacion?") = True Then
+          Convenction_flag = 1
+        Else
+          Convenction_flag = 0
+        End If
+        If UseMsgGeneric("Deseas usar protocolo T0 como default?") = True Then
+          Protocol_flag = 1
+        Else
+          Protocol_flag = 0
+        End If
+      Case "4" 'Manual BAUD
+        MenuPrompt = ""
+        MenuPrompt = MenuPrompt & "Dame el BAUD RATE a a calcularle los timing" & VbCr
+        MenuPrompt = MenuPrompt & "en decimal"
+        templine = Sc.InputBox(MenuPrompt, "Dame el BAUD deseado " & VersionString)
+        ttemp = templine
+        ttemp = FRECCCARD / ttemp
+        rxdata = ttemp / FRECCCARD
+        MenuPrompt = ""
+        MenuPrompt = MenuPrompt & "Dame los stop bits para este BAUD RATE" & VbCr
+        MenuPrompt = MenuPrompt & "en bits (decimal ej. 2)"
+        templine = Sc.InputBox(MenuPrompt, "Dame los STOP BITS" & VersionString)
+        ttemp = templine
+        rxguard = ttemp * rxdata
+        If UseMsgGeneric("Deseas usar 'convection invert' para la comunicacion?") = True Then
+          Convenction_flag = 1
+        Else
+          Convenction_flag = 0
+        End If
+        If UseMsgGeneric("Deseas usar protocolo T0 como default?") = True Then
+          Protocol_flag = 1
+        Else
+          Protocol_flag = 0
+        End If
+      Case "5"
+        Exit Sub
+      Case Else
+        Exit Sub
+    End Select
+
+    Dim crxdata,crxguard,crxtx
+    Dim ttext
+    Dim preset,slot
+
+    crxdata = (Int(rxdata / tavr))
+    crxguard = (Int(rxguard / tavr))
+    crxtx = &hAA
+    If Protocol_flag = 1 Then crxtx = crxtx Or &h11
+    If Convenction_flag = 1 Then crxtx = crxtx Or &h44
+
+    Sc.Print( "Tiempos para la comunicacion" & VbCr)
+    Sc.Print( "RX/TX data bit  = " & rxdata & " segundos" & vbCr)
+    Sc.Print( "RX/TX guard bit = " & rxguard & " segundos" & vbCr & vbCr)
+
+    Sc.Print( "RX/TX data bit  = " & HexString(crxdata,4) & "h ciclos del avr con SC" & vbCr)
+    Sc.Print( "RX/TX guard bit = " & HexString(crxguard,4) & "h ciclos del avr con SC" & vbCr & vbCr)
+    Sc.Print( "La bandera de control RX/TX = " & HexString(crxtx,2) & "h con SC" & vbCr)
+
+    If UseMsgGeneric("Desea cargar estos valores a la RAM del unlooper?" & VbCr & "Para su posterior uso o respaldo en la EEPROM." & VbCr & "Recuerde que cuando haga un cambio de modo" & VbCr & "o cambie slot de comunicacion con la INS 1x" & VbCr & "se perderan estos valores!.") = True Then
+      ttext = EnterGenericHex(1,"la bandera actual es " & HexString(crxtx,2) & "h, si deja en blanco sera usada!","Desea modificar la bandera de control de comunicaciones con la SmartCard")
+      If ttext= "" Then ttext = HexString(crxtx,2)
+      Sc.Write("D8000109" & HexString(crxdata,4) & HexString(crxguard,4) & HexString(crxdata,4) & HexString(crxguard,4) & ttext)
+      If Sc.BytesInBuffer > 1 Then Sc.Read(Sc.BytesInBuffer)
+    End If
+    Loop While True = True
+End Sub
+
+Function UseMsgGeneric(PromptString)
+
+    Dim RetVal
+
+    RetVal = Sc.MsgBox(PromptString, vbExclamation + vbYesNo + vbDefaultButton2, "ADVERTENCIA!")
+
+    If RetVal = vbYes Then
+        UseMsgGeneric = True
+    Else
+        UseMsgGeneric = False
+    End If
+
+End Function
+
+Function EnterGenericHex(size,ej,txt)
+Dim GotInput
+Dim MenuPrompt
+Dim Choice
+
+  GotInput = False
+  Do
+    MenuPrompt = txt & vbCrLf
+    If size <> 0 Then
+      MenuPrompt = MenuPrompt & Cstr(size) & " byte(s)" & vbCrLf & vbCrLf
+    Else
+      MenuPrompt = MenuPrompt & "sin limite de bytes" & vbCrLf & vbCrLf
+    End If
+    MenuPrompt = MenuPrompt & "Ejemplo: (simpre en pares)" & vbCrLf
+    MenuPrompt = MenuPrompt & ej & vbCrLf
+    Choice = Sc.InputBox(MenuPrompt, "Valor en HEXADECIMAL")
+    Choice = Replace(UCase(Choice), " ", "")
+    If Choice = "" Then
+      EnterGenericHex = ""
+      Exit Function
+    End If
+    If IsHex(Choice) Then
+      If (Len(Choice) mod 2) = 0 Then
+        If size = 0 Then
+          GotInput = True
+        ElseIf Len(Choice) = (size*2) Then
+          GotInput = True
+        Else
+          Call Sc.MsgBox("tu cadena continene un numero de bytes incorrecto", vbOKOnly, "Tu cadena es de tamaño erroneo")
+        End If
+      Else
+        Call Sc.MsgBox("un byte en hexadecimal lo forman dos numeros o letras (05,FA,3C)", vbOKOnly, "Tu cadena es incorrecta")
+      End If
+    Else
+      Call Sc.MsgBox("Los valores validos con 0-9 y A-F", vbOKOnly, "Tus valores no son numero hexadecimales validos")
+    End If
+  Loop Until GotInput = True
+  EnterGenericHex = Choice
+End Function
+
+Function GetETU(TA1)
+
+  Dim i
+  Dim Fi,Di
+
+  If TA1 <> "" Then
+    i = Hex2Dec(TA1) And &HF0
+    Select Case i
+      Case &H0
+        Fi = 1
+      Case &H10
+        Fi = 372
+      Case &H20
+        Fi = 558
+      Case &H30
+        Fi = 744
+      Case &H40
+        Fi = 1116
+      Case &H50
+        Fi = 1488
+      Case &H60
+        Fi = 1860
+
+      Case &H90
+        Fi = 512
+      Case &HA0
+        Fi = 768
+      Case &HB0
+        Fi = 1024
+      Case &HC0
+        Fi = 1536
+      Case &HD0
+        Fi = 2048
+
+      Case Else
+        Fi = 372
+    End Select
+
+    i = Hex2Dec(TA1) And &HF
+    Select Case i
+      Case &H1
+        Di = 1
+      Case &H2
+        Di = 2
+      Case &H3
+        Di = 4
+      Case &H4
+        Di = 8
+      Case &H5
+        Di = 16
+      Case &H6
+        Di = 32
+      Case &H7
+        Di = 64
+      Case &H8
+        Di = 12
+      Case &H9
+        Di = 20
+      Case &HA
+        Di = 0.5
+      Case &HB
+        Di = 0.25
+      Case &HC
+        Di = 0.125
+      Case &HD
+        Di = 0.0625
+      Case &HE
+        Di = 0.03125
+      Case &HF
+        Di = 0.015625
+
+      Case Else
+        Di = 1
+    End Select
+  End If
+
+  GetETU = Fi / Di
+
+End Function
+
+Function ATRanalisys(ATRstring,taz)
+
+  Dim TS
+  Dim T0
+  Dim TA(4), TB(4), TC(4), TD(4)
+  Dim TK
+  Dim TCK
+  Dim h, i, j, l, t1
+  Dim ok, pt
+
+  ATRanalisys = ""
+  ATRstring = Replace(UCase(ATRstring), " ", "")
+  l = Len(ATRstring)
+  If l < 4 Then
+    If taz = 0 Then Sc.Print "Error (invalid ATR)"
+    Exit Function
+  Else
+    If taz = 0 Then Sc.Print VbCr & ATRstring & VbCr
+  End If
+
+  TS = Mid(ATRstring, 1, 2)
+  T0 = Mid(ATRstring, 3, 2)
+  If taz = 0 Then Sc.Print vbCr
+  If taz = 0 Then Sc.Print "TS   = " & TS & vbCr
+  If taz = 0 Then Sc.Print "T0   = " & T0 & vbCr
+  pt = 0
+  i = 5
+  j = 1
+  t1 = Hex2Dec(T0)
+  h = t1 And &HF
+  ok = 0
+  Do
+    If taz = 0 Then Sc.Print vbCr
+    ok = 0
+    If t1 And &H10 Then
+      TA(j) = Mid(ATRstring, i, 2)
+      If taz = 0 Then Sc.Print "TA" & j & "  = " & TA(j) & vbCr
+      i = i + 2
+    End If
+    If t1 And &H20 Then
+      TB(j) = Mid(ATRstring, i, 2)
+      If taz = 0 Then Sc.Print "TB" & j & "  = " & TB(j) & vbCr
+      i = i + 2
+    End If
+    If t1 And &H40 Then
+      TC(j) = Mid(ATRstring, i, 2)
+      If taz = 0 Then Sc.Print "TC" & j & "  = " & TC(j) & vbCr
+      i = i + 2
+    End If
+    If t1 And &H80 Then
+      TD(j) = Mid(ATRstring, i, 2)
+      If taz = 0 Then Sc.Print "TD" & j & "  = " & TD(j) & vbCr
+      i = i + 2
+      t1 = Hex2Dec(TD(j))
+      pt = t1 And &HF
+      If t1 And &HF0 <> 0 Then
+        ok = 1
+        j = j + 1
+      End If
+    End If
+  Loop While ok = 1
+  If h > 0 Then
+    If taz = 0 Then Sc.Print vbCr
+    TK = Mid(ATRstring, i, h * 2)
+    If taz = 0 Then Sc.Print "TKs  = " & TK & vbCr
+    If taz = 0 Then Sc.Print "       " & Hex2Asc(TK) & vbCr
+    i = i + (h * 2)
+  End If
+  If pt <> 0 Then
+    TCK = Mid(ATRstring, i, 2)
+    If taz = 0 Then Sc.Print vbCr
+    If taz = 0 Then Sc.Print "TCK  = " & TCK & vbCr
+  End If
+
+  If taz <> 0 Then
+    Select Case taz
+      Case 1:
+        ATRanalisys = TS
+      Case 2:
+        ATRanalisys = T0
+      Case 3,7,11,15:
+        ATRanalisys = TA((taz/4))
+      Case 4,8,12,16:
+        ATRanalisys = TB((taz/4))
+      Case 5,9,13,17:
+        ATRanalisys = TC((taz/4))
+      Case 6,10,14,18:
+        ATRanalisys = TD((taz/4))
+      Case 19:
+        ATRanalisys = TK
+      Case 20:
+        ATRanalisys = TCK
+    End Select
+    Exit Function
+  End If
+
+  Dim FM , Fi , Di , Ng
+  Dim etu , betu , Vpp , Ipp
+
+  FM = 5
+  Fi = 372
+  Di = 1
+  Ng = 0
+  Vpp = 5
+  Ipp = 50
+  If TA(1) <> "" Then
+    i = Hex2Dec(TA(1)) And &HF0
+    Select Case i
+      Case &H0
+        Fi = 1
+        FM = 1
+      Case &H10
+        Fi = 372
+        FM = 5
+      Case &H20
+        Fi = 558
+        FM = 6
+      Case &H30
+        Fi = 744
+        FM = 8
+      Case &H40
+        Fi = 1116
+        FM = 12
+      Case &H50
+        Fi = 1488
+        FM = 16
+      Case &H60
+        Fi = 1860
+        FM = 20
+
+      Case &H90
+        Fi = 512
+        FM = 5
+      Case &HA0
+        Fi = 768
+        FM = 7.5
+      Case &HB0
+        Fi = 1024
+        FM = 10
+      Case &HC0
+        Fi = 1536
+        FM = 15
+      Case &HD0
+        Fi = 2048
+        FM = 20
+
+      Case Else
+        Fi = -1
+        FM = -1
+    End Select
+
+    i = Hex2Dec(TA(1)) And &HF
+    Select Case i
+      Case &H1
+        Di = 1
+      Case &H2
+        Di = 2
+      Case &H3
+        Di = 4
+      Case &H4
+        Di = 8
+      Case &H5
+        Di = 16
+      Case &H6
+        Di = 32
+
+      Case &H8
+        Di = 12
+      Case &H9
+        Di = 20
+      Case &HA
+        Di = 0.5
+      Case &HB
+        Di = 0.25
+      Case &HC
+        Di = 0.125
+      Case &HD
+        Di = 0.0625
+      Case &HE
+        Di = 0.03125
+      Case &HF
+        Di = 0.015625
+
+      Case Else
+        Di = -1
+    End Select
+  End If
+  If TB(1) <> "" Then
+    Vpp = Hex2Dec(TB(1))
+    Vpp = Vpp And &H60
+    Select Case Vpp
+      Case &H60
+        Ipp = -1
+      Case &H0
+        Ipp = 25
+      Case &H20
+        Ipp = 50
+      Case &H40
+        Ipp = 100
+    End Select
+    If TB(2) = "" Then
+      Vpp = Hex2Dec(TB(1))
+      Vpp = Vpp And &H1F
+    Else
+      Vpp = Hex2Dec(TB(2))
+      Vpp = Vpp / 10
+    End If
+  End If
+  If TC(1) <> "" Then
+    Ng = Hex2Dec(TC(1))
+    If Ng = 255 Then Ng = -1
+  End If
+
+
+  Sc.Print vbCr
+  Sc.Print "Factor Fi      = " & Fi & vbCr
+  Sc.Print "Factor Di      = " & Di & vbCr
+  Sc.Print "NGuardtime     = " & Ng & " etus" & vbCr
+  Sc.Print "Programing Vpp = " & Vpp & " volts" & vbCr
+  Sc.Print "Programing Ipp = " & Ipp & " mA" & vbCr
+  Sc.Print "Protocol       = T" & pt & vbCr
+
+  Dim Xtal , t
+  Dim Bconvention, BYTEconvention, ATRbaud, WORKbaud
+  Dim DMATRbaud, DMWORKbaud
+
+  Xtal = FRECCCARD
+
+  If TS = "3F" Then
+    BYTEconvention = "Inverse"
+    Bconvention = "o"
+  Else
+    BYTEconvention = "Direct"
+    Bconvention = "e"
+  End If
+
+  t = Xtal / 360
+  DMATRbaud = Int(t)
+  t = Xtal / 35
+  DMWORKbaud = Int(t)
+  t = Xtal / 372
+  ATRbaud = Int(t)
+  t = Xtal / Fi * Di
+  etu = 1 / t
+  WORKbaud = Int(t)
+  betu = etu * (12 + Ng)
+
+  Sc.Print vbCr
+  Sc.Print "Assuming AVR Clock   = " & FRECCAVR/1000000 & " Mhz" & vbCr
+  Sc.Print "Assuming Card Clock  = " & FRECCCARD/1000000 & " Mhz" & vbCr
+  Sc.Print "Byte convention      = " & BYTEconvention & vbCr
+  Sc.Print "ATR  parameters      = " & ATRbaud & " bauds (" & FindBaud(ATRbaud)  & "," & Bconvention & ",8,2" & ")" & vbCr
+  Sc.Print "WORK parameters      = " & WORKbaud & " bauds (" & FindBaud(WORKbaud)  & "," & Bconvention & ",8,2" & ")" & vbCr
+  If Mid(TK, 1, 4) = "40B0" Then
+    Sc.Print "DM ATR parameters    = " & DMATRbaud & " bauds (" & FindBaud(DMATRbaud)  & "," & Bconvention & ",8,2" & ", Direct convention)" & vbCr
+    Sc.Print "DM WORK parameters   = " & DMWORKbaud & " bauds (" & FindBaud(DMWORKbaud)  & "," & Bconvention & ",8,2" & ")" & vbCr
+  End If
+  Sc.Print "ETU                  = " & etu & " sec" & vbCr
+  Sc.Print "BYTEtime (1+8+1+2+N) = " & betu & " sec" & vbCr
+
+End Function
+
+Function FindBaud(s)
+
+  Dim t , i
+  Dim j , k , min , tmin
+
+  min = 500000
+  j = 0
+  j = s
+
+  k = 150
+  For i = 1 To 11
+    k = k * 2
+    If j > k Then tmin = j - k
+    If j < k Then tmin = k - j
+    If j = k Then tmin = 0
+    If tmin < min Then
+      min = tmin
+      t = k
+    End If
+  Next
+
+  k = 225
+  For i = 1 To 11
+    k = k * 2
+    If j > k Then tmin = j - k
+    If j < k Then tmin = k - j
+    If j = k Then tmin = 0
+    If tmin < min Then
+      min = tmin
+      t = k
+    End If
+  Next
+
+  k = 56000
+  If j > k Then tmin = j - k
+  If j < k Then tmin = k - j
+  If j = k Then tmin = 0
+  If tmin < min Then
+    min = tmin
+    t = k
+  End If
+
+  FindBaud = t
+
+End Function
+
+Function SendToUnlooper(packet,Remarks)
+  Dim firstbyte
+  Dim TiempoR,BufferBytes,tt2
+
+  packet = Replace(packet," ","")
+  firstbyte = Hex2Dec(Mid(packet, 1, 2))
+
+  SendToUnlooper = 0
+  TiempoR = 0
+  BufferBytes = 0
+
+  If Sc.BytesInBuffer > 0 Then Sc.Read(Sc.BytesInBuffer)
+
+  Sc.Write(packet)
+
+  BufferBytes = Sc.BytesInBuffer
+  Do While (BufferBytes = 0 And TiempoR < PTMAXIMO)
+    TiempoR = TiempoR + 1
+    Sc.Delay(1)
+    BufferBytes = Sc.BytesInBuffer
+  Loop
+
+  If Sc.Verbose = True Then
+    If TiempoR = PTMAXIMO Then
+      Sc.Print(" [ >" & TiempoR & "ms ] ")
+    Else
+      Sc.Print(" [ " & TiempoR & "ms ] ")
+    End If
+    If Remarks <> "" Then Sc.Print Remarks
+  End If
+
+  If BufferBytes > 0 Then Sc.Delay(8)
+
+  SendToUnlooper = Sc.BytesInBuffer
+End Function
+
+Sub ReciveFromUnlooper(mode)
+  Dim i,j
+
+  If Sc.BytesInBuffer > 0 Then
+    If mode = 0 Then
+      Sc.Read(Sc.BytesInBuffer)
+    Else
+      If Sc.BytesInBuffer > 1 Then
+        Sc.Read(1)
+        i = Sc.GetByte(0)
+        If i > &h7F Then
+          Sc.Print(" # Bytes procesados por el UNLOOPER ( " & HexString(i-&h80,2) & " )")
+        Else
+          Sc.Print(" # Bytes procesados por el UNLOOPER")
+        End If
+        Sc.Read(1)
+        j = Sc.GetByte(0)
+        Sc.Print(" # Bytes recibidos de la CARD")
+        If j > 0 Then
+          Sc.Read(j)
+          Sc.Print(" Datos recibidos de la CARD")
+        End If
+        If i > &h7F And Sc.BytesInBuffer > 2Then
+          Sc.Read(3)
+          Sc.Print(" Valor del Contador de Ciclos")
+        End If
+        If Sc.BytesInBuffer > 0 Then
+          Sc.Read(Sc.BytesInBuffer)
+          Sc.Print(" Datos extras recibidos del UNLOOPER")
+        End If
+      Else
+        Sc.Read(Sc.BytesInBuffer)
+        Sc.Print(" Unico dato recibido del UNLOOPER")
+      End If
+    End If
+  End If
+
+End Sub
+
+Sub RastreaISO()
+  Dim i,j,k
+  Dim clase, ins, p1, p2, p3
+  Dim packet,Creset
+
+  clase = 0
+  ins = 0
+  p1 = 0
+  p2 = 0
+  p3 = 0
+  packet = ""
+  k = "10" ' Valor de COMM de trabajo
+  j = "8C" ' Lectrua de ATR
+
+  Call Sc.ProgressBox("Rastreo de Clases, Instruciones en card ISO ... ",1,2,VersionString)
+
+  i = SendToUnlooper("06100E06019F00","; Leo el ATR")
+  Sc.Read(2)
+  i = Sc.GetByte(1)
+  Sc.Read(i)
+  Creset = "07100E0601" & j & k & "00"
+  Sc.Verbose = False
+  Sc.Read(SendToUnlooper("02" & k & "00","; Asingo velocidad de trabajo"))
+
+  For clase = &h00 to &hFE
+    packet = "08C4" & HexString(clase,2) & HexString(ins,2) & HexString(p1,2) & HexString(p2,2) & HexString(p3,2) & "BF 9F 00"
+    i = SendToUnlooper(packet,"")
+    If i > 1 Then
+      Sc.Read(2)
+      i = Sc.GetByte(1)
+      If i > 0 Then
+        Sc.Read(i)
+        If ChecaSW(GetSCHex(i),0) = 1 Then
+          Sc.Read(SendToUnlooper(Creset,"; Reset card"))
+          Sc.Verbose = True
+          Sc.Read(SendToUnlooper(packet,"; Clase encontrada!"))
+          Sc.Verbose = False
+          For ins = &h00 to &hFF step 2
+            packet = "08C4" & HexString(clase,2) & HexString(ins,2) & HexString(p1,2) & HexString(p2,2) & HexString(p3,2) & "BF 9F 00"
+            i = SendToUnlooper(packet,"")
+            If i > 1 Then
+              Sc.Read(2)
+              i = Sc.GetByte(1)
+              If i > 0 Then
+                Sc.Read(i)
+                If ChecaSW(GetSCHex(i),1) = 1 Then
+                  Sc.Read(SendToUnlooper(Creset,"; Reset card"))
+                  Sc.Verbose = True
+                  Sc.Read(SendToUnlooper(packet,"; Instruccion encontrada!"))
+                  Sc.Verbose = False
+                  For p3 = &h00 to &h60 ' aqui es FF
+                    packet = "08C4" & HexString(clase,2) & HexString(ins,2) & HexString(p1,2) & HexString(p2,2) & HexString(p3,2) & "BF 9F 00"
+                    i = SendToUnlooper(packet,"")
+                    If i > 1 Then
+                      Sc.Read(2)
+                      i = Sc.GetByte(1)
+                      If i > 0 Then
+                        Sc.Read(i)
+                        If ChecaSW(GetSCHex(i),4) = 0 Then
+                          Sc.Verbose = True
+                          Sc.Read(SendToUnlooper(packet,"; DATOS ENCONTRADOS!"))
+                          Sc.Verbose = False
+                        End If
+                      End If
+                    End If
+                  Next
+                  p3 = 0
+                End If
+              End If
+            End If
+          Next
+          p1 = 0
+          p2 = 0
+          p3 = 0
+        End If
+      End If
+    End If
+  Next
+  Sc.Read(SendToUnlooper("020200",""))
+  Sc.Write("A0")
+  Call Sc.ProgressBox("",0,0,"")
+  Sc.Verbose = True
+
+End Sub
+
+Function ChecaSW(sw,i)
+Dim a,b
+Dim j,k
+Dim msg
+
+  ChecaSW = 1
+  sw = Replace(sw, " ", "")
+  j = Len(sw)
+  a = Mid(sw,1,2)
+  b = a
+  If j > 4 Then
+    b = Mid(sw,j-3,2)
+    if i = 4 then ChecaSW = 0
+  End If
+  Select Case b
+    Case "6E":
+      if i = 0 then ChecaSW = 0
+      msg = " 'La card no soporta esa clase.'"
+    Case "6D":
+      if i = 1 then ChecaSW = 0
+      msg = " 'El codigo de instruccion esta programada o no es valida.'"
+    Case "6B":
+      msg = " 'Referencia incorrecta.'"
+    Case "67":
+      msg = " 'La longitud es incorrecta.'"
+    Case "69":
+      if i = 1 then ChecaSW = 0
+      msg = " 'Error generico.'"
+    Case "6F":
+      msg = " 'Diagnostico no preciso.'"
+    Case "90":
+      if i = 4 then ChecaSW = 0
+      msg = " 'Proceso OK.'"
+    Case "91":
+      if i = 4 then ChecaSW = 0
+      msg = " 'Proceso NO OK.'"
+  End Select
+
+End Function
+
+Function AutoATR(modo)
+
+  Dim ret,i,j
+  Dim rxdata,rxguard
+  Dim Protocol_flag,Convenction_flag
+  Dim crxdata,crxguard,crxtx
+  Dim ttemp
+  Dim ATR,templine
+  Dim tavr
+  Dim etus,xguards
+
+  AutoATR = ""
+
+  tavr = 1/FRECCAVR
+
+  ttemp = 372
+  rxdata = ttemp / FRECCCARD
+  ttemp = 2
+  rxguard = ttemp * rxdata
+  crxdata = (Int(rxdata / tavr))
+  crxguard = (Int(rxguard / tavr))
+  crxtx = &hEE
+
+  ret = SendToUnlooper("D8000109" & HexString(crxdata,4) & HexString(crxguard,4) & HexString(crxdata,4) & HexString(crxguard,4) & HexString(crxtx,2),"; Asignando velocidad a 372 etus, 2 guards bits")
+  Call ReciveFromUnlooper(0)
+
+  i = 0
+  Do
+    i = i + 1
+    ret = SendToUnlooper("050E10019F00","; Pidiendo el ATR, intento #" & i)
+  Loop Until i > 4 Or ret > 3
+
+  If ret > 1 Then
+    Sc.Read(2)
+  Else
+    Sc.Print(vbCr & "Error, No se recibio respuesta del unlooper")
+    Exit Function
+  End If
+  i = Sc.GetByte(1)
+  If i = 0 Then
+    Sc.Print(vbCr & "Error, No respondio ATR la card")
+    Exit Function
+  End If
+  Sc.Read(i)
+  If Sc.GetByte(0) = &h23 or Sc.GetByte(0) = &h03 Then
+    ret = SendToUnlooper("E8000901","; Pidiendo banderas de COMM")
+    Sc.Read(ret)
+    i = Sc.GetByte(0)
+    i = i Xor &h44
+    ret = SendToUnlooper("D8000901" & HexString(i,2),"; Actualizando la banderas de COMM")
+    ret = SendToUnlooper("050E10019F00","; Pidiendo el ATR corrigiendo convencion de bytes")
+    If Sc.BytesInBuffer > 1 Then
+      Sc.Read(2)
+    Else
+      Sc.Print("Error, No se recibio respuesta del unlooper")
+      Exit Function
+    End If
+    i = Sc.GetByte(1)
+    Sc.Read(i)
+  End If
+
+  If Sc.GetByte(0) <> &h3B And Sc.GetByte(0) <>&h3F Then
+    Sc.Print(vbCr & "Error, ATR no reconocido")
+    Exit Function
+  End If
+
+  If Sc.GetByte(0) = &h3B Then Convenction_flag = 0
+  If Sc.GetByte(0) = &h3F Then Convenction_flag = 1
+
+  ATR = ""
+  For j = 0 to i-1
+    ATR = ATR + HexString(Sc.GetByte(j),2)
+  Next
+
+  AutoATR = ATR
+
+  If modo = 1 Then
+    ret = SendToUnlooper("020200","; Libero la linea de power")
+    Call ReciveFromUnlooper(0)
+
+    Sc.Print(vbCr)
+    Sc.Print ATRanalisys(ATR,0)
+  End If
+
+  templine = ATRanalisys(ATR,3)
+  If templine = "" Then templine = "11"
+  ttemp = GetETU(templine)
+  etus = ttemp
+  rxdata = ttemp / FRECCCARD
+  templine = ATRanalisys(ATR,5)
+  If templine = "" Then templine = "00"
+  ttemp = Hex2Dec(templine)
+  If templine = "FF" Then ttemp = -1
+  ttemp = ttemp + 2
+  xguards = ttemp
+  rxguard = ttemp * rxdata
+  templine = ATRanalisys(ATR,6)
+  If templine = "" Then templine = "00"
+  ttemp = Hex2Dec(templine)
+  ttemp = ttemp And &h0F
+  If ttemp = 0 Then
+    Protocol_flag = 1
+  Else
+    Protocol_flag = 0
+  End If
+
+  crxdata = (Int(rxdata / tavr))
+  crxguard = (Int(rxguard / tavr))
+  crxtx = &hAA
+  If Protocol_flag = 1 Then crxtx = crxtx Or &h11
+  If Convenction_flag = 1 Then crxtx = crxtx Or &h44
+
+  If modo = 1 Then
+    Sc.Print( "Tiempos para la comunicacion" & VbCr)
+    Sc.Print( "RX/TX data bit  = " & rxdata & " segundos" & vbCr)
+    Sc.Print( "RX/TX guard bit = " & rxguard & " segundos" & vbCr & vbCr)
+
+    Sc.Print( "Ciclos para el firmware SC Unlooper" & VbCr)
+    Sc.Print( "RX/TX data bit  = " & HexString(crxdata,4) & "h ciclos del avr con SC" & vbCr)
+    Sc.Print( "RX/TX guard bit = " & HexString(crxguard,4) & "h ciclos del avr con SC" & vbCr & vbCr)
+    Sc.Print( "La bandera de control RX/TX = " & HexString(crxtx,2) & "h con SC")
+  End If
+
+  If modo = 0 Then
+    ret = SendToUnlooper("D8000109" & HexString(crxdata,4) & HexString(crxguard,4) & HexString(crxdata,4) & HexString(crxguard,4) & HexString(crxtx,2),"; Asignando velocidad a " & etus & " etus, " & xguards & " guards bits")
+    Call ReciveFromUnlooper(0)
+  End If
+
+End Function

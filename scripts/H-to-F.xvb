@@ -1,0 +1,96 @@
+' *******************************
+' *********   H-to-F   **********
+' *******************************
+' Lucretia 8/6/2000
+' This script will combine a good H bin file with your old F bin file
+' and create a new F bin file for your F card. The new F bin will
+' have the CAM ID of your good H card bin. Use cyclone! to write
+' the new F bin to your F card.
+'
+' You will need to have a standard
+' programmer with an H or HU card connected to your PC.
+' However this script will NOT write or read anything to or from the card.
+' Make sure to read the readme.txt file included with the script!
+'
+' FOR EDUCATIONAL USE ONLY. Actually using this script on
+' a card is done completely at your own risk!!
+'
+' ...and they can take our picture, but they'll never take our sound!!!
+'
+Option Explicit
+    Const fsoError = -1
+    Const fsoOpenRead = 0
+    Const fsoOpenWrite = 1
+    Const fsoOpenReadWrite = 2
+    Const fsoSEEK_SET = 0
+    Const fsoSEEK_CUR = 1
+    Const fsoSEEK_END = 2
+Sub Main()
+    Dim InFile1
+    Dim InFile2
+    Dim ThisByte
+    Dim Outfile
+    Dim FileName
+    Const FileFilter = "Bin files|*.bin;*.crd|All (*.*)|*.*"
+    FileName = Fs.FileOpenDialog(FileFilter, "Please select your old F bin file", "OldF.bin")
+    If FileName <> "" Then
+        If Fs.FileExists(FileName) = 0 Then
+            Sc.MsgBox("The file does not exist")
+        Else
+            InFile1 = Fs.FileOpen(FileName, fsoOpenRead)
+        End If
+    Const FileFilter2 = "Bin files|*.bin;*.crd|All (*.*)|*.*"
+    FileName = Fs.FileOpenDialog(FileFilter2, "Please select your good H bin file", "GoodH.bin")
+    If FileName <> "" Then
+        If Fs.FileExists(FileName) = 0 Then
+            Sc.MsgBox("The file does not exist")
+        Else
+            InFile2 = Fs.FileOpen(FileName, fsoOpenRead)
+        End If
+    End if
+    FileName = Fs.FileSaveDialog(FileFilter, "Please select a name for your new F bin file", "SubF.bin")
+    If FileName <> "" Then
+        OutFile = Fs.FileCreate(FileName)
+        call Fs.FileSeek(InFile1, 0, fsoSEEK_SET)
+        For ThisByte = 0 to 44 - 1
+            call Fs.FilePutc(OutFile, Fs.FileGetc(InFile1))
+            call Fs.FileSeek(InFile2, 884, fsoSEEK_SET)
+        Next
+        For ThisByte = 884 to 889 - 1
+            call Fs.FilePutc(OutFile, Fs.FileGetc(InFile2))
+            call Fs.FileSeek(InFile1, 49, fsoSEEK_SET)
+        Next
+        For ThisByte = 49 to 2200 - 1
+            call Fs.FilePutc(OutFile, Fs.FileGetc(InFile1))
+            call Fs.FileSeek(InFile2, 884, fsoSEEK_SET)
+        Next
+        For ThisByte = 884 to 888 - 1
+            call Fs.FilePutc(OutFile, Fs.FileGetc(InFile2))
+            call Fs.FileSeek(InFile1, 2204, fsoSEEK_SET)
+        Next
+        For ThisByte = 2204 to 2205 - 1
+            call Fs.FilePutc(OutFile, Fs.FileGetc(InFile1))
+            call Fs.FileSeek(InFile2, 884, fsoSEEK_SET)
+            call Fs.FileSeek(OutFile, 2204, fsoSEEK_SET)
+        Next
+        For ThisByte = 884 to 888 - 1
+            call Fs.FilePutc(OutFile, Fs.FileGetc(InFile2))
+            call Fs.FileSeek(InFile1, 2208, fsoSEEK_SET)
+        Next
+        For ThisByte = 2208 to 2216 - 1
+            call Fs.FilePutc(OutFile, Fs.FileGetc(InFile1))
+            call Fs.FileSeek(InFile2, 1144, fsoSEEK_SET)
+        Next
+        For ThisByte = 1144 to 1208 - 1
+            call Fs.FilePutc(OutFile, Fs.FileGetc(InFile2))
+            call Fs.FileSeek(InFile1, 2280, fsoSEEK_SET)
+        Next
+        For ThisByte = 2280 to 3072 - 1
+            call Fs.FilePutc(OutFile, Fs.FileGetc(InFile1))
+           next
+    End if
+    Fs.FileClose(OutFile)
+    Fs.FileClose(InFile1)
+    Fs.FileClose(InFile2)
+    End if
+End Sub

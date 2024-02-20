@@ -1,0 +1,318 @@
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+' Memspace Dumper.xvb - Created 2010-01-23
+'
+' for use with ND13-type atmel flash, *modified* to leave card running when WDT times out
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+' payload notes:
+'   * RAM:0080-0088 will be filled by the script with '9D9D9D9D9D9D9D9D'
+'   * '9ACC7A95' will be added to the end of the packet (to send response and return to IdleLoop)
+'   * no length checking is done - be careful not to exceed atmel buffer size
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+Option Explicit     ' any used variables must be explicitly declared
+
+
+Sub Main()
+    Dim TargetAddress       ' address to read byte from
+    Dim AddressRangeStart   ' start of address range to dump
+    Dim AddressRangeEnd     ' end of address range to dump
+    Dim DumpLine            ' current line of dumped bytes (up to 16 bytes/line)
+    Dim ReadMode            ' how to read bytes - 0=RAM (opcode C6), 1=ROM:5AC0
+    Dim RespLen
+
+
+' set if comm is displayed or not
+    Sc.Verbose = False
+'    Sc.Verbose = True
+
+
+' read atmel version
+    Sc.Write("90")
+    Sc.Read(4)
+
+
+' reset card and receive ATR
+    Sc.Write("08 10 01 03 9A 15 0E 20 00")
+    Sc.Read(2)
+    Sc.Read(27)
+
+
+
+    AddressRangeStart = &h0000      ' start of address range to dump
+    AddressRangeEnd = &h3FFF        ' end of address range to dump
+    ReadMode = 1                    ' 0=read via RAM, 1=read via ROM:5AC0
+
+    Sc.Print VbCr + "Dumping address range " + HexString(AddressRangeStart,4) + "-" + HexString(AddressRangeEnd,4)
+
+    If ReadMode = 0 Then
+        Sc.Print " reading via RAM (opcode C6)" + VbCr
+    ElseIf ReaDMode = 1 Then
+        Sc.Print " reading via ROM:5AC0" + VbCr
+    Else
+        Sc.Print VbCr + "Error! Unknown ReadMode - aborting."
+        Exit Sub
+    End If
+
+
+    For TargetAddress = AddressRangeStart To AddressRangeEnd        ' loop TargetAddress through all addresses from AddressRangeStart to AddressRangeEnd
+        Sc.Write("A1")                          ' set LED
+
+        If (TargetAddress Mod 16) = 0 Then      ' check if a line (16 bytes) has been read
+            If Len(DumpLine) Then
+                Sc.Print DumpLine & VbCr        ' display line on screen
+                DumpLine = ""
+            End If
+        End If
+        If Len(DumpLine) = 0 Then
+            DumpLine = HexString(TargetAddress,4) + ": "    ' put address at start of each line
+        End If
+
+' send code to read and return a byte from TargetAddress
+        If ReadMode = 0 Then
+            SendDirtyEMM( "CD5487 A6AACD4523 C6" + HexString(TargetAddress,4) + " CD4523 A6BBCD4523" )  ' read byte directly from RAM
+        ElseIf ReaDMode = 1 Then
+            SendDirtyEMM( "CD5487 A6AACD4523 CD5AC0" + HexString(TargetAddress,4) + "008001 B680 CD4523 A6BBCD4523" )  ' read byte through ROM:5AC0
+        End If
+        RespLen = DoA0FF()
+
+        Sc.Write("A2")                          ' set LED
+
+        If RespLen < 2 Then           ' didn't receive proper AA xx response, reset card and mark this byte --
+            DumpLine = DumpLine + "-- "
+
+            Sc.Write("08 10 01 03 9A 15 0E 20 00")  ' reset card and receive ATR
+            Sc.Read(2)
+            Sc.Read(27)
+        ElseIf RespLen = 2 Then                 ' received two-byte response, check if it is AA xx
+            If Sc.GetByte(0) = &hAA Then        ' received AA xx
+                DumpLine = DumpLine + HexString(Sc.GetByte(1),2) + "?"
+            Else                                ' did not receive AA as first byte - response is junk
+                DumpLine = DumpLine + "xx "
+            End If
+
+            Sc.Write("08 10 01 03 9A 15 0E 20 00")  ' reset card and receive ATR
+            Sc.Read(2)
+            Sc.Read(27)
+        Else                                    ' received response longer than two bytes, check if it is AA xx BB
+            If Sc.GetByte(0) = &hAA Then        ' received AA xx
+                DumpLine = DumpLine + HexString(Sc.GetByte(1),2)
+            Else                                ' did not receive AA as first byte - response is junk
+                DumpLine = DumpLine + "xx"
+            End If
+
+            If Sc.GetByte(2) <> &hBB Then       ' didn't receive trailing BB for AAxxBB
+                DumpLine = DumpLine + "?"
+
+                Sc.Write("08 10 01 03 9A 15 0E 20 00")  ' reset card and receive ATR
+                Sc.Read(2)
+                Sc.Read(27)
+            Else                                ' received proper AA xx BB response
+                DumpLine = DumpLine + " "
+            End If
+        End If
+
+    Next            ' loop from AddressRangeStart to AddressRangeEnd
+
+    If Len(DumpLine) Then
+        Sc.Print DumpLine & VbCr            ' display last line read on screen
+    End If
+
+
+    Sc.Write("A0")                          ' set LED
+
+End Sub
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+Function DoA0FF()
+    Dim A0FFPacket              ' packet used to trigger execution of the DirtyEMMPacket payload
+
+
+''''''''''''''''''''''''''''''''''''''''''''''
+' define A0FFPacket
+' trigger A0FF and receive up to 32 bytes in response
+'    A0FFPacket = "0F 60 0A 21 00 07 A0 FF 00 00 02 48 00 33 86 00"         ' use A0FF
+    A0FFPacket = "0F 60 0A 21 00 07 A0 AD 00 00 02 48 00 61 9F 00"         ' use A0AD
+
+' send the A0FFPacket (execute the DirtyEMMPacket)
+    Sc.Write( A0FFPacket )
+    Sc.Read(2)
+    If(Sc.GetByte(1) > 0) Then
+        DoA0FF = Sc.GetByte(1)      ' return # of response bytes read
+        Sc.Read( Sc.GetByte(1) )
+    Else
+        DoA0FF = 0
+    End If
+End Function
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+Function SendDirtyEMM( Payload )
+    Dim CS                      ' checksum for packet
+    Dim DirtyEMMHead            ' data sent before the payload of DirtyEMMPacket
+    Dim DirtyEMMTail            ' data sent after the payload of DirtyEMMPacket
+    Dim PayloadLen
+    Dim DirtyEMMPacket          ' full packet to send to card to setup payload for execution
+    Dim DirtyEMMPacketLen       ' length of our opcode test packet
+
+''''''''''''''''''''''''''''''''''''''''''''''
+' data sent before the payload of DirtyEMMPacket
+    PayloadLen = GetPacketLen(Payload)    ' calculate length of the payload
+    PayloadLen = PayloadLen / 2
+
+    DirtyEMMHead = "21 00 " & HexString(25+PayloadLen, 2) & "A0 CA 00 00" & HexString(19+PayloadLen, 2) & "04" & HexString(17+PayloadLen, 2) & "01 01 86 00 AA 9D 9D 9D 9D 9D 9D 9D 9D"
+
+
+' data sent after the payload of DirtyEMMPacket (LRC will be added automatically)
+    DirtyEMMTail = "9A CC 7A 95 02"
+
+''''''''''''''''''''''''''''''''''''''''''''''
+' setup DirtyEMMPacket
+
+    DirtyEMMPacket = DirtyEMMHead + Payload + DirtyEMMTail
+
+    DirtyEMMPacketLen = GetPacketLen(DirtyEMMPacket)    ' calculate length of the packet
+    DirtyEMMPacketLen = DirtyEMMPacketLen / 2
+    DirtyEMMPacketLen = DirtyEMMPacketLen + 1           ' adjust for checksum
+
+    CS = DoCheckSum(DirtyEMMPacket)
+    DirtyEMMPacket = DirtyEMMPacket + CS
+
+
+' send the DirtyEMMPacket
+    Sc.Write( HexString(4+DirtyEMMPacketLen, 2) & "60" & HexString(DirtyEMMPacketLen-1, 2) & DirtyEMMPacket & "86 00")
+    Sc.Read(2)
+    Sc.Read(7)
+
+End Function
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+' the rest of this file is helper functions
+' ripped from ROM102_ND13_A0FF-INTERCEPT-autoVCC_20_Smart.xvb
+'
+' DoCheckSum(Packet) - calculate checksum for Packet
+' Hex2Dec(HexNumber) - takes a string with a hex value, returns decimal value
+' HexString(Number,Length) - convert Number to a string containing Length-digit hex value
+' GetPacketLen(Packet) - returns length (in characters) of Packet
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+' DoCheckSum(Packet) - calculate checksum for Packet
+'
+' ripped from ROM102_ND13_A0FF-INTERCEPT-autoVCC_20_Smart.xvb
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+Function DoCheckSum (Packet)
+ Dim Temp
+ Dim Length
+ Dim PK
+ Dim CheckSum
+ Dim i
+
+ PK=""
+
+ Length = Len(Packet)           'get packet length with spaces
+
+ for i = 1 to Length
+    Temp = Mid(Packet, i, 1)
+    if Temp <> " " then         'remove all spaces in packet
+        PK = PK + Temp
+    End if
+ next
+
+ Length = Len(PK)               'get packet length without spaces
+
+ CheckSum = 0
+
+ for i = 0 to Length
+     i=i+1                      'Simulate Step 2 in VB scripting
+     Temp = Mid(PK, i, 2)
+     CheckSum = CheckSum XOR Hex2Dec(Temp)  'Calc Checksum
+ next
+
+ DoCheckSum = HexString(CheckSum, 2) 'convert checksum to a hex strimg and return it to caller
+
+End Function
+
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+' Hex2Dec(HexNumber) - takes a string with a hex value, returns decimal value
+'
+' ripped from ROM102_ND13_A0FF-INTERCEPT-autoVCC_20_Smart.xvb
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+Function Hex2Dec(HexNumber)
+    ' This function takes 1 argument, a string containing a hex value of any digit length
+    ' and returns the decimal equivalent
+    Dim DecimalValue
+    Dim DigitCount
+    Dim Digit
+    Dim HexDigit
+
+    HexNumber = Replace(UCase(HexNumber), " ", "")
+    DigitCount = Len(HexNumber)
+
+    For Digit = 1 To DigitCount
+
+        HexDigit = Mid(HexNumber, Digit, 1)
+        If Asc(HexDigit) < 58 Then
+            DecimalValue = HexDigit * 16 ^ (DigitCount - Digit)
+        Else
+            DecimalValue = (Asc(HexDigit) - 55) * 16 ^ (DigitCount - Digit)
+        End If
+        Hex2Dec = Hex2Dec + DecimalValue
+    Next
+
+End Function
+
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+' HexString(Number,Length) - convert Number to a string containing Length-digit hex value
+'
+' ripped from ROM102_ND13_A0FF-INTERCEPT-autoVCC_20_Smart.xvb
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+Function HexString(Number,Length)
+    ' This function takes 2 arguments, a number and a length.  It converts the decimal
+    ' number given by the first argument to a Hexidecimal string with its length
+    ' equal to the number of digits given by the second argument
+    Dim RetVal
+    Dim CurLen
+    RetVal=Hex(Number)
+    CurLen=Len(RetVal)
+    If CurLen<Length Then
+        RetVal=String(Length-CurLen,"0") & RetVal
+    End If
+    HexString=RetVal
+End Function
+
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+' GetPacketLen(Packet) - returns length (in characters) of Packet
+' note: returned value = length in bytes * 2
+'
+' ripped from ROM102_ND13_A0FF-INTERCEPT-autoVCC_20_Smart.xvb
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+Function GetPacketLen(Packet)
+ Dim Length
+ Dim Temp
+ Dim PK
+ Dim i
+
+ PK = ""
+
+ Length = Len(Packet)                   'get packet length with spaces
+
+ for i = 1 to Length
+    Temp = Mid(Packet, i, 1)
+    if Temp <> " " then                 'remove all spaces in packet
+        PK = PK + Temp
+    End if
+ next
+
+ GetPacketLen = Len(PK)                 'return packet length without spaces
+
+End Function

@@ -1,0 +1,145 @@
+'~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+'
+'                        START OF SCRIPT
+'
+'~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+'>Alot of this script comes from other scripts found online so please give
+' credit to those whom deserve it.  ;)
+'
+'>For now the input boxes will show/need decimal values, but will be
+' converted to hex automatically by HexString function for the
+' Sc.Write("") line.
+'
+'>Add more input box lines as you want, but you must also add them to the
+' cmd line and to Dim area. (left an example commented out (green text).)
+'
+'>Values inputed can be placed anywhere in the cmd line.
+'
+'>Once inputs are done the script will piece them together and also
+' calculate the cmd lenght byte automatically for you.
+'
+'>This is early stages of script so, there are NO error checks done yet.
+'
+'T0Y
+'~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Dim Rsp, B1, B2, B3, B4
+Dim VCCStart, VCCEnd, VCC
+Dim RetVal, CurLen, Temp, Length, PK, CheckSum, i
+'~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Sub Main()
+
+Sc.Reset
+Cfg_Parameters
+Call POPUP1
+Call GetATR
+'This is where you can add next process to take after ATR byte(s) have been recieved.
+
+End Sub   'Main()
+'~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Sub POPUP1()
+
+B1 = Sc.InputBox (VbCr & "Adding Byte to xx 01" & VbCr & "What is first byte to add ? ", "Byte ?", &h03)
+B2 = Sc.InputBox (VbCr & "Adding Byte to xx 01 xx" & VbCr & "What is second byte to add ? ", "Byte ?", &h50)
+B3 = Sc.InputBox (VbCr & "Adding Byte to xx 01 xx xx" & VbCr & "What is third byte to add ? ", "Byte ?", &h1A)
+B4 = Sc.InputBox (VbCr & "Adding Byte to xx 01 xx xx xx" & VbCr & "What is forth byte to add ? ", "Byte ?", &h00)
+'B5 = Sc.InputBox (VbCr & "Adding Byte to xx 01 xx xx xx xx" & VbCr & "What is fifth byte to add ? ", "Byte ?", &h00)
+
+End Sub   'POPUP1()
+'~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Sub GetATR()
+
+'Do     'Enable this if you want VCC to change and cmd to be tried again....also the "Loop" below.
+
+Sc.Write("B0" & HexString(VCC, 2))
+
+CMD = "10 01" & HexString(B1,2) & HexString(B2,2) & HexString(B3,2) & HexString(B4,2)' & HexString(B5,2)
+CMD = HexString(GetPacketLen(CMD),2) & CMD
+Sc.Write(CMD)
+Sc.Read(02)
+If Sc.Bytesinbuffer > 0 Then
+     Rsp = Sc.Getbyte(1)
+     If Rsp > 0 Then
+          Sc.Read(Rsp)
+          Exit Sub
+     End If
+End If
+
+VCC=VCC-1
+If VCC<VCCEnd Then VCC=VCCStart
+
+'Loop     'Enable this if you want VCC to change and cmd to be tried again....also the "Do" above.
+
+End Sub   'GetATR()
+'~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Function GetPacketLen(Packet)
+PK = ""
+Length = Len(Packet)
+for i = 1 to Length
+Temp = Mid(Packet, i, 1)
+if Temp <> " " then
+PK = PK + Temp
+End if
+next
+GetPacketLen = Len(PK)/2
+End Function   'GetPacketLen(Packet)
+'~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Function HexString(Number,Length)
+     RetVal=Hex(Number)
+     CurLen=Len(RetVal)
+     If CurLen<Length Then
+          RetVal=String(Length-CurLen,"0") & RetVal
+     End If
+     HexString=RetVal
+     If CurLen > Length then
+        HexString = mid(HexString, 5, Length)
+    End If
+End Function   'HexString(Number,Length)
+'~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Function DoCheckSum(Packet)
+PK=""
+Length = Len(Packet)
+for i = 1 to Length
+Temp = Mid(Packet, i, 1)
+if Temp <> " " then
+PK = PK + Temp
+End if
+next
+Length = Len(PK)
+CheckSum = 0
+for i = 0 to Length
+i=i+1
+Temp = Mid(PK, i, 2)
+CheckSum = CheckSum XOR Hex2Dec(Temp)
+next
+DoCheckSum = HexString(CheckSum, 2)
+End Function   'DoCheckSum(Packet)
+'~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Sub Cfg_Parameters()
+VCCStart=&h20
+VCCEnd=0
+VCC=VCCStart
+Wx.ResetDelay = 150          ' In microseconds.
+Wx.ByteDelay = 50            ' In microseconds.
+Wx.RxByteTimeout = 500       ' In microseconds.
+Wx.BaudRate = 115200         ' Transmition baud rate, 115200 and below.
+Wx.ResetBaudRate = 115200    ' Transmition baud rate, 115200 and below.
+Wx.Parity = 0                ' 0 = None, 1 = Odd, 2 = Even, 3 = Mark, 4 = Space.
+Wx.StopBits = 0              ' 0 = 1 stop bit, 1 = 1.5 stop bits, 2 = 2 stop bits.
+Wx.DTRControl = 0            ' Initial state of DTR  0 = off, 1 = on.
+Wx.RTSControl = 1            ' Initial state of RTS  0 = off, 1 = on.
+Wx.ResetMode = 2             ' 0 = No Resets, 1 = ISO Reset (Expect a ATR), 2 = Device Reset (No ATR).
+Wx.ResetLine = 1             ' 0 = Toggle RTS for Reset, 1 = Toggle DTR for Reset.
+Wx.ByteConvention = 1        ' 0 = Inverse, 1 = Direct.
+Wx.FlushEchoByte = 0         ' 0 = no flush, 1 = flush - A Phoenix interface will echo each byte transmitted.
+Wx.FlushBeforeWrite = 1      ' 0 = no flush, 1 = flush - Flush the receive buffer before each write to strip off Null bytes.
+Wx.IgnoreTimeouts = 1        ' 0 = Abort script on a receive timeout, 1 = Ignore all receive timeouts.
+Wx.ResetAfterTimeout = 0     ' 0 = Don't reset after a timeout, 1 = do a reset after a timeout  - Not used if "IgnoreTimeouts=0".
+Wx.LogTransactions = 0       ' 0 = Don't log transactions, 1 = log transactions.
+Wx.DisplayUSW = 0            ' Display USW after script complete 0 = no, 1 = yes.
+Wx.DisplayFuse = 0           ' Display Fuse after script complete 0 = no, 1 = yes.
+End Sub   'Cfg_Parameters()
+'~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+'
+'                        END OF SCRIPT
+'
+'~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

@@ -1,0 +1,3411 @@
+'StarGlitch is by far the best loader program yet
+'Too many option for me
+'This cuts down on them and works for me hope it doesn't make anyone feel bad
+'No need to reinvent the wheel, when here is the best wheel:)
+'Auto Activation
+
+'Thank's Stars2002
+
+
+'                            StarGlitchPro v3.1
+'                             Modified UL4S/ROM
+'             Cleaner|Reader|Writer|Unlooper|3M Writer|Hex Writer
+'                               by Stars2002
+' =======================================================================================
+' I highly Recommend a top quality loader like Timeshifte's Repair Station.
+' Visit http://www.protronicsmn.com if you need one!
+' Please use Valid, clean Bin with good ZKT Tables as your "Default.bin" starting point.
+' Set your Local Info below or in the .ini file.
+' =======================================================================================
+' Cleaner will clean to current USW or apply updates to USW 700 or USW 800/DSW 6.
+' 3M/Act option is now available as self contained or Loaded Extreme Hex Files.
+' The script has 2 methods to read/write cards. The 4C Glitch that is safer to use
+' for Subbed Cards, and the ROM Reader/Unlooper that "plays" with timing and dac settings
+' to optimize the boot process for locked and looped cards.
+' Unlooper now uses Smart DAC for tough cards. All this stuff is new, so if you use this
+' script, please give me some feedback at Pirates Den. Include your Card type and any
+' Mods you might do.
+' Remember, Glitching is Hardware, Card and timing dependent. Feel free to adjust settings.
+' =======================================================================================
+' Ver 3.1 Changes:
+'  * Fix bug in Fuse Byte
+'  * Change delays for better 4C boot on 4B cards
+' Ver 3.0 Changes:
+'  * Updated 3M's 12-16.
+'  * Added Option to read User Variables from .ini file. Allows multiple profiles to be
+'    easily setup.
+'  * Optimize Custom Timeshifte Repair Station settings.
+'  * Added 4B card option. Glitch ranges can vary for these.
+'  * Setup optional glitches in User Variables.
+'  * Added auto_unlock to User settings. auto_unlock allows dacset to rotate after excess
+'    glitch attempts (200)
+' Ver 2.6b : Bug Fix for 2.6
+' Ver 2.6 Changes: Added ability to write Extreme Hex files directly to card.
+'   Change Glitch range, Glitch delay and loopdelay to min/max settings in script.
+'   Seperate Write Hex routine and menu.
+' Ver 2.5 Changes: Improved 4C Read capabilities. (Auto-Adjusts Glitch Delay) Will often
+'   read locked cards without corruption!
+'   Optional bootloader glitches suggested by Vorlon001 - Thanks!
+'   Timer re-written to report based on actual working script execution.
+'   Added Check2000 routine option in script settings. (Thanks Canard!)
+'   Updated 3M's
+' Ver 2.4 Changes: Update 3M's after 11-25 hash.
+'   Added another 3M slot.
+'   ReadBoot deleted: now uses unloopboot. (parameter for read/write)
+' Ver 2.3 Changes: Changed the 3m subroutines for easier patching of converted hex files.
+'   Updated 3m's to current.
+' Ver 2.2 Changes:
+'   Added P52's excellent 3M to the choices. THANKS, P52 !
+'   Changed Loop Delay to a variable and now proggy changes it automatically.
+' Ver 2.1 Changes:
+'   Updated 3M to defeat 11-14 3M Hashes (Boy, was Dave busy or what? LOL)
+'   Changed Filename select so that you can pick BIN to write BEFORE unlooping.
+'   Added CheckCard (with verbose) routine for more initial diagnostic info.
+'   Increased 4C Glitch range on Advanced 4C Glitch (70 - 95). Re-wrote to use For-next loop.
+'   Changed 4C Glitch delays for faster glitch (No difference on my loader)
+'   Fixed bug with ZPCode not being assigned by ConvertZip sub.
+'   Fixed bug with auto-rotate in SmartDac.
+'   Changed default to lock the ATR related DAC's after ATRlock.
+' =======================================================================================
+' *********       Thanks to no1b4me for UL4S, and Dexter for Winexplorer.     ***********
+' Thanks AOL6945, RAM9999, Nerg333, SEMU, Anonymous, Vorlon001, Extreme_TV, TRS,
+' and the many others who have contributed code to the freeware hobby!
+' Parts of this script were borrowed from: SEMU, DSSTech, UL4S, RS_Unlooper and Snakebite.
+' ( Mostly UL4S) Thanks to all !
+' Winexplorer Note: From the docs: "When the script ends, any open files will
+' remain open until you close WinExplorer." This means if you abort an operation and a
+' File was opened, you'll have to close winexplorer to free up the filename.
+' =======================================================================================
+' ATR : 3F 7F 13 25 03 38 B0 04 FF FF 4A 50 00 00 29 48 55 55 00 00
+Option Explicit
+    Const dss_DefaultButton1 = 0
+    Const dss_DefaultButton2 = 256
+    Const dss_DefaultButton3 = 512
+    Const fsoError = -1
+    Const fsoOpenRead = 0
+    Const fsoOpenWrite = 1
+    Const fsoOpenReadWrite = 2
+    Const fsoSEEK_SET = 0
+    Const fsoSEEK_CUR = 1
+    Const fsoSEEK_End = 2
+    Const FileFilter = "All Eprom Files (*.bin, *.crd)|*.bin;*.crd;|Bin Files (*.bin)|*.bin|Crd Files (*.crd)|*.crd|All (*.*)|*.*"
+    Const HexFilter = "Hex Files (*.hex)|*.hex"
+    Const IniFilter = "StarGlitch Profile (*.ini)|*.ini"
+    Const Ins = &h08
+    Const InsParam1 = &h00
+    Const InsParam2 = &h00
+    Const InsLen = &h34
+    Const Software="StarGlitch Pro 3.0"
+    Dim OutFile, InFile, HUBinFile, XORedByte(31), Key12byte(11)
+    Dim D0,D1,D2,D3,D4,D5,D6,D7,D8,D9
+    Dim ScriptStart, ScriptEnd, Choice
+    Dim DAC, DAC4C, Delaye, Delay5C, glttl,Attempts
+    Dim GlType, GlRot, CardSel, chglch, glchs, Glrngchoice, gldly
+    Dim MenuPrompt, FileName, Read, ATR, Redo, dacset, dacmsg, atrlock, LoopFlag
+    Dim loopdelay, minloopdelay, maxloopdelay, looppref, autorot, addusw, randac
+    Dim RetVal, RetVal2, PPV1, PPV2, PPVrepeat1, PPVrepeat2, BootActive
+    Dim ZipCode, ZPtemp, ZPtempx, ZPtemp1, ZPtemp2, ZPtemp3, ZPtemp4, ZPtemp5, ZPCode
+    Dim local, GUIDEbyte, GUIDEbyte2, TZone, rating, FuseBytes, PPVDollar, OptionByte
+    Dim SpendingLimitHex, Spend_Limit, SpendingLimitDec
+    Dim Default_ZipCode, Default_Local, Default_GuideByte, Default_TimeZone, Default_Rating
+    Dim Default_FuseByte, Default_PPVDollar, Default_OptionByte, Default_SpendLimit
+    Dim Prompt_Ini, dly4c,dly4cmin,dly4cmax, Dac4cmax, Dac4cmin, chk2000, auto_unlock
+    Setuploader()  'Set up winexplorer for unlooper settings
+' ############################    User Settings  ##############################
+
+Prompt_Ini        =   0      ' Prompt for .ini file:
+                             ' 0 - Use settings below.
+                             ' 1 - You will be prompted for the .ini file.
+If Prompt_Ini < 1 Then
+    sc.print "Using settings in main program" & VbCr
+' ##############################################################################
+' ########  Copy Below Settings to your .ini file if Prompt_Ini = 1   ##########
+
+' ***************        Default Local Area Settings        *******************
+Default_ZipCode   =   "38142"
+Default_Local     =   "FF"
+Default_GuideByte =   "22"
+Default_TimeZone  =   "A4"
+Default_Rating    =   "09"
+Default_FuseByte  =   "25DA"
+Default_SpendLimit =  "0000" ' 4 digit Decimal Dollar Amount (set for P52)
+chk2000           =    0     ' 1 or 0 : 1 to check 2000 Data after unlooping
+
+'****************        Default PPV Settings        ***************************
+Default_PPVDollar  =  "150"
+Default_OptionByte =  "6B"
+
+' ***************        Default Glitch Settings      **************************
+GlType            =    1     ' (1,2 or 3)Glitch Type: Affects Bootstrap Default=1
+GlRot             =    0     ' (1 or 0) Rotate Glitch Types: Default = 0
+auto_unlock       =    1     ' Allow unlocking DacSet after lock: Default = 1
+minloopdelay      =   20    ' Play with these values for 4C and ROM glitch timing
+maxloopdelay      =   70     ' default - min 20 - max 70
+loopdelay         =   maxloopdelay ' Some loaders need slower delays. Try changing min/max
+dly4cmin          =    9     ' 4C glitch delay range ; gldly = dly4cmin to dly4cmax
+dly4cmax          =   18     ' Uses 0C XX: Glitch Vcc, delay XX cycles, Glitch Vcc
+Dac4cmax          =   &h95   ' 4C Glitch Range (Hex)
+Dac4cmin          =   &h70   '
+
+' *******************         End User Settings            **********************
+' ###############################################################################
+End If
+
+' ***************************************************************************
+Sub CodeCustom()' *****  Paste Custom 3m converted code below     ***********
+Sc.Write("A1")
+' ***************************************************************************
+' Gman Works 12-16
+
+Call WriteViaLoader("2014","25DA","D")
+Call WriteViaLoader("2100","2237F7AFCF67967FC664BF41CA9BF4C6","D")
+Call WriteViaLoader("2110","40BD717225D08EE02F7480608ECE6202","D")
+Call WriteViaLoader("2120","0A8824A42A7204048EE6988E222A8E21","D")
+Call WriteViaLoader("2130","508CD513A811721F454113CF4C423AF1","D")
+Call WriteViaLoader("2140","2237F7AFCF67967FC664BF41CA9BF4C6","D")
+Call WriteViaLoader("2150","8A01075207D00E8E282E2D82060D8A01","D")
+Call WriteViaLoader("2160","0C5204D00E8E282E260401F98A011C52","D")
+Call WriteViaLoader("2170","04D00E8E282E2D2D02238A2D9B2D7006","D")
+Call WriteViaLoader("2180","1C882D472A22D58EE68E882D9B2A228C","D")
+Call WriteViaLoader("2190","8EE68E22228EE68E22008EE68EF9","D")
+Call WriteViaLoader("21A0","2237F7AFCF67967FC664BF41","D")
+Call WriteViaLoader("2200","70042E7D642E0B038C2D9E882D472A22","D")
+Call WriteViaLoader("2210","218EE68E882D9B2A22708EE68E22048E","D")
+Call WriteViaLoader("2220","E68E222E8EE68E8C2D9EC542B00E8E28","D")
+Call WriteViaLoader("2230","2C2D770201F98829022A22308EE68E22","D")
+Call WriteViaLoader("2240","5C8EE68EF9","D")
+Call WriteViaLoader("2D47","21","D")
+
+
+' **************************************************************************
+Sc.Write("A0")
+End Sub ' End Custom3m
+' **************************************************************************
+Sub CodeCustom2() ' Custom 2
+Sc.Write("A1")
+' **************************************************************************
+' HUfix 11-18 UTV works 12-17
+Call WriteViaLoader("2014","25DA","D")
+Call WriteViaLoader("2106","76116407763065038C01","D")
+Call WriteViaLoader("2110","0F32A05503AA013AD0DBD539D53A3260","D")
+Call WriteViaLoader("2120","AA006013391BDBD039DC39C7020DAA00","D")
+Call WriteViaLoader("2130","60133A1BDBD03ADC3ACAE5C588222D30","D")
+Call WriteViaLoader("2140","9A301D3906117001309A301D3A060B70","D")
+Call WriteViaLoader("2150","01309A308C0132700130700230C35D40","D")
+Call WriteViaLoader("2160","09DEF4CA701B400606882BC1700030F4","D")
+Call WriteViaLoader("2170","CA69134006068823C1690023F4CA6FC1","D")
+Call WriteViaLoader("2180","990222F4CA741B40021BF4CA697DC102","D")
+Call WriteViaLoader("2190","14F4CA6DF2FB020DF4CA734B40020688","D")
+Call WriteViaLoader("21A0","21AF4100048821AF438E21E18C010F8E","D")
+Call WriteViaLoader("21B0","21F18A222C2A03A8222D2A42243B7239","D")
+Call WriteViaLoader("21C0","15720304E78A222CB32D3C0902220088","D")
+Call WriteViaLoader("21D0","222C2A8EE68EFE5D4009038C350A8CC1","D")
+Call WriteViaLoader("21E0","9988DED92C8801002E72602F72543000","D")
+Call WriteViaLoader("21F0","0E88DF512C8821062E72CD2F727D3088","D")
+Call WriteViaLoader("2200","3BF12A722B15720204E78835082A722D","D")
+Call WriteViaLoader("2210","15720204E78828052A722F15720104E7","D")
+Call WriteViaLoader("2220","8828282A723015720104E7F90E000000","D")
+Call WriteViaLoader("2239","63C426856FE807","D")
+Call WriteViaLoader("2240","265869F18F7EBD99D49B71C9FBACA65E","D")
+Call WriteViaLoader("2250","18CCCB4E775969","D")
+Call WriteViaLoader("2805","CD","D")
+Call WriteViaLoader("2828","7D","D")
+Call WriteViaLoader("2AD0","01","D")
+Call WriteViaLoader("3508","2106","D")
+Call WriteViaLoader("3BF1","DF51","D")
+' **************************************************************************
+Sc.Write("A0")
+End Sub ' End CodeCustom2
+'' **************************************************************************
+
+Sub SetDac()
+'1            'Timeshifte_RS
+'2            'KPTucker/CRS+
+'3            'Mikobu Fixed
+'4            'Orig_UL4S
+'5            'UL4S
+'6            'SEMU
+'7            'RandLow
+'8            'RandHigh / Snake 4B
+' ATR related (if/end if) can be used or not, as u prefer.
+
+If (dacset < 2) Then
+dacmsg = "Using Custom settings for Timeshifte RS "
+randac = 0
+
+    If CardSel = "4B" Then
+        ' 4B
+        D2=52
+        D3=10
+        D4=141
+        D9=864
+        if atrlock = 0 Then
+        D1=198
+        D5=606
+        D6=72
+        D7=29
+        D8=60
+        End If
+
+    Else
+        ' 5B
+        D2=58
+        D3=08
+        D4=158
+        D9=862
+        if atrlock = 0 then
+        d1=180
+        D5=605
+        D6=67
+        D7=30
+        D8=59
+        End If
+    End If
+End If
+
+If (dacset = 2) Then
+        dacmsg = "Using settings for KPTucker/CRS+ "
+        ' KPTucker/CRS+ (2 that work well)
+        randac = 0
+
+    D9=866
+    D2=53
+    D3=10
+    D4=140
+    If atrlock = 0 Then
+      d1=198
+      D5=606
+      D6=54
+      D7=29
+      D8=60
+    End If
+
+''MY PERSONAL SETTINGS - TRS
+'D1=184
+'D2=52
+'D3=8
+'D4=139
+'D5=606
+'D6=67
+'D7=29
+'D8=57
+'D9=864
+
+End If
+
+If (dacset = 3) Then
+    dacmsg = "Using settings for Mikobu "
+    ' Mikobu
+    randac = 0
+    D2=52
+    D3=08
+    D4=142
+    D9=862
+    If atrlock = 0 Then
+      d1=188
+      D5=606
+      D6=54
+      D7=29
+      D8=60
+    End If
+End If
+
+If (dacset = 4) Then
+  dacmsg = "Using settings for T-911 "
+  randac = 0
+
+D2=51
+D3=10
+D4=138
+D9=862
+if atrlock = 0 Then
+D1=196
+D5=606
+D6=66
+D7=30
+D8=59
+
+End If
+
+'  D2=52
+'  D3=11
+'  D4=143
+'  D9=863
+'  if atrlock = 0 then
+'    D1=216
+'    D5=606
+'    D6=64
+'    D7=30
+'    D8=59
+'  End If
+End If
+
+If (dacset = 5) Then
+  dacmsg = "Using random settings for UL4S "
+  randac = 1
+    ' Original UL4S
+'vcc + last 2 glitch 4 bootloader
+    D2 = INT(RND * &h07) + &h38
+    D3 = INT(RND * &h05) + &h07
+    D4 = INT(RND * &h45) + &h80
+    D9 = INT(RND * &h07) + &h35c
+'==========================================
+' Atr glich point search range
+
+    if atrlock = 0 then
+        D7 = INT(RND * &h8) +&h17
+        D8 = INT(RND * &h04) + &h39
+        D1 = INT(RND * &h2a) + &ha0
+        D5 = INT(RND * &h03) + &h25d
+        D6 = INT(RND * &h2c) + &h34
+    End If
+
+End If
+
+If (dacset = 6) Then
+  dacmsg = "Using random settings from SEMU "
+  randac = 1
+  '==================================================
+  ' From SEMU
+  '       'vcc + last 2 glitch 4 bootloader
+          D2 = INT(RND * &h14) + &h28      ' 40 -  60
+          D3 = INT(RND * &h05) + &h07      '  7 -  11
+          D4 = INT(RND * &h2B) + &h84      '132 - 190
+          D9 = INT(RND * &h09) + &h35a     '858 - 866
+  '==================================================
+  '       ' Atr glich point search range
+
+      if atrlock = 0 then
+          D7 = 30  'D7 = INT(RND * &h8) +&h17    ' 23 -  30 'Always 30
+          D8 = 57  'D8 = INT(RND * &h04) + &h39  ' 57 -  60
+          Do
+            D1 = INT(RND * &h14) + &hAB '171 - 205 'SEMU range (7B[200,205]
+          Loop Until D1 = &hAB or D1 = &hAC or D1 = &hAE or D1 = &hB4 or D1 = &hB5 or D1 = &hB6 or D1 = &hBE  '171,172,174,180,181,182,190
+          D5 = 606 'D5 = INT(RND * &h04) + &h25d '605 - 608 'Always 606
+          D6 = 55  'D6 = INT(RND * &h0F) + &h37  ' 55 -  70  '55 or 57 (always 55 for 7B)
+
+      End If
+End If
+
+If (dacset = 7) Then
+  dacmsg = "Using settings for Random Low"
+''vcc + last 2 glitch 4 bootloader
+    randac = 1
+    D2 = INT(RND * &h07) + &h32  ' 50 - 57
+    D3 = INT(RND * &h04) + &h08  ' 8  - 12
+    D4 = INT(RND * &h07) + &h8A  '138 - 45
+    D9 = INT(RND * &h11) + &h358 '856 - 873
+'==========================================
+' Atr glich point search range
+
+    if atrlock = 0 then
+        D7 = INT(RND * &h6)  + &h19  '25 - 31
+        D8 = INT(RND * &h04) + &h39  '57 - 61
+        D1 = INT(RND * &h12) + &hB5  '181 - 193
+        D5 = INT(RND * &h03) + &h25D '605 - 608
+        D6 = INT(RND * &h2c) + &h34  '52 - 96
+    end if
+
+' Identafile
+'        randac = 0
+'          D2 = 58
+'          D3 = 9
+'          D4 = 138
+'          D9 = 865
+'        If atrlock = 0 then
+'          D1 = 163
+'          D5 = 605
+'          D6 = 66
+'          D7 = 30
+'          D8 = 59
+'        End If
+End If
+
+If (dacset > 7) Then
+  dacmsg = "Using settings for Random High "
+    'vcc + last 2 glitch 4 bootloader
+      randac = 1
+      D2 = INT(RND * &h07) + &h39  ' 56 - 62
+      D3 = INT(RND * &h04) + &h08  ' 8 - 11
+      D4 = INT(RND * &h39) + &h87  '135 - 191
+      D9 = INT(RND * &h05) + &h35e '862 - 866
+
+    If atrlock = 0 then
+      D7 = INT(RND * &h02) + &h1d  ' 29 - 30
+      D8 = INT(RND * &h03) + &h39  ' 57 - 59
+      D1 = INT(RND * &h08) + &hD0  '168 - 175
+      D5 = INT(RND * &h00) + &h25e ' 606
+      D6 = INT(RND * &h05) + &h3f  ' 63 - 67
+    End If
+End If
+
+End Sub
+' ***********************************************************************
+Sub Main()
+
+    Dim ErrorString
+    Dim MenuPrompt
+    Dim Choice
+    Dim PromptString
+    Dim RetValue
+    Dim GotInput
+    Dim ThisChar
+    Dim Version
+    Dim Password
+    Dim Cchoice
+    Dim D0
+    Dim D1
+    Dim D2
+    Dim D3
+    Dim D4
+    Dim D5
+    Dim D6
+    Dim D7
+    Dim D8
+    Dim D9
+    Dim PChoice
+    Dim logo
+    Sc.Verbose = 0 ' Set to 1 for display of card responses
+    gldly = 80     ' Start point for Main unlooper delay in Do-Loop
+    glttl = 0
+    d0 = 0
+
+    If Sc.Version < 4.5 Then
+        ErrorString = "You need version 4.5 or greater of WinExplorer to run this script"
+        Sc.MsgBox ErrorString, vbCritical
+        Err.Raise 1050, , ErrorString
+        End If
+
+    if ChipVer <> 1 then
+        sc.MsgBox("You need UL4S to run this script." & VbCr & "Flash your chip with the UL4S code")
+        Exit Sub
+     End If
+'logo = "logo.bmp"
+'Call Sc.PictureBox(logo,4,0)
+Call Card_Reset()
+Call IsCardPresent()
+
+Call CheckCard()
+  ' If ReceiveATR() > 0 Then
+   ' MenuPrompt = "ATR : " & ATR
+    'Call Sc.Msgbox (MenuPrompt, VbInformation, "Your Card Has a Good ATR !")
+   'End if
+
+'Sc.ClearOutputWindow
+'If prompt_Ini = 1 Then
+'Call Setup()
+'End If
+'Do
+'    MenuPrompt = dacmsg & "If you want to save your Bin, Try 'Read/Write 4C' first." & vbCrLf
+ '   MenuPrompt = MenuPrompt & "Using 'Read Lokt Card' or 'Unloop' will boot with the Rom Reader." & vbCrLf
+  '  MenuPrompt = MenuPrompt & "Your settings can rotate to ensure Bootstrapping." & vbCrLf
+   ' MenuPrompt = MenuPrompt & "'Read Lokt Card' for tough cards that are locked or have a fuse 3m." & vbCrLf
+    'MenuPrompt = MenuPrompt & "'Clean Card' will clean and apply updates to USW 800 DSW 6" & vbCrLf
+'    MenuPrompt = MenuPrompt & "Optional 3Ms now available when Writing Hex Files." & vbCrLf
+ '   Choice = Sc.ButtonBox(MenuPrompt, VbInformation, "StarGlitch: Select operation or click X to exit-->", "Card Info", "Read/Write 4C", "Clean/Write Hex", "Read LoktCard", "Unloop/Write")
+
+'Select Case Choice
+'Case "0"
+ ' Exit Sub
+
+'Case "1" ' Cardinfo
+ '   If Chk4Card Then
+  '      If(GetATR = False) then
+   '       Call OopsLooped()
+    '    Else
+     '     Call ReadInfo()
+      '  End If
+'    End If
+
+'Case "2" ' Read/Write 4C
+'  If(GetATR = False) then
+'       Call OopsLooped()
+'  Else
+'      MenuPrompt = "Select Operation for Standard 4C Glitch:" & vbCrLf
+ '     Cchoice = Sc.ButtonBox(MenuPrompt, VbInformation, "StarGlitch: Select operation or click X to exit-->", "Read 4C", "Write 4C", "Exit")
+  '    Select Case Cchoice
+   '     Case "0"
+    '    Case "1" ' Read4c
+
+     '     Call GetSaveFile()
+      '      If (FileName <> "") Then
+       '       Sc.Write("A1")
+        '      Call LoadBootStrap()
+         '     Call ReadCard()
+          '    Call ShutDownCard()
+           ' End If
+'        Case "2" ' Write4c
+ '         Call GetWriteFile() ' File to write
+  '          If (HUBinFile) and (FileName <> "") Then
+   '           Sc.Write("A1")
+    '          Call LoadBootStrap()
+     '         If HUBinFile Then
+      '        CAll WriteCard(32)
+       '       End If
+        '      Call ShutDownCard()
+         '   End If
+'        Case "3"
+
+ '     End Select
+'  End If
+
+'Case "3" ' Clean/Write Hex
+'      MenuPrompt = "Auto Updating Activation" & vbCrLf
+ '     Cchoice = Sc.ButtonBox(MenuPrompt, VbQuestion, "StarGlitch: Select operation or click X to exit-->", "Activate Card", "Write Hex", "Exit")
+  '    Select Case Cchoice
+   '     Case "0"
+    '      Call ShutDownCard()
+     '   Case "1" ' Clean
+         if(GetATR = False) then
+           Call OopsLooped()
+         Else
+           Sc.Write("A1")
+           Call LoadBootStrap()
+           Sc.Write("A1")
+           Call CleanCard()
+           Call ShutDownCard()
+         End If
+
+'        Case "2" ' Write Hex
+ '         RetVal = Sc.ButtonBox("3M's confirmed up 11-26" & VbCr & "1 - Open Hex File" & VbCr & "2 - Custom" & VbCr & "3 - Custom 2" & VbCr & "4 - HUfix" & VbCr & "5 - P52 (Fuse 3M)",  vbDefaultButton2 + vbQuestion, "StarGlitch Apply Hex: Select operation or click X to exit-->","Hex File", "Custom", "Custom 2", "HUFix", "P52")
+  '        If RetVal = 0 Then
+'
+ '         ElseIf RetVal = 1 Then Call Load3M()
+  '        Else
+   '         Call LoadBootStrap()
+    '        Call ExtractCardInfo()
+     '       If RetVal = 2 Then Call Custom3m()
+      '      If RetVal = 3 Then Call Custom3mb()
+       '     If RetVal = 4 Then Call Install3m()
+        '    If RetVal = 5 Then
+                'Default_SpendLimit
+         '       MenuPrompt = "P52 needs The proper spending limit for locals." & vbCr
+          '      MenuPrompt = MenuPrompt & "Select 'Keep Default' If you want to keep your default of $" & Default_SpendLimit & "." & vbCr
+           '     PChoice = Sc.ButtonBox(MenuPrompt, VbQuestion, "StarGlitch: Click X to exit-->", "Keep Default", "Set New")
+            '    If PChoice = 2 Then
+             '       MenuPrompt = "Enter 4 digit Decimal Dollars and Cents" & vbCr
+              '      MenuPrompt = MenuPrompt & "Ex: 0800 would be $8.00" & vbCr
+
+               '     Default_SpendLimit = Sc.InputBox(MenuPrompt, "StarGlitch: Select Spending Limit")
+                '    SpendingLimitHex = HexString(Default_SpendLimit, 4)
+'                End If
+ '               Call Install3mP52()
+
+  '          End If
+   '       End If
+    '      Call ShutDownCard()
+     '   Case "3" ' Exit
+      '    Call ShutDownCard()
+       ' End Select
+'Case "4" ' Read Lokt
+ '   Call SelLoader()
+  '  glttl = 1
+   ' chglch =1
+    'If dacset > 0 Then
+
+'      Call UnloopBootCard("Read")
+ '     Sc.Write("A0")
+  '  End If
+'Call ShutDownCard()
+
+'Case "5" ' Unloop/Write
+ '   MenuPrompt = "Is this a 4B Card?" & vbCrLf
+  '  CChoice = Sc.ButtonBox(MenuPrompt, VbQuestion, "StarGlitch: Click X to exit-->", "Yes, 4B", "Not 4B")
+   ' If CChoice = 0 Then Exit Sub
+    'If CChoice = 1 Then CardSel = "4B"
+'    Call SelLoader()
+ '   glttl = 1
+  '  chglch =1
+   ' If dacset > 0 Then
+
+       ' Call UnloopBootCard("Write")
+     '   Sc.Write("A0")
+'    End If
+'Call ShutDownCard()
+'If chk2000 Then
+'  Call Check2000()
+ ' Call ShutDownCard()
+'End If
+
+'Case Else
+ '   MenuPrompt = "Invalid Input!" & vbCrLf
+'    Exit Sub
+'End Select
+
+'Loop While True = True
+End Sub ' End Sub Main()
+' ****************************** End Main Sub **************************************
+
+Function setuploader()
+sc.print "Setting up for unlooper." & VbCr
+    Wx.BaudRate = 115200
+    Wx.ResetBaudRate = 115200
+    Wx.Parity = 0                    ' 0 = None, 1 = Odd, 2 = Even, 3 = Mark, 4 = Space
+    Wx.StopBits = 0                  ' 0 = 1 stop bit, 1 = 1.5 stop bits, 2 = 2 stop bits
+    Wx.DTRControl = 0                ' Initial state of DTR  0 = off, 1 = on
+    Wx.RTSControl = 1                ' Initial state of RTS  0 = off, 1 = on
+    Wx.ResetDelay = 0                ' In microseconds
+    Wx.ByteDelay = 0                 ' In microseconds
+    Wx.RxByteTimeout = 200           ' In milliseconds
+    Wx.ResetMode = 2                 ' 0 = No Resets, 1 = ISO Reset (Expect a ATR), 2 = Device Reset (No ATR)
+    Wx.ResetLine = 1                 ' 0 = Toggle RTS for Reset, 1 = Toggle DTR for Reset
+    Wx.ByteConvention = 1            ' 0 = Inverse, 1 = Direct
+    Wx.FlushEchoByte = 0             ' 0 = no flush, 1 = flush - A Phoenix interface will echo each byte transmitted.
+    Wx.FlushBeforeWrite = 0          ' 0 = no flush, 1 = flush - Flush the receive buffer before each write to strip off Null bytes.
+    Wx.IgnoreTimeouts = 1            ' 0 = Abort script on a receive timeout, 1 = Ignore all receive timeouts
+    Wx.ResetAfterTimeout = 0         ' 0 = Don't reset after a timeout, 1 = do a reset after a timeout  - Not used if "IgnoreTimeouts=0"
+    Wx.LogTransactions = 0           ' 0 = Don't log transactions, 1 = log transactions
+    Wx.DisplayUSW = 0                ' Display USW after script complete 0 = no, 1 = yes
+    Wx.DisplayFuse = 0               ' Display Fuse after script complete 0 = no, 1 = yes
+
+End function
+
+Sub SelLoader()
+Dim Unloopchoice
+Dim Unloopchoice2
+dacset = 0
+Do
+    MenuPrompt = "Select your preferred DAC scheme for Rom Reader:" & VbCr
+    MenuPrompt = MenuPrompt & "Fixed DAC settings:" & VbTab & "Timeshifte_RS" & VbCr
+    MenuPrompt = MenuPrompt & "Fixed DAC settings:" & VbTab & "KPTucker/CRS+" & VbCr
+    MenuPrompt = MenuPrompt & "Fixed DAC settings:" & VbTab & "KAC Mikobu" & VbCr
+    MenuPrompt = MenuPrompt & "Fixed DAC settings:" & VbTab & "T-911" & VbCr & VbCr
+    MenuPrompt = MenuPrompt & "More: " & VbTab & "UL4S | SEMU | Random Low | Random High" & VbCr
+    Unloopchoice = Sc.ButtonBox(MenuPrompt, VbQuestion, "StarGlitch: Known DAC schemes", "Timeshifte RS", "KPTucker/CRS+", "Mikobu", "T-911", "More ->")
+
+    Select Case Unloopchoice
+        Case "0"
+          Exit Sub
+        Case "1"            'Timeshifte_RS
+        Case "2"            'KPTucker/CRS+
+        Case "3"            'Mikobu
+        Case "4"            'T-911
+        Case "5"            'More
+
+        Case Else
+            MenuPrompt = "Invalid Input!" & vbCrLf
+    End Select
+
+        If Unloopchoice = 1 then dacset = 1
+        If Unloopchoice = 2 then dacset = 2
+        If Unloopchoice = 3 then dacset = 3
+        If Unloopchoice = 4 then dacset = 4
+        If Unloopchoice = 5 then
+
+              MenuPrompt = "Random DAC settings:" & VbTab & "Original UL4S" & VbCr
+              MenuPrompt = MenuPrompt & "Random DAC settings:" & VbTab & "SEMU" & VbCr
+              MenuPrompt = MenuPrompt & "Random DAC settings:" & VbTab & "Random Low" & VbCr
+              MenuPrompt = MenuPrompt & "Random DAC settings:" & VbTab & "Random High & 4B" & VbCr
+              Unloopchoice2 = Sc.ButtonBox(MenuPrompt, VbQuestion, "StarGlitch: Random DAC schemes", "<- Back", "UL4S", "SEMU", "RandLow", "RandHigh/4B")
+
+              Select Case Unloopchoice2
+                  Case "0"
+                    Exit Sub
+                  Case "1"            'Back
+                  Case "2"            'UL4S
+                  Case "3"            'SEMU
+                  Case "4"            'RandLow
+                  Case "5"            'RandHigh
+                  Case Else
+                      MenuPrompt = "Invalid Input!" & vbCrLf
+              End Select
+              If Unloopchoice2 = 0 then Exit Sub
+              If Unloopchoice2 = 2 then dacset = 5
+              If Unloopchoice2 = 3 then dacset = 6
+              If Unloopchoice2 = 4 then dacset = 7
+              If Unloopchoice2 = 5 then dacset = 8
+          End If
+
+Loop until dacset > 0
+Sc.print "dacset is " & dacset & VbCr
+
+If dacset = 0 Then
+  Exit Sub
+  Sc.Write("A0")
+Else
+  Call SetDac()
+  MenuPrompt = "Auto-Rotating - DAC settings will be rotated if bootstrap is slow." & VbCr
+  MenuPrompt = MenuPrompt & "Lok n Load - Stays on a known good DAC set for the duration of the process." & VbCr
+  MenuPrompt = MenuPrompt & "Lok n Load has proven to be more effective on really tough cards." & VbCr
+  MenuPrompt = MenuPrompt & "Watch for ' +++ ' signs to see which DAC set is best for your setup!" & VbCr
+  autorot = Sc.ButtonBox(MenuPrompt, VbQuestion, "AutoRotate ? - Click X for default --->", "AutoRotate", "Lok n Load")
+  Select Case autorot
+  Case "0"
+    autorot = 1
+  Case "1"
+    Sc.Print "Auto-Rotating DAC and Delay settings." & VbCr
+  Case "2"
+    autorot = 0
+    Sc.Print "Using 'Lok n Load' for a known good DAC set." & VbCr
+  End Select
+End If
+End Sub
+
+Sub LoadBootStrap()
+
+    Dim RetValue
+    Dim GotInput
+    Dim Counter
+    Dim Attempts
+    Dim OldDelay
+    dly4c = dly4cmin
+    Counter = 0
+    Attempts = 1
+    OldDelay = loopdelay
+'    DAC4C = &h95
+
+    Call IsCardPresent()
+Sc.Write("A1")
+ScriptStart = Now
+Sc.Print "----------------------------------------------------------------" & vbCr
+Sc.Print "Start: " & ScriptStart & vbCr     'main screen
+Sc.Print "----------------------------------------------------------------" & vbCr
+    Do
+
+    For DAC4C = Dac4cmax to Dac4cmin step -1
+
+        If dly4c > dly4cmax Then
+          dly4c = dly4cmin
+        Else
+          dly4c = dly4c + 1
+        End If
+        Sc.Write("A1")
+        GotInput = False
+        If loopdelay > maxloopdelay Then
+          loopdelay = minloopdelay
+        End If
+        Call Sc.ProgressBox ("Please be patient while Glitching...     Attempts:        " & Attempts & vbcr & "                                                           DAC4C:        " & HexString(DAC4C,2), 1, 999, "StarGlitch")
+
+        Sc.Write("06100E10019300") 'was Sc.Write("06100E10019300")
+        Sc.Delay(loopdelay) ' was 80
+        Sc.Read(&h02)
+            RetValue = Sc.GetByte(&h01)
+            Sc.Read (RetValue)
+
+        Sc.Write("B0")
+        Sc.Write(HexString(DAC4C,2))
+        'INS 4C
+'        Sc.Write("0915C448" & HexString(Ins,2) & HexString(InsParam1,2) & HexString(InsParam2,2) & HexString(InsLen,2) & "8000")
+        Sc.Write("0C 11 15 C4 48 48 FF 56 B9 70 C9 08 00")
+        'Sc.Write("0C " & dly4c & " 15 C4 48 48 FF 56 B9 70 C9 08 00") 'was Sc.Write("0B 15 C4 48 48 FF 56 B9 70 C9 08 00")
+'        Sc.Write("0B 15 C4 48 48 FF 56 B9 70 C9 08 00")
+
+'         5C glitch
+'        Sc.Write("121AC4485C0000048020003F09830B" & HexString(Delay5C,2) & HexString(Delay,2) & "8100")
+
+        Sc.Delay(loopdelay) ' was 80
+        If sc.BytesInBuffer > 0 then
+            Sc.Read(&h02)
+        else
+            Call Sc.ProgressBox ("", 0, 0, "")
+            Call OopsLooped()
+            Sc.Write("A0")
+            Exit Sub
+        end if
+
+        RetValue = Sc.GetByte(&h01)
+        Sc.Read (RetValue)
+    Sc.Write("B0 80")
+        Sc.Write("38F00000000069FFFFFFFF523FFD2284E172400772FF14C5E2AB0100C3DA07F88C010000000000000000000000000000000000200011098000")
+        Sc.Read(&h02)
+
+        If Sc.GetByte(&h0) = &h38 Then
+            If Sc.GetByte(&h01) = &h01 Then
+                Sc.Read(&h01)
+                If Sc.GetByte(&h0) = &h84 Then
+                    GotInput = True
+                    Exit For
+                Else
+                    GotInput = False
+                End If
+            End If
+        End If
+
+        Counter = Counter + 1
+        Attempts = Attempts + 1
+    Next
+    loopdelay = loopdelay + 5
+    sc.print "Trying Loop Delay: " & loopdelay & VbTab & " 4C Delay: " & dly4c & VbCr
+    Loop Until GotInput = True
+
+    Sc.Write("42FF225272FF14E1E2D007E2D029E2D02A77800718753F07D307D807C5E2AB0060C3DA07F8726015D404E700D57640070DD3078ECEFB70012ADA07F700C49E2A00FA00")
+    Sc.Read(&h02)
+    Sc.Print "----------------------------------------------------------------" & vbCr
+    Sc.Print Software & " Bootstrap Loaded using 4C Glitch Dac value : " & DAC4C & VbTab & " 4C Delay: " & dly4c & VbCr
+    Sc.Print "----------------------------------------------------------------" & vbCr
+    Call Sc.ProgressBox ("", 0, 0, "")
+    ScriptEnd = Now
+    loopdelay = OldDelay
+  Sc.Write("A0")
+  BootActive = 1
+End Sub
+
+Sub OopsLooped1()
+    Dim ErrorString
+    Sc.Write("A0")              ' Turn the LED off
+    Sc.Write("020200")          ' Shutdown card
+    BootActive = 0
+    ErrorString = "Card is not returning an ATR." &VbCr & "The card may not be fully Inserted" & VbCr &"or the card contacts may be dirty." & VbCr & "If everything is ok then the card is looped"&VbCr& "and you must Unloop the card first !"
+    Sc.MsgBox ErrorString, vbCritical
+End Sub
+
+Sub GetSaveFile()
+Fs.FileClose(InFile)
+Fs.FileClose(OutFile)
+    FileName = Fs.FileSaveDialog(FileFilter, "              Please select a name to save the new bin file as...", "Default.bin")
+    If FileName <> "" Then
+        OutFile = Fs.FileCreate(FileName)
+        HUBinFile = True
+    Else
+         BootActive = 0
+         Sc.Write("A0")              'turn the LED off
+         Sc.Write("020200")          'shut down card
+         Sc.Delay(100)
+         Sc.Read(&h02)
+         HUBinFile = False
+    End If
+End Sub
+
+Sub GetWriteFile()
+Fs.FileClose(InFile)
+Fs.FileClose(OutFile)
+    Dim FileSize
+    FileName = Fs.FileOpEndialog(FileFilter, "    Please select a valid HU Eprom (*.bin) file to write to the card", "Default.bin")
+
+    If FileName <> "" Then
+        If Fs.FileExists(FileName) = 0 Then
+            Sc.MsgBox("The file does not exist")
+        Else
+
+            InFile = Fs.FileOpen(FileName, fsoOpenRead)
+        End If
+    End If
+
+    FileSize = Fs.FileSeek(InFile, 0, fsoSEEK_End)
+
+    If FileSize <> "8192" Then
+        Sc.MsgBox("This file is NOT a valid HU bin file" & vbcr & "or the bin file you are trying to open" & vbcr & "is being used by another program")
+        HUBinFile = False
+        FileName = ""
+        Call ShutDownCard()
+        Exit Sub
+    Else
+        HUBinFile = True
+    End If
+End Sub ' End Getfile
+
+Sub WDTMR()
+    Dim RetValue
+    Sc.Write("05150E108000")'SET WDTMR
+    Sc.Delay(100)
+    Sc.Read(&h02)
+    RetValue = Sc.GetByte(&h01)
+    Sc.Read(RetValue)
+End sub
+
+Sub IsCardPresent()
+    Dim RetValue
+    Dim GotInput
+
+
+Do
+  Sc.Write("A0")                ' turn the LED off
+  Sc.Write("80")                'Is card present?
+  Sc.Delay(100)
+  If Sc.BytesInBuffer > 0 then
+  Sc.Read(&h01)
+  RetValue = Sc.GetByte(0)
+  end if
+
+  If RetValue = &h0 then
+    Call Sc.ProgressBox ("No Card Detected!" & VbCr & "Please insert your card.....", 1, 999, "StarGlitch")
+    GotInput = False
+  Else
+    If RetValue = &hFF then
+      GotInput = True
+    else
+      If RetValue <> &h0 or RetValue <> &hFF then
+      Sc.Write("A0")                ' turn the LED off
+      Sc.Write("020200")            ' Shutdown card
+      BootActive = 0
+      Sc.Delay(100)
+        If Sc.BytesInBuffer > 1 then
+        Sc.Read(&h02)
+        GotInput = False
+        else
+        GotInput = False
+        end if
+      end if
+    End if
+  End if
+Loop Until GotInput = True
+Call Sc.ProgressBox ("", 0, 0, "")
+end sub
+
+Function HexString(Number,Length)
+    ' This function takes 2 arguments, a number and a length.  It converts the decimal
+    ' number given by the first argument to a Hexidecimal string with its length
+    ' equal to the number of digits given by the second argument
+    Dim RetValue
+    Dim CurLen
+    RetValue=Hex(Number)
+    CurLen=Len(RetValue)
+    If CurLen<Length Then
+        RetValue=String(Length-CurLen,"0") & RetValue
+    End If
+    HexString=RetValue
+End Function
+
+Function Hex2Dec(HexNumber)
+    ' This function takes 1 argument, a string containing a hex value of any digit length
+    ' and returns the decimal equivalent
+    Dim DecimalValue
+    Dim DigitCount
+    Dim Digit
+    Dim HexDigit
+
+    HexNumber = Replace(UCase(HexNumber), " ", "")
+    DigitCount = Len(HexNumber)
+
+    For Digit = 1 To DigitCount
+
+        HexDigit = Mid(HexNumber, Digit, 1)
+        If Asc(HexDigit) < 58 Then
+            DecimalValue = HexDigit * 16 ^ (DigitCount - Digit)
+        Else
+            DecimalValue = (Asc(HexDigit) - 55) * 16 ^ (DigitCount - Digit)
+        End If
+        Hex2Dec = Hex2Dec + DecimalValue
+    Next
+
+End Function
+
+Function GetATR ()
+verbose = 0
+    Dim temp
+    Call Sc.ProgressBox(0,0,0,0)
+    Sc.Write("06100E10019300")
+    Sc.Delay(300)
+    Sc.Read(&h02)
+    temp = Sc.GetByte(&h01)
+    Sc.Read (temp)
+
+    if(temp <> 20) then
+        GetATR = False
+    else
+        GetATR = True
+    End if
+
+End Function
+
+Sub RndGr()
+
+Dim g1,g2,g3,g4,g5,g6
+Dim dly,v
+Randomize TIMER
+sc.verbose = 0
+sc.print "~~~Scrambling~~~"
+  for v = 1 to 800
+    g1 = INT(RND * &hFF)
+    g2 = INT(RND * &hFF)
+    g3 = INT(RND * &hFF)
+    g4 = INT(RND * &hFF)
+    g5 = INT(RND * &hFF)
+    g6 = INT(RND * &h4F) + &h80
+    dly= INT(RND * &h200)
+    sc.write("B0" & HexString(g6,2))
+    sc.write("111f0120" & HexString(dly,4) & "0c" & HexString(g1,2) & "0c" & HexString(g2,2) & "0a" & "0c" & HexString(g3,2) & "0c" & HexString(g4,2) & "0c" & HexString(g5,2) & "00")
+    sc.read(2)
+  next
+End Sub
+
+Sub OopsLooped()
+Sc.MsgBox("Card is not returning an ATR." &VbCr & "The card may not be fully Inserted" & VbCr &" or the card contacts may be dirty." & VbCr & "If everything is ok then the card is looped"&VbCr& "You must Unloop the card before using this option ")
+Call UnloopBootCard("Write")
+End Sub
+
+Function ShowAtr()
+
+    Dim cnt,tmp,b,Msg
+
+    Msg="Booting"
+    tmp=""
+
+    sc.write("0610010e109300")
+
+    if Sc.Read(&h02) > 1 then
+        cnt = sc.getbyte(1)
+    else
+        cnt = 0
+    End if
+    tmp="Card Successfully Booted "+VbCr+"ATR Returned:"+VbCr
+    if cnt > 0 then
+        cnt = sc.read(cnt)
+
+    for b = 0 to cnt -1
+      tmp=tmp & HexString(sc.getbyte(b),2) & " "
+    next
+      sc.print VbCr & tmp & VbCr
+      cnt  = Sc.ButtonBox(tmp, 0, Msg, "Ok")
+    else
+    tmp=""
+    tmp=tmp+"Card did not return an ATR"+VbCr+"Try to unloop the card again"+VbCr
+    tmp=tmp+"This happens sometimes when the card"+VbCr
+    tmp=tmp+"doesn't take the eeprom write"
+    cnt = Sc.ButtonBox(tmp, 0,Msg , "Ok")
+
+    End if
+
+End Function
+
+Sub ProgUpdate(pg,atrlock)
+    Dim mtries
+    Dim i
+    Dim Msg
+    Dim ElapTime
+    Msg="Elapsed Time: " + FormatNumber((CDbl(Now) - CDbl(ScriptStart)) * 24 * 60, 2, True, True, True) + " min." & VbCr & "Glitching for ATR..." & VbCr
+    if atrlock = 1 Then
+      Msg="Elapsed Time: " + FormatNumber((CDbl(Now) - CDbl(ScriptStart)) * 24 * 60, 2, True, True, True) + " min." & VbCr & "ATR Locked!  Locking D1,5,6,7,8" & "  Trying for Bootstrap..."
+      Msg=Msg+VbCr & ATR
+    End if
+
+    Call Sc.ProgressBox(Msg,pg,33,"StarGlitch")
+
+End Sub
+Function Chk4Card()
+
+    Dim tmp
+    sc.write("80")
+    sc.delay(10)
+  if sc.read(1) = 1 then
+    tmp=sc.getbyte(0)
+    If tmp = &h0 then
+        Chk4Card=0
+        sc.write("A0")
+        Call Sc.ProgressBox(0,0,0,0)
+        sc.MsgBox("Card Removed. Please Insert Card!")
+    else
+        Chk4Card=1
+    End if
+  End if
+
+End Function
+
+Function ChipVer()
+
+    ChipVer = 1
+
+    sc.write("90")
+    delay(80)
+
+    if sc.read(4) <> 4 then
+        ChipVer = 0
+        Exit Function
+     End if
+
+    if getbyte(0) <> &h55 then ChipVer = 0
+    if getbyte(1) <> &h4c then ChipVer = 0
+    if getbyte(2) <> &h34 then ChipVer = 0
+    if getbyte(3) <> &h53 then ChipVer = 0
+
+End Function
+
+
+Function HexToDec(HexNumber)
+
+    ' This function takes a string as input, assuming it to be a Hexidecimal string,
+    ' and converts it to a decimal number.
+
+    HexNumber=Replace(UCase(HexNumber)," ","")
+    HexToDec=CLng("&H"+HexNumber)
+
+End Function
+
+Sub Card_Reset()
+    Dim RetValue
+    Sc.Write("A0")     ' Turn the LED off if it is on
+    Sc.Write("020200") ' Power down the card
+    BootActive = 0
+    Sc.Delay(300)     ' Wait about 1 second
+    Call Sc.Reset()    ' Power up the card
+    RetValue=Sc.Flush()  ' Flush the receive buffer
+End Sub
+
+Function ReadInfo()
+
+    Dim CAMIDHex
+    Dim CAMIDDec
+    Dim USWHex
+    Dim USWDec
+    Dim DSWHex
+    Dim DSWDec
+    Dim GuideHex
+    Dim GuideDec
+    Dim TimeHex
+    Dim TimeDec
+    Dim RatingHex
+    Dim RatingDec
+    Dim infobox
+    Dim actyear
+    Dim actmonth
+    Dim ActDateHex
+    Dim ActDateDec
+    Dim PPVLimitHex
+    Dim PPVLimitDec
+    Dim SpentHex
+    Dim SpentDec
+    Dim Fuse
+    Dim IRDHex
+    Dim IRDDec
+    Dim RetValue
+
+   if ReceiveATR() = 0 Then
+   Call Sc.Msgbox ("Error, Card has returned a partial ATR or NO Atr!")
+   Exit Function
+    End if
+
+    Sc.Write("0B 1A 0E10 C4 48 2A 00 00 80 BF 00")
+    Sc.Delay(100)
+    Sc.Read(&h02)
+       RetValue = Sc.GetByte(&h01)
+       Sc.Read (RetValue)
+
+    USWHex = HexString(GetByte(29), 2) & HexString(GetByte(30), 2)
+
+    USWDec = Hex2Dec(USWHex)
+        if len(USWDec) < 4 then
+           USWDec = "000" & USWDec
+        end if
+
+    DSWHex = HexString(GetByte(33), 2) & HexString(GetByte(34), 2)
+
+    DSWDec = Hex2Dec(DSWHex)
+        if len(DSWDec) < 4 then
+           DSWDec = "000" & DSWDec
+        end if
+
+    RatingHex = HexString(GetByte(11), 2)
+    RatingDec = Hex2Dec(RatingHex)
+        if len(RatingDec) = 1 then
+            RatingDec = "0" & RatingDec
+        end if
+
+
+    SpendingLimitHex = HexString(GetByte(12), 2) & HexString(GetByte(13), 2)
+
+'     sc.print VbCr & "Spending Limit Hex " & SpendingLimitHex & VbCr
+    SpendingLimitDec = "$" & int(Hex2Dec(SpendingLimitHex)/100)
+    ActDateHex = HexString(GetByte(14), 2) & HexString(GetByte(15), 2)
+    if ActDateHex = "0000" then
+        ActDateDec = "Not Active"
+    else
+    ActDateHex = HexString(GetByte(14), 2) & HexString(GetByte(15), 2)
+    ActYear = 2000 + left(((GetByte(14)-95) / 12 * 100),1)
+    ActMonth = round((right(int((((GetByte(14) - 95)/12))*100),2)/100)*12)
+    ActDateDec = ActMonth & "." & GetByte(15) & "." & ActYear
+
+    end if
+
+    Fuse = HexString(GetByte(1), 2) & hexstring(GetByte(1) xor &hFF,2)
+
+    IRDHex = Hexstring(GetByte(21) xor GetByte(25),2) & Hexstring(GetByte(22) xor GetByte(26),2) & Hexstring(GetByte(23) xor GetByte(27),2) & Hexstring(GetByte(24) xor GetByte(28),2)
+        if len(IRDHex) <= 4 then
+            IRDHex = "0000" & IRDHex
+        end if
+
+    IRDDec = Hex2Dec(IRDHex)
+        if IRDDec <= 1 then
+            IRDDec = "0000000" & IRDDec
+        end if
+
+    Sc.Write("02BF00")
+    Sc.Delay(100)
+    Sc.Read(&h02)
+            RetValue = Sc.GetByte(&h01)
+            Sc.Read (RetValue)
+
+    PPVLimitHex = HexString(Sc.GetByte(23), 2) & HexString(Sc.GetByte(24), 2)
+    PPVLimitDec = "$" & int(Hex2Dec(PPVLimitHex)/100)
+    SpentHex = HexString(Sc.GetByte(21), 2) & HexString(Sc.GetByte(22), 2)
+    SpentDec = "$" & int(Hex2Dec(SpentHex)/100)
+
+    Sc.Write("028200")
+    Sc.Delay(100)
+    Sc.Read(&h02)
+            RetValue = Sc.GetByte(&h01)
+            Sc.Read (RetValue)
+
+    Sc.Write("08C448580000179B00")
+    Sc.Delay(100)
+    Sc.Read(&h02)
+            RetValue = Sc.GetByte(&h01)
+            Sc.Read (RetValue)
+
+    CAMIDHex = HexString(GetByte(2), 2) & HexString(GetByte(3), 2) & HexString(GetByte(4), 2) & HexString(GetByte(5), 2)
+    CAMIDDec = Hex2Dec(CAMIDHex) & "x"
+
+    GuideHex = HexString(Sc.GetByte(13), 2)
+    GuideDec = Hex2Dec(GuideHex)
+        if GuideDec = 0 then
+            GuideDec = "00"
+        end if
+    TimeHex = HexString(Sc.GetByte(11), 2)
+    TimeDec = Hex2Dec(TimeHex)
+
+    ' Print all info here
+
+    infobox = "ATR  : " & ATR & vbCrLf & vbcrlf
+    infobox = infobox & "Card Information"  & vbtab & vbtab & "Hex" & vbtab & vbtab &"Decimal" & vbCr
+    infobox = infobox & "------------------------------------------------------------------------------------" & vbCr
+    infobox = infobox & "Card ID(CAM)" & vbtab & vbtab & CAMIDHex & vbtab & CAMIDDec & vbCr
+    infobox = infobox & "IRD ID"  & vbtab & vbtab & vbtab & IRDHex & vbtab & IRDDec & vbCr
+    infobox = infobox & "Fuse Byte" & vbtab & vbtab & vbtab & Fuse & vbtab & vbtab & Hex2Dec(Fuse) & vbCr
+    infobox = infobox & "Guide Byte"  & vbtab & vbtab & GuideHex & vbtab & vbtab & GuideDec & vbCr
+    infobox = infobox & "Time Zone"  & vbtab & vbtab & TimeHex & vbtab & vbtab & Hex2Dec(TimeHex) & vbCr
+    infobox = infobox & "Rating"  & vbtab & vbtab & vbtab & RatingHex & vbtab & vbtab & RatingDec & vbCr
+    infobox = infobox & "USW"  & vbtab & vbtab & vbtab & USWHex & vbtab & vbtab & USWDec & vbCr
+    infobox = infobox & "DSW"  & vbtab & vbtab & vbtab & DSWHex & vbtab & vbtab & DSWDec & vbCr
+    infobox = infobox & "Activation Date"  & vbtab & vbtab & ActDateHex & vbtab & vbtab & ActDateDec & vbCr
+    infobox = infobox & "PPV Spending Limit"  & vbtab & vbtab & PPVLimitHex & vbtab & vbtab & PPVLimitDec & vbCr
+    infobox = infobox & "Amount Purchased"  & vbtab & vbtab & SpentHex & vbtab & vbtab & SpentDec & vbCr
+    infobox = infobox & "User Spending Limit"  & vbtab & vbtab & SpendingLimitHex & vbtab & vbtab & SpendingLimitDec & vbCr
+    infobox = infobox & "-------------------------------------------------------------------------------" & vbCrLf
+    Call Sc.msgbox (infobox)
+    ReadInfo = 1
+End Function
+
+Function ReceiveATR()
+Dim i
+Dim RetValue
+
+    Sc.Write("06100E10019300")                        ' this command receives the ATR of an HU card
+    Sc.Delay(100)
+    If sc.BytesInBuffer > 0 then
+        Sc.Read(&h02)
+    else
+        Call Sc.ProgressBox ("", 0, 0, "")
+        Call OopsLooped()
+        Exit Function
+    end if
+'    Sc.Read(&h02)                                     ' see if command was accepted
+    RetValue = Sc.GetByte(&h01)
+    Sc.Read (RetValue)                                 ' read the 20 bytes
+ATR = ""
+    For i = 0 to RetValue -1
+        ' sc.delay(20)
+        ATR = ATR &  HexString(Sc.GetByte(i), 2) & " " ' 20 bytes of ATR
+
+    Next
+
+    If(RetValue < 20) Then
+        ReceiveATR = 0
+    Else
+        ReceiveATR = 1
+    End If
+
+End Function
+
+Sub ReadCard()
+    Dim EEPROM
+    Dim TByte
+    Dim Address
+
+    EEPROM = 0
+    Address = 8192   ' For EEPROM Read
+    'Address = 49152 ' For ROM Read
+
+    Sc.Write("A2")
+
+    Call ExtractCardInfo()
+    Call WriteViaLoader("24A4","00000000","E")    ' Clear IRD
+    Call WriteViaLoader("2460","00000000","E")    ' Clear IRD
+
+    For EEPROM = 0 to 128    ' 128 for EEPROM, 256 for ROM
+        Sc.Write("06C23F" & HexString(Address,4) & "BF00")
+        Sc.Delay(50)
+        Sc.Read(&h02)
+        Sc.Read (&h40)
+
+        Call Sc.ProgressBox ("Reading EEPROM Memory...", EEPROM, 128, "StarGlitch") ' For EEPROM Read
+        'Call Sc.ProgressBox ("Reading ROM Memory...", EEPROM, 256, "StarGlitch") ' For ROM Read
+Do
+
+Call WDTMR()
+
+Sc.Write("06C23F" & HexString(Address,4) & "BF00")
+'Sc.Delay(100)
+Sc.Read(&h02)
+        'RetValue = Sc.GetByte(&h01)
+        Sc.Read (&h40)
+Call Sc.ProgressBox ("Reading EPROM memory...", EEPROM, 128, "StarGlitch") ' For EPROM Read
+'Call Sc.ProgressBox ("Reading ROM memory...", EEPROM, 256, "StarGlitch") ' For ROM read
+EEPROM = EEPROM + 1
+Address = Address + 64
+TByte = ""
+For TByte = 0 to 63
+            call Fs.FilePutc(OutFile, Sc.GetByte(TByte))
+            next
+loop until EEPROM = 128 ' For EPROM Read
+'loop until EEPROM = 256 ' For ROM read
+Fs.FileClose(OutFile)
+Next
+Call Sc.ProgressBox ("", 0, 0, "")
+sc.msgbox ("File saved as " & FileName)
+sc.print "Read Sucessful!" & VbCr & "File saved as " & FileName & VbCr
+End Sub
+
+Sub WriteCard(Chunk)
+
+    Dim EEPROM
+    Dim TByte
+    Dim Address
+    Dim EEPROMBytes
+    Dim Multiplier
+
+    Address = 8192
+
+    If Chunk = 64 Then
+        Multiplier = 128
+    Else
+        Multiplier = 256
+    End If
+
+    Sc.Write("A1")
+
+    Call Fs.FileSeek(InFile, 0, fsoSEEK_SET)
+
+    Call WDTMR()
+
+    For EEPROM = 1 to Multiplier
+        EEPROMBytes = ""
+        For TByte = 1 to Chunk
+            EEPROMBytes = EEPROMBytes & HexString(Fs.FileGetc(InFile), 2)
+        Next
+
+        If Chunk = 64 Then
+            Sc.Write("49C2BF" & HexString(Address,4) & "FF" & EEPROMBytes & "0EFF8000")
+
+            Sc.Read(&h03)
+        Else
+            Sc.Write("28E29F" & HexString(Address,4) & EEPROMBytes & "0EFF8000")
+
+            Sc.Read(&h03)
+        End If
+
+'        Call Sc.ProgressBox ("Writing EEPROM Memory...", EEPROM, Multiplier, "  Writing to card...")
+        Call Sc.ProgressBox ("Writing EEPROM memory..." & vbcr & HexString(Address,4) & ":  " & vbtab & EEPROMBytes , EEPROM, 255, "StarGlitch")
+        Address = Address + Chunk
+    Next
+
+    Fs.FileClose(InFile)
+    Sc.Print VbCr & "File Written to Card :   " & FileName & VbCr
+    Call Card_Reset()
+
+    Call Sc.ProgressBox ("", 0, 0, "")
+
+End Sub
+
+Sub WriteViaLoader(address,data,options)
+
+    ' Write up to 32 bytes at a time
+
+    Dim dLen
+    Dim tlen
+    Dim parm1
+    Dim parm2
+    Dim i,t
+    Dim datalen
+    Dim addresslow
+    Dim tmp
+    Dim Xored
+    Dim datarray(31)
+    Dim datalength
+
+    dLen = Len(data)
+    dLen = dLen / 2
+    tLen = Len(data)
+    tLen = tlen + 16
+    tLen = tlen / 2
+    tLen = HexString(tlen,2)
+    parm1 = Hex(dLen + &hC2)
+    parm2 = Hex(dLen + &h7F)
+
+    If Ucase(options) = "E" Then
+
+        'Convert and Split up data String to an array
+
+        t = 0
+        For i = 1 To Len(data) Step 2
+            tmp = Mid(data, i, 2)
+            datarray(t) = (HexToDec(tmp))
+            t = (t + 1)
+        Next
+
+        addresslow = HexToDec(Mid(address, 3, 2))     'Get lower byte for offset
+        addresslow = (addresslow And &h7)             'Strip bits for offset 0-7
+
+        If UBound(datarray) > 32 Then
+            Exit Sub
+        End If
+
+        datalength = (Len(data) / 2)
+
+        'Encrypt
+        t = 0
+        For i = addresslow To datalength + addresslow - 1
+                Xored = Xored & HexString(datarray(t) Xor HexToDec(XoredByte(i)), 2)
+            t = (t + 1)
+        Next
+
+        data = Xored
+    End if
+
+    Sc.Write(tLen & " " & parm1 & " " & parm2 & " " & address & " " & data & " " & "0EFF8000")
+    Sc.Read(&h03)
+
+End Sub
+
+Sub ExtractCardInfo()
+
+    Dim RetValue
+    Dim XByte(15)
+
+    Call WDTMR()
+    Sc.Write("06C20724C08800")
+    Sc.Read(&h02)
+        RetValue = Sc.GetByte(&h01)
+        Sc.Read(RetValue)
+
+    XByte(0) = Sc.GetByte(0)
+    XByte(1) = Sc.GetByte(1)
+    XByte(2) = Sc.GetByte(2)
+    XByte(3) = Sc.GetByte(3)
+    XByte(4) = Sc.GetByte(4)
+    XByte(5) = Sc.GetByte(5)
+    XByte(6) = Sc.GetByte(6)
+    XByte(7) = Sc.GetByte(7)
+
+    Sc.Write("06C20726588800")
+    Sc.Read(&h02)
+        RetValue = Sc.GetByte(&h01)
+        Sc.Read(RetValue)
+
+    XByte(8) = Sc.GetByte(0)
+    XByte(9) = Sc.GetByte(1)
+    XByte(10) = Sc.GetByte(2)
+    XByte(11) = Sc.GetByte(3)
+    XByte(12) = Sc.GetByte(4)
+    XByte(13) = Sc.GetByte(5)
+    XByte(14) = Sc.GetByte(6)
+    XByte(15) = Sc.GetByte(7)
+
+    Sc.Write("06C20B2AE48C00")
+    Sc.Read(&h02)
+        RetValue = Sc.GetByte(&h01)
+        Sc.Read(RetValue)
+
+    Key12Byte(0)  = Sc.GetByte(&h0)
+    Key12Byte(1)  = Sc.GetByte(&h01)
+    Key12Byte(2)  = Sc.GetByte(&h02)
+    Key12Byte(3)  = Sc.GetByte(&h03)
+    Key12Byte(4)  = Sc.GetByte(&h04)
+    Key12Byte(5)  = Sc.GetByte(&h05)
+    Key12Byte(6)  = Sc.GetByte(&h06)
+    Key12Byte(7)  = Sc.GetByte(&h07)
+    Key12Byte(8)  = Sc.GetByte(&h08)
+    Key12Byte(9)  = Sc.GetByte(&h09)
+    Key12Byte(10) = Sc.GetByte(&h0A)
+    Key12Byte(11) = Sc.GetByte(&h0B)
+
+    XORedByte(0)  = HexString(XByte(0) XOR XByte(8), 2)
+    XORedByte(1)  = HexString(XByte(1) XOR XByte(9), 2)
+    XORedByte(2)  = HexString(XByte(2) XOR XByte(10), 2)
+    XORedByte(3)  = HexString(XByte(3) XOR XByte(11), 2)
+    XORedByte(4)  = HexString(XByte(4) XOR XByte(12), 2)
+    XORedByte(5)  = HexString(XByte(5) XOR XByte(13), 2)
+    XORedByte(6)  = HexString(XByte(6) XOR XByte(14), 2)
+    XORedByte(7)  = HexString(XByte(7) XOR XByte(15), 2)
+    XoredByte(8)  = XoredByte(0)
+    XoredByte(9)  = XoredByte(1)
+    XoredByte(10) = XoredByte(2)
+    XoredByte(11) = XoredByte(3)
+    XoredByte(12) = XoredByte(4)
+    XoredByte(13) = XoredByte(5)
+    XoredByte(14) = XoredByte(6)
+    XoredByte(15) = XoredByte(7)
+    XoredByte(16) = XoredByte(0)
+    XoredByte(17) = XoredByte(1)
+    XoredByte(18) = XoredByte(2)
+    XoredByte(19) = XoredByte(3)
+    XoredByte(20) = XoredByte(4)
+    XoredByte(21) = XoredByte(5)
+    XoredByte(22) = XoredByte(6)
+    XoredByte(23) = XoredByte(7)
+    XoredByte(24) = XoredByte(0)
+    XoredByte(25) = XoredByte(1)
+    XoredByte(26) = XoredByte(2)
+    XoredByte(27) = XoredByte(3)
+    XoredByte(28) = XoredByte(4)
+    XoredByte(29) = XoredByte(5)
+    XoredByte(30) = XoredByte(6)
+    XoredByte(31) = XoredByte(7)
+
+End Sub
+
+Sub FFTheCard()
+Dim FFsel
+Dim FFmsg
+      FFmsg = "Would you like to FF the Card?" & vbCrLf
+      FFmsg = FFmsg & "Some say FFing the Card may Unloop the Card faster..." & vbCrLf
+      FFsel=Sc.ButtonBox(FFmsg,  vbDefaultButton2 + vbQuestion, "                  FFing Option", "Yes", "No")
+      If FFsel = 1 then
+    Dim RetValue
+    Dim I
+    Sc.Write("A1")
+    Sc.Write("B0 80")
+    For I = &hA0 To &hD0
+        Call Sc.ProgressBox("FFing The Card", I-&h9F, &h30, "                                  FF The Card")
+        Sc.Write("0a 01 20 04 94 09 20 00 " + Hex(I) + " 09 00")'
+        Sc.Read(2)
+        RetValue = Sc.GetByte(1)
+        Sc.Delay (100)
+    Next
+    Call Sc.ProgressBox("",0,80,"")
+    Else
+    End If
+Sc.Write("A0")
+End Sub
+
+' ************************************************* Unlooper
+Function UnloopBootCard(Action)
+Dim Progcnt
+Dim OldDelay
+
+'If not Action = "Clean" Then
+   ' MenuPrompt = dacmsg & "We are now ready to boot the card using the advanced methods." & vbCrLf
+    'MenuPrompt = MenuPrompt & "There is a small chance that the Bin on a 3M'd card may become corrupt." & vbCrLf
+'    MenuPrompt = MenuPrompt & "If you are reading a Subbed Card, I recommend you exit and read it using" & vbCrLf
+ '   MenuPrompt = MenuPrompt & "' Read/Write 4C ' first ! Press 'OK' to Continue or Exit to return to main menu." & vbCrLf
+  '  Choice = Sc.ButtonBox(MenuPrompt, VbInformation, "StarGlitch: Ready for Advanced Boot", "OK", "Exit")
+
+   ' Select Case Choice
+    'Case "0"
+     ' Exit Function
+
+'    Case "1"
+ '   Call FFTheCard()
+  '  Sc.Reset
+   ' Case "2"
+    '  Call ShutDownCard()
+     ' Exit Function
+
+'    Case Else
+ '       MenuPrompt = "Invalid Input!" & vbCrLf
+  '  End Select
+    ' **************************************************************
+
+    If Action = "Write" Then
+    Call GetWriteFile()
+    Else
+    Call GetSaveFile()
+    End If
+    If (FileName = "") Then
+      sc.print "No Filename" & VbCr
+      Exit Function
+    End If
+'End If
+    Dim cnt,b, RetValue, boot, kk,katr
+    Dim cter, glcnt, mtries,kp
+    Dim daccnt
+    Dim glsin ' For ATR Lock
+
+    Dim respcnt, bestcnt, thisdac, prefdac, prefdacmsg, preflock, dacmax, BootSel ' Smart Dac Stuff
+
+   RANDOMIZE TIMER
+
+    atrlock=0
+    cter=0
+    glcnt=0
+    mtries = 0
+    sc.verbose = 0
+    daccnt = 0
+    prefdac = 0
+    respcnt = 0
+    bestcnt = 0
+Sc.Print dacmsg & VbCr & "D1-D9 values: " & D1 & ", " & D2 & ", " & D3 & ", " & D4 & ", " & D5 & ", " & D6 & ", " & D7 & ", " & D8 & ", " & D9 & VbCr
+' Sc.Print "================================================================" & VbCr
+
+bestcnt = 0
+respcnt = 0
+d0      = 0
+loopdelay = minloopdelay
+thisdac = dacset
+prefdacmsg = "No Preference"
+OldDelay = loopdelay
+' Call RndGr()
+Sc.Write("A1")
+ScriptStart = Now
+Sc.Print "----------------------------------------------------------------" & vbCr
+Sc.Print "Start: " & ScriptStart & vbCr     'main screen
+Sc.Print "----------------------------------------------------------------" & vbCr
+Sc.Print "Glitching"
+Do
+
+gldly = INT(RND * 100) + 80
+' gldly = 80
+If loopdelay > maxloopdelay Then
+  loopdelay = minloopdelay
+End If
+If atrlock > 0 Then  ' We have ATR lock
+  glsin = "+"
+Else
+  glsin = "."
+End If
+
+If (autorot < 1) and (mtries = 300) Then
+  Call RndGr()
+  mtries = 0
+End If
+
+  katr=0
+  mtries = mtries + 1
+'  Sc.ClearOutputWindow
+  Sc.Print glsin
+    daccnt = daccnt + 1
+    If (randac = 1) Then
+'      Sc.Print "Delay used : " & gldly & VbCr
+      Call SetDac()
+'      Sc.Print "D1-D9 values: " & D1 & ", " & D2 & ", " & D3 & ", " & D4 & ", " & D5 & ", " & D6 & ", " & D7 & ", " & D8 & ", " & D9 & VbCr
+    End If
+    boot = 0
+    call ProgUpdate(kp,atrlock)
+    sc.verbose = 0
+    delay(loopdelay)
+    if Chk4Card() = 0 then
+        Boot=0
+        Exit Function
+    End if
+    delay(loopdelay)
+    sc.write("B0" & HexString(D1,02))
+    glttl = glttl + 1
+    Sc.Write("020200")
+    BootActive = 0
+    Sc.Delay(loopdelay)
+    Sc.Read(&h02)
+    sc.write("0f1f0120" & HexString(D5,4) & "0c" & HexString(D7,2) & "20" & HexString(D6,4) & "0d00" & HexString(D8,2) & "0000")
+    Sc.Read(&h02)
+    cter=cter+1
+    cnt=0
+    Sc.Write("028000")
+
+    if Sc.Read(&h02) = 2 then
+         cnt = sc.getbyte(1)
+
+    if cnt = 1 then sc.read(1)
+
+    End if
+
+    if cter > 75 then
+        glcnt = glcnt + 1
+        cter = 0
+        atrlock = 0
+    End if
+
+    if cnt > 0 then
+       kp=kp+1
+'        daccnt = daccnt - .5 ' Getting card response - Stay on this dacset longer !
+        respcnt = respcnt + 1 ' smart dac counter
+        If kp = 1 Then
+          Sc.Print VbCr & "Good, We are getting card responses...." & VbCr & "Glitching"
+        End If
+       if kp >33 then kp = 33
+         for b = 0 to 10      ' 11 cycles
+         Sc.Write("028000")
+
+         if Sc.Read(&h02) = 2 then
+            cnt = sc.getbyte(1)
+         else
+            cnt = 0
+         End if
+
+         if cnt > 0 then
+            cnt = sc.read(cnt)
+            kk=sc.getbyte(0)
+'            sc.print VbCr & "kk is " & kk & VbCr ' Debug
+            if kk = &h38 Then
+               Sc.Write("028000")
+               cnt = 0
+               if Sc.Read(&h02) = 2 then
+                   cnt = sc.getbyte(1)
+                   if(cnt = 0) then exit for
+                   Sc.Read(cnt)
+                      if(sc.getbyte(0)) = &hb0 then
+                         chglch = chglch + 1
+                         d0=d0+1
+                         looppref = 1
+                         katr=1
+                         cter = 0
+                         glcnt = 0
+                         atrlock =1
+                         ' Sc.Print VbCr & "ATR Locked with D1-D9 values: " & D1 & ", " & D2 & ", " & D3 & ", " & D4 & ", " & D5 & ", " & D6 & ", " & D7 & ", " & D8 & ", " & D9 & VbTab & "Glitch Attempt " & glttl & VbCr
+                         exit for
+                       End if
+                    End if
+              End if
+         End if
+      next
+
+    if katr = 1 then
+       sc.write("B0"  & HexString(D4,02))
+       sc.write("071f800d" & HexString(D3,02)& HexString(D2,02)&"0000")
+       if Sc.Read(&h02) > 1 Then
+          respcnt = respcnt + 1 ' smart dac counter
+          cnt = sc.getbyte(1)
+       else
+          cnt = 0
+       End If
+
+       if cnt > 0 then
+          cnt = sc.read(cnt)
+          for b = 0 to cnt - 1
+          next
+
+          Sc.Write("31eeFFFFfed18d52E0FD2266E1B9E17201CF725f0772FF14C5E2AB0100C3DA07F88C0100FFFFFFFFFFFFFFFFFFFFFFFF0000")
+          If Sc.Read(&h02)<2 then Sc.Read(&h02)
+          ' Optional 2 Glitches: Vorlon001 contribution to improve bootstrap versatility
+          'If GlType > 3 Then GlType = 1
+          If GlType = 1 Then
+            ' Glitch Type 1
+            'Sc.Write("11c060200350042001500320" & HexString(D9,04) & "0d010000") ' Default
+            Sc.Write("11c060200340042005590320" & HexString(D9,04) & "0d010000") ' another option
+          ElseIf GlType = 2 Then
+            ' Glitch Type 2
+            Sc.Write("11c060200" & Hexstring (D2,02) & "7042005590320" & HexString(D9,04) & "0d010000")
+          ElseIf GlType = 3 Then
+            ' Glitch Type 3
+            Sc.Write("11c060200" & Hexstring (D2,02) & "0042001500320" & HexString(D9,04) & "0d010000")
+          End If
+          Sc.Read(&h02)
+          for b = 0 to 8
+            Sc.Write("028000")
+            if Sc.Read(&h02) = 2 then
+                cnt = sc.getbyte(1)
+            else
+                cnt = 0
+            End if
+
+          if cnt > 0 then
+             cnt = sc.read(cnt)
+             kk=sc.getbyte(0)
+             if kk = &h66 then
+                Sc.Write("028000")
+                cnt = 0
+                if Sc.Read(&h02) = 2 Then
+                   cnt = sc.getbyte(1)
+                   if(cnt = 0) then exit for
+                      Sc.Read(cnt)
+                      if(sc.getbyte(0)) = &h99 then
+                         boot=1
+                         sc.print VbCr & VbCr & Software & " Bootloader installed After " & d0 & " attempts " & dacmsg & VbCr
+                         Sc.Print "Total # of glitches applied to card " & glttl & VbCr
+                         Sc.Print "D1 - D9 values used: " & D1 & ", " & D2 & ", " & D3 & ", " & D4 & ", " & D5 & ", " & D6 & ", " & D7 & ", " & D8 & ", " & D9 & VbCr & "Loop Delay: " & loopdelay & VbCr & "Glitch Type " & GlType & VbCr
+                         ScriptEnd = Now
+                         Sc.Print "----------------------------------------------------------------" & vbCr
+                         Sc.Print "End: " & ScriptEnd & vbCr     'main screen
+                         Sc.Print "Elapsed time:  " + FormatNumber((CDbl(ScriptEnd) - CDbl(ScriptStart)) * 24 * 60, 2, True, True, True) & " minutes" & vbCr
+                         Sc.Print "----------------------------------------------------------------" & vbCr
+                         exit for
+                      End if
+                    End if
+                 End if
+             else
+                exit for
+          End if
+         Next
+         If (atrlock = 1) and (mtries > 200) Then
+            GlRot = 1
+            sc.print "Glitch Type: " & GlType & VbCr
+         End If
+         If GlRot = 1 Then
+            GlType = GlType + 1
+            If GlType > 3 Then GlType = 1
+         End If
+        if boot = 1 then
+
+           Sc.Write("021500")
+           Sc.Read(2)
+           Sc.Write("42FF225272FF14E1E2D007E2D029E2D02A77800716753F07D307F75011E29B2A70012ADA07F78E013A00D7D307D8078ECEFBD40770012ADA07F300C6F76211F7631100")
+           Sc.Read(2)
+           Sc.Write("21DE8E0149F76011F76111881c931270FF1203FBF70011728512DA12FDF70011F900")
+           Sc.Read(2)
+           boot = 1
+            If Action = "Write" Then
+               If (HUBinFile) and (FileName <> "") Then
+                Sc.Write("A1")
+                CAll WriteCard(32)
+                Sc.Write("A0")
+               Else
+                Exit Function
+               End If
+            End If
+            If Action = "Clean" Then
+              Sc.Write("A1")
+              Call CleanCard("short")
+              Sc.Write("A0")
+            End If
+            If Action = "Read" Then
+              Sc.Write("A1")
+              Call ReadCard()
+              Sc.Write("A0")
+            End If
+           Exit Function
+         End if
+       End if
+     End if
+   else
+    kp=kp-1
+    if kp<1 then kp=1
+   End if
+If (preflock < 1) and (glttl < 80) Then
+  dacmax = 9
+Else
+  dacmax = 29
+End If
+  ' *******************  Auto Rotate   **********************
+    If (mtries > dacmax) and (daccnt > dacmax) and (autorot = 1) Then
+  ' ********************   Smart Dac  ***********************
+      sc.print " " & respcnt & " responses" & VbCr
+      If (preflock < 1) Then ' New Dac Set No preflock
+        If respcnt > bestcnt Then ' compare finished dacset with best count
+          bestcnt = respcnt
+          prefdac = dacset
+          prefdacmsg = dacmsg
+          sc.print VbCr & "Best DAC is obtained " & prefdacmsg & " with a count of " & bestcnt & " responses!" & VbCr
+        End If
+
+      respcnt = 0 ' reset count
+      thisdac = dacset ' reset thisdac var
+      End If
+
+  ' *******************  end smart dac **********************
+      dacset = dacset + 1
+      If dacset > 8 Then
+        dacset = 1
+'        If mtries > 80 Then
+'           Call RndGr()
+'        End If
+      End If
+      Call SetDac()
+      Sc.Print VbCr & glttl & " Total Glitches - Rotating Dac Sets" & VbCr
+      daccnt = 0
+      Sc.Print dacmsg & VbCr & "D1-D9 values: " & D1 & ", " & D2 & ", " & D3 & ", " & D4 & ", " & D5 & ", " & D6 & ", " & D7 & ", " & D8 & ", " & D9 & VbCr
+
+      sc.print "Loop Delay: " & loopdelay & "  Glitching"
+    End If
+  ' *******************  End Auto Rotate   *******************
+  If (mtries > 200) and (bestcnt > 0) and (autorot > 0) and (prefdac > 0) Then
+    dacset = prefdac
+    autorot = 0
+    mtries = 0
+    Call SetDac()
+    Sc.Print VbCr & VbCr & "Locking on Dacset. " & dacmsg & VbCr
+  End If
+' sc.print vbcr & mtries & vbtab & autorot & vbtab & atrlock & vbcr ' Debug
+  If (mtries > 200) and (autorot = 0) and (auto_unlock = 1) Then
+    autorot = 1
+    dacset = 1
+    prefdac = 0
+    respcnt = 0
+    bestcnt = 0
+    mtries = 0
+    Call SetDac()
+    Sc.Print VbCr & "Unlocking Dacset. " & dacmsg & VbCr
+  End If
+If looppref < 1 Then
+loopdelay = loopdelay + 5
+End If
+loop
+loopdelay = OldDelay
+Sc.Write("A0")
+End Function
+' ********************************************************************** END Unlooper
+
+Sub AreaInfo()
+Dim MsgPromp
+Dim RetVal03
+Dim RetVal04
+
+RetVal03 = 0
+RetVal04 = 2
+
+ZipCode = Default_ZipCode
+Spend_Limit = "$" + Mid(Default_SpendLimit,1,2) + "." + Mid(Default_SpendLimit,3,2)
+local = Default_Local
+GUIDEbyte = Default_GuideByte
+TZone = Default_TimeZone
+rating = Default_Rating
+FuseBytes = Default_FuseByte
+
+'MsgPromp = "Would you Like to Use the Default Area Settings Below?" & VbCr & VbCr
+'MsgPromp = MsgPromp & vbtab & "Zip Code: " & vbtab & ZipCode & VbCr
+'MsgPromp = MsgPromp & vbtab & "Spending Limit:" & vbtab & Spend_Limit & VbCr
+'MsgPromp = MsgPromp & vbtab & "Local Byte: " & vbtab & local & VbCr
+'MsgPromp = MsgPromp & vbtab & "Guide Byte: " & vbtab & GUIDEbyte & VbCr
+'MsgPromp = MsgPromp & vbtab & "Time Zone: " & vbtab & TZone & VbCr
+'MsgPromp = MsgPromp & vbtab & "Rating: " & vbtab & vbtab & rating & VbCr
+'MsgPromp = MsgPromp & vbtab & "Fuse Bytes: " & vbtab & FuseBytes
+'RetVal04=Sc.ButtonBox( MsgPromp & VbCr &"",  vbDefaultButton2 + vbQuestion, " Use Default Area Settings?", "Yes", "No")
+'If RetVal04 = 2 Then ' Edit now
+  ''''''''''''''''''''''''''''''''''''''''''''''''''
+ ' Call GetZipCode()
+  '  IF ZipCode = "none" Then
+   '   Exit Sub
+    'End If
+'  Call ConvertZip()
+ ' Call getlocal() ' Sets Guidebyte also
+  '  If local = "none" Then
+   '  Exit Sub
+    'End If
+'  Call GetTimeZone()
+ '   If TZone = "none" Then
+  '    Exit Sub
+   ' End If
+'  Call SetRating()
+ '   If rating = "none" Then
+  '    Exit Sub
+   ' End If
+'  Call GetFuseBytes()
+ '   If FuseBytes = "none" Then
+  '    Exit Sub
+   ' End If
+    'If BootActive < 1 Then Call LoadBootStrap()
+'    Call ExtractCardInfo()
+ '   Call ChangeAreaSettings() 'added FuseBytes
+'Else
+ ' If RetVal04 = 1 Then ' Keep Default
+          Call ConvertZip() ' Added
+          Call LoadBootStrap()
+          Call ExtractCardInfo()
+          Call ChangeAreaSettings() 'added FuseBytes
+'  End If
+'End If
+End Sub
+''''''''''''''''''''''''''''''''''''''''''
+Function GetZipCode()
+    Dim InputValid1
+    Dim PromptString
+    Dim Abort
+
+    InputValid1 = False
+    PromptString = ""
+    Do
+        PromptString = PromptString & "Please enter your five digit zip code:"
+    ZipCode = Sc.InputBox(PromptString, "Enter Zip Code", Default_ZipCode)
+
+    If IsNumeric(ZipCode) And Len(Zipcode) = 5 Then 'If Zipcode is Numeric and length is equal to 5 Then
+        GetZipCode = ZipCode
+        InputValid1 = True
+    ElseIf ZipCode = "" Then
+                ZipCode = "none" 'ZipCode = Default_ZipCode
+                Exit Function
+        'End If
+            PromptString = ""
+    Else
+            PromptString = "Invalid input!" & vbCrLf & vbCrLf
+    End If
+    Loop Until InputValid1 = True
+
+End Function
+
+Function ConvertZip()
+Dim ZipLoop
+Dim ZPcounter
+
+ZPtemp1 = 0
+ZPtemp2 = 0
+ZPtemp3 = 0
+ZPtemp4 = 0
+ZPtemp5 = 0
+ZipLoop = True
+ZPcounter = 0 'reset ZPcounter to Zero every time this function called
+    'Convert ZipCode to 3x3x3x3x3x
+    ZPtemp = ZipCode / 10000
+Do
+    IF ZPcounter = 1 Then
+    ZPtemp1 = ZPtempx
+    ZPtemp = ZPtemp * 10
+    End If
+    IF ZPcounter = 2 Then
+    ZPtemp2 = ZPtempx
+    ZPtemp = ZPtemp * 10
+    End If
+    IF ZPcounter = 3 Then
+    ZPtemp3 = ZPtempx
+    ZPtemp = ZPtemp * 10
+    End If
+    IF ZPcounter = 4 Then
+    ZPtemp4 = ZPtempx
+    ZPtemp = ZPtemp * 10
+    End If
+    IF ZPcounter = 5 Then
+    ZPtemp5 = ZPtempx
+    ZPCode = ZPtemp1 & ZPtemp2 & ZPtemp3 & ZPtemp4 & ZPtemp5
+    ZipLoop = False 'We now have our Zipcode Bytes End the Loop
+    Exit Function
+    End If
+
+    If ZPtemp > 8.9999 and ZPtemp < 10 Then
+    ZPtempx = 39
+    ZPtemp = ZPtemp - 9
+
+    Else If ZPtemp > 7.9999 and ZPtemp < 9 Then
+    ZPtempx = 38
+    ZPtemp = ZPtemp - 8
+
+    Else If ZPtemp > 6.9999 and ZPtemp < 8 Then
+    ZPtempx = 37
+    ZPtemp = ZPtemp - 7
+
+    Else If ZPtemp > 5.9999 and ZPtemp < 7 Then
+    ZPtempx = 36
+    ZPtemp = ZPtemp - 6
+
+    Else If ZPtemp > 4.9999 and ZPtemp < 6 Then
+    ZPtempx = 35
+    ZPtemp = ZPtemp - 5
+
+    Else If ZPtemp > 3.9999 and ZPtemp < 5 Then
+    ZPtempx = 34
+    ZPtemp = ZPtemp - 4
+
+    Else If ZPtemp > 2.9999 and ZPtemp < 4 Then
+    ZPtempx = 33
+    ZPtemp = ZPtemp - 3
+
+    Else If ZPtemp > 1.9999 and ZPtemp < 3 Then
+    ZPtempx = 32
+    ZPtemp = ZPtemp - 2
+
+    Else If ZPtemp > 0.9999 and ZPtemp < 2 Then
+    ZPtempx = 31
+    ZPtemp = ZPtemp - 1
+
+    Else If ZPtemp =< 0.9999 Then
+    ZPtempx = 30
+    ZPtemp = ZPtemp
+    End IF
+    End IF
+    End IF
+    End IF
+    End IF
+    End IF
+    End IF
+    End IF
+    End IF
+    End IF
+    ZPcounter = ZPcounter + 1
+    Loop Until ZipLoop = False
+
+End Function
+''''''''''''''''''''''''''''''''''''''
+Function getlocal()
+    Dim RetVala2
+    Dim PromptString
+    Dim GotInput
+
+
+    'RetVal = Sc.MsgBox("Would you like to select a locals market?" & vbCrLf & "This is only useful on 5th generation or newer recievers.", vbYesNo + vbQuestion + vbDefaultButton2)
+
+    GotInput = False
+
+    Do
+        PromptString = "Please make a selection from the following list:" & vbCrlf & vbCrlf
+        PromptString = PromptString & "00: No Locals" & vbtab & vbtab & vbtab & "01: Atlanta, GA" & vbtab & vbtab & vbtab & "02: Boston, MA" & vbCrlf
+        PromptString = PromptString & "03: Chicago, IL" & vbtab & vbtab & vbtab & "04: Clevland, OH" & vbtab & vbtab & "05: Dallas, TX" & vbCrlf
+        PromptString = PromptString & "06: Denver, CO" & vbtab & vbtab & vbtab & "07: Detroit, MI" & vbtab & vbtab & vbtab & "08: Houston, TX" & vbCrlf
+        PromptString = PromptString & "09: Los Angeles, CA" & vbtab & vbtab & "0A: Maimi, FL" & vbtab & vbtab & vbtab & "0B: Minneapolis, MN" & vbCrlf
+        PromptString = PromptString & "0C: New York, NY" & vbtab & vbtab & "0D: Orlando, FL" & vbtab & vbtab & vbtab & "0E: Philadelphia, PA" & vbCrlf
+        PromptString = PromptString & "0F: Phoenix, AZ" & vbtab & vbtab & vbtab & "10: Sacramento, CA" & vbtab & vbtab & "11: San Francisco, CA" & vbcrlf
+        PromptString = PromptString & "12: Seattle, WA" & vbtab & vbtab & vbtab & "13: St. Louis, MO" & vbtab & vbtab & "14: Tampa, FL" & vbCrlf
+        PromptString = PromptString & "15: Washington DC" & vbtab & vbtab & "16: Greenville, SC" & vbtab & vbtab & "17: Raleigh, NC" & vbCRlf
+        PromptString = PromptString & "18: Salt Lake City, UT" & vbtab & vbtab & "19: Austin, TX" & vbtab & vbtab & vbtab & "1A: Baltimore, MD" & vbCrlf
+        PromptString = PromptString & "1B: Birmingham, AL" & vbtab & vbtab & "1C: Charlotte, NC" & vbtab & vbtab & "1D: Cincinnati, OH" & vbCrlf
+        PromptString = PromptString & "1E: Columbus, OH" & vbtab & vbtab & "1F: Greensboro, NC" & vbtab & vbtab & "20: Indianapolis, IN" & vbCrlf
+        PromptString = PromptString & "21: Kansas City, MO" & vbtab & vbtab & "22: Memphis, TN" & vbtab & vbtab & "23: Milwaukee, WI" & vbCrlf
+        PromptString = PromptString & "24: Nashville, TN" & vbtab & vbtab & "25: Pittsburgh, PA" & vbtab & vbtab & "26: Portland, OR" & vbCrlf
+        PromptString = PromptString & "27: San Antonio, TX" & vbtab & vbtab & "28: San Diego, CA" & vbtab & vbtab & "29: West Palm Beach, FL" & vbCrlf
+
+        RetVala2 = Sc.InputBox(PromptString, "Select Locals Market", Default_Local)
+
+        If RetVala2 = "" then
+            GotInput = True
+            local = "none"
+            'Sc.Print(vbCrLf & "Cancelled at Local Area selection.")
+            Exit Function
+        End If
+
+        if len(RetVala2) <> 2 then 'If lenth is lessthan or greater than 2 Then...
+            GotInput = false
+            local = "none"
+        else
+          RetVala2 = UCase(RetVala2)
+
+        Select Case left(RetVala2, 1)
+           case "0", "1"
+                Select Case Right(RetVala2, 1)
+                  Case "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "A", "B", "C", "D", "E", "F"
+                    GotInput = true
+                    getlocal = RetVala2
+                    local = getlocal
+                End Select
+            Case "2"
+                Select Case Right(RetVala2, 1)
+                  Case "0", "1", "2", "3", "4", "5", "6", "7", "8", "9"
+                    GotInput = true
+                    getlocal = RetVala2
+                    local = getlocal
+                End Select
+        End Select
+        End If
+    Loop until GotInput = True
+If GETLOCAL = "00" Then GUIDEbyte="FB"
+If GETLOCAL = "01" Then GUIDEbyte="02"
+If GETLOCAL = "02" Then GUIDEbyte="41"
+If GETLOCAL = "03" Then GUIDEbyte="10"
+If GETLOCAL = "04" Then GUIDEbyte="40"
+If GETLOCAL = "05" Then GUIDEbyte="28"
+If GETLOCAL = "06" Then GUIDEbyte="60"
+If GETLOCAL = "07" Then GUIDEbyte="08"
+If GETLOCAL = "08" Then GUIDEbyte="01"
+If GETLOCAL = "09" Then GUIDEbyte="11"
+If GETLOCAL = "0A" Then GUIDEbyte="02"
+If GETLOCAL = "0B" Then GUIDEbyte="28"
+If GETLOCAL = "0C" Then GUIDEbyte="28"
+If GETLOCAL = "0D" Then GUIDEbyte="01"
+If GETLOCAL = "0E" Then GUIDEbyte="60"
+If GETLOCAL = "0F" Then GUIDEbyte="08"
+If GETLOCAL = "10" Then GUIDEbyte="40"
+If GETLOCAL = "11" Then GUIDEbyte="28"
+If GETLOCAL = "12" Then GUIDEbyte="10"
+If GETLOCAL = "13" Then GUIDEbyte="08"
+If GETLOCAL = "14" Then GUIDEbyte="08"
+If GETLOCAL = "15" Then GUIDEbyte="12"
+If GETLOCAL = "16" Then GUIDEbyte="28"
+If GETLOCAL = "17" Then GUIDEbyte="01"
+If GETLOCAL = "18" Then GUIDEbyte="02"
+If GETLOCAL = "19" Then GUIDEbyte="20"
+If GETLOCAL = "1A" Then GUIDEbyte="02"
+If GETLOCAL = "1B" Then GUIDEbyte="01"
+If GETLOCAL = "1C" Then GUIDEbyte="48"
+If GETLOCAL = "1D" Then GUIDEbyte="20"
+If GETLOCAL = "1E" Then GUIDEbyte="28"
+If GETLOCAL = "1F" Then GUIDEbyte="08"
+If GETLOCAL = "20" Then GUIDEbyte="02"
+If GETLOCAL = "21" Then GUIDEbyte="01"
+If GETLOCAL = "22" Then GUIDEbyte="40"
+If GETLOCAL = "23" Then GUIDEbyte="01"
+If GETLOCAL = "24" Then GUIDEbyte="10"
+If GETLOCAL = "25" Then GUIDEbyte="01"
+If GETLOCAL = "26" Then GUIDEbyte="01"
+If GETLOCAL = "27" Then GUIDEbyte="02"
+If GETLOCAL = "28" Then GUIDEbyte="10"
+If GETLOCAL = "29" Then GUIDEbyte="20"
+
+
+End Function
+''''''''''''''''''''''''''''''''''''''
+Function SetRating()
+    Dim RetVal02
+    Dim PromptString
+    Dim GotInput1
+
+
+    'RetVal = Sc.MsgBox("Would you like to select a locals market?" & vbCrLf & "This is only useful on 5th generation or newer recievers.", vbYesNo + vbQuestion + vbDefaultButton2)
+
+    GotInput1 = False
+
+    Do
+        PromptString = "Please make a Rating Limit selection from the following list:" & vbCrlf & vbCrlf
+        PromptString = PromptString & vbtab & vbtab & "00: All Locked" & vbCrlf
+        PromptString = PromptString & vbtab & vbtab & "01: NR"         & vbCrlf
+        PromptString = PromptString & vbtab & vbtab & "02: G"          & vbCrlf
+        PromptString = PromptString & vbtab & vbtab & "04: PG"         & vbCrlf
+        PromptString = PromptString & vbtab & vbtab & "06: PG13"       & vbCrlf
+        PromptString = PromptString & vbtab & vbtab & "07: NR Content" & vbcrlf
+        PromptString = PromptString & vbtab & vbtab & "09: R"          & vbCrlf
+        PromptString = PromptString & vbtab & vbtab & "0B: NR Mature"  & vbCRlf
+        PromptString = PromptString & vbtab & vbtab & "0D: NC17"       & vbCrlf
+
+        RetVal02 = Sc.InputBox(PromptString, "Select Rating Limit", Default_Rating)
+
+        If RetVal02 = "" then
+            GotInput1 = True
+            rating = "none"
+            Exit Function
+        End If
+
+        if len(RetVal02) <> 2 then 'If lenth is less than or greater than 2 Then...
+            GotInput1 = false
+            rating = "none"
+        else
+          RetVal02 = UCase(RetVal02)
+
+        Select Case left(RetVal02, 1)
+           case "0"
+                Select Case Right(RetVal02, 1)
+                  Case "0", "1", "2", "4", "6", "7", "9", "B", "D"
+                    GotInput1 = true
+                    SetRating = RetVal02
+                    rating = SetRating
+                End Select
+            Case "2"
+                Select Case Right(RetVal02, 1)
+                  Case "0", "1", "2", "4", "6", "7", "9", "B", "D"
+                    GotInput1 = true
+                    SetRating = RetVal02
+                    rating = SetRating
+                End Select
+        End Select
+        End If
+    Loop until GotInput1 = True
+
+End Function
+''''''''''''''''''''''''''''''''''''''
+Sub GetFuseBytes()
+    Dim InputValid
+    Dim PromptString
+    Dim Fuse1
+    Dim Fuse2
+
+    PromptString = ""
+    InputValid = False
+    Do
+        PromptString = "Please enter the fuse bytes you wish to use:" & vbCrlf & vbCrlf
+        PromptString = PromptString & vbtab & "20DF: Virgin, unactivated" & vbCrlf
+        PromptString = PromptString & vbtab & "25DA: Activated, married"  & vbCrlf
+        FuseBytes = Sc.InputBox(PromptString, " Change Fuse Bytes", Default_FuseByte)
+
+        If FuseBytes = "" Then
+            FuseBytes = "none"
+            InputValid = True
+            Exit Sub
+        End If
+        PromptString = ""
+        Fuse1 = Mid(FuseBytes,1,2)
+        Fuse2 = Mid(FuseBytes,3,4)
+        If HexString(Hex2Dec(Fuse1) Xor Hex2Dec(Fuse2),2) = "FF" Then
+            InputValid = True
+        Else
+            PromptString = "Invalid Fuse Bytes!" & vbCrLf & vbCrLf
+        End If
+    Loop Until InputValid = True
+End Sub
+''''''''''''''''''''''''''''''''''''''
+Function GetTimeZone()
+  Dim RetVal
+  Dim GotInput
+  Dim PromptString
+  Dim TZT
+  Dim TZ
+  Dim TimeZone
+  'Dim TimeZone
+
+''' Get time zone
+    GotInput = False
+    Do
+        PromptString = "Please select your time zone." & vbCrLf & vbCrLf & "This will determine the correct time on your receiver." & vbCrLf & "If you don't see your option click More..." & vbCrLf
+        RetVal = Sc.ButtonBox(PromptString,, "Select your Time Zone", "Pacific", "Mountain", "Central", "Eastern", "More...")
+
+        Select Case    UCase(RetVal)
+        Case "1"
+            TZ = &h0
+            TimeZone = "Pacific"
+            GotInput = True
+        Case "2"
+            TZ = &h2
+            TimeZone = "Mountain"
+            GotInput = True
+         Case "3"
+            TZ = &h4
+            TimeZone = "Central"
+            GotInput = True
+         Case "4"
+            TZ = &h6
+            TimeZone = "Eastern"
+            GotInput = True
+         Case "5"
+            Do
+               PromptString = "Please select your time zone." & vbCrLf & vbCrLf & "If you don't see your option click Back..." & vbCrLf
+               RetVal = Sc.ButtonBox(PromptString,, "Select your Time Zone", "Atlantic", "NewFoundland", "Back...")
+               Select Case    UCase(RetVal)
+               Case "1"
+                  TZ = &h8
+                  TimeZone = "Atlantic"
+                  GotInput = True
+               Case "2"
+                  TZ = &h9
+                  TimeZone = "NewFoundland"
+                  GotInput = True
+               Case "3"
+                  Exit Do
+               End Select
+            Loop Until GotInput = True
+         Case "0"
+            'RetVal = Sc.MsgBox("Would you like to abort this operation?" & vbCrLf & "(It is safe to do so at this point.)", vbYesNo + vbQuestion, "ABORT?")
+            'If RetVal = vbYes Then
+                'Sc.Print("Cancelled at Time Zone selection." & vbCrLF)
+                GetTimeZone = vbCancel
+                Exit Function
+            'End If
+        End Select
+    Loop Until GotInput = True
+
+    'Get Day light savings Time or Standard Time
+    GotInput = False
+    Do
+        PromptString = "Please select Standard Time or Day Light Savings," & vbCrLf & vbCrLf
+        PromptString = PromptString & "for the " & TimeZone & " Time Zone."
+        RetVal = Sc.ButtonBox(PromptString,, "Select DayLight Savings or Standard Time", "DayLight", "Standard", "Cancel")
+
+        Select Case UCase(RetVal)
+        Case "1"
+            TZT = &hA0
+            TimeZone = TimeZone & "/DayLight Savings"
+            GotInput = True
+        Case "2"
+            TZT = &h20
+            TimeZone = TimeZone & "/Standard"
+            GotInput = True
+        Case "3", ""
+            'RetVal = Sc.MsgBox("Would you like to abort this operation?" & vbCrLf & "(It is safe to do so at this point.)", vbYesNo + vbQuestion, "ABORT?")
+           'If RetVal = vbYes Then
+                'Sc.Print("Cancelled at Time Zone selection." & vbCrLF)
+                GetTimeZone = vbCancel
+                TZone = "none"
+                Exit Function
+            'End If
+        End Select
+    Loop Until GotInput = True
+
+    GetTimeZone = Hex(TZT + TZ)
+    TZone = Hex(TZT + TZ)
+
+End Function
+
+''''''''''''''''''''''''''''''''''''''
+
+Sub ChangeAreaSettings()
+Dim TZone2
+Dim ZipCode2
+Dim local2
+Dim GUIDEbyte2
+Dim rating2
+Dim FuseBytes2
+    TZone2 = TZone
+    ZipCode2 = ZipCode
+    Spend_Limit = "$" + Mid(Default_SpendLimit,1,2) + "." + Mid(Default_SpendLimit,3,2)
+    local2 = local
+    GUIDEbyte2 = GUIDEbyte
+    rating2 = rating
+    FuseBytes2 = FuseBytes
+
+    'Call ExtractCardInfo() 'call before every WriteViaLoader function
+    SpendingLimitHex = HexString(Default_SpendLimit, 4)    ' Assign Spending Limit from User settings
+    Call Sc.ProgressBox ("Changing Area Settings...", 1, 1,"                 Changing Area Settings...")
+    Call WriteViaLoader("2014",FuseBytes,"D")              ' set Fuse Bytes
+    Call WriteViaLoader("240C","00000000","E")             ' Clear Password
+    Call WriteViaLoader("2410","55" & ZPCode & "2020","E") ' Set Zipcode
+    Call WriteViaLoader("2406",SpendingLimitHex,"E")       ' Spending Limit
+    ' sc.print VbCr & "ZPCode is " & ZPCode &VbCr
+    Call WriteViaLoader("2460","00000000" & rating,"E")    ' Clear IRD # From Location 1 and set rating
+    Call WriteViaLoader("24A4","00000000","E")             ' Clear IRD # From Location 1
+    Call WriteViaLoader("24E0",TZone,"E")                  ' Set Time Zone
+    Call WriteViaLoader("2511",local,"E")                  ' Set Local Bytes
+    Call WriteViaLoader("251F",GUIDEbyte,"E")              ' Set Guide Bytes
+    Call WriteViaLoader("2690","0000000000000000","D")     ' Clear card swap key
+
+    Call Sc.ProgressBox ("", 0, 0, "")
+
+    sc.Print(vbCr & "Time Zone     : "& TZone2)
+    sc.Print(vbCr & "Zip Code      : "& ZipCode2)
+    sc.Print(vbCr & "Spending Limit: "& Spend_Limit)
+    sc.Print(vbCr & "Local Byte    : "& local2)
+    sc.Print(vbCr & "Guide Byte    : "& GUIDEbyte2)
+    sc.Print(vbCr & "Fuse  Byte    : "& FuseBytes2)
+    sc.Print(vbCr & "Rating Limit  : "& rating2)
+    sc.Print(vbCr & "Area Settings Change Successfull!")
+    sc.Print(vbCr & "Rating Limit Password has been Cleared!")
+    sc.Print(vbCr & "Card was Unmarried from IRD and password was cleared!" & vbCr)
+
+End Sub
+''''''''''''''''''''''''''''''''''''''''''
+Sub CleanCard()
+
+'Address 201D
+'- 77 for 6B Cards
+'- 74 for 5B Cards
+'- 75 for 4B Cards
+
+    Dim RetVal
+   ' MenuPrompt = "Please Select Cleaning method." & vbCrLf
+'    MenuPrompt = MenuPrompt & "USW 800 will not write to your 12 byte write key (2EEC-2EF7)." & vbCrLf
+ '   MenuPrompt = MenuPrompt & "USW 800 also updates DSW to 6." & vbCrLf
+  '  Choice = Sc.ButtonBox(MenuPrompt, VbInformation, "StarGlitch: Select operation or click X to exit-->", "No Updates", "USW 700", "USW 800")
+
+'    Select Case Choice
+ '   Case "0"
+  '    Exit Sub
+   ' Case "1"
+'    sc.print "Activating to USW 000." & VbCr
+ '     addusw = 0
+  '  Case "2"
+   ' sc.print "Activating to USW 700." & VbCr
+    '  addusw = 7
+'    Case "3"
+'    sc.print "Activating to USW 800." & VbCr
+ '     addusw = 8
+  '  End Select
+
+    Sc.verbose = 0
+
+    Call ExtractCardInfo()
+
+    Call Sc.ProgressBox ("Activating Main Code...", 1, 44,"StarGlitch Activator")
+Call WriteViaLoader("2010","033F040E25DA44318AD3DB647374003A","D")
+Call WriteViaLoader("2020","14012420DE4E659D0351471EDE4E659D","D")
+Call WriteViaLoader("2030","0351471EDE4E659D0351471EDE4E659D","D")
+Call WriteViaLoader("2040","0351471EDE4E659D0351471EDE4E659D","D")
+Call WriteViaLoader("2050","0351471EDE4E659D0351471EDE4E659D","D")
+Call WriteViaLoader("2060","0351471EDE4E659D0351471EDE4E659D","D")
+Call WriteViaLoader("2070","0351471EDE4E659D0351471EDE4E659D","D")
+Call WriteViaLoader("2080","0351471EDE4E659D0351471EDE4E659D","D")
+Call WriteViaLoader("2090","0351471EDE4E659D0351471EDE4E659D","D")
+Call WriteViaLoader("20A0","0351471EDE4E659D0351471EDE4E659D","D")
+Call WriteViaLoader("20B0","0351471EDE4E659D0351471EDE4E659D","D")
+Call WriteViaLoader("20C0","0351471EDE4E659D0351471EDE4E659D","D")
+Call Sc.ProgressBox ("Activating Main Code...", 2, 44,"StarGlitch Activator")
+Call WriteViaLoader("20D0","0351471EDE4E659D0351471EDE4E659D","D")
+Call WriteViaLoader("20E0","0351471EDE4E659D0351471EDE4E659D","D")
+Call WriteViaLoader("20F0","0351471EDE4E659D0351471EDE4E659D","D")
+Call WriteViaLoader("2100","0351471EDE4E560685907926ED64E35A","D")
+Call WriteViaLoader("2110","932B742B5889A1603067C1DDF3E156A1","D")
+Call WriteViaLoader("2120","8596C18FED70E04751A37450588DAF21","D")
+Call WriteViaLoader("2130","301DC3CDB307659D0351471EED2AE14E","D")
+Call WriteViaLoader("2140","51E625945A9AE1B43097C1DDA239659D","D")
+Call WriteViaLoader("2150","0351471EDE4E659D035174695B9434F2","D")
+Call WriteViaLoader("2160","370CC1DDC667659D0351471EDE4E659D","D")
+Call WriteViaLoader("2170","0351746B5B94EEF6306EC2C4E9E0567A","D")
+Call WriteViaLoader("2180","8592BFDDDE4E659D035174DE5B80D1B6","D")
+Call Sc.ProgressBox ("Activating Main Code...", 3, 44,"StarGlitch Activator")
+Call WriteViaLoader("2190","3007C2C4F2CD56DF868BAF2CDE4E659D","D")
+Call WriteViaLoader("21A0","0351471EDE4E659D0351471EDE4E659D","D")
+Call WriteViaLoader("21B0","0351471EDE4E659D0351471EDE4E659D","D")
+Call WriteViaLoader("21C0","0351471EDE4E659D0351471EDE4E659D","D")
+Call WriteViaLoader("21D0","0351471EDE4E659D0351471EDE4E659D","D")
+Call WriteViaLoader("21E0","0351471EDE4E659D0351471EDE4E659D","D")
+Call WriteViaLoader("21F0","0351471EDE4E659D0351471EDE4E659D","D")
+Call WriteViaLoader("2200","0351471EDE4E659D0351471EDE4E659D","D")
+Call WriteViaLoader("2210","0351471EDE4E659D0351471EDE4E659D","D")
+Call WriteViaLoader("2220","0351471EDE4E659D0351471EDE4E659D","D")
+Call WriteViaLoader("2230","0351471EDE4E659D0351471EDE4E659D","D")
+Call WriteViaLoader("2240","0351471EDE4E659D0351471EDE4E659D","D")
+Call Sc.ProgressBox ("Activating Main Code...", 4, 44,"StarGlitch Activator")
+Call WriteViaLoader("2250","0351471EDE4E659D0351471EDE4E659D","D")
+Call WriteViaLoader("2260","0351471EDE4E659D0351471EDE4E659D","D")
+Call WriteViaLoader("2270","0351471EDE4E659D0351471EDE4E659D","D")
+Call WriteViaLoader("2280","0351471EDE4E659D0351471EDE4E659D","D")
+Call WriteViaLoader("2290","0351471EDE4E659D0351471EDE4E659D","D")
+Call WriteViaLoader("22A0","0351471EDE4E659D0351471EDE4E659D","D")
+Call WriteViaLoader("22B0","0351471EDE4E659D0351471EDE4E659D","D")
+Call WriteViaLoader("22C0","0351471EDE4E659D0351471EDE4E659D","D")
+Call WriteViaLoader("22D0","0351471EDE4E659D0351471EDE4E659D","D")
+Call WriteViaLoader("22E0","0351471EDE4E659D0351471EDE4E659D","D")
+Call WriteViaLoader("22F0","03512210E37702270C8EE2B676102805","D")
+Call WriteViaLoader("2300","75FC67D56A8CDCE712608EDB7E7D0029","D")
+Call Sc.ProgressBox ("Activating Main Code...", 5, 44,"StarGlitch Activator")
+Call WriteViaLoader("2310","020B982A30EF1D6102038CD4B5F97D40","D")
+Call WriteViaLoader("2320","BE060375FED28CD15C40010017C5AA00","D")
+Call WriteViaLoader("2330","60AB0101C33D170FF5748028F9880060","D")
+Call WriteViaLoader("2340","3088003B327202068EE5ADF972601588","D")
+Call WriteViaLoader("2350","2ACE2A720204E700098A2ACFB34D0061","D")
+Call WriteViaLoader("2360","02EAF912088E3C96F9C5AA2AF8D024AA","D")
+Call WriteViaLoader("2370","3F5013248E3C96C35D080FEEF98E23CE","D")
+Call WriteViaLoader("2380","8E23CED0298E23CED02A122925E0B2BC","D")
+Call WriteViaLoader("2390","B3D0094229047503295203DF2ADF29CA","D")
+Call WriteViaLoader("23A0","FA74202988290D2C8E23D552089A2A77","D")
+Call WriteViaLoader("23B0","100404982A30EF70012A8E3C96C704ED","D")
+Call WriteViaLoader("23C0","D70904E0D5088827052A8ED1B0F98ED2","D")
+Call Sc.ProgressBox ("Activating Main Code...", 6, 44,"StarGlitch Activator")
+Call WriteViaLoader("23D0","1D8E3C96F9C58E23F5F4CC2E2A0F0C8E","D")
+Call WriteViaLoader("23E0","23F5F4CC2A2E0F07223FE6D32CD32CC3","D")
+Call WriteViaLoader("23F0","5D0C0FE2F99A2CD02DD32C9A2CD02ED3","D")
+Call WriteViaLoader("2400","2CF9FFFFFFFFC5B581520329DE4E659D","D")
+Call WriteViaLoader("2410","56627F2FEC7A45BD03504767DE4F72EC","D")
+Call WriteViaLoader("2420","00B8471EA16F659D0351471FDE4E659D","D")
+Call WriteViaLoader("2430","0351471EDE4E659D0350471EDE4E659D","D")
+Call WriteViaLoader("2440","0351471EDE4E659C0351471EDE4E659D","D")
+Call WriteViaLoader("2450","00ABC7E9DDB7659D0351471FDE9C7D9B","D")
+Call WriteViaLoader("2460","0351471EDE4E65001BD97137AE019A9D","D")
+Call WriteViaLoader("2470","1BD97137AE019A9D1B513627F9019A9D","D")
+Call WriteViaLoader("2480","1B513627F9019A9D0253471EDF4C659D","D")
+Call Sc.ProgressBox ("Activating Main Code...", 7, 44,"StarGlitch Activator")
+Call WriteViaLoader("2490","0253471EDD4A659D0253471EDF4C659D","D")
+Call WriteViaLoader("24A0","0253471EDE4E659DB069928BF8944512","D")
+Call WriteViaLoader("24B0","4BD552B77E5DED0CD4DEF48767A05CAC","D")
+Call WriteViaLoader("24C0","8B68D1847926E4FC0B51471E5F46E0CA","D")
+Call WriteViaLoader("24D0","4B041248DD67659D014A5DFE25060000","D")
+Call WriteViaLoader("24E0","2701002B0017659B0351471EDE4E659D","D")
+Call WriteViaLoader("24F0","0351471E5B28D9BCE6586CEC0C0CBA44","D")
+Call WriteViaLoader("2500","2771571ECE4E659D0350471EDEB2659D","D")
+Call WriteViaLoader("2510","0B73431EDE4B659D0351471EA1B061DD","D")
+Call WriteViaLoader("2520","0351471EDE4E659D0351471EDE4E659D","D")
+Call WriteViaLoader("2530","0351471EDE4E659D0351471EDE4E659D","D")
+Call WriteViaLoader("2540","9BDBC8B67815553057C02B65F771A39C","D")
+Call Sc.ProgressBox ("Activating Main Code...", 8, 44,"StarGlitch Activator")
+Call WriteViaLoader("2550","9E72758DF0548C5F4936D4D71ED6BF50","D")
+Call WriteViaLoader("2560","35E84675421DBCCA420D3D597DBC5C1B","D")
+Call WriteViaLoader("2570","D66A5406D47DEC663C69D87201909770","D")
+Call WriteViaLoader("2580","5996835CC7B156C8729993E861D33800","D")
+Call WriteViaLoader("2590","3FB5178BB7AEF27E20A7386DCA9BC818","D")
+Call WriteViaLoader("25A0","601B0F3EC5E5969C1A1955A3F560EB70","D")
+Call WriteViaLoader("25B0","91BF118DC975CB369F3D3B5B3E5D348C","D")
+Call WriteViaLoader("25C0","7599C52B4A5F213E95C8EAC193F01E00","D")
+Call WriteViaLoader("25D0","CDB2D8F3C6F60C43D5085C5BA733A2D4","D")
+Call WriteViaLoader("25E0","C4CAA588B06E80C626D746909FA9133C","D")
+Call WriteViaLoader("25F0","AE5681C9A545518AD39E4D3F5229BE6D","D")
+Call WriteViaLoader("2600","127B3AA027CDDC3304E3342A415B1800","D")
+Call Sc.ProgressBox ("Activating Main Code...", 9, 44,"StarGlitch Activator")
+Call WriteViaLoader("2610","81A5244C4D43CB403780EE1E84A0FF4F","D")
+Call WriteViaLoader("2620","D1BACEACABEBFE07645A07BFD0E5A94D","D")
+Call WriteViaLoader("2630","B0FE806AA970390A5B5D47DE5B20A207","D")
+Call WriteViaLoader("2640","78E0F357478F34F278CC56BCA68BFF00","D")
+Call WriteViaLoader("2650","9E8125DE4D36B37A8839969AA7688161","D")
+Call WriteViaLoader("2660","71BA01409EC32CA038001A5C4AABF706","D")
+Call WriteViaLoader("2670","541DDE1F50971911541DDE1F50971911","D")
+Call WriteViaLoader("2680","82530102705AFD3C1F731CCD2A63B6B8","D")
+Call WriteViaLoader("2690","0000000000000000B3B8BDC2C7C7C7C7","D")
+Call WriteViaLoader("26A0","C7C7C7C7C7B3B3B3B3B3CCD1D1D1D1D1","D")
+Call WriteViaLoader("26B0","D1D6DB06C9DC3E1306C9DC3E2B08C9DC","D")
+Call WriteViaLoader("26C0","3E4306C9DC3E6301C9DC3E7B04C9DC3E","D")
+Call Sc.ProgressBox ("Activating Main Code...", 10, 44,"StarGlitch Activator")
+Call WriteViaLoader("26D0","7F01C9DC3E8F01C9DC3E9303C9DC3E97","D")
+Call WriteViaLoader("26E0","FFC8A0CE0D16F082AC8602C081580703","D")
+Call WriteViaLoader("26F0","0000FF40000000000000000000000000","D")
+Call WriteViaLoader("2700","DFE1F01A00DFE1003800DF830438002D","D")
+Call WriteViaLoader("2710","42011800D912031800D597001820D59B","D")
+Call WriteViaLoader("2720","001820DAE50B1800D8B1812820D7AF82","D")
+Call WriteViaLoader("2730","3800385003D000289E051C00DFE10238","D")
+Call WriteViaLoader("2740","00DABE122860D7B30328E0D6A1012860","D")
+Call WriteViaLoader("2750","DFE2002860D7F3822860D4110828E0D8","D")
+Call WriteViaLoader("2760","83003800DF7F00380028C50D28E0DEBA","D")
+Call WriteViaLoader("2770","0228E0D834042860D8B8082860D8DE00","D")
+Call WriteViaLoader("2780","3800D8D7043800D90B033800D93B2338","D")
+Call Sc.ProgressBox ("Activating Main Code...", 11, 44,"StarGlitch Activator")
+Call WriteViaLoader("2790","00D9CEF03800DAB7003860DAD0003820","D")
+Call WriteViaLoader("27A0","DAD4023860DB16043800D42A052860DB","D")
+Call WriteViaLoader("27B0","2800181022F2F01800DFF0042860DD80","D")
+Call WriteViaLoader("27C0","8D28E0D9CEF03800DB4C853860DFE101","D")
+Call WriteViaLoader("27D0","180028A1883C002308E12860D5E78218","D")
+Call WriteViaLoader("27E0","00D667842860DB9FD52860E002822860","D")
+Call WriteViaLoader("27F0","DBD0813800D809D29000DFE1F0900038","D")
+Call WriteViaLoader("2800","3003F000D9608628E02FC79028A02F10","D")
+Call WriteViaLoader("2810","8028A02ABF89D000DB4C8528E02F0884","D")
+Call WriteViaLoader("2820","28E0DE458C28E0DE548628E05507AA24","D")
+Call WriteViaLoader("2830","B843000EAA2650130EF9D1FEFEAAFFFD","D")
+Call WriteViaLoader("2840","8E3F3D2DF78C2F5C8E3F5812399B3012","D")
+Call Sc.ProgressBox ("Activating Main Code...", 12, 44,"StarGlitch Activator")
+Call WriteViaLoader("2850","3AF4EB0130F9B8C8D829D82AC5AA2AF0","D")
+Call WriteViaLoader("2860","D007AA3F481307AB00DDC35D080FEE22","D")
+Call WriteViaLoader("2870","A064AB00DDC35D100FF5C59A30AB00ED","D")
+Call WriteViaLoader("2880","700130C33D060FF38C3039008CC2988C","D")
+Call WriteViaLoader("2890","C0EC8C3EEB8C3B068C3B348C38198C39","D")
+Call WriteViaLoader("28A0","788CC27A8C3C968C393A8CE0748C2F43","D")
+Call WriteViaLoader("28B0","8C37008CE30E8C3D128C37808C37708C","D")
+Call WriteViaLoader("28C0","E0438C3C968C3D568CD6B28C29C48C2F","D")
+Call WriteViaLoader("28D0","568C31818C3F378C2AC58C3B558C3B79","D")
+Call WriteViaLoader("28E0","8C36EA8CC4308C33B78C2F9D8CD6F68C","D")
+Call WriteViaLoader("28F0","31038CD3438C36F58C231E8C37738C3E","D")
+Call WriteViaLoader("2900","D08C29328CEC9C8C37728C377220203F","D")
+Call Sc.ProgressBox ("Activating Main Code...", 13, 44,"StarGlitch Activator")
+Call WriteViaLoader("2910","EF000000000000000000000000000000","D")
+Call WriteViaLoader("2920","00000000000000000000000000000000","D")
+Call WriteViaLoader("2930","000022C2B8227AB888305C43F95CDA5E","D")
+Call WriteViaLoader("2940","FA8F6152EA1CFED0C6043DA97745BB98","D")
+Call WriteViaLoader("2950","231803ECF766BD3570C1DF224A8EA459","D")
+Call WriteViaLoader("2960","9B94A5B8FF490C27663B80DE52CD7AE1","D")
+Call WriteViaLoader("2970","134DAAF79438C92552BC617F8016EE03","D")
+Call WriteViaLoader("2980","DB01298401005C0A3C7D919AC5AA24B8","D")
+Call WriteViaLoader("2990","AB00EDAA2650AB00F5C35D080FEFC522","D")
+Call WriteViaLoader("29A0","A064AB00DDC35D100FF58800ED2A8800","D")
+Call WriteViaLoader("29B0","DD2C7210FD8E3EB272DD158824B02A72","D")
+Call WriteViaLoader("29C0","1004E7F9C877202703757F2775EF2742","D")
+Call Sc.ProgressBox ("Activating Main Code...", 14, 44, "StarGlitch Activator")
+Call WriteViaLoader("29D0","2A0275F727751F02731F02D3024D0402","D")
+Call WriteViaLoader("29E0","0F034204024C0204F750113215D80298","D")
+Call WriteViaLoader("29F0","2A347780270DD105D50E322A8E283A32","D")
+Call WriteViaLoader("2A00","05000A77202703B50003AA0000764027","D")
+Call WriteViaLoader("2A10","0ED0039A2AB81303D40315030206B99B","D")
+Call WriteViaLoader("2A20","2A740827C370012ADA02C7D402770827","D")
+Call WriteViaLoader("2A30","07882AA72A8E2A9575F7273215F75011","D")
+Call WriteViaLoader("2A40","762027277780270DD105D50E32348E28","D")
+Call WriteViaLoader("2A50","3A32050003AA00007640270AD0039A34","D")
+Call WriteViaLoader("2A60","1303150302059B34740827C3700134DA","D")
+Call WriteViaLoader("2A70","02CED11577082707882AB32A8E2A9598","D")
+Call WriteViaLoader("2A80","342A7D0004020389FF45757F2775DF27","D")
+Call WriteViaLoader("2A90","75BF27C4F9C59A2AAB00ED70012AC35D","D")
+Call WriteViaLoader("2AA0","0C0FF38E00EDF9F76011F761118EE7AE","D")
+Call WriteViaLoader("2AB0","8CE799F76211F763118EE7AE8CE7998E","D")
+Call WriteViaLoader("2AC0","DCBB8CD5537702120225FE8CC89E0000","D")
+Call WriteViaLoader("2AD0","0000011FB9FE866971360038273E0478","D")
+Call WriteViaLoader("2AE0","B89070B75B28D9BCE6586CEC0C0CBA44","D")
+Call WriteViaLoader("2AF0","A309709B1B63F265F24D867105C075FE","D")
+Call WriteViaLoader("2B00","0351471EDE4E659D0351471EDE4E659D","D")
+Call WriteViaLoader("2B10","0351471EDE4E659D0351471EDE4E659D","D")
+Call WriteViaLoader("2B20","0351471EDE4E659D0351471EDE4E659D","D")
+Call WriteViaLoader("2B30","0351471EDE4E659D0351471EDE4E659D","D")
+Call WriteViaLoader("2B40","0351471EDE4E659D0351471EDE4E659D","D")
+Call WriteViaLoader("2B50","0351471EDE4E659D0351471EDE4E659D","D")
+Call WriteViaLoader("2B60","0351471EDE4E659D0351471EDE4E659D","D")
+Call WriteViaLoader("2B70","0351471EDE4E659D0351471EDE4E659D","D")
+Call WriteViaLoader("2B80","0351471EDE4E659D0351471EDE4E659D","D")
+Call WriteViaLoader("2B90","0351471EDE4E659D0351471EDE4E659D","D")
+Call WriteViaLoader("2BA0","0351471EDE4E659D0351471EDE4E659D","D")
+Call WriteViaLoader("2BB0","0351471EDE4E659D0351471EDE4E659D","D")
+Call WriteViaLoader("2BC0","0351471EDE4E659D0351471EDE4E659D","D")
+Call WriteViaLoader("2BD0","0351471EDE4E659D0351471EDE4E659D","D")
+Call WriteViaLoader("2BE0","0351471EDE4E659D0351471EDE4E659D","D")
+Call WriteViaLoader("2BF0","0351471EDE4E659D0351471EDE4E659D","D")
+Call WriteViaLoader("2C00","0351471EDE4E659D0351471EDE4E659D","D")
+Call WriteViaLoader("2C10","0351471EDE4E659D0351471EDE4E659D","D")
+Call WriteViaLoader("2C20","0351471EDE4E659D0351471EDE4E659D","D")
+Call WriteViaLoader("2C30","0351471EDE4E659D0351471EDE4E659D","D")
+Call WriteViaLoader("2C40","0351471EDE4E659D0351471EDE4E659D","D")
+Call WriteViaLoader("2C50","0351471EDE4E659D0351471EDE4E659D","D")
+Call WriteViaLoader("2C60","0351471EDE4E659D0351471EDE4E659D","D")
+Call WriteViaLoader("2C70","0351471EDE4E659D0351471EDE4E659D","D")
+Call WriteViaLoader("2C80","0351471EDE4E659D0351471EDE4E659D","D")
+Call WriteViaLoader("2C90","0351471EDE4E659D0351471EDE4E659D","D")
+Call WriteViaLoader("2CA0","0351471EDE4E659D0351471EDE4E659D","D")
+Call WriteViaLoader("2CB0","0351471EDE4E659D0351471EDE4E659D","D")
+Call WriteViaLoader("2CC0","0351471EDE4E659D0351471EDE4E659D","D")
+Call WriteViaLoader("2CD0","5503AA013AD0DBD524882D482ED5E3F9","D")
+Call WriteViaLoader("2CE0","21513C515063DE1E7D40BE0052F7803D","D")
+Call WriteViaLoader("2CF0","FFFFC5F7083DAA2CE0A6013DFC2130C3","D")
+Call WriteViaLoader("2D00","5D070FF28839072C8E38EEAA2CE0A601","D")
+Call WriteViaLoader("2D10","3DFC2130D52477201E037420D28E3866","D")
+Call WriteViaLoader("2D20","F97720D2067420B775DFD28CC38F8801","D")
+Call WriteViaLoader("2D30","772C7720B7069A2C25BF9B2CD72CF98C","D")
+Call WriteViaLoader("2D40","C1C9760428038CD5138CC27A22F2008B","D")
+Call WriteViaLoader("2D50","23D500312698007A271103BD2CD00010","D")
+Call WriteViaLoader("2D60","2CE800642D4C00402D8C002B2F080132","D")
+Call WriteViaLoader("2D70","3039011E315907E1393D060B3F580010","D")
+Call WriteViaLoader("2D80","3F8800773FFF00013FFF00017D08E306","D")
+Call WriteViaLoader("2D90","0342DEDD7D10E3021DD3E370042EDEDD","D")
+Call WriteViaLoader("2DA0","07EAC59A2EAB002970012EC35704F470","D")
+Call WriteViaLoader("2DB0","FF2C70FC2EC3F99D0351471EDE4E659D","D")
+Call WriteViaLoader("2DC0","0246680B21B1646204AE17529B0F36D8","D")
+Call WriteViaLoader("2DD0","2302135F900A45DF5A51471EDE4E659D","D")
+Call WriteViaLoader("2DE0","A345AC8EA770B540AC0E513B53FF944C","D")
+Call WriteViaLoader("2DF0","858310E59E9B2901C3D4F26A19EC4474","D")
+Call WriteViaLoader("2E00","383BE0BB7DA8FA270537710707D452A6","D")
+Call WriteViaLoader("2E10","26F12030EA9EB2CD9B8CBDBE5D6E6001","D")
+Call WriteViaLoader("2E20","100174B7E416FFAA9A2A05FF17BD8602","D")
+Call WriteViaLoader("2E30","E96CF807F6B9AB411B495B9B22B5FA5D","D")
+Call WriteViaLoader("2E40","62DB77E9DD1AAB4EA07F090BB22DBD64","D")
+Call WriteViaLoader("2E50","ACE05794CB5E236C3911CE0DE56CB0E2","D")
+Call WriteViaLoader("2E60","90DB77CD2B48CC09BE5EB2B5DB906A74","D")
+Call WriteViaLoader("2E70","34DD2AEE3D15853C0DC73FDC7F2FB59D","D")
+Call WriteViaLoader("2E80","40450473702204775BDA726F852A3F48","D")
+Call WriteViaLoader("2E90","BA6AD2D5960D4E02EB688A71B17F7CA6","D")
+Call WriteViaLoader("2EA0","55F95400935E47C17A3A580138CA2D4D","D")
+Call WriteViaLoader("2EB0","05E8589B6AEAEF21FD04B3391890BE17","D")
+Call WriteViaLoader("2EC0","21DD49857D9FAF7758022A07C451BBF0","D")
+Call WriteViaLoader("2ED0","A9CE9BFD196D59FB0417713608D2409D","D")
+Call WriteViaLoader("2EE0","3AC78A87EB6EA8420DC8F077D183696C","D")
+Call WriteViaLoader("2EF0","16DFC3BDAFA6EC923AC78A87EB6EA842","D")
+Call WriteViaLoader("2F00","0DC8F07700FFFFFF7601D001F98CDE3A","D")
+Call WriteViaLoader("2F10","720504882ACE2A8EE6A0720C048824F4","D")
+Call WriteViaLoader("2F20","2A8EE6A02202E377022701F9D5D08EE0","D")
+Call WriteViaLoader("2F30","2F8824662E8824062C8EC5078822F22E","D")
+Call WriteViaLoader("2F40","8CD8992D00F406E0938EE0F377102603","D")
+Call WriteViaLoader("2F50","4224938CE0D47223038CC0C1062FAAFF","D")
+Call WriteViaLoader("2F60","FC2DD80628B4B4C4D50BF4D9002A0EC8","D")
+Call WriteViaLoader("2F70","322A8E2F8FC4D00EAA006043000E440E","D")
+Call WriteViaLoader("2F80","0BC3D32A3D070FE2B4B4120BF932FE55","D")
+Call WriteViaLoader("2F90","07AA24C043000EAA2658130EF97DFF60","D")
+Call WriteViaLoader("2FA0","02038CD9E51217021D7202078EDA9932","D")
+Call WriteViaLoader("2FB0","60CD5D030B10AA2AD01D6102060FE677","D")
+Call WriteViaLoader("2FC0","0160E27480D3F98EDC9977022745C5AA","D")
+Call WriteViaLoader("2FD0","0064AB00EDC35D0C0FF5AA297CAB00ED","D")
+Call WriteViaLoader("2FE0","C35D100FF58829412A8800ED2C7210FD","D")
+Call WriteViaLoader("2FF0","8E3EB2C5AA00EDD00BAA0064130BAB00","D")
+Call WriteViaLoader("3000","64C35D0C0FEE8824F42A720C04726415","D")
+Call WriteViaLoader("3010","8CDC54F9E288010030E9D50BC5AA24F4","D")
+Call WriteViaLoader("3020","D009AA2AE4130944000BC35D0C0FEE12","D")
+Call WriteViaLoader("3030","0B02032205E68CD00D225064AB00EDC3","D")
+Call WriteViaLoader("3040","5D100FF58800DD2A8800ED2C7206FD8E","D")
+Call WriteViaLoader("3050","3EB298EE3AD42AD429C4B4F975BFCF32","D")
+Call WriteViaLoader("3060","BEAA3073D029AA3074D02A8EC37A9E2A","D")
+Call WriteViaLoader("3070","8C3404C358CE77C7ECCFF8C358C358C3","D")
+Call WriteViaLoader("3080","58C358C358C7FBC358C358C358C358C3","D")
+Call WriteViaLoader("3090","58C358C358C358C358C358C7F5CF56C8","D")
+Call WriteViaLoader("30A0","06C6A4CCC43EDCC358CF08C983C358C3","D")
+Call WriteViaLoader("30B0","58C358D0EED0EE30143F20CE3F3710C6","D")
+Call WriteViaLoader("30C0","E4C358C358CEAD3BA1C9A0CEB83722C8","D")
+Call WriteViaLoader("30D0","A0C5498E311C9A2AD02B70012A9A2AD0","D")
+Call WriteViaLoader("30E0","2C9E2C8ED27812088ED310D517120802","D")
+Call WriteViaLoader("30F0","088E23CED0178ED3108CD25A7D87080F","D")
+Call WriteViaLoader("3100","D200057D80080BF48A2ACE2D02020AF4","D")
+Call WriteViaLoader("3110","CA2A270506032240E68CD24232085507","D")
+Call WriteViaLoader("3120","5A0788312F2A4B012A4900298CD1B031","D")
+Call WriteViaLoader("3130","90F0382023693280CF382023632329D2","D")
+Call WriteViaLoader("3140","3810237C233D823800237CDFE1F03820","D")
+Call WriteViaLoader("3150","2369DFE1823800237D23598238602369","D")
+Call WriteViaLoader("3160","8E311C7D82080B258ED3AE770227058E","D")
+Call WriteViaLoader("3170","D4079E194B17388CD3807D87080FE100","D")
+Call WriteViaLoader("3180","0C7610B6032241E67D80080BED8CD36C","D")
+Call WriteViaLoader("3190","220F8E32718824C83088009E32720206","D")
+Call WriteViaLoader("31A0","EB4D609E060A4261244C9F2402020314","D")
+Call WriteViaLoader("31B0","D39E4D609E060C4D629F0607426124D3","D")
+Call WriteViaLoader("31C0","240001F9C5AA0063AB0090C35D0C0FF5","D")
+Call WriteViaLoader("31D0","C5AA0090AB0070C35D0C0FF5AA2931AB","D")
+Call WriteViaLoader("31E0","0090C35D100FF58829712A8800902C72","D")
+Call WriteViaLoader("31F0","10FD8E3EB2C5AA0070D00EAA0090130E","D")
+Call WriteViaLoader("3200","AB0090C35D100FEED72404C4D50BC5AA","D")
+Call WriteViaLoader("3210","2EECD00EAA009043000E440E0BC35D0C","D")
+Call WriteViaLoader("3220","0FED120B0202009B726315882EEC2A72","D")
+Call WriteViaLoader("3230","0C04E7880060308824C832720206ED12","D")
+Call WriteViaLoader("3240","17028022038E32714261FD98622A753F","D")
+Call WriteViaLoader("3250","291260B7B7D0048E32717780FD0D8800","D")
+Call WriteViaLoader("3260","6030982A32420406ED00D4726015E700","D")
+Call WriteViaLoader("3270","CE42170BD0178ED3D54C170B420B17F9","D")
+Call WriteViaLoader("3280","7440CF22038E3271126202042D040F01","D")
+Call WriteViaLoader("3290","F98824E63088009E32720206EBF4CC9F","D")
+Call WriteViaLoader("32A0","610A057D0162021206E68824CA30EFB0","D")
+Call WriteViaLoader("32B0","02DE2507B34D006206D698619F326222","D")
+Call WriteViaLoader("32C0","4CC702072231C7020222401D1706C172","D")
+Call WriteViaLoader("32D0","0C04882EF82A8EE6A03262D1FFC70658","D")
+Call WriteViaLoader("32E0","220C8E3271C5AA0060AB00DDC35D0C0F","D")
+Call WriteViaLoader("32F0","F5AA297CAB00DDC35D100FF58829412A","D")
+Call WriteViaLoader("3300","8800DD2C7208FD8E3EB2C5AA0060D00E","D")
+Call WriteViaLoader("3310","AA00DD130EAB00DDC35D0C0FEE72DD15","D")
+Call WriteViaLoader("3320","882EE02A720C04E7882DE02A8E337C88","D")
+Call WriteViaLoader("3330","2E002A8E337C002BC7061A22118E3271","D")
+Call WriteViaLoader("3340","88006030882AD332721106ED882E202A","D")
+Call WriteViaLoader("3350","8E337C000E882E402A8E337C882E602A","D")
+Call WriteViaLoader("3360","8E337C88009E308824E632720206ED12","D")
+Call WriteViaLoader("3370","FF8824CA30EA75BFCF89FF1422208E32","D")
+Call WriteViaLoader("3380","7188006030982A32722006EDF98824CA","D")
+Call WriteViaLoader("3390","30EF2507F9B87260BE8E3537D4BE0025","D")
+Call WriteViaLoader("33A0","12BE2D5C0BEF7640CFEB0019D7D78E33","D")
+Call WriteViaLoader("33B0","8D2D030BEB000EC5B5AB00DAC35D260F","D")
+Call WriteViaLoader("33C0","F812D706E722908C2D2152FF8E351F12","D")
+Call WriteViaLoader("33D0","0B0239002C30010060C5AA0101AB0061","D")
+Call WriteViaLoader("33E0","C33D600FF58824E63088009E32720206","D")
+Call WriteViaLoader("33F0","EBF4CC9F6202D300088824CA30EFB002","D")
+Call WriteViaLoader("3400","D48900AE768028F1F98CC27A5D0C06F9","D")
+Call WriteViaLoader("3410","C5AA2951AB0100C35D100FF5882AD330","D")
+Call WriteViaLoader("3420","EFD00BC5AA0063AB0100C33D0B0FF5C5","D")
+Call WriteViaLoader("3430","AA0100AB0140C35D100FF58829612A88","D")
+Call WriteViaLoader("3440","01002C7204FD8E3EB2223C8E3ECBD5DB","D")
+Call WriteViaLoader("3450","32DBC2A801002C8EECA58EECA5C59A2C","D")
+Call WriteViaLoader("3460","D009AA014013099B2CF4EB102CAB0140","D")
+Call WriteViaLoader("3470","D32CC35D100FE7D3DB7D04DB0FD28801","D")
+Call WriteViaLoader("3480","402C8EECA58EECA5226A8E3ECBD509C5","D")
+Call WriteViaLoader("3490","AA0140D00BAA0148130BAB0140D00BA8","D")
+Call WriteViaLoader("34A0","2ADC30EF130B440009C35D080FE21209","D")
+Call WriteViaLoader("34B0","020D8EDED97701B8037217C689FF49C5","D")
+Call WriteViaLoader("34C0","AA0100D00BA82DE030EF130BAB0100C3","D")
+Call WriteViaLoader("34D0","5D400FECC5A82AD430EFAB00DDC35D08","D")
+Call WriteViaLoader("34E0","0FF3882AD330EFC01260B7B76CD02488","D")
+Call WriteViaLoader("34F0","00632A4B012AC53D240B059A2AAB00DD","D")
+Call WriteViaLoader("3500","D32AC35D080FF08E0100C5AA00DDD00B","D")
+Call WriteViaLoader("3510","AA00A0130BAB00A0C35D080FEE009DD5","D")
+Call WriteViaLoader("3520","0BC5AA2EE0D00EAA2EF8130E44000BC3","D")
+Call WriteViaLoader("3530","5D0C0FEE120BF98E3ED68A288B020788","D")
+Call WriteViaLoader("3540","2F042A8EE68E8824CA30EFD01625072D","D")
+Call WriteViaLoader("3550","03061C8E36A172600C7202128EE4098E","D")
+Call WriteViaLoader("3560","E41A882E802A8E36C18E36A18901212D","D")
+Call WriteViaLoader("3570","04061E8E36A1882E8030880100327260","D")
+Call WriteViaLoader("3580","06EB72600C7202128EE41A8E36BD8900","D")
+Call WriteViaLoader("3590","FF2D070259D5E9260102D9E98E36A188","D")
+Call WriteViaLoader("35A0","29812A8EC4AEC542E9EA5D060B02D9EA","D")
+Call WriteViaLoader("35B0","AA2EE015EAAB00DDC35D0C0FEA222D8E","D")
+Call WriteViaLoader("35C0","3ECB8800DD2A22608EEBEF226A8E3ECB","D")
+Call WriteViaLoader("35D0","C5AA0100AB0060C35D200FF572600C72","D")
+Call WriteViaLoader("35E0","02128EE4098EE41A8E36BD8C36907248","D")
+Call WriteViaLoader("35F0","948EED82D5DB32DB5D400B06A82DE02A","D")
+Call WriteViaLoader("3600","00225D480B06A82A942A00185D500B06","D")
+Call WriteViaLoader("3610","A82A942A000E5D510B06A82A832A0004","D")
+Call WriteViaLoader("3620","A82DCF2A982A30EF8EEDA4C312950209","D")
+Call WriteViaLoader("3630","5DB10FC4C88EEE89C4129606B9D1DB5D","D")
+Call WriteViaLoader("3640","B10FB3C5AA0088AB00DDC35D0C0FF5AA","D")
+Call WriteViaLoader("3650","297CAB00DDC35D100FF58829412A8800","D")
+Call WriteViaLoader("3660","DD2C7208FD8E3EB2C5AA0088D00EAA00","D")
+Call WriteViaLoader("3670","DD130EAB00DDC35D0C0FEE72DD15882E","D")
+Call WriteViaLoader("3680","F82A720C04E78E351F020852028E3EA3","D")
+Call WriteViaLoader("3690","1216B38824CA30EAB5882F042A8EE68E","D")
+Call WriteViaLoader("36A0","F9882E202A726004C5982A349A34AB01","D")
+Call WriteViaLoader("36B0","00700134C33D040FF38E36C4F9882E20","D")
+Call WriteViaLoader("36C0","2A7260048801002C420422C59A2CAB00","D")
+Call WriteViaLoader("36D0","6070012CC35D200FF388006030982A32","D")
+Call WriteViaLoader("36E0","722006ED7C202204E2F92D080604C58E","D")
+Call WriteViaLoader("36F0","3EA38CC3A3D002A6013DFC80351302F9","D")
+Call WriteViaLoader("3700","7D54BE06087D400902032200E68C2CE8","D")
+Call WriteViaLoader("3710","E2D0C18ED06A7260157240048826102A","D")
+Call WriteViaLoader("3720","E7F9760112178ED06A770125058ECEFF","D")
+Call WriteViaLoader("3730","00288ED04D8826102A7701101172400C","D")
+Call WriteViaLoader("3740","8EE4098EE41A8801002A7601120DC59A","D")
+Call WriteViaLoader("3750","2AE170012AC35D400FF5F998C3AB8837","D")
+Call WriteViaLoader("3760","D22A8E379BC5AA0088E1C35D080FF7F9","D")
+Call WriteViaLoader("3770","D50BF93203AB0164B81202AB016CB4F9","D")
+Call WriteViaLoader("3780","2240522DAB0100C35D3F0FF81210AB01","D")
+Call WriteViaLoader("3790","008826902A8E379F8C376576011014C5","D")
+Call WriteViaLoader("37A0","9A2A7D5ABE0601B2AB00A4C370012A5D","D")
+Call WriteViaLoader("37B0","080FED7248948EED827D44BE020D7D56","D")
+Call WriteViaLoader("37C0","BE02088E37DA8E37DA00068E37F38E37","D")
+Call WriteViaLoader("37D0","F3F9E4442502455414D4C5AA01008EED","D")
+Call WriteViaLoader("37E0","A4C35D400FF5C5AA00A48EEDA4C35D08","D")
+Call WriteViaLoader("37F0","0FF5F9C5A8010030EE8EEDA4C35D2D0F","D")
+Call WriteViaLoader("3800","F3AA01008EEDA4C35D400FF5C5AA00A4","D")
+Call WriteViaLoader("3810","8EEDA4C35D080FF5F9D513D50B7D36BE","D")
+Call WriteViaLoader("3820","0201F972041E8E386622368E3CA000F2","D")
+Call WriteViaLoader("3830","8EDC0A88006230EE272004302987D78A","D")
+Call WriteViaLoader("3840","2ACE27010776401E03223EE68C2D16F9","D")
+Call WriteViaLoader("3850","302987D78A2ACE270203223DE6D51E74","D")
+Call WriteViaLoader("3860","801E8E3866F97201D977801E037200D9","D")
+Call WriteViaLoader("3870","8E39168E38B18838912A77801E048838","D")
+Call WriteViaLoader("3880","A12AC59A2AAB00A0C370012A5D100FF3","D")
+Call WriteViaLoader("3890","F950E75FA407240EC5A87738C1CBE7B6","D")
+Call WriteViaLoader("38A0","63B3029E192FC4CF365AB16C722D1DB1","D")
+Call WriteViaLoader("38B0","BEF70038F7003AF7803DFF5207F7083D","D")
+Call WriteViaLoader("38C0","8E38D9C704FA8839012C77801E048839","D")
+Call WriteViaLoader("38D0","0A2C8E38EE8E38D9F99A2AD0059A2E13","D")
+Call WriteViaLoader("38E0","05A6013DFC213070012A70012EF99A2C","D")
+Call WriteViaLoader("38F0","213270012C9A2C213470012C9A2C213D","D")
+Call WriteViaLoader("3900","F902622C02403402442601642D016034","D")
+Call WriteViaLoader("3910","01422F03403C121E25072704022504B2","D")
+Call WriteViaLoader("3920","BC8826602A4B002A790029883F582E4B","D")
+Call WriteViaLoader("3930","002E79002DF97410B6F975EFB62240AB","D")
+Call WriteViaLoader("3940","0100C35D400FF88E3ED6C5AA2688D024","D")
+Call WriteViaLoader("3950","AA3F801324AB00A4C35D080FEE8E37B3","D")
+Call WriteViaLoader("3960","C5D509E2D002AA00881302440009C35D","D")
+Call WriteViaLoader("3970","080FF0120902BFF98E3ED67D40BE061A","D")
+Call WriteViaLoader("3980","8824503088009032720406EB12901491","D")
+Call WriteViaLoader("3990","020872020688009030E58E3A8375EFB6","D")
+Call WriteViaLoader("39A0","8E3AE48E3F8872970A920A8EE7D1726A","D")
+Call WriteViaLoader("39B0","0A920A520C8E3AFC7D67080601E25208","D")
+Call WriteViaLoader("39C0","A6013DFC80358E3CA0C704F4C5AA00A0","D")
+Call WriteViaLoader("39D0","2DFB0F022CFBAB007CC35D080FEF12D9","D")
+Call WriteViaLoader("39E0","88E91F30B0020488EA3F3098302A72A3","D")
+Call WriteViaLoader("39F0","0A920A12D98EE89F726A0A920AC5E2D0","D")
+Call WriteViaLoader("3A00","07A8015C30EE1307AB0060C35D08020D","D")
+Call WriteViaLoader("3A10","7D670802E95D050FE5D50700E4F7803D","D")
+Call WriteViaLoader("3A20","FFC5F7083DAA0060A6013DFC2130C35D","D")
+Call WriteViaLoader("3A30","070FF28839072C77801E048839102C8E","D")
+Call WriteViaLoader("3A40","38EE1267A6013DFC2130C5A6013DFC80","D")
+Call WriteViaLoader("3A50","35AB007CC35D080FF2982A3072A30A92","D")
+Call WriteViaLoader("3A60","0A12D9D5038EE8D5726A0A920A7D0803","D")
+Call WriteViaLoader("3A70","F406C27AB0021B77021E0552018E3EA3","D")
+Call WriteViaLoader("3A80","8CDCDF5208A6013DFC80358E3C96C704","D")
+Call WriteViaLoader("3A90","F4F97410B68800B02A88003B2E720207","D")
+Call WriteViaLoader("3AA0","8EDBD87D40BE06D8F7803D88390A2CF7","D")
+Call WriteViaLoader("3AB0","083D8E38EEF7283DC5AA00A0A6013DFC","D")
+Call WriteViaLoader("3AC0","2130C35D070605F7243D00EDF7283D5D","D")
+Call WriteViaLoader("3AD0","0F0FE68839132C8E38EE12AFA6013DFC","D")
+Call WriteViaLoader("3AE0","2130009C8839042C77801E0488390D2C","D")
+Call WriteViaLoader("3AF0","8E38EE12D8A6013DFC2130F9B58E3CA0","D")
+Call WriteViaLoader("3B00","12D8C704F8F932117D60BE06068EFFBC","D")
+Call WriteViaLoader("3B10","2317F912BE250F2D0A061112D402038C","D")
+Call WriteViaLoader("3B20","FFB67620C1038CFF9E8CFFAE7D56BE02","D")
+Call WriteViaLoader("3B30","F58CFFA67D60BE0605882E202AF912D4","D")
+Call WriteViaLoader("3B40","02058825D02AF97620C1058825502AF9","D")
+Call WriteViaLoader("3B50","8825902AF97D60BE061A8E338D2D0306","D")
+Call WriteViaLoader("3B60","05882E7F2CF92D040605882E4F2CF988","D")
+Call WriteViaLoader("3B70","007F2CF988264F2CF97D60BE061D8E33","D")
+Call WriteViaLoader("3B80","8D2D030606F4CA2C2E4FF92D040606F4","D")
+Call WriteViaLoader("3B90","CA2C2E1FF9F4CA2C005FF9F4CA2C260F","D")
+Call WriteViaLoader("3BA0","F98E3ED67710B82FD508D5B87708D008","D")
+Call WriteViaLoader("3BB0","7216087404B800517640B54D88017630","D")
+Call WriteViaLoader("3BC0","8800A0327208068EE5B7D5A8D5A97401","D")
+Call WriteViaLoader("3BD0","B88E3C74890096C5AA24F4D00BAA00A0","D")
+Call WriteViaLoader("3BE0","43000BAA2AE4130BAB00A0C35D0C0FE8","D")
+Call WriteViaLoader("3BF0","8EDED98EDF617D17C606037204B87708","D")
+Call WriteViaLoader("3C00","B8037402D17601B80FC5B5AB00A0AB00","D")
+Call WriteViaLoader("3C10","88C35D0A0FF50037C58801762CA6013D","D")
+Call WriteViaLoader("3C20","FC80358E3CA0A8017630EE13D89B2C70","D")
+Call WriteViaLoader("3C30","012CC35D0A0FE6FF8E2D2EC59A2CAB00","D")
+Call WriteViaLoader("3C40","A0AB0088B59B2CC370012C5D0A0FED77","D")
+Call WriteViaLoader("3C50","40B7038E3D907601B604D5A8D5A98E3C","D")
+Call WriteViaLoader("3C60","74C5AA0088AB00A0C35D080FF598D6C3","D")
+Call WriteViaLoader("3C70","98A7D6F942B5AA12B82507D0AB32C734","D")
+Call WriteViaLoader("3C80","C802057401D2D5084208ACC5AA00A0E1","D")
+Call WriteViaLoader("3C90","C35D0D0FF7F9A6013DFC21308E3CA0F9","D")
+Call WriteViaLoader("3CA0","B8C8D5DBD5DCD0D87B05DC32DBAA00A8","D")
+Call WriteViaLoader("3CB0","1BD8AB00A8D0DAAA00A013DAAB00A013","D")
+Call WriteViaLoader("3CC0","DC251FC0AA3CF2D0DA32DB5306AA00A8","D")
+Call WriteViaLoader("3CD0","13DAAB00A8B0BDD0DA32DB5305AA00A0","D")
+Call WriteViaLoader("3CE0","1CDAAB00A04300D8D3DB7D08DB0FB9C4","D")
+Call WriteViaLoader("3CF0","B4F9BF12939242AFE7E3B2C6B89180B4","D")
+Call WriteViaLoader("3D00","E8739EF75DFDA082F96F25177D0B5597","D")
+Call WriteViaLoader("3D10","0C8022678EE06F74042522088EE06F8E","D")
+Call WriteViaLoader("3D20","3A838E3AE48E3F8872970A920A8EE7D1","D")
+Call WriteViaLoader("3D30","726A0A920A520A8E3AFC8839012C8E38","D")
+Call WriteViaLoader("3D40","EEC5A6013DFC80358E3C9612D88EE06F","D")
+Call WriteViaLoader("3D50","C35D080FEDF98EFA27B006F988006830","D")
+Call WriteViaLoader("3D60","88245832720406EDC5AA2688D007AA3F","D")
+Call WriteViaLoader("3D70","80430007AA00601307AB0060C35D080F","D")
+Call WriteViaLoader("3D80","E87260158826902A720804E77420D1F9","D")
+Call WriteViaLoader("3D90","882460308800ED32720406EB720407D5","D")
+Call WriteViaLoader("3DA0","063206AA00A0D0045503AA00EDD00532","D")
+Call WriteViaLoader("3DB0","06C35507AA00A04B0005C85503AA00ED","D")
+Call WriteViaLoader("3DC0","D00932043C00553F8E3E084300051204","D")
+Call WriteViaLoader("3DD0","1309BDB0BDC08E3E08BE1B05C4AB00A0","D")
+Call WriteViaLoader("3DE0","C5D8F0AA00EDD002B0BFD003B4D80225","D")
+Call WriteViaLoader("3DF0","80BE1403AB00EDC3770401E7B4D30677","D")
+Call WriteViaLoader("3E00","08069ED7070498F98EFFB67D00D406F7","D")
+Call WriteViaLoader("3E10","8CFF9E0012010125002008001E010124","D")
+Call WriteViaLoader("3E20","100808001A0101240602080013010125","D")
+Call WriteViaLoader("3E30","202008002D01012408040800D0010124","D")
+Call WriteViaLoader("3E40","650108002E010124682008004E010124","D")
+Call WriteViaLoader("3E50","5C04080058010124E0010800F3010124","D")
+Call WriteViaLoader("3E60","A40408001901012464010800FE010124","D")
+Call WriteViaLoader("3E70","0C04080041010121060408C9F4000000","D")
+Call WriteViaLoader("3E80","45010124881C0800F8010120240908CA","D")
+Call WriteViaLoader("3E90","360000CA750000CAB100000044010124","D")
+Call WriteViaLoader("3EA0","E80C08B8A82AD02A9A2AB302038EE68E","D")
+Call WriteViaLoader("3EB0","B4F9223C8E3ECB4204FED50E8EECA5D3","D")
+Call WriteViaLoader("3EC0","0E4DFD0E0FF642FE04226AD00A920AF9","D")
+Call WriteViaLoader("3ED0","8E3ED68CC1A47202058CC204E2C07604","D")
+Call WriteViaLoader("3EE0","D10375BFD375F7CF8CC9597601CF1B2D","D")
+Call WriteViaLoader("3EF0","7F06178E298C8EC24C8A2F04020A882E","D")
+Call WriteViaLoader("3F00","202A72C0048EE6A0227F7D5EBE060E7D","D")
+Call WriteViaLoader("3F10","01120609D31D7D081D060222018CC00B","D")
+Call WriteViaLoader("3F20","770212108ED0EE8EDED97608B80375BF","D")
+Call WriteViaLoader("3F30","B48CCC4E8CCC3675FBB48CD59FF4CA2C","D")
+Call WriteViaLoader("3F40","CBB90603728646F9A41641240FAFDFC7","D")
+Call WriteViaLoader("3F50","CB0B2848A729EF4312937D0406060375","D")
+Call WriteViaLoader("3F60","1F938E2856D093F9FDA0342BBFE58CC3","D")
+Call WriteViaLoader("3F70","FDA0342BBFE58CC3DC9ABF18A65E1E08","D")
+Call WriteViaLoader("3F80","0EF09F552CCDE75B727B0252058E3FB8","D")
+Call WriteViaLoader("3F90","722902000A520FAA00A0BCF008D0028E","D")
+Call WriteViaLoader("3FA0","3FB3AA00A0823FDFC522C72306724B02","D")
+Call WriteViaLoader("3FB0","4B02005203A40220AA00AA1B02AB00AA","D")
+Call WriteViaLoader("3FC0","AA009FCAF3F91E72CB250299A866F0DA","D")
+Call WriteViaLoader("3FD0","234B00F8F5A0ABA70005009FCAB9F952","D")
+Call WriteViaLoader("3FE0","03AA00A0D002AA00AC4B0002AA3F9413","D")
+Call WriteViaLoader("3FF0","022B5ABE236BAB00ACCAE6A3FD20F900","D")
+    Call Sc.ProgressBox ("Activating Complete...Adding Updates...", 44, 44, "StarGlitch Activator")
+   ' If addusw > 6 Then
+    '  Call InstallUpdates()        ' Clean USW portion of code & force USW800 DSW 6
+   ' End If
+   ' Call ShutdownCard()
+    Call Sc.ProgressBox ("", 0, 0, "")
+    sc.print "Activating Process Complete." & VbCr
+    Call AreaInfo()
+
+End Sub
+
+Sub InstallUpdates()
+    Dim USWH
+    Dim USWL
+    Dim USW
+    Dim Updates(8)
+    Sc.Write("06C20124C88200")
+    Sc.Read(&h02)
+    Sc.Read(&h03)
+    USWH = Sc.GetByte(0)
+    USWL = Sc.GetByte(1)
+    USWH = HexString(USWH Xor HexToDec(XORedByte(0)),2)
+    USWL = HexString(USWL Xor HexToDec(XORedByte(1)),2)
+    USW = USWH & USWL
+    USW = HexToDec(USW)
+    sc.print "Card's USW: " & Hex(USW) & VbCr
+'    Set Activation Date (11/23/2002)
+    Call WriteViaLoader("2408","8217","E")
+
+    ' Add Updates
+
+    If USW = &h0000 OR USW = &h0001 OR addusw > 6 Then
+        Call WriteViaLoader("2B00","0000000000000000000000000000000000000000000000000000000000000000","E")
+        Call WriteViaLoader("2B20","0000000000000000000000000000000000000000000000000000000000000000","E")
+        Call WriteViaLoader("2B40","0000000000000000000000000000000000000000000000000000000000000000","E")
+        Call WriteViaLoader("2B60","0000000000000000000000000000000000000000000000000000000000000000","E")
+        Call WriteViaLoader("2B80","0000000000000000000000000000000000000000000000000000000000000000","E")
+        Call WriteViaLoader("2BA0","0000000000000000000000000000000000000000000000000000000000000000","E")
+        Call WriteViaLoader("2BC0","0000000000000000000000000000000000000000000000000000000000000000","E")
+        Call WriteViaLoader("2BE0","0000000000000000000000000000000000000000000000000000000000000000","E")
+        Call WriteViaLoader("2C00","0000000000000000000000000000000000000000000000000000000000000000","E")
+        Call WriteViaLoader("2C20","0000000000000000000000000000000000000000000000000000000000000000","E")
+        Call WriteViaLoader("2C40","0000000000000000000000000000000000000000000000000000000000000000","E")
+        Call WriteViaLoader("2C60","0000000000000000000000000000000000000000000000000000000000000000","E")
+        Call WriteViaLoader("2C80","0000000000000000000000000000000000000000000000000000000000000000","E")
+        Call WriteViaLoader("2CA0","0000000000000000000000000000000000000000000000000000000000000000","E")
+        Call WriteViaLoader("2CC0","0000000000000000000000000000000000000000000000000000000000000000","E")
+        Call WriteViaLoader("2CE0","0000000000000000000000000000000000000000000000000000000000000000","E")
+        Call WriteViaLoader("2D00","0000000000000000000000000000000000000000000000000000000000000000","E")
+        Call WriteViaLoader("2D20","0000000000000000000000000000000000000000000000000000000000000000","E")
+        Call WriteViaLoader("2D40","0000000000000000000000000000000000000000000000000000000000000000","E")
+        Call WriteViaLoader("2D60","0000000000000000000000000000000000000000000000000000000000000000","E")
+        Call WriteViaLoader("2D80","0000000000000000000000000000000000000000000000000000000000000000","E")
+        Call WriteViaLoader("2DA0","0000000000000000000000000000000000000000000000000000000000000000","E")
+    End If
+
+    If USW => &h0100 OR addusw > 6 Then
+        sc.print "Adding USW 100" & VbCr
+        Call WriteViaLoader("2CE8","7D40BE0652F7803DFFFFC5F7083DAA2CE0A6013DFC2130C35D070FF28839072C","D")
+        Call WriteViaLoader("2D08","8E38EEAA2CE0A6013DFC2130","D")
+    End If
+
+    If USW => &h0200 OR addusw > 6 Then
+       sc.print "Adding USW 200" & VbCr
+        Call WriteViaLoader("2D14","D524C5AA24D8D002AA24C0430002AA2658430002A6013DFC80351302440024C3","D")
+        Call WriteViaLoader("2D34","5D030FDF122406037404288CC1C9","D")
+    End If
+
+    If USW => &h0300 OR addusw > 6 Then
+        sc.print "Adding USW 300" & VbCr
+        Call WriteViaLoader("2D42","760428038CD5138C2024","D")
+        Call WriteViaLoader("2CE0","21513C515063DE1E","D")
+    End If
+
+    If USW => &h0400 OR addusw > 6 Then
+        sc.print "Adding USW 400" & VbCr
+        Call WriteViaLoader("370E","2CE8","D")
+        Call WriteViaLoader("270F","2D42","D")
+        Call WriteViaLoader("2D4C","22F2008B23D50031","D")
+    End If
+
+    If USW => &h0500 OR addusw > 6 Then
+        sc.print "Adding USW 500" & VbCr
+        Call WriteViaLoader("2D54","2698007A271103BD2CD000102CE800642D4C00402D8C002B","D")
+        Call WriteViaLoader("2D6C","2F0801323039011E315907E1393D060B3F5800103F8800773FFF00013FFF0001","D")
+    End if
+
+    If USW => &h0600 OR addusw > 6 Then
+        sc.print "Adding USW 600" & VbCr
+        Call WriteViaLoader("2D8C","7D08E3060342DEDD7D10E3021DD3E370042EDEDD07EAC59A2EAB002970012EC3","D")
+        Call WriteViaLoader("2DAC","5704F470FF2C70FC2EC3F9","D")
+        Call WriteViaLoader("2CD0","5503AA013AD0DBD524882D482ED5E3F9","D")
+    End If
+
+    If USW => &h0700 OR addusw > 6 Then
+        sc.print "Adding USW 700" & VbCr
+        Call WriteViaLoader("2902","2932","D")
+        Call WriteViaLoader("2932","22C2B8227AB888305C43F9","D")
+        Call WriteViaLoader("2CEB","00","D")
+        Call WriteViaLoader("2D4A","C27A","D")
+        Call WriteViaLoader("24C8","0700","E")
+    End If
+
+    If (USW => &h0800) or (addusw > 7) Then
+    sc.print "Adding USW 800 DSW 6" & VbCr
+    Call WriteViaLoader("2CD0","5503AA013AD0DBD524882D482ED5E3F9","D")
+    Call WriteViaLoader("2CE0","21513C515063DE1E7D40BE0652F7803D","D")
+    Call WriteViaLoader("2CF0","FFFFC5F7083DAA2CE0A6013DFC2130C3","D")
+    Call WriteViaLoader("2D00","5D070FF28839072C8E38EEAA2CE0A601","D")
+    Call WriteViaLoader("2D10","3DFC2130D524C5AA24D8D002AA24C043","D")
+    Call WriteViaLoader("2D20","0002AA2658430002A6013DFC80351302","D")
+    Call WriteViaLoader("2D30","440024C35D030FDF122406037404288C","D")
+    Call WriteViaLoader("2D40","C1C9760428038CD5138C202422F2008B","D")
+    Call WriteViaLoader("2D50","23D500312698007A271103BD2CD00010","D")
+    Call WriteViaLoader("2D60","2CE800642D4C00402D8C002B2F080132","D")
+    Call WriteViaLoader("2D70","3039011E315907E1393D060B3F580010","D")
+    Call WriteViaLoader("2D80","3F8800773FFF00013FFF00017D08E306","D")
+    Call WriteViaLoader("2D90","0342DEDD7D10E3021DD3E370042EDEDD","D")
+    Call WriteViaLoader("2DA0","07EAC59A2EAB002970012EC35704F470","D")
+    Call WriteViaLoader("2DB0","FF2C70FC2EC3F9","D")
+    Call WriteViaLoader("370E","2CE8","D")
+    Call WriteViaLoader("270F","2D42","D")
+    Call WriteViaLoader("2DE0","A014EB90793ED0DDAF5F16258DB1F1D1","E")
+    Call WriteViaLoader("2DF0","86D257FB40D54C9CC085B574C7A221E9","E")
+    Call WriteViaLoader("2E00","3B6AA7A5A3E69FBA06663619D99A373B","E")
+    Call WriteViaLoader("2E10","25A0672E34D0D75098DDFAA08320059C","E")
+    Call WriteViaLoader("2E20","135033A93A589A37997B42E1C9F3E39F","E")
+    Call WriteViaLoader("2E30","EA3DBF1928F7CEDC18181C85FCFB9FC0","E")
+    Call WriteViaLoader("2E40","618A30F70354CED3A32E4E156C63D8F9","E")
+    Call WriteViaLoader("2E50","AFB1108A151046F13A4089133B22D57F","E")
+    Call WriteViaLoader("2E60","938A30D3F506A994BD0FF5AB05DE0FE9","E")
+    Call WriteViaLoader("2E70","378C6DF0E35BE0A10E9678C2A161D000","E")
+    Call WriteViaLoader("2E80","4314436DAE6C61EA588B35715B645AD5","E")
+    Call WriteViaLoader("2E90","B93B95CB48432B9FE839CD6F6F31193B","E")
+    Call WriteViaLoader("2EA0","56A8131E4D10225C796B1F1FE68448D0","E")
+    Call WriteViaLoader("2EB0","06B91F85B4A48ABCFE55F427C6DEDB8A","E")
+    Call WriteViaLoader("2EC0","228C0E9BA3D1CAEA5B536D191A1FDE6D","E")
+    Call WriteViaLoader("2ED0","AA9FDCE3C7233C6607463628D69C2500","E")
+    Call WriteViaLoader("2EE0","3AC78A87EB6EA8420DC8F077","D")
+    Call WriteViaLoader("2EF8","3AC78A87EB6EA8420DC8F077","D")
+    Call WriteViaLoader("24E6","0006","E")
+    Call WriteViaLoader("2AD3","01","E")
+    Call WriteViaLoader("2AD4","67B0E3F472674726F97061E5","E")
+    Call WriteViaLoader("2AE0","BBC137A9","E")
+    Call WriteViaLoader("24C8","0800","E")
+'    Call WriteViaLoader("2464","00","E") ' Ratings change?
+    Call WriteViaLoader("2902","2932","D")
+    Call WriteViaLoader("2932","22C2B8227AB888305C43F9","D")
+    Call WriteViaLoader("2D4A","C27A","D")
+    Call WriteViaLoader("2CEB","00","D")
+    Call WriteViaLoader("2D16","77201E037420D28E3866","D")
+    Call WriteViaLoader("2D20","F97720D2067420B775DFD28CC38F8801","D")
+    Call WriteViaLoader("2D30","772C7720B7069A2C25BF9B2CD72CF9","D")
+    Call WriteViaLoader("33C7","8C2D21","D")
+    Call WriteViaLoader("384C","8C2D16","D")
+    Call WriteViaLoader("3C37","FF8E2D2E","D")
+
+    End If
+End Sub
+
+Sub Load3M()
+FileName = Fs.FileOpEndialog(HexFilter, "    Please select a .hex(*.hex) file to write to the card", "3m.hex")
+
+
+    If FileName <> "" Then
+        If Fs.FileExists(FileName) = 0 Then
+            Sc.MsgBox("The file does not exist")
+        Else
+            Call LoadBootStrap()
+            Call Sc.ProgressBox ("Installing Hex.....", 12, 44, "StarGlitch")
+            Include FileName
+            Call Sc.ProgressBox ("Installing Hex.....", 44, 44, "StarGlitch")
+            sc.delay(300)
+            Call Sc.ProgressBox ("", 0, 0, "")
+            sc.print "----------------------------------------" & VbCr
+            sc.print "Loaded Hex Installed :" & VbCr & FileName & VbCr
+        End If
+    End If
+
+
+End Sub
+
+Function Include(vbsFile)
+Dim fso, ts, x, regEx, buf
+Dim ThisStr, Tail, ByteCnt, BitCnt, Addr, sData
+
+Set fso = CreateObject("Scripting.FileSystemObject")
+Set ts = fso.OpenTextFile(vbsFile)
+Set regEx = New RegExp
+RegEx.Global = True
+RegEx.Pattern = ":"
+
+' sc.print "Bytes" & VbTab & "Opt" & VbTab & "Addr" & VbTab & "Data" & VbCr
+sc.print "Addr" & VbTab & "Data" & VbCr & "----" & VbTab & "----" & VbCr
+Call ExtractCardInfo()
+Sc.Write("A1")
+Do While Not ts.AtEndOfStream
+
+ThisStr = ts.ReadLine
+If not Left(ThisStr, 1) = "#" Then
+  If not ThisStr = ":00000001FF" Then
+    If Left(ThisStr, 2) = "::" Then
+      Tail = "E"
+    Else
+      Tail = "D"
+    End If
+    ThisStr = ThisStr + Tail
+    ThisStr = regEx.Replace (ThisStr,"")
+    ByteCnt = Mid(ThisStr,1,2)
+    BitCnt = Hex2Dec(ByteCnt) * 2
+    Addr = Mid(ThisStr,3,4)
+    sc.print Addr & VbTab ' Debug Ok
+    sData = Mid(ThisStr,9,BitCnt)
+    sc.print sData & VbCr ' Debug Ok
+    Call WriteViaLoader(Addr,sData,Tail)
+
+  End If
+End If
+
+loop
+ts.Close
+Call ShutdownCard()
+
+End Function
+
+Sub Custom3m()
+Call Sc.ProgressBox ("Installing 3M.....", 12, 44, "StarGlitch")
+Call CodeCustom()
+Call Sc.ProgressBox ("Installing 3M.....", 44, 44, "StarGlitch")
+sc.delay(300)
+Call Sc.ProgressBox ("", 0, 0, "")
+sc.print VbCr & VbCr & "Custom 3M Installed, Enjoy!" & VbCr
+End Sub
+
+Sub Custom3mb()
+Call Sc.ProgressBox ("Installing 3M.....", 12, 44, "StarGlitch")
+Call CodeCustom2()
+Call Sc.ProgressBox ("Installing 3M.....", 44, 44, "StarGlitch")
+sc.delay(300)
+Call Sc.ProgressBox ("", 0, 0, "")
+sc.print VbCr & VbCr & "Custom 2 3M Installed, Enjoy!" & VbCr
+End Sub
+
+Sub Install3m() ' HUFix 12-12 Works 12-16
+Sc.Write("A1")
+Call Sc.ProgressBox ("Installing 3M.....", 1, 44, "StarGlitch")
+Call WriteViaLoader("2014","27D8","D")
+Call WriteViaLoader("2024","8C2106","D")
+Call WriteViaLoader("2106","7225D07D30BE06118EC3","D")
+Call WriteViaLoader("2110","7A00031C25DA2210E18ECCC78C34047D","D")
+Call WriteViaLoader("2120","40BE060C8EC37A8ED0EE8E21DC8C2179","D")
+Call WriteViaLoader("2130","7D42BE06088EC37A8ED0EE00347D4CBE","D")
+Call Sc.ProgressBox ("Installing 3M.....", 14, 44, "StarGlitch")
+Call WriteViaLoader("2140","060B8EC37A8EC6E48EC71800247D54BE","D")
+Call WriteViaLoader("2150","060C7640B5187213B67220B4D5B57D58","D")
+Call WriteViaLoader("2160","BE060B8E3ED6D5D1D5D2D5D3D5D48CC1","D")
+Call WriteViaLoader("2170","E68827D89F8EE037F988240630EFD006","D")
+Call WriteViaLoader("2180","88240730EFD007C5D12FD130F4CC0730","D")
+Call WriteViaLoader("2190","020A706430C35D320FF2001A5D2A0B19","D")
+Call Sc.ProgressBox ("Installing 3M.....", 24, 44, "StarGlitch")
+Call WriteViaLoader("21A0","88251130EF6D020E8825113062EAAA22","D")
+Call WriteViaLoader("21B0","3F88251F30EA8C340472FB2B5D300D17","D")
+Call WriteViaLoader("21C0","8825113062EA88251C30122BEAAA223F","D")
+Call WriteViaLoader("21D0","88251D30EA00DF72FF2B00E422208D01","D")
+Call WriteViaLoader("21E0","0702208D010A025022148D0107024922","D")
+Call WriteViaLoader("21F0","DF8D0107060C22228B0110B58B01118B","D")
+Call WriteViaLoader("2200","0112F922218B01078A010F2D2F061122","D")
+Call WriteViaLoader("2210","2E8B010F22228B011022168B011100E2","D")
+Call Sc.ProgressBox ("Installing 3M.....", 34, 44, "StarGlitch")
+Call WriteViaLoader("2220","8A01122D2F06DB222E8B011222228B01","D")
+Call WriteViaLoader("2230","1322168B011400CA22218B010A00C300","D")
+Call WriteViaLoader("2240","02411040286008011102282801600840","D")
+Call WriteViaLoader("2250","28100808122801022002014820280810","D")
+Call WriteViaLoader("2260","20FBF7EFDFBF7FF3F5F600000000FF","D")
+Call WriteViaLoader("2590","00000001520273076FAA259023000603","D")
+Call WriteViaLoader("25A0","4B4024CAF1B2F993E4ECB46E0839047A","D")
+Call WriteViaLoader("25B0","F4CA6A2A00060772EC6788E2FF6A8C01","D")
+Call WriteViaLoader("25C0","14B5DFC92560A885F3B22FDF32D04400","D")
+Call WriteViaLoader("2AD0","01","D")
+
+Call Sc.ProgressBox ("Installing 3M.....", 44, 44, "StarGlitch")
+Call Sc.ProgressBox ("", 0, 0, "")
+sc.print "HUFix 3M Installed, Enjoy!" & VbCr
+Sc.Write("A0")
+End Sub
+' *****************************************************************
+Sub Install3mP52() ' P52 Working 12-16
+Sc.Write("A1")
+Call Sc.ProgressBox ("Installing 3M.....", 15, 44, "StarGlitch")
+
+Call WriteViaLoader("2014","27D8","D")
+Call WriteViaLoader("2024","8C2106","D")
+Call WriteViaLoader("2106","7225D07D30BE06118EC37A0003","D")
+Call WriteViaLoader("2114","25DA2210E18ECCC78C34047D40BE060C","D")
+Call WriteViaLoader("2124","8EC37A8ED0EE8E21DC8C21797D42BE06","D")
+Call WriteViaLoader("2134","088EC37A8ED0EE00347D4CBE060B8EC3","D")
+Call WriteViaLoader("2144","7A8EC6E48EC71800247D54BE060C7640","D")
+Call WriteViaLoader("2154","B5187213B67220B4D5B57D58BE060B8E","D")
+Call WriteViaLoader("2164","3ED6D5D1D5D2D5D3D5D48CC1E68827D8","D")
+Call WriteViaLoader("2174","9F8EE037F988240630EFD00688240730","D")
+Call WriteViaLoader("2184","EFD007C5D12FD130F4CC0730020A7064","D")
+Call WriteViaLoader("2194","30C35D320FF2001A5D2A0B1988251130","D")
+Call WriteViaLoader("21A4","EF6D020E8825113062EAAA223A88251F","D")
+Call WriteViaLoader("21B4","30EA8C340472FB2B5D300D1788251130","D")
+Call WriteViaLoader("21C4","62EA88251C30122BEAAA223A88251D30","D")
+Call WriteViaLoader("21D4","EA00DF72FF2B00E422208D010702148D","D")
+Call WriteViaLoader("21E4","010A024422148D0107023D22DF8D0107","D")
+Call WriteViaLoader("21F4","023DF922218B01078A010F2D2F061122","D")
+Call WriteViaLoader("2204","2E8B010F22228B011022168B011100E2","D")
+Call WriteViaLoader("2214","8A01122D2F06DB222E8B011222228B01","D")
+Call WriteViaLoader("2224","1322168B011400CA22218B010A00C322","D")
+Call WriteViaLoader("2234","DE8B010700BC00024110402860080111","D")
+Call WriteViaLoader("2244","02282801600840281008081228010220","D")
+Call WriteViaLoader("2254","02014820280802014001100101021020","D")
+Call WriteViaLoader("2264","FBF7EFDFBF7FF3F5F600000000FF","D")
+Call WriteViaLoader("20F1","D511880069360001FF7D30BE06208C","D")
+Call WriteViaLoader("2100","210E","D")
+Call WriteViaLoader("2109","8C20F1","D")
+
+Call WriteViaLoader("2406",SpendingLimitHex,"E")       ' Spending Limit
+Call Sc.ProgressBox ("Installing 3M.....", 30, 44, "StarGlitch")
+sc.delay (300)
+Call Sc.ProgressBox ("", 0, 0, "")
+Spend_Limit = "$" + Mid(Default_SpendLimit,1,2) + "." + Mid(Default_SpendLimit,3,2)
+sc.print VbCr & "P52 3M Installed, Enjoy!" & VbCr
+sc.print "Spending Limit set to " & Spend_Limit & VbCr
+Sc.Write("A0")
+End Sub
+
+Sub ShutdownCard()
+    BootActive = 0
+    Sc.Write("A0")              ' Turn the LED off
+    Sc.Write("020200")             ' Shutdown card
+    Sc.Delay(100)
+    Sc.Read(&h02)
+End Sub
+
+Function CheckCard()
+sc.verbose = 1
+    Dim ATR
+    Dim RetValue
+    Dim i
+    Call Sc.ProgressBox(0,0,0,0)
+    Sc.Write("06100E10019300")
+    Sc.Delay(500)
+    Sc.Read(&h02)
+    RetValue = Sc.GetByte(&h01)
+    Sc.Read (RetValue)
+    Sc.Print "Bytes in buffer: " & RetValue &VbCr
+ATR = ""
+    For i = 0 to RetValue -1
+        ATR = ATR &  HexString(Sc.GetByte(i), 2) & " "        ' bytes of ATR
+    Next
+'Sc.Print ATR
+    If RetValue = "13" Then
+      Sc.Print "This is an H card with ATR: " & ATR & VbCr
+    End If
+    If Retvalue = "20" Then
+      Sc.Print "This is an HU card with ATR: " & ATR & VbCr
+    End If
+    If (Retvalue <> "20")and(Retvalue <> "13")and (RetValue <> "0") Then
+      Sc.Print "This is an unknown card with ATR: " & ATR & VbCr
+    End If
+    If (Retvalue = "0") Then
+      Sc.Print "This may be a dead card, severely looped, damaged or you don't have good connections. ATR: " & ATR & VbCr
+    End If
+sc.verbose = 0
+End Function
+
+Sub Check2000() ' Modified From Canard's to check 4 bytes at 2000 for corruption
+    Dim Bytes
+    Dim Address
+    Dim i
+    Dim NumOfBytes
+    Dim Size
+
+    Sc.Print VbCr & "*** Checking 2000 Data ... ***" & VbCr
+    Address = 2000
+    Size = 4
+    NumOfBytes = HexToDec(Size)
+    Sc.Write("A2")
+    Call LoadBootStrap()
+    Call ExtractCardInfo()
+    Sc.Write("06 C2 " & HexString(NumOfBytes - 1,2) & Address & HexString(&h80 + NumOfBytes - 1,2) & "00")
+    Sc.Delay(50)
+    Sc.Read(&h02)
+    NumOfBytes=Sc.Getbyte(&h01)
+    Sc.Read(NumOfBytes)
+    For i=0 to NumOfBytes-1
+        Bytes = Bytes & HexString(Sc.Getbyte(i),2)
+    Next
+    if Bytes = "00000000" or Bytes = "" Then
+      sc.print VbCr & Bytes & VbCr
+       Sc.Print VbCr & "*** NOTE: 2000 Data on the card is '00000000' indicating some card specific bytes are messed up. ***" & VbCr
+    Else
+      Sc.Print VbCr & "*** NOTE: 2000 Data Check Passed! ***" & VbCr
+    End If
+    Sc.Write("A0")
+End Sub
+
+Sub Setup()
+Dim fso, ts, x, regEx, buf
+FileName = ""
+FileName = Fs.FileOpEndialog(IniFilter, "Please Load your settings file", "StarGlitch.ini")
+Set fso = CreateObject("Scripting.FileSystemObject")
+Set ts = fso.OpenTextFile(FileName)
+Do While Not ts.AtEndOfStream
+buf = buf + ts.ReadLine + VbCr
+loop
+ts.Close
+ExecuteGlobal buf
+sc.print "Settings Loaded" & VbCr & VbCr
+' sc.print buf
+End Sub

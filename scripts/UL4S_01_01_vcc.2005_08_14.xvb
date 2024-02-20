@@ -1,0 +1,444 @@
+' Author: Lee Gibling
+' Attempt to reroute the contents of one segments on Trans
+' of P4/SLE66 to output
+'
+
+Dim AI_cmd(&h27), AI_timeout_bracket(1)
+
+Dim I_nbr_key_bytes_f0, I_nbr_key_bytes_f1
+Dim I_idx_interval_1_start_f0, _
+    I_idx_interval_2_start_f0, _
+    I_idx_interval_3_start_f0, _
+    I_cmd_ubound
+Dim I_nbr_attempts_f1, I_wait_rs232, I_wait_rs232_ext
+
+' -------------------------------------
+
+Sub Main()
+
+Dim I_timeout_low, AI_key(), I_nbr_bytes_received_f1
+Dim I_idx_interval_f0, I_idx_interval_max_f0, L_tmout
+Dim l1, l2
+Dim StringToLog, S_intervals_2
+
+Success = Sc.Log ("Start of Test Run")
+if Success = 1 Then
+   Sc.Err("Unable to open LogFile")
+End If
+Success = Sc.Log("")
+
+I_nbr_key_bytes_f1   = 1
+
+I_nbr_attempts_f1    = 10
+I_wait_rs232         = 700 ' in millisecs
+I_wait_rs232_ext     = 010 ' extension
+
+L_interval_start = CLng(&h00)
+
+' 20 70 8d
+L_interval_end =  CLng(&h70)
+L_interval_end = (L_interval_end * CLng(&h100)) + CLng(&h8d)
+
+I_interval_1_lsb = &he1
+I_interval_1_hsb = &h43
+
+H_interval_1_lsb = HexString(I_interval_1_lsb, 2)
+H_interval_1_hsb = HexString(I_interval_1_hsb, 2)
+H_interval_1     = H_interval_1_hsb & H_interval_1_lsb
+
+
+I_nbr_key_bytes_f0 = I_nbr_key_bytes_f1 - 1
+Redim AI_key(I_nbr_key_bytes_f0)
+'----------------------------------------
+
+I_idx_interval_1_start_f0 = &h14
+I_idx_interval_2_start_f0 = &h19
+I_idx_interval_3_start_f0 = &h1f
+
+AI_cmd(&h00) = &hB0  ' packet will be vcc gl**ched
+AI_cmd(&h01) = &hc0  ' Vcc 4.0 volts
+AI_cmd(&h02) = &h25  ' gl**ch packet length
+AI_cmd(&h03) = &h10  ' set to 9.6 kBaud
+AI_cmd(&h04) = &h01  ' 1st power up
+AI_cmd(&h05) = &h28  ' delay
+AI_cmd(&h06) = &h00  ' delay
+AI_cmd(&h07) = &h00  ' delay
+AI_cmd(&h08) = &h01  ' 2nd power up
+
+AI_cmd(&h09) = &h20  ' wait for ATR_DM past the 0x0390 watershed
+AI_cmd(&h0a) = &h03  '
+AI_cmd(&h0b) = &hB0  '
+AI_cmd(&h0c) = &h80  ' receive byte 33 (beginning of ATR_DM)
+AI_cmd(&h0d) = &h20  ' delay
+AI_cmd(&h0e) = &h00  '
+AI_cmd(&h0f) = &h00  '
+AI_cmd(&h10) = &h8C  ' receive 13 (dec) bytes from card (remainder of ATR_DM)
+'-------------------------
+AI_cmd(&h11) = &hC0  ' send 1 byte to card
+AI_cmd(&h12) = &h00  ' 1st byte sent to card
+
+AI_cmd(&h13) = &h20  ' part 1 of critical watershed, if sum of interval1 1+2
+AI_cmd(&h14) = I_interval_1_hsb  ' is increased by one, a regular ATR (3F 78 ...) will be
+AI_cmd(&h15) = I_interval_1_lsb  ' appended to the output
+
+AI_cmd(&h16) = &hC0  ' send 1 byte to card
+AI_cmd(&h17) = &h01  ' 2nd byte sent to card
+
+AI_cmd(&h18) = &h20  ' part 2 of critical watershed, if sum pf interval1 1+2
+AI_cmd(&h19) = &h00  ' is increased by one, a regular ATR (3F 78 ...) will be
+AI_cmd(&h1a) = &h00  ' appended to the output
+
+AI_cmd(&h1b) = &h0D  ' start vcc glitch command
+AI_cmd(&h1c) = &h01  ' glitch delay
+AI_cmd(&h1d) = &h00  ' end of glitch command
+
+AI_cmd(&h1e) = &h20  ' part 3 of critical watershed, if sum pf interval1 1+2
+AI_cmd(&h1f) = &had  ' is increased by one, a regular ATR (3F 78 ...) will be
+AI_cmd(&h20) = &h5f  ' appended to the output
+
+AI_cmd(&h21) = &h10  ' set to 9.6 kBaud
+
+AI_CMD(&h22) = &h80
+AI_CMD(&h23) = &h28
+AI_CMD(&h24) = &h00
+AI_CMD(&h25) = &h00
+AI_CMD(&h26) = &h8c
+AI_cmd(&h27) = &h00  ' set to 9.6 kBaud again after watchdog timer unl@@per reset
+I_cmd_ubound = Ubound(AI_cmd)
+
+AI_key(0) = 0
+
+l2 = L_interval_end
+
+L_interval_4     = l2 + Clng(1)
+L_interval_4_lsb = L_interval_4 MOD &h100
+L_interval_4_hsb = L_interval_4 \ &h100
+
+L_interval_end_progress = L_interval_end + 1
+H_interval_end = HexString(L_interval_end_progress, 4)
+
+For l1 = L_interval_start to L_interval_end
+
+   L_interval_2       = l1
+   L_interval_2_lsb   = l1 MOD &h100  ' integer division
+   L_interval_2_hsb   = l1 \ &h100
+
+   H_interval_2_lsb   = HexString(L_interval_2_lsb, 2)
+   H_interval_2_hsb   = HexString(L_interval_2_hsb, 2)
+   H_interval_2       = H_interval_2_hsb & H_interval_2_lsb
+
+   L_interval_3       =  L_interval_end - l1
+   L_interval_3_lsb   =  L_interval_3 MOD &h100  ' integer division
+   L_interval_3_hsb   =  L_interval_3 \ &h100
+
+   H_interval_3_lsb   = HexString(L_interval_3_lsb, 2)
+   H_interval_3_hsb   = HexString(L_interval_3_hsb, 2)
+   H_interval_3       = H_interval_3_hsb & H_interval_3_lsb
+
+   L_interval_3_1     =  L_interval_3 + Clng(1)
+   L_interval_3_1_lsb =  L_interval_3_1 MOD &h100  ' integer division
+   H_interval_3_1_lsb =  HexString(L_interval_3_1_lsb, 2)
+
+   S_intervals_3 =  H_interval_3 & "/" & H_interval_3_1_lsb
+    StringToLog = _
+      "Checking interval_1: " & H_interval_2 & _
+      " - interval_3: " & S_intervals_3
+
+   Sc.Print(StringToLog & vbcrlf)
+   Sc.Log(StringToLog)
+   Sc.Log("")
+
+   l1_progress = l1 + Clng(1)
+   Call Sc.ProgressBox ( _
+     "verifying intervals: 0x" & H_interval_2 & ", " & S_intervals_3, _
+      l1_progress , L_interval_end_progress, _
+      "P4 DTA Vcc 0x" & H_interval_end & " intervals")
+
+   I_nbr_bytes_received_f1 = FI_verify_intervals ( _
+         l1, L_interval_3, _
+         &h10, _
+         &h1d)
+
+  Next
+
+End Sub ' Main
+
+'-------------------------------------------------------
+
+Function FI_verify_intervals ( _
+   P_L_interval_1, _
+   P_L_interval_2, _
+   P_I_len_expected_0_f1, _
+   P_I_len_expected_1_f1)
+
+Dim I_len_received_0_f1, I_len_received_1_f1
+Dim L_interval_2_1, I_retval
+Dim StringToLog
+
+I_retval = -1
+
+L_interval_2_1 = P_L_interval_2 + Clng(1)
+
+I_len_received_0_f1 = FI_Verify_single_interval_ma ( _
+   P_L_interval_1, _
+   P_L_interval_2, _
+   P_I_len_expected_0_f1, _
+   0) ' part
+
+I_len_received_1_f1 = FI_Verify_single_interval_ma ( _
+   P_L_interval_1, _
+   L_interval_2_1, _
+   P_I_len_expected_1_f1, _
+   1) ' part
+
+I_retval = I_len_received_1_f1
+FI_verify_limit = I_retval
+
+End Function
+
+'---------------------------
+' multiple attempts
+
+Function FI_Verify_single_interval_ma ( _
+  P_L_interval_1, _
+  P_L_interval_2, _
+  P_I_len_expected_f1, _
+  P_I_part_f0)
+
+Dim I_retval, i1, I_res, I_loop, I_pos_key_f1, I_wait_rs232_lcl
+' I_wait_rs232_ext
+Dim StringToLog, H_timeout, H_len_expected_f1, S_key
+
+I_wait_rs232_lcl = I_wait_rs232
+i1               = 1
+I_retval         = -1
+
+I_loop       = 0
+While I_loop = 0
+   If i1 < I_nbr_attempts_f1 Then
+      I_res = FI_Verify_single_interval ( _
+          P_L_interval_1, _
+          P_L_interval_2, _
+          P_I_len_expected_f1, _
+          i1, _
+          P_I_part_f0, _
+          I_wait_rs232_lcl)
+      If I_res = P_I_len_expected_f1 Then
+         I_retval = I_res
+         I_loop = 1
+      Else
+         i1 = i1 + 1
+         If I_res <> P_I_len_expected_f1 Then
+            StringToLog = "Waited for unlooper's response: " & I_wait_rs232_lcl & " ms."
+            Sc.Print(StringToLog & vbcrlf)
+            Sc.Log(StringToLog)
+            Sc.Log("")
+            If I_res < P_I_len_expected_f1 Then
+               I_wait_rs232_lcl = I_wait_rs232_lcl + I_wait_rs232_ext
+            End If
+         End If
+      End If
+   Else
+      I_loop = -1
+      S_key = FS_HexString_ary( _
+           AI_cmd, _
+           I_idx_key_0_start_f0, _
+           I_nbr_key_bytes_f1)
+      H_timeout = HexString(P_I_timeout, 4)
+      H_len_expected_f1 = HexString(P_I_len_expected_f1, 2)
+      StringToLog = "Error for key: " & S_key & vbcrlf & _
+                    "Didn't get expected result length of (hex) " & _
+                    H_len_expected_f1 &  " - at a timeout of: (hex) " & H_timeout & vbcr & _
+                    "after " &  I_nbr_attempts_f1 & " attempts"
+      Sc.Print(StringToLog & vbcrlf)
+      Sc.Log(StringToLog)
+      Sc.Log("")
+   End If
+Wend
+
+FI_Verify_single_interval_ma = I_retval
+
+End Function
+
+'---------------------------
+
+Function FI_Verify_single_interval ( _
+  P_L_interval_1, _
+  P_L_interval_2, _
+  P_I_len_expected_f1, _
+  P_I_nbr_attempt_f1, _
+  P_I_part_f0, _
+  P_I_wait_rs232)
+
+Dim i1, i2, I_nbr_bytes_received_f1, I_key
+Dim I_timeout_0, I_timeout_1, S_timeout_0, S_timeout_1
+
+I_interval_1_lsb  = P_L_interval_1 MOD &h100
+I_interval_1_msb  = P_L_interval_1 \   &h100 ' integer division
+
+I_interval_2_lsb  = P_L_interval_2 MOD &h100
+I_interval_2_msb  = P_L_interval_2 \   &h100 ' integer division
+
+' S_timeout_0  =  HexString(I_timeout_0, 2)
+' S_timeout_1  =  HexString(I_timeout_1, 2)
+
+AI_cmd(I_idx_interval_2_start_f0)     = I_interval_1_msb
+AI_cmd(I_idx_interval_2_start_f0 + 1) = I_interval_1_lsb
+
+AI_cmd(I_idx_interval_3_start_f0)     = I_interval_2_msb
+AI_cmd(I_idx_interval_3_start_f0 + 1) = I_interval_2_lsb
+
+I_nbr_bytes_received_f1 = FI_send_to_card_wait_rs232 _
+    ("", 0, I_cmd_ubound, P_I_wait_rs232)
+
+Sc.Print ("Trace-1: I_nbr_bytes_received_f1 " & I_nbr_bytes_received_f1 & vbcrlf)
+
+If I_nbr_bytes_received_f1 <> P_I_len_expected_f1 Then
+   StringToLog = "Expected[" & P_I_part_f0  &  "] " & _
+   P_I_len_expected_f1 & _
+   " --- Received " & _
+   I_nbr_bytes_received_f1
+
+   Sc.Print(StringToLog & vbcrlf)
+   Sc.Log(StringToLog)
+   Sc.Log("")
+End If
+
+FI_verify_single_interval = I_nbr_bytes_received_f1
+
+End Function
+
+'---------------------------
+Function FI_send_to_card ( _
+ P_StringToSend_head, _
+ P_idx_start_f0, _
+ P_idx_end_f0)
+
+Dim I_retval, I_wait_rs232_dflt ' timeout in milliseconds
+
+I_wait_rs232_dflt = 400
+
+I_retval = FI_send_to_card_wait_rs232 ( _
+P_StringToSend_head, _
+P_idx_start_f0, _
+P_idx_end_f0, _
+I_wait_rs232_dflt)
+
+FI_send_to_card = I_retval
+
+End Function
+'---------------------------
+
+Function FI_send_to_card_wait_rs232 ( _
+ P_StringToSend_head, _
+ P_idx_start_f0, _
+ P_idx_end_f0, _
+ P_I_wait_rs232) ' wait in milliseconds for signal to  RS232 interface
+
+Dim i1, I_bytes_received_f1, I_len_f1 , StringToSend, I_max_idx_f0
+
+StringToSend = P_StringToSend_head
+
+I_len_f1 = P_idx_end_f0 - P_idx_start_f0 + 1
+
+StringToSend = FS_HexString_ary( _
+    AI_cmd, _
+    P_idx_start_f0, _
+    I_len_f1)
+
+On Error Resume Next
+Sc.Write(StringToSend)
+On Error Goto 0
+Sc.Log(StringToSend)
+
+Sc.Delay(P_I_wait_rs232)
+I_bytes_received_f1 = Sc.BytesInBuffer
+StringToLog = ("Received: (dec) " & I_bytes_received_f1 & " bytes")
+Sc.Print(StringToLog)
+Sc.Log(StringToLog)
+
+Sc.Read(I_bytes_received_f1)
+I_max_idx_f0 = I_bytes_received_f1 - 1
+StringReceived = ""
+For i1 = 0 to I_max_idx_f0
+    I_byte = Sc.GetByte(i1)
+    S_byte = HexString(I_byte, 2)
+    StringReceived = StringReceived & S_byte
+    If i1 < I_max_idx_f0 Then
+       StringReceived = StringReceived & " "
+    End If
+Next
+
+Success = Sc.Log(StringReceived)
+Sc.Print(vbcrlf)
+Success = Sc.Log("")
+
+FI_send_to_card_wait_rs232 = I_bytes_received_f1
+
+End Function ' FI_send_to_card_wait_rs232
+
+
+'-----------------------------------------
+Function FS_HexString_Ary( _
+P_AI_ary(), _
+P_I_idx_start_f0, _
+P_I_idx_len_f1)
+
+Dim S_retval, H_byte
+Dim i1, I_count_f1, I_loop, U_bound_f0, L_bound_f0, I_byte
+
+Dim StringToLog
+StringToLog = "P_I_idx_start_f0: " & P_I_idx_start_f0
+
+S_retval = ""
+
+I_count_f1 = 0
+U_bound_f0 = Ubound(P_AI_ary)
+L_bound_f0 = Lbound(P_AI_ary)
+
+i1 = P_I_idx_start_f0
+
+I_loop = 0
+While I_loop = 0
+   if I_count_f1 < P_I_idx_len_f1 Then
+      if i1 <= U_bound_f0 Then
+         if i1 >= L_bound_f0 Then
+            I_byte = P_AI_ary(i1)
+            H_byte = HexString(I_byte, 2)
+            S_retval = S_retval & H_byte
+            if i1 < U_bound_f0 Then
+               S_retval =  S_retval + " "
+            End If
+         End If
+         i1 = i1 + 1
+         I_count_f1 = I_count_f1 + 1
+      Else
+         I_loop = 1
+      End If
+   Else
+      I_loop = 1
+   End If
+Wend
+
+FS_HexString_Ary = S_retval
+
+End Function
+
+'-------------------------
+
+Function HexString(Number,Length)
+' This function takes 2 arguments, a number and a length. It converts the decimal
+' number given by the first argument to a Hexidecimal string with its length
+' equal to the number of digits given by the second argument
+Dim RetVal
+Dim CurLen
+
+RetVal=Hex(Number)
+CurLen=Len(RetVal)
+
+If CurLen<Length Then
+   RetVal=String(Length-CurLen, "0") & RetVal
+End If
+
+HexString=RetVal
+End Function

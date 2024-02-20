@@ -1,0 +1,368 @@
+'
+'Created 02/12/2001 by DB
+'
+' -=ISO BackDoor Demonstration Utility=-
+'
+' Note: the clean, does not do a FULL clean.
+'
+'
+' Using "WriteBackDoor":
+' ----------------------
+'
+' This is pretty straght forward:  Call WriteBackdoor("AAAA","DD..DD","O")
+' AAAA = Address
+' DDDD = Data To Write
+' 0    = Option, D to Write data Decrypted, E to Encrypt the data using the cards eeprom key
+'
+'
+' Using "ReadBackdoor"
+' ----------------------
+'
+' Again, it's pretty simple:  data = Readbackdoor("AAAA","LL")
+' AAAA = Address
+' LL = Lenth.  you may read up to FFh bytes
+'
+' Note: You can also dump ram with this
+'
+'  Executing Dynamicode
+' -----------------------
+'
+' Call ExecuteDynamicode("ExecutablecodeHERE")
+' Code must have a rts at the end
+'
+' ---------------------------------------------------------
+' Greez to ops in #dsstech (irc.canucknet.com)
+'
+' Special thanx to Mex for the simple clean routine and for
+' testing, and to RedWS6 for all the great beta testing :)
+' ----------------------------------------------------------
+
+Option Explicit
+
+Const ins="08" 'Ins for backdoor
+Const backdoorkey="11223344"  '4 byte backdoor key
+
+
+
+Call P3settings() ' Set up winexplorer for P3
+
+
+
+
+Sub main()
+'Sc.verbose = False
+
+Dim MenuPrompt
+Dim Choice
+Dim GotInput
+
+'Get Ver
+    If Sc.Version < 4.6 Then
+        ErrorString = "You need version 4.6 or greater of WinExplorer to run this script"
+        Sc.MsgBox ErrorString, vbCritical
+        Err.Raise 1050, , ErrorString
+        End If
+
+      Do
+            Gotinput = False
+            MenuPrompt = "                                    I S O  B A C K  D O O R  T E S T"
+            MenuPrompt = MenuPrompt & "" & vbCrLf & vbCrLf
+            MenuPrompt = MenuPrompt & "                   This is simply a demo script, to demonstrate the backdoor." & vbcrlf
+            MenuPrompt = MenuPrompt & "              You may use these routines for whatever you like, they are FREE." & vbcrlf
+            Choice = Sc.ButtonBox(MenuPrompt,0,"BackDoor","Install 3M","Clean Card","Read Stuff","Exit")
+
+            Select Case Choice
+
+        Case 1
+            Call Install3M()
+        Case 2
+            Call CleanBlankSpace()
+        Case 3
+            Call ReadStuff()
+        Case 4
+            Gotinput = True
+                        End Select
+Loop Until Gotinput = True
+
+End sub
+
+Function ReadStuff()
+Dim XorKey
+
+XorKey = ReadBackdoor("2DB0","08") 'Read 8 bytes from 2DB0
+
+Sc.print vbcrlf & "EEPROM KEY: " & XorKey & vbcrlf
+
+
+End Function
+
+
+Function install3M()
+'NewEra 3M.
+
+
+Sc.print vbcrlf & vbcrlf & "Installing NewEra 3.3 3M...."
+
+Call WriteBackDoor("24A4","00000000","E")
+Call WriteBackDoor("2460","00000000","E")
+Call WriteBackDoor("2406","0000","E")
+Call WriteBackDoor("2014","25DA","D")
+Call WriteBackDoor("251F","89","E")
+
+Sc.print vbcrlf & "Installing 3M...."
+
+Call WriteBackDoor("2B10","AAFFFA2D2F060B740227B4B4B4B4B4B4","D")
+Call WriteBackDoor("2B20","B4F9AAFFFC2DE2060BB4B4B4B4B4B4B4","D")
+Call WriteBackDoor("2B30","75EF28F9AAFFFD2D6C0610AAFFFC2DCE","D")
+Call WriteBackDoor("2B40","0609B4B4B4B4B4B4B4B5F9AAFFFB2DCD","D")
+Call WriteBackDoor("2B50","0610AAFFFA2DC60609B4B4B4B4B4B4B4","D")
+Call WriteBackDoor("2B60","B4B48C2B66DB7D24D006067225D08EE0","D")
+Call WriteBackDoor("2B70","2FF9F4CA2CCBB90603728646F9","D")
+
+Sc.print vbcrlf & "Activating 3M..."
+
+Call WriteBackDoor("3F3D","8C2B10","D")
+
+
+Sc.print vbcrlf & vbcrlf & "Installation Complete!"
+
+
+End function
+
+
+Function CleanBlankSpace() 'by Mex
+
+'This routine cleans the blank space, and also removes the 3M jump.
+' Note that this will not clean the backdoor routine stored at
+' 2D00-2D40.
+
+
+Dim Key1
+Dim Key4
+
+
+Key1 = "0000000000000000"
+Key4 = Key1 & Key1 & Key1 & Key1
+
+Sc.Print "Cleaning Sub Data....." & vbcrlf
+
+Call WriteBackDoor("3F3D","F4CA2C","D")
+Call WriteBackDoor("2014", "20DF", "D")' fuse
+Call WriteBackDoor("2406", "03E80000000000000000", "E") 'limit, act date, password
+Call WriteBackDoor("2410", "00000000000000000000000000010000", "E")' zip, ppv act
+Call WriteBackDoor("2420", "00000000000000000000000100000000", "E")' ppv act
+Call WriteBackDoor("2430", "00000000000000000001000000000000", "E")' sub
+Call WriteBackDoor("2440", "00000000000000010000000000000000", "E")' sub
+Call WriteBackDoor("2450", "00000000000000000000000000000000", "E")' sub
+
+Call WriteBackDoor("2460", "00000000", "E")' ird slot 1
+Call WriteBackDoor("2464", "090000", "E")' ratings
+Call WriteBackDoor("24A4", "00000000", "E")' ird slot 2
+Call WriteBackDoor("24E0", "A601", "E")' time zone
+Call WriteBackDoor("24E6", "0000", "E")' dsw counter
+Call WriteBackDoor("2500", "00FFFFFFFFFFFFFFFFFFFFFFFFFFFFFF", "E")' guide
+Call WriteBackDoor("2510", "FFFF0000000000000000000000000000", "E")' guide
+
+Sc.Print "Cleaning PPV Data....." & vbcrlf
+
+Call WriteBackDoor("2024", "00000000" & Key1, "E")
+Call WriteBackDoor("2030", Key4, "E")
+Call WriteBackDoor("2050", Key4, "E")
+Call WriteBackDoor("2070", Key4, "E")
+Call WriteBackDoor("2090", Key4, "E")
+Call WriteBackDoor("20B0", Key4, "E")
+Call WriteBackDoor("20D0", Key4, "E")
+Call WriteBackDoor("20F0", Key1 & Key1, "E")
+Call WriteBackDoor("2100", "000000000000", "E")
+
+
+Sc.Print "Cleaning Tier Data....." & vbcrlf'
+
+Call WriteBackDoor("2106", "0000" & Key1, "E")
+Call WriteBackDoor("2110", Key4, "E")
+Call WriteBackDoor("2130", Key4, "E")
+Call WriteBackDoor("2150", Key4, "E")
+Call WriteBackDoor("2170", Key4, "E")
+Call WriteBackDoor("2190", Key4, "E")
+Call WriteBackDoor("21B0", Key4, "E")
+Call WriteBackDoor("21D0", Key4, "E")
+Call WriteBackDoor("21F0", Key4, "E")
+Call WriteBackDoor("2210", Key4, "E")
+Call WriteBackDoor("2230", Key4, "E")
+Call WriteBackDoor("2250", Key4, "E")
+Call WriteBackDoor("2270", Key4, "E")
+Call WriteBackDoor("2290", Key4, "E")
+Call WriteBackDoor("22B0", Key4, "E")
+Call WriteBackDoor("22D0", Key4, "E")
+Call WriteBackDoor("22F0", "0000", "E")
+
+Sc.Print "Cleaning Message Data....." & vbcrlf
+
+Call WriteBackDoor("2B00", Key4, "E")
+Call WriteBackDoor("2B20", Key4, "E")
+Call WriteBackDoor("2B40", Key4, "E")
+Call WriteBackDoor("2B60", Key4, "E")
+Call WriteBackDoor("2B80", Key4, "E")
+Call WriteBackDoor("2BA0", Key4, "E")
+Call WriteBackDoor("2BC0", Key4, "E")
+Call WriteBackDoor("2BE0", Key4, "E")
+Call WriteBackDoor("2C00", Key4, "E")
+Call WriteBackDoor("2C20", Key4, "E")
+Call WriteBackDoor("2C40", Key4, "E")
+Call WriteBackDoor("2C60", Key4, "E")
+Call WriteBackDoor("2C80", Key4, "E")
+Call WriteBackDoor("2CA0", Key4, "E")
+Call WriteBackDoor("2CC0", Key4, "E")
+
+Sc.Print "Cleaning Message Data....." & vbcrlf
+
+Call WriteBackDoor("2CE0", Key4, "E")
+Call WriteBackDoor("2D50", Key1 & Key1, "E")
+Call WriteBackDoor("2D60", Key4, "E")
+Call WriteBackDoor("2D80", Key4, "E")
+Call WriteBackDoor("2DA0", Key4, "E")
+Call WriteBackDoor("2DE0", Key4, "E")
+Call WriteBackDoor("2E00", Key4, "E")
+Call WriteBackDoor("2E20", Key4, "E")
+Call WriteBackDoor("2E40", Key4, "E")
+Call WriteBackDoor("2E60", Key4, "E")
+Call WriteBackDoor("2E80", Key4, "E")
+Call WriteBackDoor("2EA0", Key4, "E")
+Call WriteBackDoor("2EC0", Key4, "E")
+
+Sc.Print "Cleaning Data Completed....." & vbcrlf
+
+End Function
+
+
+Function WriteBackDoor(address,data,o)
+Dim inslenth
+Dim ToWrite
+address=Replace(address," ","") 'Remove any spaces
+data=Replace(data," ","") ' Remove any spaces
+        inslenth=Len(data)
+        inslenth=Hexstring((inslenth/2+6),2) ' Get Lenth
+
+        if Ucase(o)="D" then
+               ToWrite="48" & ins & "1000" & inslenth
+            else if Ucase(o)="E" then
+               ToWrite="48" & ins & "2000" & inslenth
+            else
+                msgbox "Error, Invailed option " & o & ".  E & D are vailed"
+                Exit function
+        End if
+            End if
+
+Sc.Write(ToWrite) ' Send Header
+Sc.Read(&H01)     ' Get INS ACK
+Sc.Write(backdoorkey & address & data) ' Send data
+Sc.Read(&H02)     ' Get 90 00 response
+
+End function
+
+
+Function ReadBackDoor(address,numberOfbytes)
+Dim ToWrite
+Dim i
+        numberOfBytes=Hexstring(numberofbytes,2)
+        ToWrite="48" & ins & "40" & numberOfbytes & "06"
+
+      Sc.Write(ToWrite) ' Send Header
+         Sc.Read(&H01)     ' Get INS ACK
+              Sc.Write(backdoorkey&address) ' Send data
+
+          Sc.read(numberOfBytes)  'Get data to be read
+
+      numberofbytes=(numberofbytes - &H01)
+
+        For i=0 to Hex2Dec(numberofbytes)
+
+             ReadBackDoor=ReadBackdoor & Hexstring(Sc.Getbyte(Hexstring(i,2)),2)
+
+    Next
+
+Sc.Read(&H02) ' get 90 00 response
+
+End function
+
+
+Function ExecuteDynamicode(executeablecode)
+
+Dim inslenth
+Dim ToWrite
+executablecode=Replace(executablecode," ","") 'Remove any spaces
+
+        inslenth=Len(data)
+        inslenth=Hexstring((inslenth/2+6),2) ' Get Lenth
+
+               ToWrite="48" & ins & "8000" & inslenth
+
+Sc.Write(ToWrite) ' Send Header
+Sc.Read(&H01)     ' Get INS ACK
+Sc.Write(backdoorkey & data) ' Send data
+Sc.Read(&H02)     ' Get 90 00 response
+
+
+End function
+
+Function HexString(Number,Length)
+    ' This function takes 2 arguments, a number and a length.  It converts the decimal
+    ' number given by the first argument to a Hexidecimal string with its length
+    ' equal to the number of digits given by the second argument
+    Dim RetVal
+    Dim CurLen
+    RetVal=Hex(Number)
+    CurLen=Len(RetVal)
+    If CurLen<Length Then
+        RetVal=String(Length-CurLen,"0") & RetVal
+    End If
+    HexString=RetVal
+End Function
+
+Function Hex2Dec(HexNumber)
+    ' This function takes 1 argument, a string containing a hex value of any digit length
+    ' and returns the decimal equivalent
+    Dim DecimalValue
+    Dim DigitCount
+    Dim Digit
+    Dim HexDigit
+
+    HexNumber = Replace(UCase(HexNumber), " ", "")
+    DigitCount = Len(HexNumber)
+
+    For Digit = 1 To DigitCount
+
+        HexDigit = Mid(HexNumber, Digit, 1)
+        If Asc(HexDigit) < 58 Then
+            DecimalValue = HexDigit * 16 ^ (DigitCount - Digit)
+        Else
+            DecimalValue = (Asc(HexDigit) - 55) * 16 ^ (DigitCount - Digit)
+        End If
+        Hex2Dec = Hex2Dec + DecimalValue
+    Next
+
+End Function
+
+
+Sub P3Settings()
+
+    Wx.BaudRate = 38400
+    Wx.ResetBaudRate = 9600
+    Wx.Parity = 1                    ' 0 = None, 1 = Odd, 2 = Even, 3 = Mark, 4 = Space
+    Wx.StopBits = 2                  ' 0 = 1 stop bit, 1 = 1.5 stop bits, 2 = 2 stop bits
+    Wx.DTRControl = 1                ' Initial state of DTR  0 = off, 1 = on
+    Wx.RTSControl = 0                ' Initial state of RTS  0 = off, 1 = on
+    Wx.ResetDelay = 4000             ' In microseconds
+    Wx.ByteDelay = 4000              ' In microseconds
+    Wx.RxByteTimeout = 200           ' In milliseconds
+    Wx.ResetMode = 1                 ' 0 = No Resets, 1 = ISO Reset (Expect a ATR), 2 = Device Reset (No ATR)
+    Wx.ResetLine = 0                 ' 0 = Toggle RTS for Reset, 1 = Toggle DTR for Reset
+    Wx.ByteConvention = 0            ' 0 = Inverse, 1 = Direct
+    Wx.FlushEchoByte = 1             ' 0 = no flush, 1 = flush - A Phoenix interface will echo each byte transmitted.
+    Wx.FlushBeforeWrite = 1          ' 0 = no flush, 1 = flush - Flush the receive buffer before each write to strip off Null bytes.
+    Wx.IgnoreTimeouts = 0            ' 0 = Abort script on a receive timeout, 1 = Ignore all receive timeouts
+    Wx.ResetAfterTimeout = 0         ' 0 = Don't reset after a timeout, 1 = do a reset after a timeout  - Not used if "IgnoreTimeouts=0"
+    Wx.LogTransactions = 0           ' 0 = Don't log transactions, 1 = log transactions
+    Wx.DisplayUSW = 1                ' Display USW after script complete 0 = no, 1 = yes
+    Wx.DisplayFuse = 1               ' Display Fuse after script complete 0 = no, 1 = yes
+End Sub

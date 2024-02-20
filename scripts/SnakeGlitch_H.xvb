@@ -1,0 +1,1047 @@
+'SnakeGlitch_H v1.0 *****FOR MODDED H CARD UNLOOPERS
+'THIS SCRIPT WILL FIND THE BEST DAC VALUES TO USE WITH SNAKEBITE
+'USE A 5B CARD IF YOU HAVE ONE AND RUN IT, IF NOT USE WHAT YOU HAVE, MAY/WILL TAKE SOME TIME
+'THE DAC RANGES IT USES SHOULD JUST ABOUT COVER MOST POPULAR UNLOOPERS ON THE MARKET TODAY
+'IF YOU CANNOT GET ANY DAC VALUES USING THIS, THEN SNAKEBITE WILL NOT WORK FOR YOU
+'IF THIS SCRIPT WORKS FOR YOU, IT WILL PROMPT YOU FOR A BIN TO WRITE
+'*****IMPORTANT********* WRITE DOWN THE DAC VALUES GIVEN WHEN THE CARD POPS
+'THESE VALUES ARE WHAT YOU ARE GOING TO NEED WITH SNAKEBITE
+'EVERYTIME YOU RUN THIS AND A CARD POPS, IT MAY/WILL GIVE YOU DIFFERENT VALUES
+'JUST TRY THEM OUT ON SNAKEBITE_FOR_ALL TILL YOU GET FASTER RESULTS WITH SNAKEBITE_FOR_ALL
+'THIS LIKE ALL TOYS WAS TAKEN AND MODIFIED FOR YOUR SPECIFIC UNLOOPER
+'(THOSE WHO HAVE WORKED ON THIS WILL RECOGNIZE YOUR WORK, THANKS)
+'ENJOY...
+'TexasRattleSnake
+
+
+
+Option Explicit
+    Const dss_DefaultButton1 = 0
+    Const dss_DefaultButton2 = 256
+    Const dss_DefaultButton3 = 512
+    Const fsoError = -1
+    Const fsoOpenRead = 0
+    Const fsoOpenWrite = 1
+    Const fsoOpenReadWrite = 2
+    Const fsoSEEK_SET = 0
+    Const fsoSEEK_CUR = 1
+    Const fsoSEEK_END = 2
+    Const FileFilter = "All Eprom Files (*.bin, *.crd)|*.bin;*.crd;|Bin Files (*.bin)|*.bin|Crd Files (*.crd)|*.crd|All (*.*)|*.*"
+    Const Ins = &h08
+    Const InsParam1 = &h00
+    Const InsParam2 = &h00
+    Const InsLen = &h34
+    Dim OutFile
+    Dim InFile
+    Dim HUBinFile
+    Dim XORedByte(31)
+    Dim Key12byte(11)
+    Dim Choice
+    Dim D0,D1,D2,D3,D4,D5,D6,D7,D8,D9
+    Dim ScriptStart
+    Dim ScriptEnd
+    Dim DAC
+    Dim DAC4C
+    Dim Delaye
+    Dim Delay5C
+    Dim glttl,Attempts
+    Dim chglch
+    Dim glchs
+    Dim MenuPrompt
+    Dim Read
+    Dim Glrngchoice
+    Dim ATR
+    Dim Redo
+
+Sub Main()
+    Dim ErrorString
+    Dim MenuPrompt
+    Dim Choice
+    Dim PromptString
+    Dim RetVal
+    Dim GotInput
+    Dim ThisChar
+    Dim Version
+    Dim Password
+    call Sc.PlaySound("mainopen.wav")
+    Call Sc.PictureBox("logo.jpg",7)
+    Sc.Verbose = 0
+
+    If Sc.Version < 4.5 Then
+        ErrorString = "You need version 4.5 or greater of WinExplorer to run this script"
+        Sc.MsgBox ErrorString, vbCritical
+        Err.Raise 1050, , ErrorString
+        End If
+
+    if ChipVer <> 1 then
+        sc.MsgBox("You need chip version UL4S to run this script" & VbCr & "Flash your chip with the Included UL4S code")
+        Exit Sub
+     end if
+
+Do
+
+    MenuPrompt = "STRIKE YOUR CHOICE." & vbCrLf
+    MenuPrompt = MenuPrompt & "IF YOU RECOGNIZE YOUR CODE" & vbCrLf & vbCrLf
+    MenuPrompt = MenuPrompt & "THANK YOU no1be4me FOR GIVING US THESE ROUTINES:" & vbCrLf'
+    Choice = Sc.ButtonBox(MenuPrompt, 0, "SnakeGlitch: GLITCH FINDER", "Find Glitch", "Exit")
+
+Select Case Choice
+
+Case "1"
+
+    glttl = 1
+    chglch =1
+ RetVal =3
+  call IsCardPresent()
+     if RetVal = 3 then
+        Call UnloopBootCard
+    End If
+
+ Sc.Write("A0")                ' turn the LED off
+ Sc.Write("020200")          'shut down card
+ Sc.Delay(100)
+ Sc.Read(&h02)
+
+Case "2"
+
+ Exit Sub
+Case Else
+    MenuPrompt = "Invalid Input!" & vbCrLf
+End Select
+Loop While True = True
+End SUB
+
+Sub GetFileName()
+
+    Dim FileName
+
+    FileName = Fs.FileSaveDialog(FileFilter, "              Please select a name to save the new bin file as...", "Default.bin")
+    If FileName <> "" Then
+        OutFile = Fs.FileCreate(FileName)
+        HUBinFile = True
+    Else
+        HUBinFile = False
+    End If
+
+End Sub
+
+
+Sub GetFile()
+
+    Dim FileName
+    Dim FileSize
+
+    FileName = Fs.FileOpenDialog(FileFilter, "    Please select a valid HU Eprom (*.bin) file to write to the card", "Default.bin")
+    If FileName <> "" Then
+        If Fs.FileExists(FileName) = 0 Then
+            Sc.MsgBox("The file does not exist")
+        Else
+            InFile = Fs.FileOpen(FileName, fsoOpenRead)
+        End If
+    End If
+
+    FileSize = Fs.FileSeek(InFile, 0, fsoSEEK_END)
+
+    If FileSize <> "8192" Then
+        Sc.MsgBox("This file is NOT a valid HU bin file" & vbcr & "or the bin file you are trying to open" & vbcr & "is being used by another program")
+        HUBinFile = False
+        Exit Sub
+    Else
+        HUBinFile = True
+    End If
+
+End Sub
+
+
+Sub WDTMR()
+    Dim RetValue
+
+Sc.Write("05150E108000")'SET WDTMR
+sc.delay(70)
+Sc.Read(&h02)
+        RetValue = Sc.GetByte(&h01)
+        Sc.Read(RetValue)
+end sub
+
+
+Sub IsCardPresent()
+    Dim RetValue
+    Dim GotInput
+
+ScriptStart = Now
+Sc.Print "----------------------------------------------------------------" & vbCr
+Sc.Print "Start: " & ScriptStart & vbCr     'main screen
+Sc.Print "----------------------------------------------------------------" & vbCr
+
+    Do
+Sc.Write("A0")                ' turn the LED off
+Sc.Write("80")                'Is card present?
+Sc.Delay(100)
+If Sc.BytesInBuffer > 0 then
+Sc.Read(&h01)
+RetValue = Sc.GetByte(0)
+end if
+
+If RetValue = &h0 then
+Call Sc.ProgressBox ("*** Please insert your card... ***", 1, 999, "SnakeGlitch")
+GotInput = False
+else
+If RetValue = &hFF then
+GotInput = True
+else
+If RetValue <> &h0 or RetValue <> &hFF then
+Sc.Write("A0")                ' turn the LED off
+Sc.Write("020200")
+Sc.Delay(100)
+If Sc.BytesInBuffer > 1 then
+Sc.Read(&h02)
+GotInput = False
+else
+GotInput = False
+end if
+end if
+End if
+End if
+Loop Until GotInput = True
+end sub
+
+Function HexString(Number,Length)
+    ' This function takes 2 arguments, a number and a length.  It converts the decimal
+    ' number given by the first argument to a Hexidecimal string with its length
+    ' equal to the number of digits given by the second argument
+    Dim RetVal
+    Dim CurLen
+    RetVal=Hex(Number)
+    CurLen=Len(RetVal)
+    If CurLen<Length Then
+        RetVal=String(Length-CurLen,"0") & RetVal
+    End If
+    HexString=RetVal
+End Function
+
+Function Hex2Dec(HexNumber)
+    ' This function takes 1 argument, a string containing a hex value of any digit length
+    ' and returns the decimal equivalent
+    Dim DecimalValue
+    Dim DigitCount
+    Dim Digit
+    Dim HexDigit
+
+    HexNumber = Replace(UCase(HexNumber), " ", "")
+    DigitCount = Len(HexNumber)
+
+    For Digit = 1 To DigitCount
+
+        HexDigit = Mid(HexNumber, Digit, 1)
+        If Asc(HexDigit) < 58 Then
+            DecimalValue = HexDigit * 16 ^ (DigitCount - Digit)
+        Else
+            DecimalValue = (Asc(HexDigit) - 55) * 16 ^ (DigitCount - Digit)
+        End If
+        Hex2Dec = Hex2Dec + DecimalValue
+    Next
+
+End Function
+
+Function GetATR ()
+
+    Dim temp
+
+    Call Sc.ProgressBox(0,0,0,0)
+    Sc.Write("06100E10019300")
+    Sc.Delay(500)
+    Sc.Read(&h02)
+    temp = Sc.GetByte(&h01)
+    Sc.Read (temp)
+
+    if(temp <> 20) then
+        GetATR = False
+    else
+        GetATR = True
+    end if
+
+End Function
+
+Sub RndGr
+
+    Dim g1,g2,g3,g4,g5,g6
+    Dim dly,v
+
+RANDOMIZE TIMER
+
+  sc.verbose = false
+
+  for v = 1 to 800
+    g1 = INT(RND * &hFF)
+    g2 = INT(RND * &hFF)
+    g3 = INT(RND * &hFF)
+    g4 = INT(RND * &hFF)
+    g5 = INT(RND * &hFF)
+    g6 = INT(RND * &h4F) + &h80
+    dly= INT(RND * &h200)
+
+    sc.write("B0" & HexString(g6,2))
+
+    sc.write("111f0120" & HexString(dly,4) & "0c" & HexString(g1,2) & "0c" & HexString(g2,2) & "0a" & "0c" & HexString(g3,2) & "0c" & HexString(g4,2) & "0c" & HexString(g5,2) & "00")
+    sc.read(2)
+  next
+
+End Sub
+
+Sub CardIsLooped ()
+Sc.MsgBox("Card is not returning an ATR." &VbCr & "The card may not be fully Inserted" & VbCr &" or the card contacts may be dirty." & VbCr & "If everything is ok then the card is looped"&VbCr& "You must Unloop the card before using this option ")
+
+End Sub
+
+Function ShowAtr()
+
+    Dim cnt,tmp,b,Msg
+
+    Msg="SNAKEBITTEN"
+    tmp=""
+
+    sc.write("0610010e109300")
+
+    if Sc.Read(&h02) > 1 then
+        cnt = sc.getbyte(1)
+    else
+        cnt = 0
+    end if
+    tmp="Card Successfully STRIKED "+VbCr+"ATR Returned:"+VbCr
+    if cnt > 0 then
+        cnt = sc.read(cnt)
+
+    for b = 0 to cnt -1
+      tmp=tmp & HexString(sc.getbyte(b),2) & " "
+    next
+      sc.print VbCr & tmp & VbCr
+      cnt  = Sc.ButtonBox(tmp, 0, Msg, "Ok")
+    else
+    tmp=""
+    tmp=tmp+"Card did not return an ATR"+VbCr+"Try to unloop the card again"+VbCr
+    tmp=tmp+"This happens sometimes when the card"+VbCr
+    tmp=tmp+"doesn't take the eeprom write"
+    cnt = Sc.ButtonBox(tmp, 0,Msg , "Ok")
+
+    end if
+
+End Function
+
+Sub ProgUpdate(pg,atrlock)
+
+    Dim i
+    Dim Msg
+    Dim ElapTime
+
+    Msg="SnakeGlitch Indicator" + vbTab + "           Elapsed Time: " + FormatNumber((CDbl(Now) - CDbl(ScriptStart)) * 24 * 60, 2, True, True, True) + " minutes"
+
+    if atrlock = 1 then
+      Msg=Msg+VbCr+VbCr+"Striking ROM...."
+    else
+      Msg=Msg+VbCr+VbCr+"Biting ROM"
+    end if
+
+    Call Sc.ProgressBox(Msg,pg,33,"SnakeGlitch")
+
+End Sub
+Function Chk4Card()
+
+    Dim tmp
+    sc.write("80")
+    sc.delay(10)
+  if sc.read(1) = 1 then
+    tmp=sc.getbyte(0)
+    If tmp = &h0 then
+        Chk4Card=0
+        sc.write("A0")
+        Call Sc.ProgressBox(0,0,0,0)
+        sc.MsgBox("Card Removed Unlooping out of strike range")
+    else
+        Chk4Card=1
+    end if
+  end if
+
+End Function
+
+Function ChipVer()
+
+    ChipVer = 1
+
+    sc.write("90")
+    delay(80)
+
+    if sc.read(4) <> 4 then
+        ChipVer = 0
+        Exit Function
+     end if
+
+    if getbyte(0) <> &h55 then ChipVer = 0
+    if getbyte(1) <> &h4c then ChipVer = 0
+    if getbyte(2) <> &h34 then ChipVer = 0
+    if getbyte(3) <> &h53 then ChipVer = 0
+
+End Function
+
+
+Function HexToDec(HexNumber)
+
+    ' This function takes a string as input, assuming it to be a Hexidecimal string,
+    ' and converts it to a decimal number.
+
+    HexNumber=Replace(UCase(HexNumber)," ","")
+    HexToDec=CLng("&H"+HexNumber)
+
+End Function
+
+Sub Card_Reset()
+    Dim RetVal
+    Sc.Write("A0")     ' Turn the LED off if it is on
+    Sc.Write("020200") ' Power down the card
+    Sc.Delay(1000)     ' Wait about 1 second
+    Call Sc.Reset()    ' Power up the card
+    RetVal=Sc.Flush()  ' Flush the receive buffer
+End Sub
+
+Function ReadInfo()
+
+    Dim CAMIDHex
+    Dim CAMIDDec
+    Dim USWHex
+    Dim USWDec
+    Dim DSWHex
+    Dim DSWDec
+    Dim GuideHex
+    Dim GuideDec
+    Dim TimeHex
+    Dim TimeDec
+    Dim RatingHex
+    Dim RatingDec
+    Dim SpendingLimitHex
+    Dim SpendingLimitDec
+    Dim infobox
+    Dim actyear
+    Dim actmonth
+    Dim ActDateHex
+    Dim ActDateDec
+    Dim PPVLimitHex
+    Dim PPVLimitDec
+    Dim SpentHex
+    Dim SpentDec
+    Dim Fuse
+    Dim IRDHex
+    Dim IRDDec
+    Dim RetValue
+
+   if ReceiveATR() = 0 Then
+   Call Sc.Msgbox ("Error, Card has returned a partial ATR or NO Atr!")
+   Exit Function
+    End if
+
+    Sc.Write("0B 1A 0E10 C4 48 2A 00 00 80 BF 00")
+    Sc.Delay(80)
+    Sc.Read(&h02)
+       RetValue = Sc.GetByte(&h01)
+       Sc.Read (RetValue)
+
+    USWHex = HexString(GetByte(29), 2) & HexString(GetByte(30), 2)
+
+    USWDec = Hex2Dec(USWHex)
+        if len(USWDec) < 4 then
+           USWDec = "000" & USWDec
+        end if
+
+    DSWHex = HexString(GetByte(33), 2) & HexString(GetByte(34), 2)
+
+    DSWDec = Hex2Dec(DSWHex)
+        if len(DSWDec) < 4 then
+           DSWDec = "000" & DSWDec
+        end if
+
+    RatingHex = HexString(GetByte(11), 2)
+    RatingDec = Hex2Dec(RatingHex)
+        if len(RatingDec) = 1 then
+            RatingDec = "0" & RatingDec
+        end if
+
+
+    SpendingLimitHex = HexString(GetByte(12), 2) & HexString(GetByte(13), 2)
+    SpendingLimitDec = "$" & int(Hex2Dec(SpendingLimitHex)/100)
+
+    ActDateHex = HexString(GetByte(14), 2) & HexString(GetByte(15), 2)
+    if ActDateHex = "0000" then
+        ActDateDec = "Not Active"
+    else
+    ActDateHex = HexString(GetByte(14), 2) & HexString(GetByte(15), 2)
+    ActYear = 2000 + left(((GetByte(14)-95) / 12 * 100),1)
+    ActMonth = round((right(int((((GetByte(14) - 95)/12))*100),2)/100)*12)
+    ActDateDec = ActMonth & "." & GetByte(15) & "." & ActYear
+
+    end if
+
+    Fuse = HexString(GetByte(1), 2) & hexstring(GetByte(1) xor &hFF,2)
+
+    IRDHex = Hexstring(GetByte(21) xor GetByte(25),2) & Hexstring(GetByte(22) xor GetByte(26),2) & Hexstring(GetByte(23) xor GetByte(27),2) & Hexstring(GetByte(24) xor GetByte(28),2)
+        if len(IRDHex) <= 4 then
+            IRDHex = "0000" & IRDHex
+        end if
+
+    IRDDec = Hex2Dec(IRDHex)
+        if IRDDec <= 1 then
+            IRDDec = "0000000" & IRDDec
+        end if
+
+    Sc.Write("02BF00")
+    Sc.Delay(80)
+    Sc.Read(&h02)
+            RetValue = Sc.GetByte(&h01)
+            Sc.Read (RetValue)
+
+    PPVLimitHex = HexString(Sc.GetByte(23), 2) & HexString(Sc.GetByte(24), 2)
+    PPVLimitDec = "$" & int(Hex2Dec(PPVLimitHex)/100)
+    SpentHex = HexString(Sc.GetByte(21), 2) & HexString(Sc.GetByte(22), 2)
+    SpentDec = "$" & int(Hex2Dec(SpentHex)/100)
+
+    Sc.Write("028200")
+    Sc.Delay(80)
+    Sc.Read(&h02)
+            RetValue = Sc.GetByte(&h01)
+            Sc.Read (RetValue)
+
+    Sc.Write("08C448580000179B00")
+    Sc.Delay(80)
+    Sc.Read(&h02)
+            RetValue = Sc.GetByte(&h01)
+            Sc.Read (RetValue)
+
+    CAMIDHex = HexString(GetByte(2), 2) & HexString(GetByte(3), 2) & HexString(GetByte(4), 2) & HexString(GetByte(5), 2)
+    CAMIDDec = Hex2Dec(CAMIDHex) & "x"
+
+    GuideHex = HexString(Sc.GetByte(13), 2)
+    GuideDec = Hex2Dec(GuideHex)
+        if GuideDec = 0 then
+            GuideDec = "00"
+        end if
+    TimeHex = HexString(Sc.GetByte(11), 2)
+    TimeDec = Hex2Dec(TimeHex)
+
+    ' Print all info here
+
+    infobox = "ATR  : " & ATR & vbCrLf & vbcrlf
+    infobox = infobox & "Card Information"  & vbtab & vbtab & "Hex" & vbtab & vbtab &"Decimal" & vbCr
+    infobox = infobox & "------------------------------------------------------------------------------------" & vbCr
+    infobox = infobox & "Card ID(CAM)" & vbtab & vbtab & CAMIDHex & vbtab & CAMIDDec & vbCr
+    infobox = infobox & "IRD ID"  & vbtab & vbtab & vbtab & IRDHex & vbtab & IRDDec & vbCr
+    infobox = infobox & "Fuse Byte" & vbtab & vbtab & Fuse & vbtab & vbtab & Hex2Dec(Fuse) & vbCr
+    infobox = infobox & "Guide Byte"  & vbtab & vbtab & GuideHex & vbtab & vbtab & GuideDec & vbCr
+    infobox = infobox & "Time Zone"  & vbtab & vbtab & TimeHex & vbtab & vbtab & Hex2Dec(TimeHex) & vbCr
+    infobox = infobox & "Rating"  & vbtab & vbtab & vbtab & RatingHex & vbtab & vbtab & RatingDec & vbCr
+    infobox = infobox & "USW"  & vbtab & vbtab & vbtab & USWHex & vbtab & vbtab & USWDec & vbCr
+    infobox = infobox & "DSW"  & vbtab & vbtab & vbtab & DSWHex & vbtab & vbtab & DSWDec & vbCr
+    infobox = infobox & "Activation Date"  & vbtab & vbtab & ActDateHex & vbtab & vbtab & ActDateDec & vbCr
+    infobox = infobox & "PPV Spending Limit"  & vbtab & vbtab & PPVLimitHex & vbtab & vbtab & PPVLimitDec & vbCr
+    infobox = infobox & "Amount Purchased"  & vbtab & vbtab & SpentHex & vbtab & vbtab & SpentDec & vbCr
+    infobox = infobox & "User Spending Limit"  & vbtab & vbtab & SpendingLimitHex & vbtab & vbtab & SpendingLimitDec & vbCr
+    infobox = infobox & "-------------------------------------------------------------------------------" & vbCrLf
+
+    Call Sc.msgbox (infobox)
+    ReadInfo = 1
+End Function
+
+Function ReceiveATR
+Dim i
+Dim RetValue
+
+    Sc.Write("06100E10019300")                        ' this command receives the ATR of an HU card
+    Sc.Delay(80)
+    Sc.Read(&h02)                                     ' see if command was accepted
+            RetValue = Sc.GetByte(&h01)
+            Sc.Read (RetValue)                        ' read the 20 bytes
+ATR = ""
+    For i = 0 to RetValue-1
+        ATR = ATR &  HexString(Sc.GetByte(i), 2) & " "        ' 20 bytes of ATR
+
+    Next
+
+    If(RetValue < 20) Then
+        ReceiveATR = 0
+    Else
+        ReceiveATR = 1
+    End If
+
+End Function
+
+Sub ReadCard()
+
+    Dim EEPROM
+    Dim TByte
+    Dim Address
+
+    EEPROM = 0
+    Address = 8192 ' For EEPROM Read
+    'Address = 49152 ' For ROM Read
+
+    Sc.Write("A2")
+
+    Call ExtractCardInfo()
+    Call WriteViaLoader("24A4","00000000","E")    ' Clear IRD
+    Call WriteViaLoader("2460","00000000","E")    ' Clear IRD
+
+    For EEPROM = 0 to 128    ' 128 for EEPROM, 256 for ROM
+        Sc.Write("06C23F" & HexString(Address,4) & "BF00")
+        Sc.Delay(50)
+        Sc.Read(&h02)
+        Sc.Read (&h40)
+
+        Call Sc.ProgressBox ("Reading EEPROM Memory...", EEPROM, 128, "UnLooper/Loader") ' For EEPROM Read
+        'Call Sc.ProgressBox ("Reading ROM Memory...", EEPROM, 256, "UnLooper/Loader") ' For ROM Read
+Do
+
+Call WDTMR()
+
+Sc.Write("06C23F" & HexString(Address,4) & "BF00")
+'Sc.Delay(80)
+Sc.Read(&h02)
+        'RetValue = Sc.GetByte(&h01)
+        Sc.Read (&h40)
+Call Sc.ProgressBox ("Reading EPROM memory...", EEPROM, 128, "SnakeGlitch") ' For EPROM Read
+'Call Sc.ProgressBox ("Reading ROM memory...", EEPROM, 256, "Unlocker") ' For ROM read
+EEPROM = EEPROM + 1
+Address = Address + 64
+TByte = ""
+For TByte = 0 to 63
+            call Fs.FilePutc(OutFile, Sc.GetByte(TByte))
+            next
+loop until EEPROM = 128 ' For EPROM Read
+'loop until EEPROM = 256 ' For ROM read
+Fs.FileClose(OutFile)
+Next
+Call Sc.ProgressBox ("", 0, 0, "")
+end sub
+
+Sub WriteCard()
+    Dim EPROM
+    Dim ThisByte
+    Dim Address
+    Dim RetValue
+    Dim Location
+    Dim EPROMBytes
+    Dim EPROMBytes2
+
+    Address = 8192
+    Location = 0
+
+Sc.Write("A2")
+
+Call Sc.ProgressBox ("Writing bin memory..." & vbcr & "2000:  " & EPROMBytes, EPROM, 255, "ROM Writer")
+
+call Fs.FileSeek(InFile, Location, fsoSEEK_SET)
+
+Do
+
+Call WDTMR()
+
+EPROMBytes = ""
+For ThisByte = Location to (Location + 16) - 1
+EPROMBytes = EPROMBytes & HexString(Fs.FileGetc(InFile), 2)
+Next
+EPROMBytes2 = ""
+For ThisByte = (Location + 16) to (Location + 32) - 1
+EPROMBytes2 = EPROMBytes2 & HexString(Fs.FileGetc(InFile), 2)
+Next
+
+Sc.Write("25E29F" & HexString(Address,4) & EPROMBytes & EPROMBytes2 & "00")
+Sc.Read(&h02)
+Call Sc.ProgressBox ("Writing EPROM memory..." & vbcr & HexString(Address,4) & ":  " & EPROMBytes & vbcr & HexString(Address + 16,2) & ":  " & EPROMBytes2, EPROM, 255, "SnakeGlitch")
+
+EPROM = EPROM + 1
+Address = Address + 32
+Location = Location + 32
+loop until EPROM = 255
+
+Fs.FileClose(InFile)
+
+Call Sc.ProgressBox ("", 0, 0, "")
+Call ReadInfo()
+
+end sub
+
+Sub WriteViaLoader(address,data,options)
+
+    Dim dLen
+    Dim tlen
+    Dim parm1
+    Dim parm2
+    Dim i,t
+    Dim datalen
+    Dim addresslow
+    Dim tmp
+    Dim Xored
+    Dim datarray(31)
+    Dim datalength
+
+    dLen = Len(data)
+    dLen = dLen / 2
+    tLen = Len(data)
+    tLen = tlen + 16
+    tLen = tlen / 2
+    tLen = HexString(tlen,2)
+    parm1 = Hex(dLen + &hC2)
+    parm2 = Hex(dLen + &h7F)
+
+    If Ucase(options) = "E" Then
+
+        'Convert and Split up data String to an array
+
+        t = 0
+        For i = 1 To Len(data) Step 2
+            tmp = Mid(data, i, 2)
+            datarray(t) = (HexToDec(tmp))
+            t = (t + 1)
+        Next
+
+        addresslow = HexToDec(Mid(address, 3, 2))     'Get lower byte for offset
+        addresslow = (addresslow And &h7)             'Strip bits for offset 0-7
+
+        If UBound(datarray) > 32 Then
+            Exit Sub
+        End If
+
+        datalength = (Len(data) / 2)
+
+        'Encrypt
+        t = 0
+        For i = addresslow To datalength + addresslow - 1
+                Xored = Xored & HexString(datarray(t) Xor HexToDec(XoredByte(i)), 2)
+            t = (t + 1)
+        Next
+
+        data = Xored
+    End if
+
+    Sc.Write(tLen & " " & parm1 & " " & parm2 & " " & address & " " & data & " " & "0EFF8000")
+    Sc.Read(&h03)
+
+End Sub
+
+Sub ExtractCardInfo()
+
+    Dim RetValue
+    Dim XByte(15)
+
+    Call WDTMR()
+    Sc.Write("06C20724C08800")
+    Sc.Read(&h02)
+        RetValue = Sc.GetByte(&h01)
+        Sc.Read(RetValue)
+
+    XByte(0) = Sc.GetByte(0)
+    XByte(1) = Sc.GetByte(1)
+    XByte(2) = Sc.GetByte(2)
+    XByte(3) = Sc.GetByte(3)
+    XByte(4) = Sc.GetByte(4)
+    XByte(5) = Sc.GetByte(5)
+    XByte(6) = Sc.GetByte(6)
+    XByte(7) = Sc.GetByte(7)
+
+    Sc.Write("06C20726588800")
+    Sc.Read(&h02)
+        RetValue = Sc.GetByte(&h01)
+        Sc.Read(RetValue)
+
+    XByte(8) = Sc.GetByte(0)
+    XByte(9) = Sc.GetByte(1)
+    XByte(10) = Sc.GetByte(2)
+    XByte(11) = Sc.GetByte(3)
+    XByte(12) = Sc.GetByte(4)
+    XByte(13) = Sc.GetByte(5)
+    XByte(14) = Sc.GetByte(6)
+    XByte(15) = Sc.GetByte(7)
+
+    Sc.Write("06C20B2AE48C00")
+    Sc.Read(&h02)
+        RetValue = Sc.GetByte(&h01)
+        Sc.Read(RetValue)
+
+    Key12Byte(0)  = Sc.GetByte(&h0)
+    Key12Byte(1)  = Sc.GetByte(&h01)
+    Key12Byte(2)  = Sc.GetByte(&h02)
+    Key12Byte(3)  = Sc.GetByte(&h03)
+    Key12Byte(4)  = Sc.GetByte(&h04)
+    Key12Byte(5)  = Sc.GetByte(&h05)
+    Key12Byte(6)  = Sc.GetByte(&h06)
+    Key12Byte(7)  = Sc.GetByte(&h07)
+    Key12Byte(8)  = Sc.GetByte(&h08)
+    Key12Byte(9)  = Sc.GetByte(&h09)
+    Key12Byte(10) = Sc.GetByte(&h0A)
+    Key12Byte(11) = Sc.GetByte(&h0B)
+
+    XORedByte(0)  = HexString(XByte(0) XOR XByte(8), 2)
+    XORedByte(1)  = HexString(XByte(1) XOR XByte(9), 2)
+    XORedByte(2)  = HexString(XByte(2) XOR XByte(10), 2)
+    XORedByte(3)  = HexString(XByte(3) XOR XByte(11), 2)
+    XORedByte(4)  = HexString(XByte(4) XOR XByte(12), 2)
+    XORedByte(5)  = HexString(XByte(5) XOR XByte(13), 2)
+    XORedByte(6)  = HexString(XByte(6) XOR XByte(14), 2)
+    XORedByte(7)  = HexString(XByte(7) XOR XByte(15), 2)
+    XoredByte(8)  = XoredByte(0)
+    XoredByte(9)  = XoredByte(1)
+    XoredByte(10) = XoredByte(2)
+    XoredByte(11) = XoredByte(3)
+    XoredByte(12) = XoredByte(4)
+    XoredByte(13) = XoredByte(5)
+    XoredByte(14) = XoredByte(6)
+    XoredByte(15) = XoredByte(7)
+    XoredByte(16) = XoredByte(0)
+    XoredByte(17) = XoredByte(1)
+    XoredByte(18) = XoredByte(2)
+    XoredByte(19) = XoredByte(3)
+    XoredByte(20) = XoredByte(4)
+    XoredByte(21) = XoredByte(5)
+    XoredByte(22) = XoredByte(6)
+    XoredByte(23) = XoredByte(7)
+    XoredByte(24) = XoredByte(0)
+    XoredByte(25) = XoredByte(1)
+    XoredByte(26) = XoredByte(2)
+    XoredByte(27) = XoredByte(3)
+    XoredByte(28) = XoredByte(4)
+    XoredByte(29) = XoredByte(5)
+    XoredByte(30) = XoredByte(6)
+    XoredByte(31) = XoredByte(7)
+
+End Sub
+
+Function UnloopBootCard()
+
+    Dim D0,D1,D2,D3,D4,D5,D6,D7,D8,D9
+    Dim cnt,b, RetVal, boot, kk,katr
+    Dim atrlock,cter, glcnt, mtries,kp
+
+   RANDOMIZE TIMER
+
+    atrlock=0
+    cter=0
+    glcnt=0
+    mtries = 0
+    sc.verbose = False
+
+DO
+  katr=0
+  mtries = mtries + 1
+    if mtries = 5000 then
+       call RndGr()
+       mtries = 0
+    end if
+
+    boot = 0
+
+'======RESERVED FOR TESTING
+'D1=198
+'D2=56
+'D3=11
+'D4=144
+'D5=606
+'D6=60
+'D7=30
+'D8=58
+'D9=865
+'======RESERVED FOR TESTING
+
+'==============================================
+'vcc + last 2 glitch 4 bootloader
+    D2 = INT(RND * &h07) + &h32
+    D3 = INT(RND * &h05) + &h07
+    D4 = INT(RND * &h07) + &h8A
+    D9 = INT(RND * &h07) + &h35C
+'==========================================
+' Atr glich point search range
+
+    if atrlock = 0 then
+        D7 = INT(RND * &h8) +&h17
+        D8 = INT(RND * &h04) + &h39
+        D1 = INT(RND * &h14) + &hA0
+        D5 = INT(RND * &h03) + &h25D
+        D6 = INT(RND * &h2c) + &h34
+    end if
+
+
+    call ProgUpdate(kp,atrlock)
+
+    sc.verbose = 0
+    sc.write("A1")
+    delay(10)
+
+    if Chk4Card() = 0 then
+        Boot=0
+        Exit Function
+    end if
+
+    delay(30)
+
+    sc.write("B0" & HexString(D1,02))
+    glttl = glttl + 1
+    Redo = Redo + 1
+        If Redo > 3  Then
+            If boot <> 1 Then
+
+            Redo = 1
+
+'Sc.print VbCr & VbCr & VbTab & VbTab & VbTab &"Pausing........."
+
+Sc.Write("020200")
+Sc.Delay(100)
+Sc.Read(&h02)
+Sc.Write("020200")
+Sc.Delay(100)
+Sc.Read(&h02)
+Sc.Write("020200")
+Sc.Delay(100)
+Sc.Read(&h02)
+Sc.Write("020200")
+Sc.Delay(100)
+Sc.Read(&h02)
+Sc.Write("020200")
+Sc.Delay(100)
+Sc.Read(&h02)
+Sc.Write("020200")
+Sc.Delay(100)
+Sc.Read(&h02)
+
+'Sc.print VbTab & VbTab & VbTab & "Done" & VbCr
+
+    End If
+        End If
+
+    sc.write("0f1f0120" & HexString(D5,4) & "0c" & HexString(D7,2) & "20" & HexString(D6,4) & "0d00" & HexString(D8,2) & "0000")
+
+    Sc.Read(&h02)
+
+    cter=cter+1
+    cnt=0
+    Sc.Write("028000")
+    if Sc.Read(&h02) = 2 then
+         cnt = sc.getbyte(1)
+    if cnt = 1 then sc.read(1)
+    end if
+
+    if cter > 75 then
+        glcnt = glcnt + 1
+        cter = 0
+        atrlock = 0
+    end if
+
+    if cnt > 0 then
+       kp=kp+1
+       if kp >33 then kp = 33
+sc.print  VbCr & chglch &" ATR: ["
+         for b = 0 to 10
+         Sc.Write("028000")
+
+         if Sc.Read(&h02) = 2 then
+            cnt = sc.getbyte(1)
+         else
+            cnt = 0
+         end if
+
+         if cnt > 0 then
+            cnt = sc.read(cnt)
+            kk=sc.getbyte(0)
+            if kk = &h38 then
+               sc.print "38 "
+               Sc.Write("028000")
+               cnt = 0
+               if Sc.Read(&h02) = 2 then
+                   cnt = sc.getbyte(1)
+                   if(cnt = 0) then exit for
+                      Sc.Read(cnt)
+                      if(sc.getbyte(0)) = &hb0 then
+                         chglch = chglch + 1
+                         sc.print "B0"
+                         Sc.Print "]" &  VbTab &  "D1-D9 values: " & D1 & ", " & D2 & ", " & D3 & ", " & D4 & ", " & D5 & ", " & D6 & ", " & D7 & ", " & D8 & ", " & D9 & VbTab & "Glitch Attempt " & glttl & VbTab
+                         d0=d0+1
+                         katr=1
+                         cter = 0
+                         glcnt = 0
+                         atrlock =1
+                         exit for
+                       end if
+                    end if
+              end if
+         end if
+      sc.print HexString(kk,2) &" "
+      next
+
+    if katr = 1 then
+       sc.write("B0"  & HexString(D4,02))
+       sc.write("071f800d" & HexString(D3,02)& HexString(D2,02)&"0000")
+       if Sc.Read(&h02) > 1 then
+          cnt = sc.getbyte(1)
+       else
+          cnt = 0
+       end if
+
+       if cnt > 0 then
+          cnt = sc.read(cnt)
+          for b = 0 to cnt - 1
+          next
+
+          Sc.Write("31eeFFFFfed18d52E0FD2266E1B9E17201CF725f0772FF14C5E2AB0100C3DA07F88C0100FFFFFFFFFFFFFFFFFFFFFFFF0000")
+          if Sc.Read(&h02)<2 then Sc.Read(&h02)
+             Sc.Write("11c060200350042001500320" & HexString(D9,04) & "0d010000")
+             Sc.Read(&h02)
+
+          for b = 0 to 8
+            Sc.Write("028000")
+            if Sc.Read(&h02) = 2 then
+                cnt = sc.getbyte(1)
+            else
+                cnt = 0
+            end if
+
+          if cnt > 0 then
+             cnt = sc.read(cnt)
+             kk=sc.getbyte(0)
+             if kk = &h66 then
+                Sc.Write("028000")
+                cnt = 0
+                if Sc.Read(&h02) = 2 then
+                   cnt = sc.getbyte(1)
+                   if(cnt = 0) then exit for
+                      Sc.Read(cnt)
+                      if(sc.getbyte(0)) = &h99 then
+                         boot=1
+                         sc.print VbCr & "Bootloader installed After " & d0 & " attempts!" & VbCr
+                         Sc.Print "Total # of glitches applied to card " & glttl & VbCr
+                         Sc.Print "D1 - D9 values used: " & D1 & ", " & D2 & ", " & D3 & ", " & D4 & ", " & D5 & ", " & D6 & ", " & D7 & ", " & D8 & ", " & D9 & VbCr
+                         ScriptEnd = Now
+                         Sc.Print "Elapsed time:  " + FormatNumber((CDbl(ScriptEnd) - CDbl(ScriptStart)) * 24 * 60, 2, True, True, True) & " minutes" & vbCr
+                         exit for
+                      end if
+                    end if
+                 end if
+             else
+                exit for
+          end if
+         next
+
+        if boot = 1 then
+
+           Sc.Write("021500")
+           Sc.Read(2)
+           Sc.Write("42FF225272FF14E1E2D007E2D029E2D02A77800716753F07D307F75011E29B2A70012ADA07F78E013A00D7D307D8078ECEFBD40770012ADA07F300C6F76211F7631100")
+           Sc.Read(2)
+           Sc.Write("21DE8E0149F76011F76111881c931270FF1203FBF70011728512DA12FDF70011F900")
+           Sc.Read(2)
+           boot = 1
+           Call GetFile()
+           CAll WriteCard()
+           Exit Function
+         end if
+       end if
+     end if
+   else
+    kp=kp-1
+    if kp<1 then kp=1
+   end if
+loop
+
+End Function

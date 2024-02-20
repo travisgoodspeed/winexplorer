@@ -1,0 +1,825 @@
+'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+'X                                  Rom10X Reader/Writer/Unlocker                                  X
+'X                          For ROM 102 Cards REV 106-107-242-243-282-283                          X
+'X                                                                                                 X
+'X                            XXXXX                   XX   XXXX                                    X
+'X                            XX  XX   XXX   XX   XX XXX  XX  XX XX   XX                           X
+'X                            XX  XX  XX XX  XXX XXX  XX  XX  XX  XX XX                            X
+'X                            XX XX   XX XX  XX X XX  XX  XX  XX   XXX                             X
+'X                            XXXX    XX XX  XX   XX  XX  XX  XX   XXX                             X
+'X                            XX XX   XX XX  XX   XX  XX  XX  XX  XX XX                            X
+'X                            XX  XX   XXX   XX   XX  XX  XX  XX XX   XX                           X
+'X                            XX   XX                XXXX  XXXX                                    X
+'X                           ===========================================                           X
+'X Please Note:  Attempt to read your card a few times to make sure that your loader is set up     X
+'X properly before you attempt to write to your card.  USE AT YOUR OWN RISK!                       X
+'X                                 You may loop your CAM!!!!!                                      X
+'X Various code snippets used from other scripts posted. Kudos to the Authors.. you know who you   X
+'X are.                                                                                            X
+'X                                                                                                 X
+'X ROM10X Coder Team                                                                               X
+'X www.rom10x.com                                                                                  X
+'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+
+
+Const fsoSEEK_SET = 0
+Const fsoSEEK_CUR = 1
+Const fsoSEEK_END = 2
+Const ofOverwritePrompt = &H2      ' Generates a warning message if the user tries to select a file name that is already in use,
+Const ofHideReadOnly = &H4      ' Removes the Open As Read Only check box from the dialog.
+Const ofPathMustExist = &H800      ' Generates an error message if the user tries to select a file name with a nonexistent directory path.
+Const ofFileMustExist = &H1000      ' Generates an error message if the user tries to select a nonexistent file. (only applies to Open dialogs).
+Const ofShareAware = &H4000      ' Ignores sharing errors and allows files to be selected even when sharing violations occur.
+Const ofEnableSizing = &H800000      ' (Windows 98 and later) Lets the Explorer-style dialog be resized with the mouse or keyboard.
+Dim T1
+Dim T2
+Dim T3
+Dim T4
+Dim T5
+Dim T6
+Dim EEPROMFileName
+Dim OutFileHndl, FileName, FileHandle
+Dim WriteDelay
+
+
+'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+WriteDelay = 10     'This can be edited to increase delays for slower loaders. Default = 10 X
+'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+
+Sub Main()
+
+    Sc.Verbose = false  'set to true to view RX/TX from card
+
+    Dim Bytes
+    Dim Byte1
+    Dim Byte2
+    Dim Byte3
+    Dim Ulock
+    Dim CS
+    Dim SFlag
+    Dim RomVer
+    Dim RetVal
+
+    ClearOutputWindow()
+
+    Call SetupUnlocker()
+
+    If CheckChipVer = 1 Then
+    Else
+        Sc.MsgBox("This script requires ND13 atmel code.  Please flash your loader with ND13.")
+        Exit Sub
+    End If
+
+    If CheckCard = 1 Then
+    Else
+        Exit Sub
+    End If
+
+    Sc.Write("02 15 00")
+    Sc.Read(2)
+
+    Do
+        RetVal = Sc.ButtonBox("Please choose function to perform:" & vbcrlf & vbcrlf, vbDefaultButton3 + vbCritical, "Rom10X 102 Read/Write/Unlock Utility", "Read Card", "Write Card", "Unlock Card", "Exit")
+
+        If RetVal = 0 Or RetVal = 4 Then
+            Sc.Print ("User Aborted!") & VbCr
+            Exit Do
+        End If
+
+        If RetVal = 1 Then
+            Call ReadCard()
+        End If
+
+        If RetVal = 2 Then
+            Call WriteCard()
+        End If
+
+        If RetVal = 3 Then
+            Call MethodThree()
+        End If
+    Loop
+End Sub
+
+Sub MethodThree
+
+    Dim BSCLen
+    Dim CmdToGlitch
+    Dim CmdTosetup
+    Dim CTGLen
+    Dim CTGLen2
+    Dim CTGRSP
+    Dim CS
+    Dim Bytes
+    Dim BytesRead
+    Dim Bytes1
+    Dim Bytes2
+    Dim DelayStart
+    Dim DelayLimit
+    Dim VCCStart
+    Dim VCCLimit
+    Dim GlitchType
+    Dim GlitchMax
+    Dim GlitchMin
+    Dim Delay
+    Dim VCC
+    Dim Dot
+    Dim ATRrsp
+    Dim loopctr
+    Dim AddrHiStart
+    Dim AddrHiEnd
+    Dim cRet
+    Dim RomAddr
+    Dim PageSet
+    Dim trys
+    Dim mix
+    Dim AVRDelay
+    Dim AVRCount
+
+    clearoutputwindow()
+
+    loopctr = 0
+    AVRCount = 0
+
+    If CheckChipVer <> 1 Then
+        Sc.MsgBox("You need chip version ND13 to run this script" & VbCr & "Flash your Atmel chip with NewD13.hex")
+        Exit Sub
+    End If
+
+    Sc.Verbose = false 'Turn echo on - False = turns it off
+    VCCStart = &H20       'h25  is standard, script is auto vcc dont change 90
+    VCCLimit = &H2       'h05  is standard, script is auto vcc dont change 02
+
+    '==========================================================================
+    '==========================================================================
+    'User selectable options
+    '==========================================================================
+    '==========================================================================
+
+    DelayStart = &H39E7 'Change this to whatever you want
+    DelayLimit = &H3A50 'This is the limit.  it will go back to DelayStart when it reaches here.
+    GlitchMax = 7       '7 is standard - 7, 8, or 9
+    GlitchMin = 7       '7 is standard - 6, or 7
+    trys = 40           '100 is standard
+    mix = 0.5           '0.5 is standard - try 0.1 to 1.2 use for +-+-+-+- mix
+    AVRDelay = 3        'Minimum = 3   Delay for atmel to wait for a response
+    '***************************************************************************
+    '***************************************************************************
+    '*******        This Section  is FOR ADVANCE USERS ONLY             ********
+    '***************************************************************************
+    '***************************************************************************
+
+    GlitchType = GlitchMax
+    Delay = DelayStart
+    VCC = VCCStart
+    Sc.Print("Let the 102 Glitching begin...." & VbCr)
+    Dot = 0
+    Do
+        Do
+            Sc.Write("A2")
+            Sc.Write("B0" & HexString(VCC, 2))
+
+            Sc.Write("06 10 01 03 50 1A 00")
+            Sc.Read(2)
+
+            ATRrsp = Sc.Getbyte(1)
+
+            Sc.Read(ATRrsp)
+            If ATRrsp = &H1B Then
+                Exit Do
+            Else
+                Sc.Write("B0" & HexString(VCC, 2))
+                sc.delay(30)
+                Sc.Write("08 10 01 01 01 03 50 1A 00")
+                Sc.Read(2)
+                ATRrsp = Sc.Getbyte(1)
+                If ATRrsp = &H1B Then
+                    Sc.Read(ATRrsp)
+                    Exit Do
+                Else
+                    print(VbCr & "NO 2nd ATR Rcv'd, continue reset, back to first atr" & VbCr)
+                    sc.delay(100)
+                    Sc.Write("04 01 01 01 00")
+                End If
+            End If
+        Loop
+
+        Sc.Write("02 15 00")
+        Sc.Read(2)
+
+        Sc.Write("0A 60 04 21 C1 01 80 61 50 04 00")
+        Sc.Read(2)
+        cRet = Sc.Getbyte(1)
+        Sc.Read(cRet)
+
+        Sc.Write("0B 60 05 21 C1 02 5A 44 FC 50 03 00")
+        Sc.Read(2)
+        cRet = Sc.Getbyte(1)
+        Sc.Read(cRet)
+
+        Sc.Write ("73 0A 70 8D 00 A7 00 00 00 00 00 00 00 00 00 00 00 00 71 80 18 64 A6 4B B7 6B CD 7C 16 30 C0 A4 02 18 64 CD 7C 16 95 C0 A6 07 18 64 CD 7C 16 31 76 AD 08 20 18 95 BF BF A1 FF 27 01 87 BC 88 01 1E 05 00 60 DB 95 C0 DE CA FE C0 FF EE CD 5A C0 00 B5 0D F8 06 A6 06 B7 64 B7 4C CD 45 05 20 FE 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00")
+        Sc.Read(2)
+        Sc.Write ("47 0E" & hexstring(AVRDelay, 2) & "0B 60 3A 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 AE BC 20" & HexString(Delay, 4) & HexString(GlitchType, 2) & "50 05 00")
+        Sc.Read(2)
+        Bytes = Sc.Getbyte(1)
+        sc.verbose = true
+        Sc.Read(Bytes)
+        sc.verbose = false
+        If Bytes > 3 then
+            AVRCount = 0
+            Bytes1 = Sc.Getbyte(0)
+            Bytes2 = Sc.Getbyte(3)
+
+            If Bytes1 = &hDE And Bytes2 = &HC0 Then
+                Sc.Write("A1")
+                Sc.Print(VbCr)
+                Sc.Print("===========================================" & VbCr)
+                Sc.Print("Glitch Success!! DE CA FE C0 FF EE" & VbCr)
+                Sc.Print("Card is Unlocked!!!" & VbCr)
+                Sc.Print("VCC = " & HexString(VCC, 2) & "  (~" & ((5 / 255) * VCC) & " vdc)" & VbCr)
+                Sc.Print("Glitch Delay = " & HexString(Delay, 4) & VbCr)
+                Sc.Print("Glitch type " & HexString(GlitchType, 2) & VbCr)
+                Sc.Print("===========================================" & VbCr)
+                Exit Sub
+            Else
+                If Bytes2 = &H6F Then
+                    sc.print("-")
+                Else
+                    If Bytes2 = &HFF Then
+                        Sc.Print("+")
+                    Else
+                        sc.print "NoRsp+"
+                    End If
+                End If
+            End If
+
+            If Bytes1 = &H12 Then
+                    Vcc = Vcc + 0.25
+            End If
+        Else
+        AVRCount = AVRCount + 1
+        If AVRCount => 5 then
+        AVRDelay = AVRDelay + 1
+        Sc.print "Increasing AVR delay to " & hexstring(AVRdelay ,2) & vbcr
+        AVRCount = 0
+        End If
+        End If
+
+        VCC = VCC - mix
+        print("-")
+        GlitchType = GlitchType - 1
+        If VCC < VCCLimit Then
+            VCC = VCCStart
+        End If
+        If GlitchType < GlitchMin Then
+            GlitchType = Glitchmax
+        End if
+        loopctr = loopctr + 1
+        If loopctr > trys Then
+            clearoutputwindow()
+            loopctr = 0
+            Delay = Delay + 1
+            If Delay > DelayLimit Then
+                Delay = DelayStart
+            End If
+            'end if
+            Sc.Print("Let the 102 Glitching continue...." & VbCr)
+            Sc.print("AVR delay = " & hexstring(AVRdelay ,2) & VbCr)
+            Sc.Print("Glitch Delay = " & HexString(Delay, 4) & VbCr)
+            Sc.Print("VCC = " & HexString(VCC, 2) & VbCr)
+            Sc.Print("  " & VbCr)
+        End If
+    Loop
+End Sub
+
+Sub ReadCard()
+
+    Dim Bytes
+    Dim BootStrap
+    Dim CS
+    Dim Counter
+    Dim PBCounter
+    Dim Address
+
+    Address = 12288
+    PBCounter = 1
+
+    Sc.Write("06100103501A00") '-Get ATR
+    Sc.Delay(80)
+    Sc.Read(2)
+    Bytes = Sc.GetByte(1)
+    Sc.Read(Bytes)
+    Sc.Write("021500")
+    Sc.Read(2)
+    Sc.Write("0A600421C101A041500400") '-Set IFS
+    Sc.Delay(50)
+    Sc.Read(2)
+    Bytes = Sc.Getbyte(1)
+    Sc.Read(Bytes)
+
+    GetEEPROMFileName()
+
+    Do
+        'Get 64 bytes from Card using "Address" as pointer
+        BootStrap = "21006DA0CA000067046501018600AA9D9D9D9D9D9D9D9D7180CD5AC0" & HexString(Address, 4) & "0DF840B691B74CCD4505CC7A959D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D02"
+
+        CS = DoCheckSum(BootStrap) 'Get Checksum of BootStrap string
+        BootStrap = BootStrap & CS
+        Sc.Write("77150E036070" & BootStrap & "8700")
+        Sc.Read(2)
+        bytes = Sc.GetByte(1)
+        Sc.Read(bytes)
+
+        Sc.Write("1215AA210007A0FF0000024800330E03504000") 'Execute BootStrap String with A0FF intercept
+        Sc.Read(2)
+        Bytes = Sc.GetByte(1)
+        Sc.Read(bytes)
+
+        If Bytes = 0 Then     'Check condition of Atmel after read request
+            Print(VbCr & "--- Eeprom Read Failed, A0FF intercept is not installed, Or card locked. ---")
+            Call Sc.MsgBox("--- Eeprom Read Failed, A0FF intercept is not installed ---")
+            Exit Sub
+        End If
+
+        If Bytes = 65 Then
+            Counter = Counter + 1
+
+            For i = 0 To 63
+                Call Fs.FilePutc(OutFileHndl, Sc.GetByte(i))
+            Next
+
+            Call Sc.ProgressBox("Address: " & Hexstring(Address, 4), PBCounter, 288, "Saving Eeprom information...")
+
+            Address = Address + 64 'increment address pointer by &h40 bytes
+
+            If Address = 14336 Then  'If address gets to $3800 then change it to $8000
+                Address = 32768
+            End If
+
+            PBCounter = PBCounter + 1 'Increment the progressbar
+
+            If Address = 49152 Then Exit Do  'If we're at the end, then exit
+        End If
+    Loop
+    Call Sc.ProgressBox("", 0, 256) 'close the progressbar
+
+    Fs.FileClose(OutFileHndl)       'close the file
+    Sc.MsgBox("Reading Complete!")
+End Sub
+
+Sub WriteCard()
+
+    Dim CheckBugs
+    Dim BugOrig
+    Dim InFile
+    Dim FileName
+    Dim FileSize
+    Dim ThisByte
+    Dim TmpStr
+    Dim Outfile
+    Dim CC
+    Dim Address
+    Dim Bytes
+    Dim PBCounter
+    Dim Tmp1
+    Dim Tmp2
+
+    Address = 12416
+    PBCounter = 1
+    '---------------------------------------------------------------------------------------------
+    Const FileFilter = "All Eprom Files (*.bn102, *.bin)|*.bn102;*.bin;|Bin Files (*.bn102)|*.bn102|Bin Files (*.bin)|*.bin"
+
+    FileName = Fs.FileOpenDialog(FileFilter, "Please select a valid bin file", "Default.bn102", ofPathMustExist + ofFileMustExist + ofHideReadOnly + ofEnableSizing)
+    If FileName <> "" Then
+        If Fs.FileExists(FileName) = 0 Then
+            Sc.MsgBox("The file does not exist")
+        Else
+            InFile = Fs.FileOpen(FileName, fsoOpenRead)
+        End If
+    End If
+
+    FileSize = Fs.FileSeek(InFile, 0, fsoSEEK_END)
+
+    If FileSize <> 18432 Then
+        Sc.MsgBox("This file does not appear to be a valid ROM 102 EEPROM file")
+        Exit Sub
+    End If
+
+    If CheckChipVer = 1 Then
+    Else
+        Sc.MsgBox("This script requires ND13 atmel code.  Please flash your loader with ND13.")
+        Exit Sub
+    End If
+
+    If CheckCard = 1 Then
+    Else
+        Exit Sub
+    End If
+
+    Sc.Write("02 15 00") 'set baud
+    Sc.Read(2)
+
+    Sc.Write("0A600421C101A041500400") '-set IFS
+    Sc.Delay(50)
+    Sc.Read(2)
+    Bytes = Sc.Getbyte(1)
+    Sc.Read(bytes)
+
+    'This CMD 04 Gets the original value of the first bugtable entry.
+    'We are going to hook here, so we need to know what was originally there, so we can replace
+    'after we're finished writing.
+    CheckBugs = ("21 00 6D A0 CA 00 00 67 04 65 01 01 86 00 AA 9D 9D 9D 9D 9D 9D 9D 9D 71 80 CD 5A C0 31 78 0D F8 06 B6 91 B7 4C CD 45 05 CC 7A 95 9D 9D 9D 9D 9D 9D 9D 9D 9D 9D 9D 9D 9D 9D 9D 9D 9D 9D 9D 9D 9D 9D 9D 9D 9D 9D 9D 9D 9D 9D 9D 9D 9D 9D 9D 9D 9D 9D 9D 9D 9D 9D 9D 9D 9D 9D 9D 9D 9D 9D 9D 9D 9D 9D 9D 9D 9D 9D 9D 9D 9D 9D 9D 9D 9D 9D 9D 9D 02")
+    CC = Dochecksum(CheckBugs)  'calculates the checksum byte
+    CheckBugs = CheckBugs & CC  'adds the checksum byte at the end of our string
+
+    Sc.Write("77150E036070" & CheckBugs & "8700") 'sends our string
+    Sc.Delay(50)
+    Sc.Read(2)
+    Bytes = Sc.Getbyte(1)
+    Sc.Read(bytes)
+    If bytes <> 8 Then
+        checklock = 0
+        Exit Sub
+    End If
+    Checkbugs = "21 00 07 A0 FF 00 00 02 48 00"
+    CC = Dochecksum(CheckBugs)
+    CheckBugs = CheckBugs & CC
+
+    Sc.Write("12 15 AA" & checkbugs & "0E 03 50 0B 00") 'executes our string with the A0FF intercept
+    Sc.Delay(50)
+    Sc.Read(2)
+    Bytes = Sc.Getbyte(1)
+    Sc.Read(bytes)
+
+    If Bytes = &HC Then
+        T1 = Sc.Getbyte(0)
+        T2 = Sc.Getbyte(1)
+        T3 = Sc.Getbyte(2)
+        T4 = Sc.Getbyte(3)
+        T5 = Sc.Getbyte(4)
+        T6 = Sc.Getbyte(5)
+        'This variable stores the original Bugtable code, which will be replaced when we're finished writing
+        'BugOrig = hexstring(T1, 2) & hexstring(T2, 2) & hexstring(T3, 2) & hexstring(T4, 2) & hexstring(T5, 2) & Hexstring(T6, 2)
+    Else
+        Sc.Msgbox("The Card appears to be locked")
+        Exit Sub
+    End If
+
+    'This CMD 04 will write our Bootstrap patch located at $9600
+    BootWrite = "21006DA0CA000067046501018600AA9D9D9D9D9D9D9D9DA64BB76B18647180CD7C169600A010CC7A95000000000000A1FF270187CD5A7D0DFA8080BC80000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000002"
+
+
+    CC = DoCheckSum(BootWrite)
+    BootWrite = BootWrite & CC
+
+    Sc.Write("77150E036070" & BootWrite & "8700")
+    Sc.Delay(50)
+    Sc.Read(2)
+    Bytes = Sc.Getbyte(1)
+    Sc.Read(bytes)
+
+    If bytes <> 8 Then
+        Sc.MsgBox("Write Failed")
+        Exit Sub
+    End If
+    Checkbugs = "21 00 07 A0 FF 00 00 02 48 00"
+    CC = Dochecksum(CheckBugs)
+    CheckBugs = CheckBugs & CC
+
+    Sc.Write("12 15 AA" & checkbugs & "0E 03 50 05 00")
+    Sc.Delay(50)
+    Sc.Read(2)
+    Bytes = Sc.Getbyte(1)
+    Sc.Read(bytes)
+    'This CMD 04 will hook our Bugtable at $3178 = "050060DB9600" (This will later be replaced with original value)
+    BootWrite = ("21006DA0CA000067046501018600AA9D9D9D9D9D9D9D9DA64BB76B18647180CD7C163178A006CC7A95000000000000050060DB96000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000002")
+    CC = Dochecksum(BootWrite)
+    BootWrite = BootWrite & CC
+
+    Sc.Write("756070" & BootWrite & "500700")
+    Sc.Delay(50)
+    Sc.Read(2)
+    Bytes = Sc.Getbyte(1)
+    Sc.Read(bytes)
+    If bytes <> 8 Then
+        checklock = 0
+        Exit Sub
+    End If
+    Checkbugs = "21 00 07 A0 FF 00 00 02 48 00"
+    CC = Dochecksum(CheckBugs)
+    CheckBugs = CheckBugs & CC
+
+    Sc.Write("12 15 AA" & checkbugs & "0E 03 50 05 00")
+    Sc.Delay(50)
+    Sc.Read(2)
+    Bytes = Sc.Getbyte(1)
+    Sc.Read(bytes)
+
+    Byte1 = Sc.Getbyte(0)
+    Byte2 = Sc.getbyte(3)
+
+    If Byte1 = &H12 And Byte2 = &H90 Then
+    Else
+        sc.msgbox("Write Failed!")
+        Exit Sub
+    End If
+
+    '-------------------------------------------------------------------------
+    Call Fs.FileSeek(InFile, FileSize - (FileSize - &H80), fsoSEEK_SET)
+
+    TmpStr = ""
+    For ThisByte = 0 To 18304
+        If ThisByte > 0 And ThisByte Mod 64 = 0 Then
+
+
+            If Address = 12608 Then  'This makes sure we don't overwrite our bug hook
+                BugOrig = mid(Tmpstr, 113, 12)
+                Tmp1 = mid(TmpStr, 1, 112)
+                Tmp2 = mid(TmpStr, 125, 4)
+                TmpStr = tmp1 & "050060DB9600" & tmp2
+            End If
+
+            If Address = 38400 Then  'This makes sure we don't overwrite our Bootstrap patch
+                Tmp2 = mid(TmpStr, 29, 100)
+                TmpStr = "A1FF270187CD5A7D0DFA8080BC80" & Tmp2
+            End If
+
+            BootWrite = "210054A0FFA64BB76B18647180CD7C16" & HexString(Address, 4) & "9240CC7A95" & TmpStr 'Writing EEPROM to card
+            CC = DoCheckSum(BootWrite)
+            BootWrite = BootWrite & CC
+            Sc.Write("60156057" & BootWrite & "0E10500500")
+            Sc.Delay(WriteDelay)
+            Sc.Read(2)
+            Bytes = Sc.Getbyte(1)
+            Sc.Read(bytes)
+
+            If Bytes <> 6 Then
+                Sc.MsgBox("Write Failed at Address: " & hexstring(Address, 4))
+                Exit Sub
+            End If
+
+            Call Sc.ProgressBox("Address: " & Hexstring(Address, 4) & " " & TmpStr, PBCounter, 288, "Writing to Card...")
+
+
+            TmpStr = ""
+            Address = Address + 64
+            PBcounter = PBCounter + 1
+            If Address = 14336 Then Address = 32768
+
+        End If
+
+        TmpStr = TmpStr & HexString(Fs.FileGetc(InFile), 2)
+
+    Next
+
+    BootWrite = "21001AA0FFA64BB76B18647180CD7C1631789206CC7A95" & BugOrig 'Removes Bug hook, and puts original back
+    CC = DoCheckSum(BootWrite)
+    BootWrite = BootWrite & CC
+    Sc.Write("2415601D" & BootWrite & "500500")
+    Sc.Delay(100)
+    Sc.Read(2)
+    Bytes = Sc.GetByte(1)
+
+    'This CMD04 will remove the Bootstrap patch located at $9600
+    BootWrite = ("21006DA0CA000067046501018600AA9D9D9D9D9D9D9D9DA64BB76B18647180CD7C169600A00EAE69CC7A9B000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000002")
+    CC = Dochecksum(BootWrite)
+    BootWrite = BootWrite & CC
+
+    Sc.Write("76156070" & BootWrite & "500700")
+    Sc.Delay(50)
+    Sc.Read(2)
+    Bytes = Sc.Getbyte(1)
+    Sc.Read(bytes)
+    If bytes <> 8 Then
+        sc.print bytes & vbcr
+        Sc.MsgBox ("Temporary write patch could not be removed.")
+    End If
+
+    Checkbugs = "21 00 07 A0 FF 00 00 02 48 00"
+    CC = Dochecksum(CheckBugs)
+    CheckBugs = CheckBugs & CC
+    Sc.Write("12 0E 05 15 AA" & checkbugs & "50 05 00")
+    Sc.Delay(50)
+    Sc.Read(2)
+    Bytes = Sc.Getbyte(1)
+    Sc.Read(bytes)
+    If Bytes > 4 then
+        byte1 = Sc.GetByte(0)
+        byte2 = Sc.GetByte(3)
+    End If
+
+    If byte1 = &h12 and byte2 = &h69 then
+    Else
+        Sc.MsgBox ("Temporary write patch could not be removed.  Blocker Code is applied to your card.")
+    End if
+
+    Call Sc.ProgressBox("", 0, 256)
+
+    If Bytes = 6 Then
+        Sc.MsgBox("Writing Operation Complete!")
+    Else
+        Sc.MsgBox("Could not successfully unhook bug table.  Please use unlock function to get back into card.")
+    End If
+
+    Fs.FileClose(Infile)
+End Sub
+
+Function GetPacketLen(ByVal Packet)
+
+    Dim Length
+    Dim Temp
+    Dim PK
+    Dim i
+
+    PK = ""
+
+    Length = Len(Packet)
+
+    For i = 1 To Length
+        Temp = Mid(Packet, i, 1)
+        If Temp <> " " Then                 'remove all spaces in packet
+            PK = PK + Temp
+        End If
+    Next
+
+    GetPacketLen = Len(PK)                 'return packet length without spaces
+
+End Function
+
+Sub GetEEPROMFileName()
+    EEPROMFileName = Fs.FileSaveDialog(FileFilter, "Please select a filename for the saved EEPROM file", "Rom102_Eeprom.bn102")
+    If EEPROMFileName <> "" Then
+        OutFileHndl = Fs.FileCreate(EEPROMFileName)
+    End If
+End Sub
+
+Function CheckCard()
+
+    Dim Bytes
+    Dim RomVer
+    Dim RevVer
+
+    CheckCard = 1
+
+    Sc.Write("06 10 01 03 50 1A 00")
+    Sc.Delay(80)
+    Sc.Read(2)
+
+    Bytes = Sc.Getbyte(1)
+
+    If Bytes <> &H1B Then
+        Sc.MsgBox("Invalid or no ATR present.")
+        CheckCard = 0
+        Exit Function
+    Else
+        Sc.Read(Bytes)
+    End If
+
+    T1 = chr(sc.getbyte(16))
+    T2 = chr(sc.getbyte(17))
+    T3 = chr(sc.getbyte(18))
+    T4 = chr(sc.getbyte(23))
+    T5 = chr(sc.getbyte(24))
+    T6 = chr(sc.getbyte(25))
+    T1 = T1 + T2 + T3
+    T4 = T4 + T5 + T6
+
+    If asc(T4) = 0 Then
+        T4 = "000"
+    End If
+
+    If T1 <> 102 Then
+        Sc.MsgBox("This Script only supports ROM 102 cards.  Your card does not appear to be a ROM 102.")
+        CheckCard = 0
+        Exit Function
+    End If
+
+    If T4 = 108 or T4 = 244 or T4 = 285  Then
+        Sc.MsgBox("This Script does not support REV: " & T4 & "!")
+        CheckCard = 0
+        Exit Function
+    End If
+
+End Function
+
+Function DoCheckSum(ByVal Packet)
+
+    Dim Temp
+    Dim Length
+    Dim PK
+    Dim CheckSum
+    Dim i
+
+    PK = ""
+
+    Length = Len(Packet)           'get packet length with spaces
+
+    For i = 1 To Length
+        Temp = Mid(Packet, i, 1)
+
+        If Temp <> " " Then         'remove all spaces in packet
+            PK = PK + Temp
+        End If
+
+    Next
+
+    Length = Len(PK)               'get packet length without spaces
+
+    CheckSum = 0
+
+    For i = 0 To Length
+        i = i + 1                      'Simulate Step 2 in VB scripting
+        Temp = Mid(PK, i, 2)
+        CheckSum = CheckSum Xor Hex2Dec(Temp)  'Calc Checksum
+    Next
+
+    DoCheckSum = HexString(CheckSum, 2) 'convert checksum to a hex strimg and return it to caller
+
+End Function
+
+Function HexString(ByVal Number, ByVal Length)
+
+    ' This function takes 2 arguments, a number and a length.  It converts the decimal
+    ' number given by the first argument to a Hexidecimal string with its length
+    ' equal to the number of digits given by the second argument
+    Dim RetVal
+    Dim CurLen
+
+    RetVal = Hex(Number)
+    CurLen = Len(RetVal)
+
+    If CurLen < Length Then
+        RetVal=String(Length-CurLen,"0") & RetVal
+    End If
+
+    HexString = RetVal
+
+End Function
+
+Function CheckChipVer()
+
+    CheckChipVer = 1
+
+    sc.write("90")
+    delay(80)
+
+    If sc.read(4) <> 4 Then
+        CheckChipVer = 0
+        Exit Function
+    End If
+
+    If getbyte(0) <> &H4E Then CheckChipVer = 0
+    If getbyte(1) <> &H44 Then CheckChipVer = 0
+    If getbyte(2) <> &H31 Then CheckChipVer = 0
+    If getbyte(3) <> &H33 Then CheckChipVer = 0
+
+End Function
+
+Public Function Hex2Dec(ByVal HexNumber)
+
+    ' This function takes 1 argument, a string containing a hex value of any digit length
+    ' and returns the decimal equivalent
+
+    Dim DecimalValue
+    Dim DigitCount
+    Dim Digit
+    Dim HexDigit
+
+    HexNumber = Replace(UCase(HexNumber), " ", "")
+    DigitCount = Len(HexNumber)
+
+    For Digit = 1 To DigitCount
+
+        HexDigit = Mid(HexNumber, Digit, 1)
+        If Asc(HexDigit) < 58 Then
+            DecimalValue = HexDigit * 16 ^ (DigitCount - Digit)
+        Else
+            DecimalValue = (Asc(HexDigit) - 55) * 16 ^ (DigitCount - Digit)
+        End If
+        Hex2Dec = Hex2Dec + DecimalValue
+    Next
+
+End Function
+
+Function setupunlocker()
+
+    Wx.BaudRate = 115200
+    Wx.ResetBaudRate = 115200
+    Wx.Parity = 0 ' 0 = None, 1 = Odd, 2 = Even, 3 = Mark, 4 = Space
+    Wx.StopBits = 0 ' 0 = 1 stop bit, 1 = 1.5 stop bits, 2 = 2 stop bits
+    Wx.DTRControl = 0 ' Initial state of DTR 0 = off, 1 = on
+    Wx.RTSControl = 1 ' Initial state of RTS 0 = off, 1 = on
+    Wx.ResetDelay = 100 ' In microseconds
+    Wx.ByteDelay = 10 ' In microseconds
+    Wx.RxByteTimeout = 500 ' In milliseconds
+    Wx.ResetMode = 2 ' 0 = No Resets, 1 = ISO Reset (Expect a ATR), 2 = Device Reset (No ATR)
+    Wx.ResetLine = 1 ' 0 = Toggle RTS for Reset, 1 = Toggle DTR for Reset
+    Wx.ByteConvention = 1 ' 0 = Inverse, 1 = Direct
+    Wx.FlushEchoByte = 0 ' 0 = no flush, 1 = flush - A Phoenix interface will echo each byte transmitted.
+    Wx.FlushBeforeWrite = 1 ' 0 = no flush, 1 = flush - Flush the receive buffer before each write to strip off Null bytes.
+    Wx.IgnoreTimeouts = 1 ' 0 = Abort script on a receive timeout, 1 = Ignore all receive timeouts
+    Wx.ResetAfterTimeout = 0 ' 0 = Don't reset after a timeout, 1 = do a reset after a timeout - Not used if "IgnoreTimeouts=0"
+    Wx.LogTransactions = 0 ' 0 = Don't log transactions, 1 = log transactions
+    Wx.DisplayUSW = 0 ' Display USW after script complete 0 = no, 1 = yes
+    Wx.DisplayFuse = 0 ' Display Fuse after script complete 0 = no, 1 = yes
+
+End Function

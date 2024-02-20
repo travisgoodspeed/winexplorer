@@ -1,0 +1,291 @@
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+' PacketTimer.xvb - Created 2009-10-21
+'
+' for use with ND13-type atmel flash
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+Option Explicit     ' any used variables must be explicitly declared
+
+
+Sub Main()
+    Dim TestCmd
+    Dim TestCmdPacket
+    Dim TestResponseLen
+    Dim TimingStart
+    Dim Delay
+    Dim i
+    Dim TrialCount
+    Dim NumTrials
+    Dim ResponseTime
+
+
+' set if comm is displayed or not
+    Sc.Verbose = True
+
+' read atmel version
+    Sc.Write("90")
+    Sc.Read(4)
+
+
+' reset card and receive ATR
+    Sc.Write("08 10 01 03 9A 15 0E 20 00")
+    If RxResponse <> &h1B Then
+        Sc.Print VbCr & "Bad ATR" & VbCr
+    End If
+
+
+' set IFS
+    If SendPacket("21 C1 01 80", 5) <> 5 Then
+        Sc.Print VbCr & "Bad IFS response" & VbCr
+    End If
+
+
+' Sc.Verbose = false to hide comm. with card
+    Sc.Verbose = false
+
+
+' TestCmd is the command to send to card and time how long it takes for a response
+' checksum will automatically be added to end of TestCmd
+    TestCmd = "21 C1 01 80"
+
+' TimingStart sets the shortest delay to time for response
+' set it to 1 to count from 1 up to whatever delay necessary to miss a start bit of the response
+' some time can be saved by increasing TimingStart to a value nearer the expected delay. (if unsure, leave at 1)
+    TimingStart = 1
+
+
+    TestCmdPacket = "60" & HexString(GetPacketLen(TestCmd)/2,2) & TestCmd & DoCheckSum(TestCmd)
+
+    Sc.Print "Timing for " & TestCmd & " started "
+
+
+    ResponseTime = 0
+
+' loop through several trials
+    NumTrials = 5
+    For TrialCount = 1 To NumTrials
+        If TrialCount > 1 Then
+            Sc.Print "  Timing continuing "
+        End If
+
+' loop trying the command with increasingly long delays until a start bit is missed (garbled response)
+        For Delay = TimingStart To &h7FFF Step 1
+            If Delay Mod 100 = 0 Then        ' print a . to show that progress is happening
+                Sc.Print "."
+            End If
+
+            Sc.Write( HexString(GetPacketLen(TestCmdPacket)/2+5,2) & TestCmdPacket & "20" & HexString(Delay, 4) & "84 00" )
+            TestResponseLen = RxResponse
+
+            If TestResponseLen <> 5 Then        ' too few bytes were received
+                Sc.Print VbCr & "Delay: " & Delay & "  Bad response length (" & TestResponseLen & "):"
+                For i = 0 To TestResponseLen-1
+                    Sc.Print " " & HexString(Sc.GetByte(i),2)
+                Next
+                ResponseTime = ResponseTime + Delay
+                Exit For
+            End If
+
+
+            If Sc.GetByte(0) <> &h12 Then       ' first byte received is incorrect (garbled response)
+                Sc.Print VbCr & "Delay: " & Delay & "  Bad response:"
+                For i = 0 To TestResponseLen-1
+                    Sc.Print " " & HexString(Sc.GetByte(i),2)
+                Next
+                ResponseTime = ResponseTime + Delay
+                Exit For
+            End If
+        Next
+    Next
+
+    Sc.Print VbCr
+
+    Sc.Print "Average of " & NumTrials & " packet " & TestCmd & " response times: " & Int(ResponseTime/NumTrials) & VbCr
+
+End Sub
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+' SendPacket - send Packet to card, receive ResponseLen bytes
+' return value: # of received bytes
+Function SendPacket( Packet, ResponseLen )
+    Dim PacketLen
+    Dim PacketCS
+
+    PacketLen = GetPacketLen(Packet) / 2
+
+    PacketCS = DoCheckSum(Packet)
+
+    If ResponseLen > 0 Then
+        Sc.Write( HexString(PacketLen+5,2) & "60" & HexString(PacketLen,2) & Packet & PacketCS & HexString(&h7F+ResponseLen,2) & "00" )
+    Else
+        Sc.Write( HexString(PacketLen+4,2) & "60" & HexString(PacketLen,2) & Packet & PacketCS & "00" )
+    End If
+
+    SendPacket = RxResponse
+
+End Function
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+' SendPacketPreCS - send Packet to card, receive ResponseLen bytes
+' return value: # of received bytes
+' Packet must already have checksum(LRC)
+Function SendPacketPreCS( Packet, ResponseLen )
+    Dim PacketLen
+    Dim PacketCS
+
+    PacketLen = GetPacketLen(Packet) / 2
+
+    If ResponseLen > 0 Then
+        Sc.Write( HexString(PacketLen+4,2) & "60" & HexString(PacketLen-1,2) & Packet & HexString(&h7F+ResponseLen,2) & "00" )
+    Else
+        Sc.Write( HexString(PacketLen+3,2) & "60" & HexString(PacketLen-1,2) & Packet & "00" )
+    End If
+
+    SendPacketPreCS = RxResponse
+
+End Function
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+' RxResponse - receive response from loader (2 bytes, plus data)
+' return value: # of bytes received
+Function RxResponse
+    Sc.Read(2)
+    RxResponse = Sc.GetByte(1)
+    If( Sc.GetByte(1) > 0 ) Then
+        Sc.Read(Sc.GetByte(1))
+    End If
+End Function
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+' the rest of this file is helper functions
+' ripped from ROM102_ND13_A0FF-INTERCEPT-autoVCC_20_Smart.xvb
+'
+' DoCheckSum(Packet) - calculate checksum for Packet
+' Hex2Dec(HexNumber) - takes a string with a hex value, returns decimal value
+' HexString(Number,Length) - convert Number to a string containing Length-digit hex value
+' GetPacketLen(Packet) - returns length (in characters) of Packet
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+' DoCheckSum(Packet) - calculate checksum for Packet
+'
+' ripped from ROM102_ND13_A0FF-INTERCEPT-autoVCC_20_Smart.xvb
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+Function DoCheckSum (Packet)
+ Dim Temp
+ Dim Length
+ Dim PK
+ Dim CheckSum
+ Dim i
+
+ PK=""
+
+ Length = Len(Packet)           'get packet length with spaces
+
+ for i = 1 to Length
+    Temp = Mid(Packet, i, 1)
+    if Temp <> " " then         'remove all spaces in packet
+        PK = PK + Temp
+    End if
+ next
+
+ Length = Len(PK)               'get packet length without spaces
+
+ CheckSum = 0
+
+ for i = 0 to Length
+     i=i+1                      'Simulate Step 2 in VB scripting
+     Temp = Mid(PK, i, 2)
+     CheckSum = CheckSum XOR Hex2Dec(Temp)  'Calc Checksum
+ next
+
+ DoCheckSum = HexString(CheckSum, 2) 'convert checksum to a hex strimg and return it to caller
+
+End Function
+
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+' Hex2Dec(HexNumber) - takes a string with a hex value, returns decimal value
+'
+' ripped from ROM102_ND13_A0FF-INTERCEPT-autoVCC_20_Smart.xvb
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+Function Hex2Dec(HexNumber)
+    ' This function takes 1 argument, a string containing a hex value of any digit length
+    ' and returns the decimal equivalent
+    Dim DecimalValue
+    Dim DigitCount
+    Dim Digit
+    Dim HexDigit
+
+    HexNumber = Replace(UCase(HexNumber), " ", "")
+    DigitCount = Len(HexNumber)
+
+    For Digit = 1 To DigitCount
+
+        HexDigit = Mid(HexNumber, Digit, 1)
+        If Asc(HexDigit) < 58 Then
+            DecimalValue = HexDigit * 16 ^ (DigitCount - Digit)
+        Else
+            DecimalValue = (Asc(HexDigit) - 55) * 16 ^ (DigitCount - Digit)
+        End If
+        Hex2Dec = Hex2Dec + DecimalValue
+    Next
+
+End Function
+
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+' HexString(Number,Length) - convert Number to a string containing Length-digit hex value
+'
+' ripped from ROM102_ND13_A0FF-INTERCEPT-autoVCC_20_Smart.xvb
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+Function HexString(Number,Length)
+    ' This function takes 2 arguments, a number and a length.  It converts the decimal
+    ' number given by the first argument to a Hexidecimal string with its length
+    ' equal to the number of digits given by the second argument
+    Dim RetVal
+    Dim CurLen
+    RetVal=Hex(Number)
+    CurLen=Len(RetVal)
+    If CurLen<Length Then
+        RetVal=String(Length-CurLen,"0") & RetVal
+    End If
+    HexString=RetVal
+End Function
+
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+' GetPacketLen(Packet) - returns length (in characters) of Packet
+' note: returned value = length in bytes * 2
+'
+' ripped from ROM102_ND13_A0FF-INTERCEPT-autoVCC_20_Smart.xvb
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+Function GetPacketLen(Packet)
+ Dim Length
+ Dim Temp
+ Dim PK
+ Dim i
+
+ PK = ""
+
+ Length = Len(Packet)                   'get packet length with spaces
+
+ for i = 1 to Length
+    Temp = Mid(Packet, i, 1)
+    if Temp <> " " then                 'remove all spaces in packet
+        PK = PK + Temp
+    End if
+ next
+
+ GetPacketLen = Len(PK)                 'return packet length without spaces
+
+End Function

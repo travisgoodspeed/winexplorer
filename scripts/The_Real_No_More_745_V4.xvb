@@ -1,0 +1,624 @@
+'Card must be unlooped first
+'This is the real no more 745 fix,  check card info in setup and check camid:)
+'only drawback is if you remove card or ird loses power it will lose the no745
+'protection.
+'Would like to give credit where credit is due but they know who they are:)
+
+'Works with activation or 3ms that doesn't use the zkt tables
+
+'                           The Real No More 745 fix
+'                                    Version 4
+
+
+
+'If at first you don't succeed try again
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Option Explicit
+Dim XORedByte(31), Key12byte(11), DAC, DAC4C, Delaye, Delay5C, glttl,Attempts
+Dim GlType, GlRot, CardSel, chglch, glchs, Glrngchoice, gldly
+Dim ATR, Redo, dacset, dacmsg, atrlock, LoopFlag, BootActive
+Dim loopdelay, minloopdelay, maxloopdelay, looppref, autorot, addusw, randac
+Dim dly4c,dly4cmin,dly4cmax, Dac4cmax, Dac4cmin, auto_unlock
+Dim ThisStr, Tail, ByteCnt, BitCnt, Addr, sData
+Dim MaxDacs, GenFlag, Ucycles, Uloop, dacFields, DacCycle, DacCnt, idxField, DacFileName
+Dim D1Min, D1Max, i, boot, resp, respboot, gltypecnt, gltypemax
+Setuploader()
+GlType          =    1  ' (1,2 or 3)Glitch Type: Affects Bootstrap Default=1
+GlRot           =    0  ' (1 or 0) Rotate Glitch Types: Default = 0
+GlTypeMax       =   10  ' Number of cycles to use each Glitch Type during GLRotate
+auto_unlock     =    1  ' Allow unlocking DacSet after lock: Default = 1
+minloopdelay    =   50  ' Play with these values for 4C and ROM glitch timing
+maxloopdelay    =  100  ' default - min 50 - max 100
+loopdelay       =   maxloopdelay ' Some loaders need slower delays. Try changing min/max
+dly4cmin        =    9  ' 4C glitch delay range ; gldly = dly4cmin to dly4cmax
+dly4cmax        =   18  ' Uses 0C XX: Glitch Vcc, delay XX cycles, Glitch Vcc
+Dac4cmax        = &h95  ' 4C Glitch Range (Hex)
+Dac4cmin        = &h70
+MaxDacs         =   15  ' Dac Finder makes this many starting Dac Sets
+Ucycles         =    4  ' Number of Unlooping Glitch attempts with each Dac Set
+Sub Main()
+Sc.Verbose=0
+Dim MenuPrompt
+If Sc.Version < 4.5 Then
+ErrorString = "You need version 4.5 or greater of WinExplorer to run this script"
+Sc.MsgBox ErrorString, vbCritical
+Err.Raise 1050, , ErrorString
+End If
+If ChipVer <> 1 then
+Sc.MsgBox("You need UL4S to run this script." & VbCr & "Flash your chip with the UL4S code")
+Exit Sub
+End If
+Sc.ClearOutputWindow
+Call IsCardPresent()
+Call CheckCard()
+If GetAtr() > 0 Then
+MenuPrompt = "ATR : " & ATR
+Call Sc.Msgbox (MenuPrompt, VbInformation, "Your Card Has a Good ATR !")
+End if
+Call LoadBootStrap()
+Call ExtractCardInfo()
+Call No745()
+End Sub
+Sub LoadBootStrap()
+Dim RetValue
+Dim GotInput
+Dim Counter
+Dim Attempts
+Dim OldDelay
+dly4c = dly4cmin
+Counter = 0
+Attempts = 1
+OldDelay = loopdelay
+Call IsCardPresent()
+Sc.Write("A1")
+Do
+For DAC4C = Dac4cmax to Dac4cmin step -1
+If dly4c > dly4cmax Then
+dly4c = dly4cmin
+Else
+dly4c = dly4c + 1
+End If
+Sc.Write("A1")
+GotInput = False
+If loopdelay > maxloopdelay Then
+loopdelay = minloopdelay
+End If
+Call Sc.ProgressBox ("Please be patient while Glitching...     Attempts:        " & Attempts & vbcr & "                                                           DAC4C:        " & HexString(DAC4C,2), 1, 999, "No More 745")
+Sc.Write("06100E10019300")
+Sc.Delay(loopdelay)
+Sc.Read(&h02)
+RetValue = Sc.GetByte(&h01)
+Sc.Read (RetValue)
+Sc.Write("B0")
+Sc.Write(HexString(DAC4C,2))
+Sc.Write("0C 11 15 C4 48 48 FF 56 B9 70 C9 08 00")
+Sc.Delay(loopdelay)
+If sc.BytesInBuffer > 0 then
+Sc.Read(&h02)
+else
+Call Sc.ProgressBox ("", 0, 0, "")
+Call OopsLooped()
+Sc.Write("A0")
+Exit Sub
+end if
+RetValue = Sc.GetByte(&h01)
+Sc.Read (RetValue)
+Sc.Write("B0 80")
+Sc.Write("38F00000000069FFFFFFFF523FFD2284E172400772FF14C5E2AB0100C3DA07F88C010000000000000000000000000000000000200011098000")
+Sc.Read(&h02)
+If Sc.GetByte(&h0) = &h38 Then
+If Sc.GetByte(&h01) = &h01 Then
+Sc.Read(&h01)
+If Sc.GetByte(&h0) = &h84 Then
+GotInput = True
+Exit For
+Else
+GotInput = False
+End If
+End If
+End If
+Counter = Counter + 1
+Attempts = Attempts + 1
+Next
+loopdelay = loopdelay + 5
+sc.print "Trying Loop Delay: " & loopdelay & VbTab & " 4C Delay: " & dly4c & VbCr
+Loop Until GotInput = True
+Sc.Write("42FF225272FF14E1E2D007E2D029E2D02A77800718753F07D307D807C5E2AB0060C3DA07F8726015D404E700D57640070DD3078ECEFB70012ADA07F700C49E2A00FA00")
+Sc.Read(&h02)
+Call Sc.ProgressBox ("", 0, 0, "")
+loopdelay = OldDelay
+Sc.Write("A0")
+BootActive = 1
+End Sub
+Sub WDTMR()
+Dim RetValue
+Sc.Write("05150E108000")
+Sc.Delay(100)
+Sc.Read(&h02)
+RetValue = Sc.GetByte(&h01)
+Sc.Read(RetValue)
+End sub
+Sub IsCardPresent()
+Dim RetValue
+Dim GotInput
+Do
+Sc.Write("A0")
+Sc.Write("80")
+Sc.Delay(100)
+If Sc.BytesInBuffer > 0 then
+Sc.Read(&h01)
+RetValue = Sc.GetByte(0)
+end if
+If RetValue = &h0 then
+Call Sc.ProgressBox ("No Card Detected!" & VbCr & "Please insert your card.....", 1, 999, "No More 745")
+GotInput = False
+Else
+If RetValue = &hFF then
+GotInput = True
+else
+If RetValue <> &h0 or RetValue <> &hFF then
+Sc.Write("A0")
+Sc.Write("020200")
+BootActive = 0
+Sc.Delay(100)
+If Sc.BytesInBuffer > 1 then
+Sc.Read(&h02)
+GotInput = False
+else
+GotInput = False
+end if
+end if
+End if
+End if
+Loop Until GotInput = True
+Call Sc.ProgressBox ("", 0, 0, "")
+End Sub
+Function ChipVer()
+ChipVer = 1
+sc.write("90")
+delay(80)
+if sc.read(4) <> 4 then
+ChipVer = 0
+Exit Function
+End if
+if getbyte(0) <> &h55 then ChipVer = 0
+if getbyte(1) <> &h4c then ChipVer = 0
+if getbyte(2) <> &h34 then ChipVer = 0
+if getbyte(3) <> &h53 then ChipVer = 0
+End Function
+Function GetAtr()
+Dim i
+Dim RetValue
+Sc.Write("06100E10019300")
+Sc.Delay(100)
+If sc.BytesInBuffer > 0 then
+Sc.Read(&h02)
+else
+Call Sc.ProgressBox ("", 0, 0, "")
+Call OopsLooped()
+Exit Function
+End If
+RetValue = Sc.GetByte(&h01)
+Sc.Read (RetValue)
+ATR = ""
+For i = 0 to RetValue -1
+ATR = ATR &  HexString(Sc.GetByte(i), 2) & " "
+Next
+If(RetValue < 20) Then
+GetATR = 0
+Else
+GetATR = 1
+End If
+End Function
+Sub WriteViaLoader(address,data,options)
+Dim dLen
+Dim tlen
+Dim parm1
+Dim parm2
+Dim i,t
+Dim datalen
+Dim addresslow
+Dim tmp
+Dim Xored
+Dim datarray(31)
+Dim datalength
+dLen = Len(data)
+dLen = dLen / 2
+tLen = Len(data)
+tLen = tlen + 16
+tLen = tlen / 2
+tLen = HexString(tlen,2)
+parm1 = Hex(dLen + &hC2)
+parm2 = Hex(dLen + &h7F)
+If Ucase(options) = "E" Then
+t = 0
+For i = 1 To Len(data) Step 2
+tmp = Mid(data, i, 2)
+datarray(t) = (HexToDec(tmp))
+t = (t + 1)
+Next
+addresslow = HexToDec(Mid(address, 3, 2))
+addresslow = (addresslow And &h7)
+If UBound(datarray) > 32 Then
+Exit Sub
+End If
+datalength = (Len(data) / 2)
+t = 0
+For i = addresslow To datalength + addresslow - 1
+Xored = Xored & HexString(datarray(t) Xor HexToDec(XoredByte(i)), 2)
+t = (t + 1)
+Next
+data = Xored
+End if
+Sc.Write(tLen & " " & parm1 & " " & parm2 & " " & address & " " & data & " " & "0EFF8000")
+Sc.Read(&h03)
+End Sub
+Sub ExtractCardInfo()
+Dim RetValue
+Dim XByte(15)
+Call WDTMR()
+Sc.Write("06C20724C08800")
+Sc.Read(&h02)
+RetValue = Sc.GetByte(&h01)
+Sc.Read(RetValue)
+XByte(0) = Sc.GetByte(0)
+XByte(1) = Sc.GetByte(1)
+XByte(2) = Sc.GetByte(2)
+XByte(3) = Sc.GetByte(3)
+XByte(4) = Sc.GetByte(4)
+XByte(5) = Sc.GetByte(5)
+XByte(6) = Sc.GetByte(6)
+XByte(7) = Sc.GetByte(7)
+Sc.Write("06C20726588800")
+Sc.Read(&h02)
+RetValue = Sc.GetByte(&h01)
+Sc.Read(RetValue)
+XByte(8) = Sc.GetByte(0)
+XByte(9) = Sc.GetByte(1)
+XByte(10) = Sc.GetByte(2)
+XByte(11) = Sc.GetByte(3)
+XByte(12) = Sc.GetByte(4)
+XByte(13) = Sc.GetByte(5)
+XByte(14) = Sc.GetByte(6)
+XByte(15) = Sc.GetByte(7)
+Sc.Write("06C20B2AE48C00")
+Sc.Read(&h02)
+RetValue = Sc.GetByte(&h01)
+Sc.Read(RetValue)
+Key12Byte(0)  = Sc.GetByte(&h0)
+Key12Byte(1)  = Sc.GetByte(&h01)
+Key12Byte(2)  = Sc.GetByte(&h02)
+Key12Byte(3)  = Sc.GetByte(&h03)
+Key12Byte(4)  = Sc.GetByte(&h04)
+Key12Byte(5)  = Sc.GetByte(&h05)
+Key12Byte(6)  = Sc.GetByte(&h06)
+Key12Byte(7)  = Sc.GetByte(&h07)
+Key12Byte(8)  = Sc.GetByte(&h08)
+Key12Byte(9)  = Sc.GetByte(&h09)
+Key12Byte(10) = Sc.GetByte(&h0A)
+Key12Byte(11) = Sc.GetByte(&h0B)
+XORedByte(0)  = HexString(XByte(0) XOR XByte(8), 2)
+XORedByte(1)  = HexString(XByte(1) XOR XByte(9), 2)
+XORedByte(2)  = HexString(XByte(2) XOR XByte(10), 2)
+XORedByte(3)  = HexString(XByte(3) XOR XByte(11), 2)
+XORedByte(4)  = HexString(XByte(4) XOR XByte(12), 2)
+XORedByte(5)  = HexString(XByte(5) XOR XByte(13), 2)
+XORedByte(6)  = HexString(XByte(6) XOR XByte(14), 2)
+XORedByte(7)  = HexString(XByte(7) XOR XByte(15), 2)
+XoredByte(8)  = XoredByte(0)
+XoredByte(9)  = XoredByte(1)
+XoredByte(10) = XoredByte(2)
+XoredByte(11) = XoredByte(3)
+XoredByte(12) = XoredByte(4)
+XoredByte(13) = XoredByte(5)
+XoredByte(14) = XoredByte(6)
+XoredByte(15) = XoredByte(7)
+XoredByte(16) = XoredByte(0)
+XoredByte(17) = XoredByte(1)
+XoredByte(18) = XoredByte(2)
+XoredByte(19) = XoredByte(3)
+XoredByte(20) = XoredByte(4)
+XoredByte(21) = XoredByte(5)
+XoredByte(22) = XoredByte(6)
+XoredByte(23) = XoredByte(7)
+XoredByte(24) = XoredByte(0)
+XoredByte(25) = XoredByte(1)
+XoredByte(26) = XoredByte(2)
+XoredByte(27) = XoredByte(3)
+XoredByte(28) = XoredByte(4)
+XoredByte(29) = XoredByte(5)
+XoredByte(30) = XoredByte(6)
+XoredByte(31) = XoredByte(7)
+End Sub
+Function CheckCard()
+Dim ATR
+Dim RetValue
+Dim i
+Call Sc.ProgressBox(0,0,0,0)
+Sc.Write("06100E10019300")
+Sc.Delay(500)
+Sc.Read(&h02)
+RetValue = Sc.GetByte(&h01)
+Sc.Read (RetValue)
+ATR = ""
+For i = 0 to RetValue -1
+ATR = ATR &  HexString(Sc.GetByte(i), 2) & " "
+Next
+Sc.Verbose = 1
+If RetValue = "13" Then
+Sc.Print "This is an H card with ATR: " & ATR & VbCr
+End If
+If Retvalue = "20" Then
+Sc.Print "This is an HU card with ATR: " & ATR & VbCr
+End If
+If (Retvalue <> "20")and(Retvalue <> "13")and (RetValue <> "0") Then
+Sc.Print "This is an unknown card with ATR: " & ATR & VbCr
+End If
+If (Retvalue = "0") Then
+Sc.Print "This may be a dead card, severely looped, damaged or you don't have good connections." & VbCr & "ATR: " & ATR & VbCr
+End If
+Sc.Verbose = 0
+End Function
+Sub OopsLooped()
+Sc.MsgBox("Card is not returning a valid HU ATR." &VbCr & "The card may not be fully Inserted" & VbCr &" or the card contacts may be dirty." & VbCr & "If everything is ok then the card is looped"&VbCr& "You must Unloop the card before using this option ")
+End Sub
+Function HexString(Number,Length)
+Dim RetValue
+Dim CurLen
+RetValue=Hex(Number)
+CurLen=Len(RetValue)
+If CurLen<Length Then
+RetValue=String(Length-CurLen,"0") & RetValue
+End If
+HexString=RetValue
+End Function
+Function Hex2Dec(HexNumber)
+Dim DecimalValue
+Dim DigitCount
+Dim Digit
+Dim HexDigit
+HexNumber = Replace(UCase(HexNumber), " ", "")
+DigitCount = Len(HexNumber)
+For Digit = 1 To DigitCount
+HexDigit = Mid(HexNumber, Digit, 1)
+If Asc(HexDigit) < 58 Then
+DecimalValue = HexDigit * 16 ^ (DigitCount - Digit)
+Else
+DecimalValue = (Asc(HexDigit) - 55) * 16 ^ (DigitCount - Digit)
+End If
+Hex2Dec = Hex2Dec + DecimalValue
+Next
+End Function
+Function HexToDec(HexNumber)
+HexNumber=Replace(UCase(HexNumber)," ","")
+HexToDec=CLng("&H"+HexNumber)
+End Function
+Function GetAtmelVersion()
+Dim I
+Sc.Write("90")
+Sc.Read(4)
+For I = 0 to 3
+GetAtmelVersion = GetAtmelVersion & Chr(Sc.GetByte(I))
+Next
+End Function
+Function setuploader()
+Sc.Print "Setting up for unlooper." & VbCr
+Wx.BaudRate = 115200
+Wx.ResetBaudRate = 115200
+Wx.Parity = 0                    ' 0 = None, 1 = Odd, 2 = Even, 3 = Mark, 4 = Space
+Wx.StopBits = 0                  ' 0 = 1 stop bit, 1 = 1.5 stop bits, 2 = 2 stop bits
+Wx.DTRControl = 0                ' Initial state of DTR  0 = off, 1 = on
+Wx.RTSControl = 1                ' Initial state of RTS  0 = off, 1 = on
+Wx.ResetDelay = 0                ' In microseconds
+Wx.ByteDelay = 0                 ' In microseconds
+Wx.RxByteTimeout = 200           ' In milliseconds
+Wx.ResetMode = 2                 ' 0 = No Resets, 1 = ISO Reset (Expect a ATR), 2 = Device Reset (No ATR)
+Wx.ResetLine = 1                 ' 0 = Toggle RTS for Reset, 1 = Toggle DTR for Reset
+Wx.ByteConvention = 1            ' 0 = Inverse, 1 = Direct
+Wx.FlushEchoByte = 0             ' 0 = no flush, 1 = flush - A Phoenix interface will echo each byte transmitted.
+Wx.FlushBeforeWrite = 0          ' 0 = no flush, 1 = flush - Flush the receive buffer before each write to strip off Null bytes.
+Wx.IgnoreTimeouts = 1            ' 0 = Abort script on a receive timeout, 1 = Ignore all receive timeouts
+Wx.ResetAfterTimeout = 0         ' 0 = Don't reset after a timeout, 1 = do a reset after a timeout  - Not used if "IgnoreTimeouts=0"
+Wx.LogTransactions = 0           ' 0 = Don't log transactions, 1 = log transactions
+Wx.DisplayUSW = 0                ' Display USW after script complete 0 = no, 1 = yes
+Wx.DisplayFuse = 0               ' Display Fuse after script complete 0 = no, 1 = yes
+End function
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Function No745()
+Call Sc.ProgressBox ("Adding New Code...", 1, 16,"No More 745")
+Call WriteViaLoader("24D8","023B3F2E","E")
+Call Sc.ProgressBox ("Adding New Code...", 2, 16,"No More 745")
+Call WriteViaLoader("24DC","04","D")
+Call Sc.ProgressBox ("Adding New Code...", 3, 16,"No More 745")
+Call WriteViaLoader("2550","E6E0CF3F713B1169DF11DBEA1F1A3D63","D")
+Call Sc.ProgressBox ("Adding New Code...", 4, 16,"No More 745")
+Call WriteViaLoader("2560","F3C35A774034806DC2924D0F8B64BCAE","D")
+Call Sc.ProgressBox ("Adding New Code...", 5, 16,"No More 745")
+Call WriteViaLoader("2570","994C634C0776D60F3DA5DC7FE94D1002","D")
+Call Sc.ProgressBox ("Adding New Code...", 6, 16,"No More 745")
+Call WriteViaLoader("2580","E9E361BEBF98108BB203DB7B5EDBFD00","D")
+Call Sc.ProgressBox ("Adding New Code...", 7, 16,"No More 745")
+Call WriteViaLoader("2590","88C8A0618830CF2A726015720204E78C","D")
+Call Sc.ProgressBox ("Adding New Code...", 8, 16,"No More 745")
+Call WriteViaLoader("25A0","C93B8830CF2A9A2A2D25F402CEB888CE","D")
+Call Sc.ProgressBox ("Adding New Code...", 9, 16,"No More 745")
+Call WriteViaLoader("25B0","B8618830CB2A726015720204E78825C4","D")
+Call Sc.ProgressBox ("Adding New Code...", 10, 16,"No More 745")
+Call WriteViaLoader("25C0","2A8CCEBC09C00025C900D00100260A04","D")
+Call Sc.ProgressBox ("Adding New Code...", 11, 16,"No More 745")
+Call WriteViaLoader("25D0","00CEEF000024A8040024E00108000001","D")
+Call Sc.ProgressBox ("Adding New Code...", 12, 16,"No More 745")
+Call WriteViaLoader("25E0","01251F010824580408245C04087D54BE","D")
+Call Sc.ProgressBox ("Adding New Code...", 13, 16,"No More 745")
+Call WriteViaLoader("25F0","F406C38F88C38F61882D2C2A72601572","D")
+Call Sc.ProgressBox ("Adding New Code...", 14, 16,"No More 745")
+Call WriteViaLoader("2600","0204E72291E122A1E1F9080102039600","D")
+Call Sc.ProgressBox ("Adding New Code...", 15, 16,"No More 745")
+Call WriteViaLoader("30CB","25A2","D")
+Call Sc.ProgressBox ("Adding New Code...", 16, 16,"No More 745")
+Call WriteViaLoader("30CF","2590","D")
+Call Sc.ProgressBox ("", 0, 0, "")
+Sc.Print VbCr &"No More 745 Process Completed & Activated." & VbCr
+End Function

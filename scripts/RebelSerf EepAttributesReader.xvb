@@ -1,0 +1,174 @@
+'**************************************************************************************
+'* New VB SCRIPT CREATED BY REBELSERF - Modified for READING Eeprom Attribute Value   *
+'*                                                                                    *
+'* USES ONLY NEWDRS.HEX WITH LOADER                                                   *
+'**************************************************************************************
+Option Explicit
+    Dim Shell
+    Set Shell = CreateObject("WScript.Shell")
+    Dim FileName
+    Dim OutFile
+    Dim bytes2
+    Dim LoopCntr
+    Dim RstFlg
+    Dim DlFlg
+    Dim bytes
+    Dim Dump
+    Dim T1
+    Dim T2
+    Dim T3
+    Dim T4
+    Dim T5
+    Dim T6
+    Dim T7
+    Dump = 18432
+'Do not change any values above this line
+'^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Sub Main()
+
+    Setupunlocker()
+    If CheckChipVer <> 1 then
+     Sc.MsgBox("Flash Version NDRS needed to run this script" & VbCr & "Flash your Loader with NewDRS.hex")
+     Exit Sub
+    End if
+    sc.verbose = 0
+    Sc.Write("A0") ' turn led off
+    Clearoutputwindow
+        Call GetFileName()
+        If ChkCard() = 0 then
+        Fs.FileClose(OutFile)
+        exit sub
+        End If
+        If T7 = 1 then
+        Sc.MsgBox("Card not present or is unresponsive." & VBCr & "         Unable to continue.")
+        Fs.FileClose(OutFile)
+        Exit Sub
+        End If
+        sc.verbose = 0
+            Call SaveEeprom()
+            Sc.MsgBox("Eeprom Attribute Bytes Read/Saved")
+            PRINT "EEPROM SAVED AS " & Filename & VBCR
+            SC.DELAY(700)
+            exit sub
+End Sub
+
+Sub SaveEEprom()
+
+    Dim ByteCount
+    Dim RcvdBytes
+    Dim i
+
+ByteCount = 0
+sc.verbose = 0
+Sc.Write("06 0E 03 01 03 9A 00")   'reset card
+        sc.read(02)
+        bytes = sc.getbyte(1)
+        sc.read(bytes)
+        sc.delay(16)
+Sc.write("67 6060 21005DA0CA000057045501018600AA30009D9D9D9D9D9DCD5487A6807BC70403B680C70404B681C70405CD6D363C8126023C809FCD45239BB680A1C02714A1382604A680B780AE07A6FF4A26FD5A26FA20CECD5492CD5428CC7A959D9D9D9D02CF 0E10 87 00")
+Sc.Read(2)
+Bytes = Sc.getbyte(1)
+Sc.read(bytes)
+Sc.write("13 0E25 600A 210007A0FF000002480033 55" & HexString(dump,4) & "00")
+For i = 1 to Dump step 1
+    sc.read(1)
+    RcvdBytes = Sc.getbyte(0)
+    call Fs.FilePutc(OutFile, RcvdBytes)
+    Call Sc.ProgressBox ("                              Reading Eeprom Attribute Bytes", ByteCount, Dump, "     Saving Bin...Please Wait")
+    ByteCount = ByteCount + 1
+Next
+
+Fs.FileClose(OutFile)
+end sub
+
+Sub GetFileName()
+    FileName = Fs.FileSaveDialog("", "Please select a name for the dumped bin", "Eeprom_Attributes.bn102")
+    If FileName <> "" Then
+    OutFile = Fs.FileCreate(FileName)
+    end if
+end sub
+
+Function HexString(Number,Length)
+    Dim RetVal
+    Dim CurLen
+    RetVal=Hex(Number)
+    CurLen=Len(RetVal)
+    If CurLen<Length Then
+    RetVal=String(Length-CurLen,"0") & RetVal
+    End If
+    HexString=RetVal
+End Function
+
+Function CheckChipVer()
+    CheckChipVer = 1
+    sc.write("90")
+    delay(80)
+    If sc.read(4) <> 4 then
+     CheckChipVer = 0
+     Exit Function
+    End if
+    If getbyte(0) <> &H4E then CheckChipVer = 0
+    If getbyte(1) <> &H44 then CheckChipVer = 0
+    If getbyte(2) <> &H52 then CheckChipVer = 0
+    If getbyte(3) <> &H53 then CheckChipVer = 0
+
+End Function
+
+Function ChkCard()
+    sc.verbose = 0
+    ChkCard = 1
+        Print ""
+        Print "    Checking Card's Eeprom Revision ......." & VBCr
+        sc.delay(2000)
+        ClearOutputWindow
+        Sc.Write("06 0E 03 01 03 9A 00")   'reset card
+        sc.read(02)
+        bytes = sc.getbyte(1)
+        If bytes < 27 then
+        T7 = 1
+        ClearOutputWindow
+        Exit Function
+        End If
+        sc.read(bytes)
+        sc.delay(16)
+        T1 = chr(sc.getbyte(16))
+        T2 = chr(sc.getbyte(17))
+        T3 = chr(sc.getbyte(18))
+        T4 = chr(sc.getbyte(23))
+        T5 = chr(sc.getbyte(24))
+        T6 = chr(sc.getbyte(25))
+        T1 = T1+T2+T3
+        T4 = T4+T5+T6
+        If asc(T4) = 0 then
+        T4 = "000"
+        End If
+        Print "     Rom " & T1 & ", Rev " & T4 & " found." & VBCR
+        print
+        Sc.delay(1500)
+        If T1 <> "102" then
+        ChkCard = 0
+        exit function
+        End If
+End Function
+
+Function setupunlocker()
+Wx.BaudRate = 115200
+Wx.ResetBaudRate = 115200
+Wx.Parity = 0 ' 0 = None, 1 = Odd, 2 = Even, 3 = Mark, 4 = Space
+Wx.StopBits = 0 ' 0 = 1 stop bit, 1 = 1.5 stop bits, 2 = 2 stop bits
+Wx.DTRControl = 0 ' Initial state of DTR 0 = off, 1 = on
+Wx.RTSControl = 1 ' Initial state of RTS 0 = off, 1 = on
+Wx.ResetDelay = 100 ' In microseconds
+Wx.ByteDelay = 10 ' In microseconds
+Wx.RxByteTimeout = 3000 ' In milliseconds
+Wx.ResetMode = 2 ' 0 = No Resets, 1 = ISO Reset (Expect a ATR), 2 = Device Reset (No ATR)
+Wx.ResetLine = 1 ' 0 = Toggle RTS for Reset, 1 = Toggle DTR for Reset
+Wx.ByteConvention = 1 ' 0 = Inverse, 1 = Direct
+Wx.FlushEchoByte = 0 ' 0 = no flush, 1 = flush - A Phoenix interface will echo each byte transmitted.
+Wx.FlushBeforeWrite = 1 ' 0 = no flush, 1 = flush - Flush the receive buffer before each write to strip off Null bytes.
+Wx.IgnoreTimeouts = 1 ' 0 = Abort script on a receive timeout, 1 = Ignore all receive timeouts
+Wx.ResetAfterTimeout = 0 ' 0 = Don't reset after a timeout, 1 = do a reset after a timeout - Not used if "IgnoreTimeouts=0"
+Wx.LogTransactions = 0 ' 0 = Don't log transactions, 1 = log transactions
+Wx.DisplayUSW = 0 ' Display USW after script complete 0 = no, 1 = yes
+Wx.DisplayFuse = 0 ' Display Fuse after script complete 0 = no, 1 = yes
+End function

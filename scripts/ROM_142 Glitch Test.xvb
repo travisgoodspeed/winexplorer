@@ -1,0 +1,276 @@
+'*************************************************
+' New Created Script 19/09/2007
+'
+' Rom 142 GlitchTest
+'
+' Only Educational Purposes !!!!
+' Enjoy !!!
+'
+'
+'*************************************************
+
+Option Explicit
+
+    Dim StartDate
+    Dim FileName
+    Dim OutFile
+    Dim StrCmd1
+    Dim StrCmd2
+    Dim MsgPrompt
+    Dim MenuChoice
+    Dim Bytes
+    Dim Bytes2
+    Dim ByteOut
+    Dim InitDelay
+    Dim EndDelay
+    Dim InitVcc
+    Dim LowVcc
+    Dim GlitchType
+    Dim Count
+    Dim i
+    Dim Dump
+    dim Comando15
+    dim boot1
+    dim countx
+    dim mixDelay
+    dim mixVcc
+    dim inVcc
+    dim inDelay
+
+    InitDelay = &H100
+    EndDelay = &H400
+    GlitchType = &H7
+    InitVcc = &H40
+    LowVcc = &H1
+    mixVCC=1
+    mixDelay=5
+    inVCC = InitVcc
+    inDelay = InitDelay
+
+
+Call SetupLoader()
+
+Sub Main()
+
+ If CheckChipVer <> 1 then
+     Sc.MsgBox("Flash your Loader with NewD13.hex")
+     Exit Sub
+   End if
+
+    sc.verbose = 1
+    Sc.Write("A0")
+    Clearoutputwindow
+    StartDate = Now()
+ Do
+
+    MsgPrompt="Rom142 Rev G01 GlitchTest for FtaLabs"
+    MenuChoice=Sc.ButtonBox(MsgPrompt,vbDefaultButton1+vbQuestion," ROM142 Rev G01 GlitchTest" & " Versión
+
+: 1.0" & "  - Menú :  ","GO","Exit")
+
+    Select Case MenuChoice
+    Case 1:   go()
+
+    End Select
+    Loop Until MenuChoice=2
+
+    Exit Sub
+
+End Sub
+
+    Sub go()
+     Call Glitch
+    End Sub
+
+
+
+Comando15="210008A0CA000002150086D2"
+
+
+
+Sub Glitch ()
+SC.write("73 0A 70
+
+214095A0CA00008F078D0101247BC200000000000000000000000000000000000000009D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D
+
+9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9BA699AD0CB752A6F04A
+
+26FDB652819D00")
+Sc.Read(2)
+Sc.Write("F0")
+Sc.Read(1)
+Bytes = Sc.Getbyte(0)
+Sc.Read(Bytes)
+Print"Initial Parameters = Delay:" & HexString(InitDelay, 4) & "  VCC:" & HexString(InitVcc, 2) & "
+
+Glitch Type:" & HexString(GlitchType, 2) & vbCr & vbCr
+
+
+ Do
+    Sc.Write("B0" & HexString(InitVcc, 2))
+    Do
+
+    Sc.Write("06 10 01 03 50 1A 00")
+    Sc.Read(2)
+    Bytes = Sc.Getbyte(1)
+    If Bytes > 25 then
+    Sc.Read(Bytes)
+    countx=0
+    Exit Do
+    Else
+    Count = Count + 1
+    End If
+
+
+    If Count > 100 Then
+    ok = MsgBox("Card Maybe Looped - NO ATR - ", vbOKOnly, "Rom 142 ")
+    Exit Sub
+    End If
+
+ Loop
+  Sc.verbose = 0
+
+
+
+       Sc.write("2F 15 0B 60 28
+
+9DB7524FADF3AE0A431100ADE820001000ADE29825041100200410002000ADD5485A26F01000810272 50 07 00")
+       Sc.Read(2)
+       Bytes = Sc.Getbyte(1)
+       Sc.Read(Bytes)
+
+
+'CMD15
+       Sc.write("16 1F 60 0B" + Comando15 + "20 "& hexstring(InitDelay,4) & hexstring(GlitchType,2) & "50
+
+00 00")
+       sc.read(2)
+       Bytes = Sc.Getbyte(1)
+       Sc.Read(Bytes)
+
+
+       byteout=&h00
+       if bytes > 0 then
+       byteout=Sc.getbyte(0)
+       sc.print  HexString(byteout,2)
+       If byteout = &h99 then
+       bytes2 = byteout
+       End if
+       End if
+
+        If Bytes2 = &H99 Then
+        Sc.Write ("A1")
+        Print " : ACK Received ....." & vbcr
+        Print  "***************************************" & vbcr
+        Print  "     " & HexString(Bytes2, 2) & " Was Glitch at:  Delay:" & HexString(InitDelay, 4) & "
+
+VCC:" & HexString(InitVcc, 2) & " GlitchType:" & HexString(GlitchType, 2) & vbcr
+        Print  "     Delay Range: " & HexString(InitDelay, 4) & " to " & HexString(EndDelay, 4) & vbcr
+        Print  "     Elapsed: " & TimeDiff(StartDate, Now()) & vbcr
+        Print  "********************************" & vbcr
+        Print  "*  Rom_142 , Glitch Succes !!  *" & vbcr
+        Print  "*                              *" & vbcr
+        Print  "*       142 Glitch Test        *" & vbcr
+        Print  "********************************" & vbcr
+
+        Exit Sub
+        End If
+
+       If ByteOut <> &H99 Then
+       Print  "."
+       InitVcc = InitVcc - mixVcc
+       If InitVcc < LowVcc Then
+       InitVcc = inVcc
+       InitDelay = InitDelay +  mixDelay
+
+       Print  "vbcr & Delay:" & HexString(InitDelay, 4) & "  VCCStart:" & HexString(InitVcc, 2) & "
+
+Glitch Type:" & HexString(GlitchType, 2)
+       Print  "Elapsed = " & TimeDiff(StartDate, Now()) & vbcr
+       End If
+       End If
+       If InitDelay > EndDelay Then
+       InitDelay = inDelay
+       GlitchType = GlitchType + 1
+       If GlitchType > &H9 Then
+        GlitchType = &H7
+
+       End If
+       End If
+
+       Loop
+End Sub
+
+Function HexString(Number,Length)
+    Dim RetVal
+    Dim CurLen
+    RetVal=Hex(Number)
+    CurLen=Len(RetVal)
+    If CurLen<Length Then
+    RetVal=String(Length-CurLen,"0") & RetVal
+    End If
+    HexString=RetVal
+End Function
+
+Function CheckChipVer()
+    CheckChipVer = 1
+    sc.write("90")
+    delay(80)
+    If sc.read(4) <> 4 then
+     CheckChipVer = 0
+     Exit Function
+    End if
+    If getbyte(0) <> &H4E then CheckChipVer = 0
+    If getbyte(1) <> &H44 then CheckChipVer = 0
+    If getbyte(2) <> &H31 then CheckChipVer = 0
+    If getbyte(3) <> &H33 then CheckChipVer = 0
+
+End Function
+
+Function TimeDiff (StartTime, EndTime)
+    Dim Hours, Minutes, Seconds
+    Seconds = DateDiff("s", StartTime, EndTime)
+    If Seconds > 90000 Then Seconds = 90000
+    If Seconds < 0 Then Seconds = 0
+    Minutes = Seconds / 60
+    Minutes = Fix(Minutes)
+    Seconds = Seconds - (Minutes * 60)
+    Hours = Minutes / 60
+    Hours = Fix(Hours)
+    Minutes = Minutes - (Hours * 60)
+    Seconds = CStr(Seconds)
+    Minutes = CStr(Minutes)
+    Hours = CStr(Hours)
+    If Len(Seconds) = 1 Then Seconds = "0" + Seconds
+    If Len(Minutes) = 1 Then Minutes = "0" + Minutes
+    If Len(Hours) = 1 Then Hours = "0" + Hours
+    TimeDiff = Hours & ":" & Minutes & ":" & Seconds
+End Function
+
+
+
+
+
+
+Function SetupLoader()
+sc.print "****************** Setting up WinExplorer ************************" & VbCr
+Wx.BaudRate = 115200
+Wx.ResetBaudRate = 115200
+Wx.Parity = 0
+Wx.StopBits = 0
+Wx.DTRControl = 0
+Wx.RTSControl = 1
+Wx.ResetDelay = 0
+Wx.ByteDelay = 0
+Wx.RxByteTimeout = 2500
+Wx.ResetMode = 2
+Wx.ResetLine = 1
+Wx.ByteConvention = 1
+Wx.FlushEchoByte = 0
+Wx.FlushBeforeWrite = 1
+Wx.IgnoreTimeouts = 1
+Wx.ResetAfterTimeout = 0
+Wx.LogTransactions = 0
+Wx.DisplayUSW = 0
+Wx.DisplayFuse = 0
+End function

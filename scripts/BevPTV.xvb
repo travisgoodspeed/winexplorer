@@ -1,0 +1,196 @@
+' This is work in progress so USE AT YOUR OWN RISK !!!!
+'
+' This is a script to Enable PTV on BEV by generating a CLD file that
+' is to be applied with SorryCharlie. To use it, just do the following:
+'
+' 1) Edit this file to add your IRD#, Box key etc...
+'
+' 2) Run the script and it will save a file called BevPTV.cld
+'
+' 3) Open SorryCharlie, read your card, save the image, apply the CLD file.
+'
+' 4) Write it to the card.
+'
+' 5) enjoy PTV
+'
+' I have added a bugcatch to disable most EMMs. This will disable public
+' key updates, but is will also protect the card from ECMs and the latest update
+' that was added to keep us from dumping the eprom.
+'
+' *Update: Since Dish and Bev have both been closing card you MUST either use the
+' EMM blocker in this script or blocker code. I have tested applying Blocker 6.1
+' overtop of this EMM blocker code and it works fine (for me anyway...).
+'
+' Allways double check writes done with Sorry Charlie, there have been cases where
+' writes have failed, resulting in closed or looped cards.
+'
+' If you have questions, please post them at ID. There is more experience to draw on
+' in the forum, and my experience is pretty limited. If you are having problems, there
+' is a good chance that someone out there has had the same one and hopefully solved it.
+'
+Option Explicit
+
+dim ByteString
+dim OutString
+
+
+Sub Main()
+    dim CLDfile
+    dim IRDback
+    dim CamID
+    dim Boxkey
+    dim TimeZone
+    dim BevKey0
+    dim BevKey1
+    dim DishKey0
+    dim DishKey1
+    dim BytesPerLine
+    dim StartAddress
+    dim NumBytes
+    dim FillStart
+    dim FillBlocks
+    dim FillBlock
+    dim LastBlock
+    dim LastLen
+    dim i, x
+    dim EMMdisable
+    dim EmmDcAddr
+    dim EMMDisCode
+    dim EmmBcNumAddr
+    dim EmmBcPtrAddr
+'
+' Here is where you specify your information. NO SPACES!!!
+'
+    Emmdisable =  true
+    CLDfile =  "BevPTV.cld"
+    IRDback =  ""  ' IRD Number Backwards i.e. 12345678 -> 78563412
+    CamID =    ""
+    Boxkey =   ""
+    TimeZone = "E4"
+'
+' Public keys are not needed if Blocker 6.1 is used.
+'
+    BevKey0 =  "61455e8edd1a2ba7"
+    BevKey1 =  "78ABD48DE0B6C538"
+    DishKey0 = "0000000000000000"
+    DishKey1 = "0000000000000000"
+'
+'
+    ByteString = ""
+    BytesPerLine = 32
+    StartAddress = 58368 '&hE400
+'
+'  Make sure values are Hex and the correct length
+'
+    call IsHexLen(IRDback,4)
+    call IsHexLen(CamID,4)
+    call IsHexLen(Boxkey,8)
+    call IsHexLen(TimeZone,1)
+    call IsHexLen(BevKey0,8)
+    call IsHexLen(BevKey1,8)
+    call IsHexLen(DishKey0,8)
+    call IsHexLen(DishKey1,8)
+'
+' Add Records to the Card File system
+'
+    Call Add("010801000100001357" & TimeZone & "00" & IRDback & "3130304242574444313132503130574E" & Boxkey)
+'
+    Call Add("06000000" & CamID & "FFFFFFFFFFFFFFFFFFFFFCFFFF0000FFFF000000000000000000000000000000" & DishKey0 & DishKey1)
+    Call Add("06010000" & CamID & "FFFFFFFFFFFFFFFFFFFFFCFFFF0000FFFF000000000000000000000000000000" & DishKey0 & DishKey1)
+    Call Add("06080000" & CamID & "FFFFFFFFFFFFFFFFFFFFFCFFFF0000FFFF000000000000000000000000000000" & BevKey0 & BevKey1)
+    Call Add("06090000" & CamID & "FFFFFFFFFFFFFFFFFFFFFCFFFF0000FFFF000000000000000000000000000000" & BevKey0 & BevKey1)
+'                                                                                         |-----Key0-----||-----Key1-----|
+    Call Add("07003F00AE0F295B68A0789EF50B904C09D0C3A7E7316BD0342ABFE652F6DA0E605D10E6782BE27A02E190D9CDDA1221C456BF16B8448504CF331EF8FECE2E9643897B36834019518C8A7AB791D7AFC5DE7F775255FD1D4E9CFE267913C8D38D8FCF4D0EC649B602F8747BE3BAE311F6E301DE291BE486A3C3")
+    Call Add("07013F00000000000000000000000000000000A1B24772175CD4F107DDC61D0240BA46C963D86FF8E5AF9D5EC66D02B1211EFF75454CFD2D931984D7CA6A61244E0FC54215849EA308BA63F8E44AECEF697D91AF54863F3FF3952A98461114CE3D432CA7C9F21F5B9CDA4442F452D5C54A391FEB53CBAE54D2")
+    Call Add("07083F00F27EC75AB9E99313F0B0806101C1908CE702DE59DE462D6825834E0B104DA9F74D2309C92F676CF57F8A3C4192EB78A5CDB3A3DB282B66674CFD08B518449FC91E65446C1356552C0588DDB044D566C455C3B79884CCCCBBB36C5B866D018E158DA4FE6E0D991FEFF10D9B8A28528587746099B893")
+    Call Add("07093F00000000000000000000000000000000F0EEB0FE32DC3A5578F20E8A07C4E008CA1AD6B53B2586BDA30F280E83F9C673B5BB7F8C93023D8F6409948BABEC78017A6CDB81C97B8484676A135386D25AB8E509F1FD63AE4B55A310E1B526F98E26E1431E9E94BA4ECF267A0FFEB514B815A4A81429E88A")
+'
+    Call Add("0209010000")
+    Call Add("0201010000")
+'
+    Call Add("0801010000000000000000000000004C214C217E007FFF8000FF00FF00")
+    Call Add("0809010000000000000000000000004C214C2100017DFF8000FF00FF00")
+    Call Add("0B09010000000001000395000080000000007FFF80000000007FFFFFFF000000010F51")
+'
+'Fill the empty space with 0FFE markers every &H100 bytes
+'
+    FillStart = StartAddress + len(ByteString)/2
+    FillBlocks = Int((&hC00 - (len(ByteString)/2))/&h100)
+    for i = 1 to FillBlocks
+        ByteString = ByteString & "0FFE" & String(254*2,"0")
+    next
+'
+' Write the last Marker with the correct length value
+'
+    LastBlock = FillStart +(FillBlocks * &h100) + 2
+    LastLen = 61439 - LastBlock
+    ByteString = ByteString + "0F" + HexString(lastLen + 1,2)
+    for i = 0 to LastLen
+        ByteString = ByteString + "00"
+    next
+'
+' Convert the text string to lines in the CLD file
+'
+    OutString = ""
+    if Emmdisable then
+        ' Add EMM disable code...
+        OutString = OutString + VbCrLf + "E079 65"
+        OutString = OutString + VbCrLf + "E08A E2 00"
+        OutString = OutString + VbCrLf + "E200 AE 21 D1 E2 2A 27 04 5A 2A F8 81 9C D6 E2 4C 26 03 CC 67 DB 2A 11 97 A4 70 44 44 44 44 AB 84 B7"
+        OutString = OutString + VbCrLf + "E220 80 9F A4 0F BE 80 FB CC 5B 19 10 11 12 13 14 15 20 21 22 23 24 25 26 2F 30 31 32 40 41 44 50 51"
+        OutString = OutString + VbCrLf + "E240 52 53 54 61 62 63 81 00 84 85 86 F3 09 00 16 1A 1D 14 0E 05 05 08 0A 0A 04 96 00 05 05 16 02 1E"
+        OutString = OutString + VbCrLf + "E260 05 0A 02 0B 03 EB 07 0B 03 00 03 09 07 00"
+    end if
+
+    NumBytes = len(ByteString)/2
+    OutString = OutString + VbCrLf + right(hex(StartAddress),4)
+    for i = 0 to NumBytes
+        if (i mod(BytesPerLine) = 0) and i <>0 and i <>&hc00 then
+            OutString = OutString + VbCrLf + HexString(StartAddress + i,4)
+        end if
+        OutString = OutString + " " + mid(ByteString,(i*2)+1,2)
+    next
+'
+' Save it...
+'
+    call SaveTextFile(CLDfile, OutString)
+End Sub
+
+sub Add(entry)
+    dim l, temp, StringLen
+    temp = ""
+    StringLen = len(entry)/2
+    ByteString = ByteString + "07" + HexString(StringLen,2) + entry
+end sub
+
+sub SaveTextFile(FileName, FileText)
+    Const ForReading = 1, ForWriting = 2
+    Dim   fso, OutFile, LongFileName, i
+    Set fso = CreateObject("Scripting.FileSystemObject")
+'   Generate Full Path Name
+    LongFileName = fso.GetAbsolutePathName(FileName)
+    Set OutFile = fso.CreateTextFile(LongFileName, ForWriting)
+    sc.print "Saving: " & LongFileName
+    OutFile.writeline(  "'CLD File" & vbCrLf & _
+                        "'WinExplorer 4.4" & vbCrLf & _
+                        "'Bev PTV Enabler" & vbCrLf & _
+                        "'" & vbCrLf & _
+                        "'E400 Image file" & vbCrLf & _
+                        "'"  )
+    OutFile.writeline ( Filetext )
+    OutFile.close
+end sub
+
+Function Hexstring(Number, NewLen)
+    HexString = right("0000000" & hex(number),NewLen)
+end function
+
+Sub IsHexLen(TestString, NumBytes)
+    if not sc.ishex(TestString)=1 or len(TestString) <> Numbytes*2 then
+        sc.err("Incorrect Length or Value is not Hex for Argument -> " & TestString)
+    End if
+End Sub
+
+function Hex2Cld(HexString)
+
+end function

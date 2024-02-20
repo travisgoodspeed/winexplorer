@@ -1,0 +1,211 @@
+' New VB Script File - Created 12/5/04
+' FOR Dish rom 10 A23 rev STREAMLOCKED And Dealerlocked!
+' Thanks to No1be4me,Penga! Modified by DevilDSS
+'**************************************************************************************
+
+'Instruction Table
+'01 Reset Card (Leaves card clock off)
+'02 4.608 MHz Card Clock Off -FREEZE CAM
+'03 4.608 MHz Card Clock On - FREE RUNNING CAM
+'04 XX XX Delay $XXXX card clocks and glitch VCC on high phase with 1.152 MHz Card clock
+'05 XX XX Delay $XXXX card clocks and glitch VCC on high phase with 1.536 MHz Card clock
+'07 XX XX Delay $XXXX card clocks and glitch VCC on low phase with 1.152 MHz Card clock
+'06 XX XX Delay $XXXX card clocks and glitch VCC on low phase with 1.536 MHz Card clock
+'09 rom 10 glitch DELAY -- 2*CARD CLOCKS -- ex. 2x xx xx 09 for timing
+'0E XX SET WD TIMER
+'0F POWER DOWN CAM
+'1X TX RX SPEED
+
+'2X XX XX Delay $2X XX XX Atmel clock cycles
+
+'8X-9X Rx from card, instruction anded with $1f plus 1 bytes Ex. $9F = rx $20 bytes
+'aX-FX Tx to card, instruction anded with $5f plus 1 bytes Ex. $FF = Tx $60 bytes
+'**************************************************************************************
+'Commands
+'80 Check Card Presence - Sends 1 byte
+'90 Get chip ID - Sends 4 Bytes (DISH)
+'AX Set Bi-color Led - X = 0 off, X = 1 Red, X = 2 Green
+'B0 XX Set Glitch VCC - VCC = (5/255) * XX
+
+Option Explicit
+    Dim ResetCounter
+    Dim Bytes
+    dim bytes2
+    Dim BR2(5)
+    Dim VCCStart
+    Dim VCCLimit
+    Dim VCC
+    Dim DelayEnd
+    Dim DelayStart
+    Dim GlitchType
+    Dim TryCnt
+    DIM TryLimit
+    DIM TRYCNT2
+    DIM RT
+    DIM TestMode
+    Dim logo
+    TRYCNT2=1
+    Sc.Playsound("spookwelcome.wav")
+    logo= "logo.jpg"
+Sc.Picturebox "logo.jpg",3
+Sub Main()
+
+Sc.Reset
+
+' These are the variables you can change for rom 10 dish A23
+
+
+VCCStart = &h36     'Enter your VCC Ceiling Here from VCCAnalyzerV2!
+VCCLimit = VCCStart - &h10 'This subtracts &h09 from the start value
+DelayStart=&h123e   'Try &h123E for Streamlocked. Try &h1100 or &h0C20 for checksumlocked.
+DelayEnd = &h127A   'Try &h127A for Streamlocked. Try &h1108 or &h0C40 for checksumlocked.
+TryCnt =   300        'Number of tries per delay FROM 5-50000
+TestMode = 0        'TestMode, 1 = ON, 0 = OFF
+
+'TestMode is used to find a glitch point on A23 cam. once you find the
+'delay and vcc settings on cam then set TestMode = 0, and open the cam.
+
+' end of variables
+
+    GlitchType=&h09
+    VCC = VCCStart
+    RT = DelayStart
+    ' turn led off
+    sc.verbose=TRUE
+    Sc.Write("A0")
+    Sc.Delay(50)
+    Sc.Write("A0")
+    Sc.Delay(50)
+    ' card is in turn led on
+    Sc.Write("A1")
+
+' get atr
+    sc.verbose=TRUE
+    Sc.Write("07 0e 03 10 01 03 9a 00")    'reset card
+    Sc.Read(02)
+    Bytes = Sc.Getbyte(1)
+    if Bytes > 25 then
+    Sc.Read(25)
+    end if
+
+Sc.Write("12 15 AB 21 00 08 A0 CA 00 00 02 12 00 06 55 0E 03 85 00")
+   Sc.Read(02)
+   Bytes = Sc.Getbyte(1)
+    if Bytes > 5 then
+    Sc.Read(6)
+    end if
+print
+          if TestMode = 1 then
+              print " You are in testmode, cam will not open in this mode!!!" & vbcr
+              print " set TestMode = 0 to open cam " & vbcr & vbcr
+          end if
+print " Now we will try "  & HexString(RT, 4) & " delay" & vbcr
+sc.verbose=false
+
+Do
+
+               VCC = VCC - 1.0
+               if VCC < VCCLimit then
+               VCC = VCCStart
+               END IF
+
+               'if rt > DelayEnd then
+               'rt = DelayStart
+               'END IF
+
+
+
+    Sc.Write("B0" & HexString(VCC, 2))
+
+SC.DELAY(11)
+
+Sc.Write("61 15 F6 21 00")
+Sc.Write("53 A0 CA 00 00 4D 03 4B 00 C5 10 6F 15 CC 00 CC")
+Sc.Write("00 CC 00 CC 00 0C CD 32 0C 5A EA 2D 2D 0C CD 32")
+Sc.Write("0C 5A EA 2D 2D B1 C4 45 F4 E1 20 14 80 8D 4C F0")
+Sc.Write("AA A6 1D 0D AA 1D F4 97 65 2E 88 4E 25 0C CD 32")
+Sc.Write("0C 5A EA 2D 2D B1 C4 45 F4 E1 20 14 80 05 67 21")
+Sc.Write("92 00 00 00 7D 20" & HexString(RT, 4) & "09 0E 05 85 00")
+
+
+   Sc.Read(02)
+   Bytes = Sc.Getbyte(1)
+        if Bytes > 4 then
+        Sc.Read(5)
+        bytes=sc.getbyte(3)
+    PRINT HexString(bytes, 2)
+
+        TryCnt2 = TryCnt2 + 1
+        if trycnt2 > trycnt then
+             RT = RT + 1
+             TRYCNT2 = 0
+            if rt > DelayEnd then
+                    rt = DelayStart
+                    END IF
+         print
+             print " now we will try "  & HexString(RT, 4) & " delay"
+             print
+      END IF
+        if bytes = &H83 then
+
+            print
+            print
+            print "*********** we hit our bug *************"& VbCr
+            PRINT HEXSTRING(SC.GETBYTE(0),2) & HEXSTRING(SC.GETBYTE(1),2) & HEXSTRING(SC.GETBYTE(2),2) & HEXSTRING(SC.GETBYTE(3),2)& HEXSTRING(SC.GETBYTE(4),2)& VbCr
+             Sc.Print "===========================================" & VbCr
+            PRINT HexString(bytes, 2)
+            print " was hit at " & HexString(RT, 4) & " delay ----VCC WAS " & HexString(VCC, 2)
+            print
+            SC.DELAY(2500)
+if TestMode = 0 then
+            sc.verbose=TRUE
+            Sc.Write("0A 15 A3 21 92 00 B3 0E 03 85 00")
+            SC.READ(2)
+            Bytes = Sc.Getbyte(1)
+            if Bytes > 4 then
+                Sc.Read(5)
+                bytes=sc.getbyte(3)
+            END IF
+            SC.DELAY(30)
+
+            PRINT "***************************" & VBCR
+            PRINT "* A23 CAM should be OPEN  *" & VBCR
+            PRINT "*  test in Nagra to see.  *" & VBCR
+            PRINT "*   if not, try again.    *" & VBCR
+            PRINT "***************************" & VBCR
+            Sc.PlaySound("6GateD.wav")
+            exit sub
+end if
+        sc.verbose=false
+        end if
+        else
+        PRINT" RESET "
+        ResetCounter = ResetCounter +1
+        if ResetCounter > 2 then
+        ResetCounter = 0
+        sc.write("02 03 00") 'freeze card
+        sc.write("02 02 00") 'unfreeze card
+        end if
+        End if
+
+            Sc.Write("08 0e 03 10 01 01 03 9a 00")   'reset card
+            sc.read(02)
+            sc.delay(5)
+
+LOOP
+
+End Sub
+
+Function HexString(Number,Length)
+    ' This function takes 2 arguments, a number and a length.  It converts the decimal
+    ' number given by the first argument to a Hexidecimal string with its length
+    ' equal to the number of digits given by the second argument
+    Dim RetVal
+    Dim CurLen
+    RetVal=Hex(Number)
+    CurLen=Len(RetVal)
+    If CurLen<Length Then
+        RetVal=String(Length-CurLen,"0") & RetVal
+    End If
+    HexString=RetVal
+End Function

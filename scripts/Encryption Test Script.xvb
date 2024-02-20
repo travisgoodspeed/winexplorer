@@ -1,0 +1,634 @@
+' If Di06 is available (i.e. dumped card) we could...
+' Determine P and Q from DT06/Di06(0D)
+'    From Di06, extract:
+'       IDEA Key
+'       Seed
+'       P Adjust
+'       Q Adjust
+'    Prepare the 52 16-bit subkeys used for IDEA encryption
+'    Create an array of the size of P*Q
+'    Apply initial XOR to the array
+'    Apply IDEA to each block of the array
+'    Apply final XOR to the array
+'    Extract P and Q
+'    Set bits to '1'
+'    Adjust values
+' This logic is in the PQFromDT06() subroutine...the code there may or may not work...but it gives some ideas
+'
+' In reality, for 2A/2B fun we can get the public modulus (N) from the IRD dump and hard code it at the top of the script
+'
+' RSA minutiae:
+'    Modulus (N) is same for both encryption and decryption (N=PQ)
+'    Public Exponent(E) = 3
+'    Private Exponent (D) = Px + Qy = GCD(P,Q)
+'
+'    "Public Key" (modulus and public exponent) used for encryption
+'    "Private Key" (modulus and private exponent) used for decryption
+'
+' *** The values used to decrypt/encrypt the data must be in LITTLE ENDIAN format
+' *** inside the formulas.  It should be in BIG ENDIAN format when receiving/transmitting
+' *** to the card.
+'
+'
+' IRD/Script        CAM
+'  CMD2A      -->
+'             <--   Encrypted 2A Data (in big endian format)
+'
+' *** From here, the values in the formulas need to be in LITTLE ENDIAN format (Data, E, N) ***
+' *********************************************************************************************
+'
+'  Decrypt data using CAM-N (CAM Specific RSA key)
+'     ("Encrypted 2A Data" ^ "CAM Public Exponent (E)") MOD "CAM Public Modulus (N)"  = "Decrypted 2A Data"
+'                             -------------------            ----------------------
+'                                     |                                 |
+'                                     |-- 3                             |
+'                                                                       ----From Rcv dump, or from...???
+'
+'  Insert 16 random bytes (bytes 16-32)(??? - I think this is where the session key goes...maybe not needed for exploit)
+'
+'  Encrypt new data
+'     ("Decrypted 2A Data" ^ "CAM Public Exponent (D)") MOD "CAM Public Modulus (N)" = "Encrypted 2B Data"
+'
+'
+' Byteflop the Encrypted 2B data (to convert it back to BIG ENDIAN for transmission to card...
+'
+'  Send encrypted data back ro CAM in CMD2B
+'
+'  CMD2B      -->
+'             <--   SW
+'
+
+
+Option Explicit
+
+
+Dim DT06
+Dim P
+Dim Q
+Dim CAMPublicModulus
+Dim CAMPublicModulusLittleEnd
+Dim CAMPublicExponent
+Dim CAMPrivateExponent
+Dim SubKey(56)
+Dim Hpmbmath
+Dim DebugLevel
+
+DebugLevel = 1
+
+Set hpmbmath = CreateObject("Hpmbmath.Mparith")
+
+DT06 = HexSpace("0C0006232306 133C9EE8 00 0120 0D 00 18 2973B1823F5B1739264461B920703FE93F5910E1FD0840E7")
+
+CAMPublicExponent = "03"
+
+ClearOutputWindow
+
+Sub Main()
+    Dim i
+    Dim Encrypted2AData
+    Dim Encrypted2ADataLittleEnd
+    Dim Decrypted2AData
+    Dim Encrypted2BData
+
+
+'    Call PQFromDT06()
+'
+'D=((((P-1)(Q-1))*2)+1)/E
+'This formula ONLY works if E = 3.
+'In this case it's faster than any other method,
+'but for any other value of E we will need to use
+'the extended euclidean algorithm.
+'    CamPrivateExponent = hpmbmath.Multiply(hpmbmath.Subtract(HexSpace(P), "01"), hpmbmath.Subtract(HexSpace(Q), "01"))
+'    CamPrivateExponent = hpmbmath.Add(CamPrivateExponent, "01")
+'    CamPrivateExponent = hpmbmath.Divide(CamPrivateExponent, HexSpace(CAMPublicExponent))
+'
+'D = (E^(-1)) mod PHI(P*Q)
+'    CAMPrivateExponent = hpmbmath.GCD(P, Q)
+'
+'    CAMPublicModulus = hpmbmath.Multiply(HexSpace(P), HexSpace(Q))
+
+
+    CAMPublicModulus =   HexSpace("E74DF639147428FDA0A3950688E888C33583513556D3CB6C636FAB5E9FFF7CA8BB717BF321CC6714486A21DBE8AB29E049A1B4EA1B77E5AFD2340AE9BDD4A4D8")
+    CAMPublicModulusLittleEnd = Hpmbmath.Swap(CAMPublicModulus, 64)
+
+
+' TODO: For efficiency, the following code (get 2A data, decrypt, encrypt, send 2B, etc) should be placed in a separate
+' subroutine from the call to PQFromDT06 and the declaration and endian conversion of N...
+' TODO: This should be changed to read from CAM in order to do anything useful
+    Encrypted2AData = HexSpace("1A 8A 3C B9 A4 47 24 DB B3 06 36 2A 6D 52 B9 C7 64 01 28 32 3A B6 2B F0 53 68 3F FD 8E EC 1B 60 49 1E 93 7C 15 CA 20 C8 10 BC E5 FE 41 1F 32 D3 7B 40 84 FC 6A 76 63 58 6A EE B0 45 80 3B 6A 4E")
+    Encrypted2ADataLittleEnd = HexSpace(Hpmbmath.Swap(Encrypted2AData, 64))
+
+    Decrypted2AData = hpmbmath.ModPow(Encrypted2ADataLittleEnd, CAMPublicExponent, CAMPublicModulusLittleEnd)
+
+' Now stuff our payload into the decrypted data (keeping the first 16 bytes so the signature test will pass)
+' 16 bytes signature, 48 bytes for payload (payload from original 206 script)
+'      1.  Convert to big endian (byteflop)
+'      2.  Add payload (preserving signature bytes (0-15))
+'      3.  Convert back to little endian (byteflop)
+    Dim StuffedData
+    Dim GlitchPayload
+    StuffedData = UnSpace(Hpmbmath.Swap(Decrypted2AData, 64))
+    GlitchPayload = ""
+    GlitchPayload = GlitchPayload & "0000"              ' Not sure...why zeroes?
+    GlitchPayload = GlitchPayload & "9D9D9D9D9D9D9D9D"  ' Pad...NOP
+    GlitchPayload = GlitchPayload & "9D9D9D9D9D9D9D9D"  ' ...
+    GlitchPayload = GlitchPayload & "9D9D9D9D9D9D9D9D"  ' ...
+    GlitchPayload = GlitchPayload & "9D9D9D9D9D9D9D9D"  ' ...
+    GlitchPayload = GlitchPayload & "9D9D9D9D9D9D"      ' ...
+    GlitchPayload = GlitchPayload & "CD7EC5"            ' Call routine to copy and jump
+    GlitchPayload = GlitchPayload & "0C98"              '    From 0C98
+    GlitchPayload = GlitchPayload & "00CE"              '    To   00CE
+    GlitchPayload = GlitchPayload & "90"                '    &h90 bytes
+    StuffedData = HexSpace(Left(StuffedData, 32) & GlitchPayload)
+    Decrypted2AData = Hpmbmath.Swap(StuffedData, 64)
+
+
+    Encrypted2BData = hpmbmath.ModPow(Decrypted2AData, CAMPublicExponent, CAMPublicModulusLittleEnd)
+    Encrypted2BData = Hpmbmath.Swap(Encrypted2BData, 64)
+
+    If DebugLevel >= 1 Then
+        Sc.Print VbCr & "Encrypted 2A Data       = " & Unspace(Encrypted2AData)
+        Sc.Print VbCr & "Decrypted 2A Data       = " & Unspace(Decrypted2AData)
+        Sc.Print VbCr & "Encrypted 2B Data       = " & Unspace(Encrypted2BData)
+    End If
+
+' TODO: Send Encrypted2BData back to card...
+'
+'...it should then pass the signature test and get copied to $0080
+'...wait the appropriate amount of time and see if we can get the PC to jump somewhere in the $0092-$00B8 range :)
+
+
+End Sub
+
+
+
+
+
+
+
+
+
+
+Sub PQFromDT06
+    Dim i, j, k
+    Dim IDEAKey
+    Dim PAdj
+    Dim QAdj
+    Dim arrDT06
+    Dim arrCompressedKey(24)
+    Dim arrIDEAKey(16)
+    Dim arrRotKey
+    Dim arrSeed(8)
+    Dim intPQSize
+    Dim intPSize
+    Dim intQSize
+    Dim intBlockCount
+    Dim intPQOffset
+    Dim IDEAPlainText(8)
+    Dim IDEAEncText
+    Dim intSubKeyPos
+    Dim Dummy
+    Dim FirstBitMask
+    Dim LastBitMask
+
+' Extract stuff from the original Di06
+    arrDT06 = Split(DT06)
+
+    For i = 0 To 23                                     'Extract the compressed key from the DT06
+        arrCompressedKey(i) = arrDT06(i + 16)
+    Next
+
+    For i = 0 To 15                                     'Extract the IDEA key from the compressed key
+        arrIDEAKey(i) = arrCompressedKey(i)
+    Next
+
+    For i = 0 To 7                                      'Extract the seed from the compressed key
+        arrSeed(i) = arrCompressedKey(i + 13)
+    Next
+
+    PAdj = "0" & Mid(DT06, 74, 3)                       'Extract P Adjust from the compressed key
+
+    QAdj = "0" & Mid(DT06, 77, 3)                       'Extract Q Adjust from the compressed key
+
+'1. Prepare the 52 16-bit subkeys used for IDEA encryption
+    arrRotKey = arrIDEAKey                              'Setup IDEA subkeys (part of IDEA algorithm)
+    intSubKeyPos = 1
+    For i = 1 To 7
+        SubKey(intSubKeyPos) = arrRotKey(0) & arrRotKey(1)
+        SubKey(intSubKeyPos + 1) = arrRotKey(2) & arrRotKey(3)
+        SubKey(intSubKeyPos + 2) = arrRotKey(4) & arrRotKey(5)
+        SubKey(intSubKeyPos + 3) = arrRotKey(6) & arrRotKey(7)
+        SubKey(intSubKeyPos + 4) = arrRotKey(8) & arrRotKey(9)
+        SubKey(intSubKeyPos + 5) = arrRotKey(10) & arrRotKey(11)
+        SubKey(intSubKeyPos + 6) = arrRotKey(12) & arrRotKey(13)
+        SubKey(intSubKeyPos + 7) = arrRotKey(14) & arrRotKey(15)
+        Dummy = RotateLeft(arrRotKey, 25)
+        intSubKeyPos = intSubKeyPos + 8
+        If DebugLevel >= 3 Then
+            Sc.Print VbCr
+            Sc.Print VbCr & "After rotation, new IDEA Key = " & ArrayToHexString(arrRotKey)
+        End If
+    Next
+
+    If DebugLevel >= 1 Then
+        Sc.Print VbCr
+        Sc.Print VbCr & "IDEA SubKeys:" & VbCr
+        For i = 1 to 56
+            Sc.Print "K" & i & ": " & SubKey(i) & " "
+            If (i mod 8) = 0 Then
+                Sc.Print VbCr
+            End If
+        Next
+    End If
+
+'2. Create an array of the size of P*Q
+'&h20 = 32
+    intPQSize = CInt("&h" & Mid(Unspace(DT06), 25, 2))          'Determine the size of P and Q from DT06 and build a singe array that can hold both
+    intPSize = intPQSize
+    intQSize = intPQSize
+    intPQSize = intPQSize * 2
+    ReDim arrPQ(intPQSize)
+    For i = 0 to (intPQSize - 1)                                'Initialize this new array to "00"
+        arrPQ(i) = "00"
+    Next
+
+    If DebugLevel >= 2 Then
+        Sc.Print VbCr
+        Sc.Print VbCr & "P Size  = " & intPSize
+        Sc.Print VbCr & "Q Size  = " & intQSize
+        Sc.Print VbCr & "PQ Size = " & intPQSize
+    End If
+
+'3. Apply initial XOR to the array
+    intBlockCount = intPQSize \ 8                                           'Divide the array into 8-byte blocks and numerate it starting from 0.
+
+    intPQOffset = 0
+    For i = 0 To (intBlockCount - 1)                                                            'For each 8 byte block...
+        For j = 0 To 7
+            arrPQ(j + intPQOffset) = Hex(("&h" & arrPQ(j + intPQOffset)) Xor ("&h" & arrSeed(j)))    'Each byte gets XORed with the seed
+            If j = 0 Then
+                arrPQ(j + intPQOffset) = Hex(("&h" &arrPQ(j + intPQOffset)) Xor ("&h" & i))          'The first byte also gets XORed with the block number
+            End If
+        Next
+        intPQOffset = intPQOffset + 8
+    Next
+
+    If DebugLevel >=1 Then
+        Sc.Print VbCr
+        Sc.Print VbCr & "PQ Array after initial XOR : " & ArraytoHexString(arrPQ)
+    End If
+
+'4. Apply IDEA to each block of the array
+    intPQOffset = 0
+    For i = 0 To (intBlockCount - 1)                                        'For each 8 byte block...
+        For j = 0 To 7                                                      'Create the plaintext block for the IDEAEncrypt function
+            IDEAPlainText(j) = arrPQ(j + intPQOffset)
+        Next
+
+        IDEAEncText = IDEAEncrypt(IDEAPlainText)                            'IDEA Encrypt the plaintext block
+
+        For k = 0 to 7                                                      'Updte the PQ array with the IDEA encrypted data
+            arrPQ(k + intPQOffset) = Mid(IDEAEncText,(k*2)+1, 2)
+        Next
+
+        intPQOffset = intPQOffset + 8
+    Next
+    If DebugLevel >=1 Then
+        Sc.Print VbCr
+        Sc.Print VbCr & "PQ Array after IDEA Encryption : " & ArraytoHexString(arrPQ)
+    End If
+
+'5. Apply final XOR to the array
+    intPQOffset = 0
+    For i = 0 To (intBlockCount - 1)                                                            'For each 8 byte block...
+        For j = 0 To 7
+            arrPQ(j + intPQOffset) = Hex(("&h" & arrPQ(j + intPQOffset)) Xor ("&h" & arrSeed(j)))    'Each byte gets XORed with the seed
+            If j = 0 Then
+                arrPQ(j + intPQOffset) = Hex(("&h" &arrPQ(j + intPQOffset)) Xor ("&h" & i))          'The first byte also gets XORed with the block number
+            End If
+        Next
+        intPQOffset = intPQOffset + 8
+    Next
+    If DebugLevel >=1 Then
+        Sc.Print VbCr
+        Sc.Print VbCr & "PQ Array after Final XOR : " & VbCr & ArraytoHexString(arrPQ)
+    End If
+
+'6. Extract P and Q
+'      The first half of the PQ array is P, the second half is Q (well...almost...we have to make them prime)
+    ReDim arrP(intPSize)
+    ReDim arrQ(intQSize)
+    intPQOffset = 0
+    For i = 0 to (intPQSize - 1)
+        If i <= (intPSize - 1) Then
+            arrP(i) = arrPQ(i)
+        Else
+            arrQ(i - intPSize) = arrPQ(i)
+        End If
+    Next
+    If DebugLevel >=1 Then
+        Sc.Print VbCr
+        Sc.Print VbCr & "After splitting PQ array : "
+        Sc.Print VbCr & "P = " & ArraytoHexString(arrP)
+        Sc.Print VbCr & "Q = " & ArraytoHexString(arrQ)
+    End If
+
+'7. Set bits to '1'
+'      Any prime number must have its first and last bits set to '1'...
+
+    FirstBitMask = "80"
+    LastBitMask =  "01"
+
+    For i = 2 to intPSize
+        FirstBitMask = FirstBitMask & " 00"
+    Next
+
+    P = HexSpace(ArrayToHexString(arrP))
+    Q = HexSpace(ArrayToHexString(arrQ))
+
+    P = hpmbmath.BitOr(P, FirstBitMask)           ' Set first bit of MSB of P to 1
+    P = hpmbmath.BitOr(P, LastBitMask)            ' Set last bit of LSB of P to 1
+
+    Q = hpmbmath.BitOr(Q, FirstBitMask)           ' Set first bit of MSB of Q to 1
+    Q = hpmbmath.BitOr(Q, LastBitMask)            ' Set last bit of LSB of Q to 1
+
+    If DebugLevel >=1 Then
+        Sc.Print VbCr
+        Sc.Print VbCr & "After setting first and last bits : "
+        Sc.Print VbCr & "P = " & P
+        Sc.Print VbCr & "Q = " & Q
+    End If
+
+'8. Adjust values
+'      Now we need to add some value to convert these numbers to prime numbers.
+'      This is done by adding Padj * 2 to P and Qadj * 2 to Q.
+'    P = ArrayToHexString(arrP)
+'    Q = ArrayToHexString(arrQ)
+'    P = arrP
+'    Q = arrQ
+
+    PAdj = Hpmbmath.Multiply(PAdj, "02")
+    QAdj = Hpmbmath.Multiply(QAdj, "02")
+
+    P = Hpmbmath.Add(P, PAdj)                           ' These are the values we were after...P and Q in HexString format
+    Q = Hpmbmath.Add(Q, Qadj)
+
+    If DebugLevel >=1 Then
+        Sc.Print VbCr
+        Sc.Print VbCr & "After adjusting to prime : "
+        Sc.Print VbCr & "P = " & ArraytoHexString(arrP)
+        Sc.Print VbCr & "Q = " & ArraytoHexString(arrQ)
+    End If
+End Sub
+
+
+
+
+
+Function HexSpace(strInputHex)
+' This function takes a string of hexadecimal characters (with whatever spacing) and returns
+' a nice evenly spaced string of hexadicmal bytes (one space between each byte)
+    Dim strNewString, i
+
+    strInputHex = Unspace(strInputHex)
+    For i = 1 To Len(strInputHex) Step 2
+        strNewString = strNewString & Mid(strInputHex, i, 2) & " "
+    Next
+    HexSpace = Trim(strNewString)
+End Function
+
+
+
+
+
+Function RotateLeft(ByRef ArrayToRotate, intRotateCount)
+' This function rotates to the left all of the bits in the given array.
+' intRotateCount determines how man times the bits are rotated
+
+    Dim i
+    Dim blnRotateBit                        'Bit that gets rotated from MSB to LSB
+    Dim blnInterByteBit                     'Bit that gets shifted into LSB of this byte from MSB of next
+    Dim CurrentByte
+    Dim NextByte
+    Dim intCurrentBytePos
+    Dim intLastBytePos
+
+    intLastBytePos = UBound(ArrayToRotate) - 1
+
+    For i = 1 To intRotateCount
+        blnRotateBit = ((CInt("&h" & (ArrayToRotate(0))) And &H80) = &H80)      ' save MS bit from Byte 0 (to be rotated into last byte)
+        For intCurrentBytePos = 0 To intLastBytePos
+            CurrentByte = CInt("&h" & ArrayToRotate(intCurrentBytePos))
+            If intCurrentBytePos < intLastBytePos Then
+                NextByte = CInt("&h" &ArrayToRotate(intCurrentBytePos + 1))
+                blnInterByteBit = ((NextByte And &H80) = &H80)                  ' Get MSB of next byte (for LSB of this byte)
+                CurrentByte = CurrentByte And (Not (&H80))                      ' ensure MS bit is clear to prevent overflow
+                CurrentByte = CurrentByte * 2                                   ' shift left by multiplying by 2
+                If blnInterByteBit Then
+                    CurrentByte = CurrentByte Or &H1                            ' restore the saved bit in the LS bit
+                End If
+            Else
+                CurrentByte = CurrentByte And (Not (&H80))                      ' for the last byte, shift in the rotate bit
+                CurrentByte = CurrentByte * 2                                   ' rather that the next byte;s MSB (since there is
+                If blnRotateBit Then                                            ' no "next byte" :)
+                    CurrentByte = CurrentByte Or &H1                            '
+                End If
+            End If
+            ArrayToRotate(intCurrentBytePos) = HexString(CurrentByte, 2)
+        Next
+    Next
+
+    RotateLeft = True
+
+End Function
+
+
+
+
+
+Function ArrayToHexString(ByVal ByteArray)
+    Dim i
+    Dim BuildString
+    Dim strHexValueString
+
+    For i = 0 To UBound(ByteArray)
+        strHexValueString = CStr(ByteArray(i))
+        If (Len(strHexValueString) Mod 2) <> 0 Then
+            strHexValueString = "0" & strHexValueString
+        End If
+        BuildString = BuildString & strHexValueString
+    Next
+
+    ArrayToHexString = BuildString
+
+End Function
+
+
+
+
+
+
+Function IDEAEncrypt(ByRef PlainTextBytes)
+' receives an 8-element array (each array is a byte in the plaintext message to be encrypted).
+' Returns an 8-element array of that data IDEA encrypted
+' Function ASSumes SubKey() has been declared globaly as is already defined (not passed to this function)
+    Dim a, i, x
+    Dim KeyPtr
+    Dim Word(4)
+    Dim ResBlks(14)
+    Dim WordBuildPtr
+    Dim EncodedBytes
+    Dim WordPointer
+
+
+    KeyPtr = 1
+
+    If DebugLevel >= 2 Then
+        sc.print vbcr & "IDEA Encrypting: " & ArrayToHexString(PlainTextBytes) & "..."
+    End If
+
+    'Break the Plaintext block into 4 2-byte words
+    For a = 0 To 3
+        Word(a) = Cstr(PlainTextBytes(WordBuildPtr)) & CStr(PlainTextBytes(WordBuildPtr+1))
+        If DebugLevel >= 3 Then
+            sc.print vbcr & "Word("& a &") = " & word(a)
+        End If
+        WordBuildPtr = WordBuildPtr + 2
+    Next
+
+    '8 rounds (using subkeys s1-s6 each time so that s1-s48 are used in total)
+    For x = 0 To 7
+        ResBlks(0) = ModMult(Word(0), SubKey(KeyPtr)) : KeyPtr = KeyPtr + 1         'p1 x s1 --> d1
+        ResBlks(1) = ModAdd(Word(1), SubKey(KeyPtr)) : KeyPtr = KeyPtr + 1          'p2 + s2 --> d2
+        ResBlks(2) = ModAdd(Word(2), SubKey(KeyPtr)) : KeyPtr = KeyPtr + 1          'p3 + s3 --> d3
+        ResBlks(3) = ModMult(Word(3), SubKey(KeyPtr)) : KeyPtr = KeyPtr + 1         'p4 x s4 --> d4
+        ResBlks(4) = hpmbmath.BitXor(HexSpace(ResBlks(0)), HexSpace(ResBlks(2)))    'd1 XOR d3 --> d5
+        ResBlks(5) = hpmbmath.BitXor(HexSpace(ResBlks(1)), HexSpace(ResBlks(3)))    'd2 XOR d4 --> d6
+        ResBlks(6) = ModMult(ResBlks(4), SubKey(KeyPtr)) : KeyPtr = KeyPtr + 1      'd5 x s5 --> d7
+        ResBlks(7) = ModAdd(ResBlks(5), ResBlks(6))                                 'd6 + d7 --> d8
+        ResBlks(8) = ModMult(ResBlks(7), SubKey(KeyPtr)) : KeyPtr = KeyPtr + 1      'd8 x s6 --> d9
+        ResBlks(9) = ModAdd(ResBlks(6), ResBlks(8))                                 'd7 + d9 --> d10
+        ResBlks(10) = hpmbmath.BitXor(HexSpace(ResBlks(0)), HexSpace(ResBlks(8)))   'd1 XOR d9  --> d11
+        ResBlks(11) = hpmbmath.BitXor(HexSpace(ResBlks(2)), HexSpace(ResBlks(8)))   'd3 XOR d9  --> d12
+        ResBlks(12) = hpmbmath.BitXor(HexSpace(ResBlks(1)), HexSpace(ResBlks(9)))   'd2 XOR d10 --> d13
+        ResBlks(13) = hpmbmath.BitXor(HexSpace(ResBlks(3)), HexSpace(ResBlks(9)))   'd4 XOR d10 --> d14
+
+        Word(0) = ResBlks(10)                                                   'd12 and d13 are exchanged so that
+'        Word(1) = ResBlks(12)                                                  'd11, d13, d12, d14 (in that order)
+'        Word(2) = ResBlks(11)                                                   'are used as input for the next round
+        Word(1) = ResBlks(11)                                                   'd11, d13, d12, d14 (in that order)
+        Word(2) = ResBlks(12)                                                   'are used as input for the next round
+        Word(3) = ResBlks(13)
+    Next
+
+    'Swap words for Final round
+'        Word(1) = ResBlks(12)
+'        Word(2) = ResBlks(11)
+
+    'use the last of the subkeys on the words to complete the output
+    Word(0) = ModMult(Word(0), SubKey(KeyPtr)) : KeyPtr = KeyPtr + 1             'e1 x s49 --> c1
+    Word(1) = ModAdd(Word(1), SubKey(KeyPtr)) : KeyPtr = KeyPtr + 1              'e2 + s50 --> c2
+    Word(2) = ModAdd(Word(2), SubKey(KeyPtr)) : KeyPtr = KeyPtr + 1              'e3 + s51 --> c3
+    Word(3) = ModMult(Word(3), SubKey(KeyPtr)) : KeyPtr = 0                      'e4 x s52 --> c4
+
+    EncodedBytes = Word(0) & Word(1) & Word(2) & Word(3)
+
+    If DebugLevel >= 2 Then
+        sc.print vbcr & "IDEA Enc Result: " & EncodedBytes & "..."
+    End If
+
+    IDEAEncrypt = EncodedBytes
+
+End Function
+
+
+
+
+
+
+Function ModMult(Word1, Word2)
+' (a*b)Mod((2^16)+1)
+
+    Dim DividedProduct
+    Dim MaskedProduct
+    Dim Product
+
+    If DebugLevel >= 3 Then
+        Sc.Print VbCr
+        Sc.Print VbCr & "Modular Multiply " & Word1 & " and " & Word2 & " = "
+    End If
+
+    If Word1 = "0000" Then
+        Product = hpmbmath.Subtract("01", HexSpace(Word2))
+        Product = hpmbmath.BitAnd(HexSpace(Product), "FF FF")
+    ElseIf Word2 = "0000" Then
+        Product = hpmbmath.Subtract("01", HexSpace(Word1))
+        Product = hpmbmath.BitAnd(HexSpace(Product), "FF FF")
+    Else
+        Product = hpmbmath.Multiply(HexSpace(Word1), HexSpace(Word2))
+        MaskedProduct = hpmbmath.BitAnd(HexSpace(Product), "FF FF")
+        DividedProduct = hpmbmath.Divide(HexSpace(product), "01 00 01")
+        Product = hpmbmath.Subtract(MaskedProduct, DividedProduct)
+        If CDbl("&h" & Unspace(Product)) < 0 Then
+           Product = hpmbmath.Add(HexSpace(Product), "01")
+        End If
+        Product = hpmbmath.BitAnd(HexSpace(Product), "FF FF")
+    End If
+
+'    Product = hpmbmath.Multiply(HexSpace(Word1), HexSpace(Word2))
+'    Product = hpmbmath.Mod(Product, "01 00 00")
+
+    If DebugLevel >= 3 Then
+        Sc.Print Ucase(Unspace(Product))
+    End If
+
+    ModMult = Ucase(Unspace(Product))
+
+End Function
+
+
+
+
+
+
+Function ModAdd(Word1, Word2)
+    Dim Sum
+
+    If DebugLevel >= 3 Then
+        Sc.Print VbCr
+        Sc.Print VbCr & "Modular Add " & Word1 & " and " & Word2 & " = "
+    End If
+
+    Sum = hpmbmath.Add(HexSpace(Word1), HexSpace(Word2))
+    Sum = hpmbmath.Mod(HexSpace(Sum), "01 00 00")
+
+    If DebugLevel >= 3 Then
+        Sc.Print Sum
+    End If
+
+    ModAdd = Ucase(Unspace(Sum))
+
+End Function
+
+
+
+
+Function HexString(Number,Length)
+    Dim RetVal
+    Dim CurLen
+    RetVal=Hex(Number)
+    CurLen=Len(RetVal)
+    If CurLen<Length Then
+        RetVal=String(Length-CurLen,"0") & RetVal
+    End If
+    HexString=RetVal
+End Function
+
+
+
+
+
+
+Function Unspace(HexString)
+    Unspace = UCase(Replace(HexString, " ", ""))
+End Function

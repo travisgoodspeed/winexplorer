@@ -1,0 +1,43 @@
+' Checks version number in Atmel Flash 01-04-05  -WNC-
+' www.geocities.com/mulestomp  Home of the PowerSync
+' CMD 90 (sc.write("90")) is sent to the Atmel 90S2313 IC chip
+' This command if used in the flash returns a 4 byte return code
+' that indicates what version number has been assigned to that
+' flash.   NOTE *** if a flash does not return a code then the
+' program will quit and indicate that reason.
+
+Option Explicit
+
+Sub Main()
+
+    Sc.Verbose = false 'turns off the debug mode
+    Sc.Reset           'reset the atmel chip via the PC
+    print"Atmel has been reset." & vbcr 'tell user that atmel has been reset
+
+    Call ChipVer       'call routine to ask atmel to return the version string
+    print"What-Flash script ended." & vbcr 'tell user we quit
+    end sub            'end this program
+
+Function ChipVer()
+    dim comparestring 'variable to hold the version number
+
+    sc.write("90") 'this is the command sent from pc to atmel to get version number return
+    sc.delay(80)   'delay 80ms
+
+    if sc.read(4) <> 4 then 'if less than 4 bytes are returned from cmd 90 then print the following and end.
+        print"Flash does not return a CMD90 version code. Please flash Atmel with known flash code."
+        quit  'end this script program
+        Exit Function
+    end if
+
+
+    comparestring = chr(getbyte(0)) + chr(getbyte(1)) + chr(getbyte(2)) + chr(getbyte(3)) 'concantanate the version string.
+    sc.print"Version Number returned from Atmel CMD 90 reads: " & comparestring
+    if comparestring = "REK1" then print" Known as NewD6 use for Rom3" & vbcr end if
+    if comparestring = "REK7" then print" Known as NewD7 use for Rom10" & vbcr end if
+    if comparestring = "REK8" then print" Known as NewD8 use for Rom10" & vbcr end if
+    if comparestring = "REK9" then print" Known as NewD9 use for Rom10" & vbcr end if
+    if comparestring = "ND11" then print" Known as NewD11 use for Rom11" & vbcr end if
+    'as other flash versions are released you can add them here
+
+End Function

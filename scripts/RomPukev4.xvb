@@ -1,0 +1,488 @@
+    Const fsoError=-1
+    Const fsoOpenRead=0
+    Const fsoOpenWrite=1
+    Const fsoOpenReadWrite=2
+    Const fsoSEEK_SET=0
+    Const fsoSEEK_CUR=1
+    Const fsoSEEK_END=2
+
+call echosettings()
+  Sub Main()
+
+do
+      MsgPrompt="                               Dish Rom3 Rev372 thru Rev378 Unlocker!!"
+
+        MenuChoice=Sc.ButtonBox(MsgPrompt & "",vbDefaultButton1,ScriptName+" "+ScriptVer+"Rompuke v4.0                                                By: DMan79","Unlock","Dump","Write","Exit")
+
+        Select Case MenuChoice
+            Case 1:
+
+            call R3Unlock()
+
+            Case 2:
+
+            call R3Dump()
+
+            Case 3:
+
+            call R3Write()
+
+            Case 4:
+
+            exit sub
+
+        End Select
+
+     loop until MenuChoice=0
+
+
+   End Sub
+
+sub R3Write()
+
+   dim writebuff(4095)
+
+   call R3Login()
+
+   if len(R3Login)=32 then
+   sc.print vbcrlf + "Login successfull!" + chr(&h0A) + "Using backdoor:  "+ R3Login + vbcrlf
+   else
+   msgbox R3Login
+   exit sub
+   end if
+
+        FileName = ""
+        FileName = Fs.FileOpenDialog("*.bn3", "File to Open:", "r3dump.bn3")
+
+        if FileName<>"" then
+            InFile=Fs.FileOpen(Filename,fsoOpenRead)
+        End If
+
+   FileSize=Fs.FileSeek(InFile,&H0,fsoSEEK_END)
+   if FileSize<>4096 then
+   msgbox "Not a valid ROM3 file!"
+   exit sub
+   end if
+
+   Call Fs.FileSeek(InFile,&H0,fsoSEEK_SET)
+
+        For times=0 to 4095
+            writebuff(times)=Fs.FileGetc(InFile)
+        Next
+
+        numbugs=writebuff(&h51)
+        writebuff(&h51)=&h00
+
+   writestr1="210015A0D6"
+   writestr2="10"
+   writestr3=0
+   writestr4=&h30
+   writelrc1=&h52
+   pos1=writestr4
+
+
+   sc.print vbcrlf
+   sc.print "      00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F" +chr(&h0A)
+   sc.print "      -----------------------------------------------" +chr(&h0A)
+
+   sc.verbose = false
+
+   chk1=0
+   while chk1<>&h90
+   sc.write("210006A0D69451010095")
+   sc.read(4)
+   chk0=sc.getbyte(00)
+   chk1=sc.getbyte(03)
+   if chk0<>&h12 then
+   chk1=&h00
+   end if
+   wend
+
+   while writestr3 < &h10
+
+   writestr5=""
+   writelrc1=&h52
+   writelrc1=writelrc1 xor writestr3
+   writelrc1=writelrc1 xor writestr4
+   npatch=npatch+"E"+ hexstring(writestr3,1) + hexstring(writestr4,2) + ": "
+
+
+   for times = &h01 to &h10
+   writelrc1=writelrc1 xor writebuff(pos1)
+   writestr5=writestr5 + hexstring(writebuff(pos1),2)
+   npatch=npatch+hexstring(writebuff(pos1),2)+" "
+   pos1=pos1+&h01
+   next
+
+   npatch=npatch
+
+   sc.print npatch
+   npatch=""
+
+   write1=writestr1 + hexstring(writestr3,2) + hexstring(writestr4,2) + writestr2 + writestr5 + hexstring(writelrc1,2)
+   sc.verbose=false
+
+   chk1=0
+   while chk1<>&h90
+   sc.write(write1)
+   sc.read(4)
+   chk0=sc.getbyte(00)
+   chk1=sc.getbyte(03)
+   if chk0<>&h12 then
+   chk1=&h00
+   end if
+   wend
+
+   sc.print chr(&h0A)
+
+   writestr4=writestr4+&h10
+   if writestr4 > &hF0 then
+   writestr4=0
+   writestr3=writestr3+1
+   end if
+   wend
+
+   bugstr1="210006A0D6945101"
+   bugslrc=numbugs xor &h95
+
+   bugstr=bugstr1+hexstring(numbugs,2)+hexstring(bugslrc,2)
+   chk1=0
+   while chk1<>&h90
+   sc.write bugstr
+   sc.read(4)
+   chk0=sc.getbyte(00)
+   chk1=sc.getbyte(03)
+   if chk0<>&h12 then
+   chk1=&h00
+   end if
+   wend
+
+   writestr3=0
+   writestr4=&h20
+   pos1=writestr4
+   writelrc1=&h72
+   writestr5=""
+
+   for times = &h01 to &h10
+   writelrc1=writelrc1 xor writebuff(pos1)
+   writestr5=writestr5 + hexstring(writebuff(pos1),2)
+   npatch=npatch+hexstring(writebuff(pos1),2)+" "
+   pos1=pos1+&h01
+   next
+
+   write1=writestr1 + hexstring(writestr3,2) + hexstring(writestr4,2) + writestr2 + writestr5 + hexstring(writelrc1,2)
+   sc.verbose=false
+
+   chk1=00
+   while chk1<>&h90
+   sc.write(write1)
+   sc.read(4)
+   chk0=sc.getbyte(00)
+   chk1=sc.getbyte(03)
+   if chk0<>&h12 then
+   chk1=&h00
+   end if
+   wend
+
+   sc.print "      -----------------------------------------------" + chr(&h0A)
+   sc.print "      00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F" + chr(&h0A)
+
+
+   Fs.FileClose(InFile)
+
+   msgbox vbcrlf & "           Card Was written successfully!           " & vbcrlf
+
+   sc.reset()
+End Sub
+
+
+sub R3Dump()
+
+   call R3Login()
+
+   if len(R3Login)=32 then
+   sc.print vbcrlf + "Login successfull!" + chr(&h0A) + "Using backdoor:  "+ R3Login + vbcrlf
+   else
+   msgbox R3Login
+   exit sub
+   end if
+
+
+        FileName = ""
+        FileName = Fs.FileSaveDialog("*.bn3", "File to Open:", "r3dump.bn3")
+
+        If FileName <> "" Then
+            OutFile = Fs.FileCreate(FileName)
+            Call Fs.FileSeek(OutFile,&H0,fsoSEEK_SET)
+        End If
+
+
+   sc.verbose = false
+
+   chk1=0
+   while chk1<>&h12
+   sc.write("210007A0B09400000010B2")
+   sc.read(4)
+   chk0=sc.getbyte(00)
+   chk1=sc.getbyte(02)
+   if chk0<>&h12 then
+   chk1=0
+   end if
+   wend
+
+   dumpstr1="210007A0B0"
+   dumpstr2="000010"
+   dumpstr3=0
+   dumpstr4=0
+   dumplrc1=&h26
+
+   sc.print vbcrlf
+   sc.print "      00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F" +chr(&h0A)
+   sc.print "      -----------------------------------------------" +chr(&h0A)
+
+   while dumpstr3 < &h10
+
+   dumplrc1=&h26
+   dumplrc1=dumplrc1 xor dumpstr3
+   dumplrc1=dumplrc1 xor dumpstr4
+
+   dump=dumpstr1 + hexstring(dumpstr3,2) + hexstring(dumpstr4,2) + dumpstr2 + hexstring(dumplrc1,2)
+   sc.verbose=false
+
+   chk1=0
+   while chk1<>&h12
+   sc.write dump
+   sc.read(3)
+   chk0=sc.getbyte(00)
+   chk1=sc.getbyte(02)
+   if chk0<>&h12 then
+   chk1=0
+   end if
+   wend
+
+   sc.verbose=false
+
+   sc.read(18)
+
+   npatch=npatch+"E"+ hexstring(dumpstr3,1) + hexstring(dumpstr4,2) + ": "
+
+   for times = &h00 to &h0F
+   call Fs.FilePutc(OutFile, sc.getbyte(times))
+   npatch=npatch + hexstring(sc.getbyte(times),2) + " "
+   next
+
+   npatch=npatch + chr(&h0A)
+
+   sc.print npatch
+   npatch=""
+
+   dumpstr4=dumpstr4+&h10
+   if dumpstr4 > &hF0 then
+   dumpstr4=0
+   dumpstr3=dumpstr3+1
+   end if
+   wend
+
+   sc.print "      -----------------------------------------------" + chr(&h0A)
+   sc.print "      00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F" + chr(&h0A)
+
+
+   Fs.FileClose(OutFile)
+
+   msgbox vbcrlf & "           File Was successfully saved!           " & vbcrlf
+
+   sc.reset()
+End Sub
+
+Function HexString(Number,Length)
+    ' This function takes 2 arguments, a number and a length.  It converts the decimal
+    ' number given by the first argument to a Hexidecimal string with its length
+    ' equal to the number of digits given by the second argument
+    Dim RetVal
+    Dim CurLen
+    RetVal=Hex(Number)
+    CurLen=Len(RetVal)
+    If CurLen<Length Then
+        RetVal=String(Length-CurLen,"0") & RetVal
+    End If
+    HexString=RetVal
+End Function
+
+Function R3Login()
+   ' This function gets the EEPROM backdoor in order to log in by using overflow exploit
+
+   dim bdoor1(15)
+   bdoor=""
+   loginstr="210025A0200000208FABC264449AFE701DE762FAB14C3106"
+
+   sc.verbose=false
+
+   chk0=0
+   while chk0<>&h12
+   sc.write("210025A0200000208FABC264449AFE701DE762FAB14C310600000000000000000000000000000000DE")
+   sc.read(4)
+   sc.reset()
+   chk0=sc.getbyte(00)
+   wend
+
+   if sc.getbyte(03)<>&h63 then
+   R3Login="Backdoor may be closed!"
+   Exit Function
+   end if
+
+   chk0=0
+   tries=0
+   while chk0<>&h81
+   sc.reset()
+   sc.write("2100C4010203A405060708090A0B0C0D0E0F10110203040A060708595A0B0C0D0E0F10C10203D4050607C8290A0B0C0D0E0F1031D2030405060708390A0B0C0D0E0F10410203D405060708490A0B0C0D0E0F10510203040506E708590A0A0C0A0E0F10610203040001020304050B0708090A0B0C0D0E0F00F102030405E60708090A0B0CFD0C0F00010203050A060708090A0B0C0D0E0F010101000000FF0752567303CDDC34C39B9C9D9DC6E020CD42D73C6626F69D9D9D9D9D9D9D9DED9ACC7381E80000006055")
+   sc.read(4)
+   chk0=sc.getbyte(01)
+   chk1=sc.getbyte(03)
+   if chk1<>&h81 then
+   chk0=0
+   end if
+
+   tries=tries+1
+   if tries=5 then
+   R3Login="Error retrieving backdoor password!"
+   exit function
+   end if
+
+   wend
+
+   sc.read(16)
+   sc.reset()
+
+   loginlrc=&hDE
+
+    for bd=0 to 15
+       bdoor1(bd)=sc.getbyte(bd)
+    next
+
+    for bd=0 to 15
+       bdoor=bdoor+hexstring(bdoor1(bd),2)
+    next
+
+   lrc1=0
+   for lrc=0 to 15
+   lrc1=lrc1 xor bdoor1(lrc)
+   next
+
+   lrc1=lrc1 xor loginlrc
+   lrc=hexstring(lrc1,2)
+
+   backdoor=loginstr+bdoor+lrc
+
+   sc.delay(150)
+   sc.write(backdoor)
+   sc.delay(150)
+
+   sc.verbose = false
+   sc.read(6)
+
+   if sc.getbyte(03)<>&h90 or sc.getbyte(04)<>&h00 then
+   R3Login="Error logging in!"
+   else
+
+   R3Login=bdoor
+
+   end if
+
+End Function
+
+Sub R3Unlock()
+
+    timed=600
+    tries=0
+    while timed<>705
+    tries=tries+1
+    sc.reset
+    sc.delay(50)
+    sc.print vbcrlf & "#" & tries & " Delay is at: " & timed
+    sc.verbose = false
+
+sc.write("214053A0CA00004D004B00010286ED9F40C39D85D5F855DA0153BE1C6DC2D3B9339EFC4DA2B399137EDC2D829379F35EBC0D627359D33E9CED425339B31E7CCD22331993FE5CAD0213F973DE3C8DE2F3D953BE1C400525")
+    'sc.verbose = true
+    'sc.read(11)
+    '    sc.verbose = false
+        sc.delay(timed)
+
+sc.write("2100F69B9CA64ACD42D7A641CD42D7A656CD42D7CC006000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000C6E05181000000000000000000010100000000FF000000000000CD00C39B9CA696C7004EAE80A601CD7803CC4000BF65A30226ED9ACC738100000000600000000000000000")
+        sc.delay(50)
+     '   sc.verbose = true
+     '   sc.read(4)
+     '   if sc.getbyte(01)<>&h82 or sc.getbyte(03)<>&h82 then
+     '   sc.print "Failed!"
+     '   else
+        sc.reset()
+        sc.verbose = false
+
+sc.write("2100C4010203A405060708090A0B0C0D0E0F10110203040A060708595A0B0C0D0E0F10C10203D4050607C8290A0B0C0D0E0F1031D2030405060708390A0B0C0D0E0F10410203D405060708490A0B0C0D0E0F10510203040506E708590A0A0C0A0E0F10610203040001020304050B0708090A0B0C0D0E0F00F102030405E60708090A0B0CFD0C0F00010203050A060708090A0B0C0D0E0F010101000000FF0752567303CDDC34C39B9C9D9DC6E020CD42D73C6626F69D9D9D9D9D9D9D9DED9ACC7381E80000006055")
+        sc.delay(50)
+        sc.verbose = true
+        sc.read(4)
+        if sc.getbyte(01)<>&h81 or sc.getbyte(03)<>&h81 then
+        sc.print "Failed!"
+        else
+        MsgBox "Card is now open!"
+        sc.reset()
+        exit sub
+        end if
+      '  end if
+    timed=timed+6
+    sc.reset()
+
+    if timed>700 then
+    timed=timed-101
+    end if
+    wend
+end sub
+
+Function Hex2Dec(HexNumber)
+    ' This function takes 1 argument, a string containing a hex value of anydigit length
+    ' and returns the decimal equivalent
+    Dim DecimalValue
+    Dim DigitCount
+    Dim Digit
+    Dim HexDigit
+
+    HexNumber = Replace(UCase(HexNumber), " ", "")
+    DigitCount = Len(HexNumber)
+
+    For Digit = 1 To DigitCount
+
+        HexDigit = Mid(HexNumber, Digit, 1)
+        If Asc(HexDigit) < 58 Then
+            DecimalValue = HexDigit * 16 ^ (DigitCount - Digit)
+        Else
+            DecimalValue = (Asc(HexDigit) - 55) * 16 ^ (DigitCount - Digit)
+        End If
+        Hex2Dec = Hex2Dec + DecimalValue
+    Next
+
+End Function
+
+
+
+sub echosettings()
+Wx.BaudRate = 115200
+Wx.ResetBaudRate = 9600
+Wx.Parity = 1                ' 0 = None, 1 = Odd, 2 = Even, 3 = Mark, 4 = Space
+Wx.StopBits = 2              ' 0 = 1 stop bit, 1 = 1.5 stop bits, 2 = 2 stop bits
+Wx.DTRControl = 1            ' Initial state of DTR  0 = off, 1 = on
+Wx.RTSControl = 0            ' Initial state of RTS  0 = off, 1 = on
+Wx.ResetDelay = 40000        ' In microseconds
+Wx.ByteDelay = 0        ' In microseconds
+Wx.RxByteTimeout = 150       ' In milliseconds
+Wx.ResetMode = 1             ' 0 = No Resets, 1 = ISO Reset (Expect a ATR),2 = Device Reset (No ATR)
+Wx.ResetLine = 0             ' 0 = Toggle RTS for Reset, 1 = Toggle DTR for Reset
+Wx.ByteConvention = 0        ' 0 = Inverse, 1 = Direct
+Wx.FlushEchoByte = 1         ' 0 = no flush, 1 = flush - A Phoenix interface will echo each byte transmitted.
+Wx.FlushBeforeWrite = 1      ' 0 = no flush, 1 = flush - Flush the receive buffer before each write to strip off Null bytes.
+Wx.IgnoreTimeouts = 1        ' 0 = Abort script on a receive timeout, 1 = Ignore all receive timeouts
+Wx.ResetAfterTimeout = 0     ' 0 = Don't reset after a timeout, 1 = do a reset after a timeout  - Not used if "IgnoreTimeouts=0"
+Wx.LogTransactions = 0       ' 0 = Don't log transactions, 1 = log transactions
+Wx.DisplayUSW = 0            ' Display USW after script complete 0 = no, 1 = yes
+Wx.DisplayFuse = 0           ' Display Fuse after script complete 0 = no, 1 = yes
+
+end sub

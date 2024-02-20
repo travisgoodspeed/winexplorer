@@ -1,0 +1,368 @@
+' #3 Script 4001 TO 5601.xvb
+' 77matrix or Vindicative
+' irc.kickinchicken.org
+' Channel #kickinchicken
+' Vindicative
+' Hope this helps you out. It worked for me this fixed My bd3 00 login
+' I lost my Password for my Rom10 <$C600> Once will never happen again
+' LOL I was out of cards so I had to fix this one Hope it help you out
+' WinExplorer v5.0 Settings (3.6864 crystal):
+Sub dishsettings()
+    ' This subroutine uses WinExplorer 4.6's new Wx. object to automatically
+    ' configure all the WinExplorer settings for the user.
+   Wx.BaudRate=115200
+    Wx.ResetBaudRate=9600
+    Wx.Parity=1           ' 0 = None, 1 = Odd, 2 = Even, 3 = Mark, 4 = Space
+    Wx.StopBits=2         ' 0 = 1 stop bit, 1 = 1.5 stop bits, 2 = 2 stop bits
+    Wx.DTRControl=0      ' Initial state of DTR  0 = off, 1 = on
+    Wx.RTSControl=1       ' Initial state of RTS  0 = off, 1 = on
+    Wx.ResetDelay=1000     ' In microseconds
+    Wx.ByteDelay=20     ' In microseconds
+    Wx.RxByteTimeout=1000  '  In milliseconds
+    Wx.ResetMode=1                ' 0 = No Resets, 1 = ISO Reset (Expect a ATR), 2 = Device Reset (No ATR)
+    Wx.ResetLine=0                ' 0 = Toggle RTS for Reset, 1 = Toggle DTR for Reset
+   Wx.ByteConvention=0            ' 0 = Inverse, 1 = Direct
+    Wx.FlushEchoByte=1            ' 0 = no flush, 1 = flush - A Phoenix interface will echo each byte transmitted.
+    Wx.FlushBeforeWrite=1        ' 0 = no flush, 1 = flush - Flush the receive buffer before each write to strip off Null bytes.
+    Wx.IgnoreTimeouts=0            ' 0 = Abort script on a receive timeout, 1 = Ignore all receive timeouts
+    Wx.ResetAfterTimeout=0        ' 0 = Don't reset after a timeout, 1 = do a reset after a timeout  - Not used if "IgnoreTimeouts=0"
+    End Sub
+
+
+Sub cmdXX()
+Sc.Print("Cam ID Request") &vbCrLf
+Sc.Print("              #3 77matrix Vindicative Rom 10 Bd3 00 login fix")
+MsgBox "#3 This will change the cam form 4001 TO 5601 to fix Bd3 00 login"
+Sc.Write("21000DA0CA00000721050103FFFF002047")
+Sc.read(15)
+Sc.read(4)
+Sc.Print(" <--- IRD#")
+Sc.Write("21000DA0CA00000721050603FFFF002040")
+Sc.read(8)
+Sc.read(4)
+Sc.Print(" <--- camid") &vbCrLf
+
+If MsgBox("Vindicative see your CAM ID/IRD# above in HEX." & vbCrlf & "Proceed?", vbYesNo) = vbyes then
+ans = Yes
+else
+ans = No
+   Exit Sub
+End If
+
+   If (ans = Yes) Then
+    Print("attempting to log into card")&vbCrLf
+    Sc.Verbose = false
+'Package----01
+    Sc.Write("21 00 25 A0 CA 00 00 1F 03 1D 40 01 10 99 05 4E 69 70 50 45 72 20 49 73 20 61 20 62 75 54 74 26 00 00 00 00 00 00 00 05 FD ")
+    Sc.Verbose = true
+    Sc.read(11)
+    Sc.Print("data pack----01")
+    Sc.Verbose = false
+'Package----01
+    Sc.Write("21 00 25 A0 CA 00 00 1F 03 1D 40 01 10 99 05 4E 69 70 50 45 72 20 49 73 20 61 20 62 75 54 74 26 00 00 00 00 00 00 00 05 FD ")
+    Sc.Verbose = true
+    Sc.read(11)
+    Sc.Print("data pack----01")
+    Sc.Verbose = false
+'Package----01
+    Sc.Write("21 00 25 A0 CA 00 00 1F 03 1D 40 01 10 99 05 4E 69 70 50 45 72 20 49 73 20 61 20 62 75 54 74 26 00 00 00 00 00 00 00 05 FD ")
+    Sc.Verbose = true
+    Sc.read(11)
+    Sc.Print("data pack----01")
+    Sc.Verbose = false
+'Package----01
+    Sc.Write("21 00 25 A0 CA 00 00 1F 03 1D 40 01 10 99 05 4E 69 70 50 45 72 20 49 73 20 61 20 62 75 54 74 26 00 00 00 00 00 00 00 05 FD ")
+    Sc.Verbose = true
+    Sc.read(11)
+    Sc.Print("data pack----01")
+    Sc.Verbose = false
+'Package----01
+    Sc.Write("21 00 25 A0 CA 00 00 1F 03 1D 40 01 10 99 05 4E 69 70 50 45 72 20 49 73 20 61 20 62 75 54 74 26 00 00 00 00 00 00 00 05 FD ")
+    Sc.Verbose = true
+    Sc.read(11)
+    Sc.Print("data pack----01")
+    Sc.Verbose = false
+'Package----01
+    Sc.Write("21 00 25 A0 CA 00 00 1F 03 1D 40 01 10 99 05 4E 69 70 50 45 72 20 49 73 20 61 20 62 75 54 74 26 00 00 00 00 00 00 00 05 FD ")
+    Sc.Verbose = true
+    Sc.read(11)
+    Sc.Print("data pack----01")
+    Sc.Verbose = false
+'Package----01
+    Sc.Write("21 00 25 A0 CA 00 00 1F 03 1D 40 01 10 99 05 4E 69 70 50 45 72 20 49 73 20 61 20 62 75 54 74 26 00 00 00 00 00 00 00 05 FD ")
+    Sc.Verbose = true
+    Sc.read(11)
+    Sc.Print("data pack----01")
+    Sc.Verbose = false
+'Package----01
+    Sc.Write("21 00 25 A0 CA 00 00 1F 03 1D 40 01 10 99 05 4E 69 70 50 45 72 20 49 73 20 61 20 62 75 54 74 26 00 00 00 00 00 00 00 05 FD ")
+    Sc.Verbose = true
+    Sc.read(11)
+    Sc.Print("data pack----01")
+    Sc.Verbose = false
+'Package----01
+    Sc.Write("21 00 25 A0 CA 00 00 1F 03 1D 40 01 10 99 05 4E 69 70 50 45 72 20 49 73 20 61 20 62 75 54 74 26 00 00 00 00 00 00 00 05 FD ")
+    Sc.Verbose = true
+    Sc.read(11)
+    Sc.Print("data pack----01")
+    Sc.Verbose = false
+'Package----01
+    Sc.Write("21 00 25 A0 CA 00 00 1F 03 1D 40 01 10 99 05 4E 69 70 50 45 72 20 49 73 20 61 20 62 75 54 74 26 00 00 00 00 00 00 00 05 FD ")
+    Sc.Verbose = true
+    Sc.read(11)
+    Sc.Print("data pack----01")
+    Sc.Verbose = false
+'Package----01
+    Sc.Write("21 00 25 A0 CA 00 00 1F 03 1D 40 01 10 99 05 4E 69 70 50 45 72 20 49 73 20 61 20 62 75 54 74 26 00 00 00 00 00 00 00 05 FD ")
+    Sc.Verbose = true
+    Sc.read(11)
+    Sc.Print("data pack----01")
+    Sc.Verbose = false
+'Package----01
+    Sc.Write("21 00 25 A0 CA 00 00 1F 03 1D 40 01 10 99 05 4E 69 70 50 45 72 20 49 73 20 61 20 62 75 54 74 26 00 00 00 00 00 00 00 05 FD ")
+    Sc.Verbose = true
+    Sc.read(11)
+    Sc.Print("data pack----01")
+    Sc.Verbose = false
+'Package----01
+    Sc.Write("21 00 25 A0 CA 00 00 1F 03 1D 40 01 10 99 05 4E 69 70 50 45 72 20 49 73 20 61 20 62 75 54 74 26 00 00 00 00 00 00 00 05 FD ")
+    Sc.Verbose = true
+    Sc.read(11)
+    Sc.Print("data pack----01")
+    Sc.Verbose = false
+'Package----01
+    Sc.Write("21 00 25 A0 CA 00 00 1F 03 1D 40 01 10 99 05 4E 69 70 50 45 72 20 49 73 20 61 20 62 75 54 74 26 00 00 00 00 00 00 00 05 FD ")
+    Sc.Verbose = true
+    Sc.read(11)
+    Sc.Print("data pack----01")
+    Sc.Verbose = false
+'Package----01
+    Sc.Write("21 00 25 A0 CA 00 00 1F 03 1D 40 01 10 99 05 4E 69 70 50 45 72 20 49 73 20 61 20 62 75 54 74 26 00 00 00 00 00 00 00 05 FD ")
+    Sc.Verbose = true
+    Sc.read(11)
+    Sc.Print("data pack----01")
+    Sc.Verbose = false
+'Package----01
+    Sc.Write("21 00 25 A0 CA 00 00 1F 03 1D 40 01 10 99 05 4E 69 70 50 45 72 20 49 73 20 61 20 62 75 54 74 26 00 00 00 00 00 00 00 05 FD ")
+    Sc.Verbose = true
+    Sc.read(11)
+    Sc.Print("data pack----01")
+    Sc.Verbose = false
+'Package----01
+    Sc.Write("21 00 25 A0 CA 00 00 1F 03 1D 40 01 10 99 05 4E 69 70 50 45 72 20 49 73 20 61 20 62 75 54 74 26 00 00 00 00 00 00 00 05 FD ")
+    Sc.Verbose = true
+    Sc.read(11)
+    Sc.Print("data pack----01")
+    Sc.Verbose = false
+'Package----01
+    Sc.Write("21 00 25 A0 CA 00 00 1F 03 1D 40 01 10 99 05 4E 69 70 50 45 72 20 49 73 20 61 20 62 75 54 74 26 00 00 00 00 00 00 00 05 FD ")
+    Sc.Verbose = true
+    Sc.read(11)
+    Sc.Print("data pack----01")
+    Sc.Verbose = false
+'Package----01
+    Sc.Write("21 00 25 A0 CA 00 00 1F 03 1D 40 01 10 99 05 4E 69 70 50 45 72 20 49 73 20 61 20 62 75 54 74 26 00 00 00 00 00 00 00 05 FD ")
+    Sc.Verbose = true
+    Sc.read(11)
+    Sc.Print("data pack----01")
+    Sc.Verbose = false
+'Package----01
+    Sc.Write("21 00 25 A0 CA 00 00 1F 03 1D 40 01 10 99 05 4E 69 70 50 45 72 20 49 73 20 61 20 62 75 54 74 26 00 00 00 00 00 00 00 05 FD ")
+    Sc.Verbose = true
+    Sc.read(11)
+    Sc.Print("data pack----01")
+    Sc.Verbose = false
+'Package----01
+    Sc.Write("21 00 25 A0 CA 00 00 1F 03 1D 40 01 10 99 05 4E 69 70 50 45 72 20 49 73 20 61 20 62 75 54 74 26 00 00 00 00 00 00 00 05 FD ")
+    Sc.Verbose = true
+    Sc.read(11)
+    Sc.Print("data pack----01")
+    Sc.Verbose = false
+'Package----01
+    Sc.Write("21 00 25 A0 CA 00 00 1F 03 1D 40 01 10 99 05 4E 69 70 50 45 72 20 49 73 20 61 20 62 75 54 74 26 00 00 00 00 00 00 00 05 FD ")
+    Sc.Verbose = true
+    Sc.read(11)
+    Sc.Print("data pack----01")
+    Sc.Verbose = false
+'Package----01
+    Sc.Write("21 00 25 A0 CA 00 00 1F 03 1D 40 01 10 99 05 4E 69 70 50 45 72 20 49 73 20 61 20 62 75 54 74 26 00 00 00 00 00 00 00 05 FD ")
+    Sc.Verbose = true
+    Sc.read(11)
+    Sc.Print("data pack----01")
+    Sc.Verbose = false
+'Package----01
+    Sc.Write("21 00 25 A0 CA 00 00 1F 03 1D 40 01 10 99 05 4E 69 70 50 45 72 20 49 73 20 61 20 62 75 54 74 26 00 00 00 00 00 00 00 05 FD ")
+    Sc.Verbose = true
+    Sc.read(11)
+    Sc.Print("data pack----01")
+    Sc.Verbose = false
+'Package----01
+    Sc.Write("21 00 25 A0 CA 00 00 1F 03 1D 40 01 10 99 05 4E 69 70 50 45 72 20 49 73 20 61 20 62 75 54 74 26 00 00 00 00 00 00 00 05 FD ")
+    Sc.Verbose = true
+    Sc.read(11)
+    Sc.Print("data pack----01")
+    Sc.Verbose = false
+'Package----01
+    Sc.Write("21 00 25 A0 CA 00 00 1F 03 1D 40 01 10 99 05 4E 69 70 50 45 72 20 49 73 20 61 20 62 75 54 74 26 00 00 00 00 00 00 00 05 FD ")
+    Sc.Verbose = true
+    Sc.read(11)
+    Sc.Print("data pack----01")
+    Sc.Verbose = false
+'Package----01
+    Sc.Write("21 00 25 A0 CA 00 00 1F 03 1D 40 01 10 99 05 4E 69 70 50 45 72 20 49 73 20 61 20 62 75 54 74 26 00 00 00 00 00 00 00 05 FD ")
+    Sc.Verbose = true
+    Sc.read(11)
+    Sc.Print("data pack----01")
+    Sc.Verbose = false
+'Package----01
+    Sc.Write("21 00 25 A0 CA 00 00 1F 03 1D 40 01 10 99 05 4E 69 70 50 45 72 20 49 73 20 61 20 62 75 54 74 26 00 00 00 00 00 00 00 05 FD ")
+    Sc.Verbose = true
+    Sc.read(11)
+    Sc.Print("data pack----01")
+    Sc.Verbose = false
+'Package----01
+    Sc.Write("21 00 25 A0 CA 00 00 1F 03 1D 40 01 10 99 05 4E 69 70 50 45 72 20 49 73 20 61 20 62 75 54 74 26 00 00 00 00 00 00 00 05 FD ")
+    Sc.Verbose = true
+    Sc.read(11)
+    Sc.Print("data pack----01")
+    Sc.Verbose = false
+'Package----01
+    Sc.Write("21 00 25 A0 CA 00 00 1F 03 1D 40 01 10 99 05 4E 69 70 50 45 72 20 49 73 20 61 20 62 75 54 74 26 00 00 00 00 00 00 00 05 FD ")
+    Sc.Verbose = true
+    Sc.read(11)
+    Sc.Print("data pack----01")
+    Sc.Verbose = false
+'Package----01
+    Sc.Write("21 00 25 A0 CA 00 00 1F 03 1D 40 01 10 99 05 4E 69 70 50 45 72 20 49 73 20 61 20 62 75 54 74 26 00 00 00 00 00 00 00 05 FD ")
+    Sc.Verbose = true
+    Sc.read(11)
+    Sc.Print("data pack----01")
+    Sc.Verbose = false
+'Package----01
+    Sc.Write("21 00 25 A0 CA 00 00 1F 03 1D 40 01 10 99 05 4E 69 70 50 45 72 20 49 73 20 61 20 62 75 54 74 26 00 00 00 00 00 00 00 05 FD ")
+    Sc.Verbose = true
+    Sc.read(11)
+    Sc.Print("data pack----01")
+    Sc.Verbose = false
+'Package----01
+    Sc.Write("21 00 25 A0 CA 00 00 1F 03 1D 40 01 10 99 05 4E 69 70 50 45 72 20 49 73 20 61 20 62 75 54 74 26 00 00 00 00 00 00 00 05 FD ")
+    Sc.Verbose = true
+    Sc.read(11)
+    Sc.Print("data pack----01")
+    Sc.Verbose = false
+'Package----01
+    Sc.Write("21 00 25 A0 CA 00 00 1F 03 1D 40 01 10 99 05 4E 69 70 50 45 72 20 49 73 20 61 20 62 75 54 74 26 00 00 00 00 00 00 00 05 FD ")
+    Sc.Verbose = true
+    Sc.read(11)
+    Sc.Print("data pack----01")
+    Sc.Verbose = false
+'Package----01
+    Sc.Write("21 00 25 A0 CA 00 00 1F 03 1D 40 01 10 99 05 4E 69 70 50 45 72 20 49 73 20 61 20 62 75 54 74 26 00 00 00 00 00 00 00 05 FD ")
+    Sc.Verbose = true
+    Sc.read(11)
+    Sc.Print("data pack----01")
+    Sc.Verbose = false
+'Package----01
+    Sc.Write("21 00 25 A0 CA 00 00 1F 03 1D 40 01 10 99 05 4E 69 70 50 45 72 20 49 73 20 61 20 62 75 54 74 26 00 00 00 00 00 00 00 05 FD ")
+    Sc.Verbose = true
+    Sc.read(11)
+    Sc.Print("data pack----01")
+    Sc.Verbose = false
+'Package----01
+    Sc.Write("21 00 25 A0 CA 00 00 1F 03 1D 40 01 10 99 05 4E 69 70 50 45 72 20 49 73 20 61 20 62 75 54 74 26 00 00 00 00 00 00 00 05 FD ")
+    Sc.Verbose = true
+    Sc.read(11)
+    Sc.Print("data pack----01")
+    Sc.Verbose = false
+'Package----01
+    Sc.Write("21 00 25 A0 CA 00 00 1F 03 1D 40 01 10 99 05 4E 69 70 50 45 72 20 49 73 20 61 20 62 75 54 74 26 00 00 00 00 00 00 00 05 FD ")
+    Sc.Verbose = true
+    Sc.read(11)
+    Sc.Print("data pack----01")
+    Sc.Verbose = false
+'Package----01
+    Sc.Write("21 00 25 A0 CA 00 00 1F 03 1D 40 01 10 99 05 4E 69 70 50 45 72 20 49 73 20 61 20 62 75 54 74 26 00 00 00 00 00 00 00 05 FD ")
+    Sc.Verbose = true
+    Sc.read(11)
+    Sc.Print("data pack----01")
+    Sc.Verbose = false
+'Package----01
+    Sc.Write("21 00 25 A0 CA 00 00 1F 03 1D 40 01 10 99 05 4E 69 70 50 45 72 20 49 73 20 61 20 62 75 54 74 26 00 00 00 00 00 00 00 05 FD ")
+    Sc.Verbose = true
+    Sc.read(11)
+    Sc.Print("data pack----01")
+    Sc.Verbose = false
+'Package----01
+    Sc.Write("21 00 25 A0 CA 00 00 1F 03 1D 40 01 10 99 05 4E 69 70 50 45 72 20 49 73 20 61 20 62 75 54 74 26 00 00 00 00 00 00 00 05 FD ")
+    Sc.Verbose = true
+    Sc.read(11)
+    Sc.Print("data pack----01")
+    Sc.Verbose = false
+
+'Package----001
+    Sc.Write("21 00 45 A0 D7 10 00 40 D2 49 4F 55 07 02 8A 15 E5 6D 84 AA A4 55 14 A2 6C B4 91 69 89 8E A7 48 20 3F E4 FD 61 F7 A7 B1 19 BB A9 1A F1 60 95 8F 08 58 FB 70 7D C7 5C 9D 97 4D CA 70 62 CE D9 25 79 4E 9F C7 67 A9 FD 72 D3 ")
+    Sc.Verbose = true
+    Sc.read(6)
+    Sc.Print("data pack----01")
+    Sc.Verbose = false
+'Package----002
+    Sc.Write("21 00 45 A0 D7 10 40 40 6F B1 78 89 E4 5F 45 58 5F 82 28 AA 50 40 3B 46 3F DD B3 F5 EF 72 F5 34 70 DF 29 DC A8 BD 07 2B 03 2E D9 10 B2 9F 0E AC A3 40 FE 50 09 3E FC 15 98 F6 37 FB 7A 43 68 01 F4 B3 BC 89 21 EF 66 7B 88")
+    Sc.Verbose = true
+    Sc.read(6)
+    Sc.Print("data pack----02")
+    Sc.Verbose = false
+'Package----003
+    Sc.Write("21 00 45 A0 D7 10 80 40 72 AC 3E A5 75 E0 64 9D A9 F9 A5 B9 ED E5 A3 56 C2 C1 C6 EF 84 E3 D0 66 2D 4D B7 AC A9 40 D9 AD A5 5E 5C 59 F4 18 42 92 CA 3F 7E E0 A3 DE F1 E3 3C F7 5F 05 4B 3E DA DC 32 D6 9A 3F 3D 4C FA 6F C7 ")
+    Sc.Verbose = true
+    Sc.read(6)
+    Sc.Print("data pack----03")
+    Sc.Verbose = false
+'Package----004
+    Sc.Write("21 00 45 A0 D7 10 C0 40 C5 31 B9 96 99 26 E8 D9 8E E7 D3 A4 8A DC 4A 5B 04 B1 3B 7D 93 90 2E 6A 7C D1 BD FE AA F9 05 1C 77 14 5F CA 06 40 C4 BF 39 31 BA 2F F9 52 F9 09 91 A3 A0 1F FC 4A 88 CC 7F C6 F2 8B 46 73 13 29 22 ")
+    Sc.Verbose = true
+    Sc.read(6)
+    Sc.Print("data pack----04")
+    Sc.Verbose = false
+'Package----004
+    Sc.Write("21 00 45 A0 D7 11 00 40 B5 2D 58 1F CD C7 68 41 8D 69 03 78 84 B9 30 49 C5 B8 81 6D D5 7F E3 2B 1A 9D BE 06 22 00 F6 D4 9F A2 6B 43 DA B9 3A ED 52 44 5C 16 4B 29 A8 82 86 6C 8B F7 D0 30 3D 15 D4 2C 24 20 C5 DB EA 83 C9 ")
+    Sc.Verbose = true
+    Sc.read(6)
+    Sc.Print("data pack----05")
+    Sc.Verbose = false
+'Package----004
+    Sc.Write("21 00 45 A0 D7 11 40 40 AE FB E9 37 67 B4 B3 8A 3D 3B 0C 01 65 F8 AF 16 5B CF 62 6F 55 28 B8 91 52 D2 92 1D B5 34 23 09 33 5B 0E 04 44 19 0D C2 E3 3C 67 F8 8A 6A 80 85 6C A2 D1 8F EB F8 2A 26 F1 6B 93 94 C4 81 3B 2E 32 ")
+    Sc.Verbose = true
+    Sc.read(6)
+    Sc.Print("data pack----06")
+    Sc.Verbose = false
+'Package----004
+    Sc.Write("21 00 45 A0 D7 11 80 40 D6 C7 C2 1A 07 FC 89 A0 BE E9 2C 9F 0F 61 EE 04 63 38 A0 19 4E E4 7D E1 C7 B7 81 9E 9D 38 66 38 34 B7 B6 C6 98 DF 09 F6 8A AE D7 D9 A3 15 91 35 80 AE 90 74 BF C9 96 21 AF 64 B4 73 DC C3 8C 82 9C  ")
+    Sc.Verbose = true
+    Sc.read(6)
+    Sc.Print("data pack----07")
+    Sc.Verbose = false
+'Package----004
+    Sc.Write("21 00 53 A0 CA 00 00 4D 00 4B 56 01 42 82 91 A9 7C 03 6C 25 1F 38 A1 F9 D5 8F 9C 6B B8 92 F2 B3 A0 6A 4C 97 F8 1E 6F E1 0B 0B B7 48 3B 5C 9A 68 E3 98 EC FD 10 C0 AA EB 8E A4 D5 1A D5 DE 4E 15 DA 0C B9 1B 16 CA AC 0E 9F E2 4E A3 29 5D 3F 35 A8 8F C1 09 D0 05 BD  ")
+    Sc.Verbose = true
+    Sc.read(11)
+    Sc.Print("Vindicative Key 01")
+    Sc.Verbose = false
+'Package----004
+    Sc.Write("21 00 53 A0 CA 00 00 4D 00 4B 56 01 02 EC 7E 68 B7 7C 6E E5 8F 58 0A C5 E0 CE AF 6F 8E 80 3B 01 6D E8 08 82 45 FB 92 96 99 1D C9 F2 00 8E 2C 69 4D 46 F9 62 CC 2A 51 27 C9 0F 7F DC 1D 39 DA F8 F1 B3 F2 49 FD 53 DE 97 71 64 F8 E5 9F 62 E4 83 09 BB 55 7A 1D 05 98  ")
+    Sc.Verbose = true
+    Sc.read(11)
+    Sc.Print("Vindicative Key 02")
+    Sc.Verbose = false
+
+        End If
+If (ans = No) Then
+
+End If
+
+Sc.Print(vbCrLf & "         Now wait 30 sec to let the cam cool down and now go to #4 5601 to 0801")
+End Sub
+
+Sub Main()
+    dishsettings
+    cmdXX
+End sub

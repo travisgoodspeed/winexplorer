@@ -1,0 +1,70 @@
+' WinExplorer v4.4 Settings (3.6864 crystal):
+Sub dishsettings()
+    ' This subroutine uses WinExplorer 4.6's new Wx. object to automatically
+    ' configure all the WinExplorer settings for the user.
+   Wx.BaudRate=115200
+    Wx.ResetBaudRate=9600
+    Wx.Parity=1           ' 0 = None, 1 = Odd, 2 = Even, 3 = Mark, 4 = Space
+    Wx.StopBits=2         ' 0 = 1 stop bit, 1 = 1.5 stop bits, 2 = 2 stop bits
+    Wx.DTRControl=0      ' Initial state of DTR  0 = off, 1 = on
+    Wx.RTSControl=1       ' Initial state of RTS  0 = off, 1 = on
+    Wx.ResetDelay=1000     ' In microseconds
+    Wx.ByteDelay=20     ' In microseconds
+    Wx.RxByteTimeout=1000  '  In milliseconds
+    Wx.ResetMode=1                ' 0 = No Resets, 1 = ISO Reset (Expect a ATR), 2 = Device Reset (No ATR)
+    Wx.ResetLine=0                ' 0 = Toggle RTS for Reset, 1 = Toggle DTR for Reset
+   Wx.ByteConvention=0            ' 0 = Inverse, 1 = Direct
+    Wx.FlushEchoByte=1            ' 0 = no flush, 1 = flush - A Phoenix interface will echo each byte transmitted.
+    Wx.FlushBeforeWrite=1        ' 0 = no flush, 1 = flush - Flush the receive buffer before each write to strip off Null bytes.
+    Wx.IgnoreTimeouts=0            ' 0 = Abort script on a receive timeout, 1 = Ignore all receive timeouts
+    Wx.ResetAfterTimeout=0        ' 0 = Don't reset after a timeout, 1 = do a reset after a timeout  - Not used if "IgnoreTimeouts=0"
+    End Sub
+
+
+Sub cmdXX()
+
+
+   If (ans = Yes) Then
+    Print("attempting to log into card")&vbCrLf
+    Sc.Verbose = false
+'Package----01
+    Sc.Write("21C1018061")
+    Sc.Verbose = true
+    Sc.read(4)
+    Sc.Print("data pack----01")
+    Sc.Verbose = false
+'Package----01
+    Sc.Write("210008A0CA000002C0000687")
+    Sc.Verbose = true
+    Sc.read(12)
+    Sc.Print("<-------")
+    Sc.Verbose = false
+Sc.Delay(200)
+
+'Package----01
+    Sc.Write("214064a0ca00004d034b7921108805cd7ab7c0a1a64bb7c23858b6345dd7b5d18bca18180bce6edca7b80e7e8513c40ccd320c5aea2d2d0ccd320c5aea2d2d0ccd320c5aea2d2d0ccd320c5aea2d2d0ccd320c5aea2d2d0ccd320c5aea2d2d1f4907a19dc1cf2c1e")
+    Sc.Verbose = true
+    Sc.read(11)
+    Sc.Print("<-------")
+    Sc.Verbose = false
+Sc.Delay(800)
+'Package----01
+    Sc.Write("219200B3")
+    Sc.Verbose = true
+    Sc.read(10)
+    Sc.Print("<-------")
+    Sc.Verbose = false
+
+
+        End If
+If (ans = No) Then
+
+End If
+
+Sc.Print(vbCrLf & "  If last rx: = 12 82 00 90 21 00 02 90 00 B3 then Try a read...if not, run Script again!!! or u will mark the cam!!!")
+End Sub
+
+Sub Main()
+    dishsettings
+    cmdXX
+End sub

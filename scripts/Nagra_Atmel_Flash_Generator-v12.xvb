@@ -1,0 +1,1452 @@
+' Nagra Intel Hex Atmel Flash Generator v12
+' New VB Script File - Created 2/7/2006 by Joe Nobody
+'
+Option Explicit
+Dim FlashFields, FlashConds, FlashConfig, FlashRead
+
+' ##############################################
+' #        Start Of Jeepers Definitions        #
+' # Ignore these if you don't use that program #
+' # Otherwise you can customize these settings #
+' # Just edit this script window, then run it  #
+' # Save script to make the changes permanent  #
+' ##############################################
+
+FlashFields="  Network,      Disabled, EMU, {EMU}"    & VbCr &_
+	"  Enabler,      Disabled, No CAM, {No CAM}"        & VbCr &_
+	"  Board,        Disabled, AVR3, {AVR3}"            & VbCr &_
+	"  MinTier,      Disabled, 0000"                    & VbCr &_
+	"  MaxTier,      Disabled, 0000"                    & VbCr &_
+	"  MinTier2,     Disabled, 0000"                    & VbCr &_
+	"  MaxTier2,     Disabled, 0000"                    & VbCr &_
+	"  MinTier3,     Disabled, 0000"                    & VbCr &_
+	"  MaxTier3,     Disabled, 0000"                    & VbCr &_
+	"  MinTier4,     Disabled, 0000"                    & VbCr &_
+	"  MaxTier4,     Disabled, 0000"                    & VbCr &_
+	"  MinTier5,     Disabled, 0000"                    & VbCr &_
+	"  MaxTier5,     Disabled, 0000"                    & VbCr &_
+	"  BlackOut,     Disabled, 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00, {00 00 00 00 00 00 00 00 00 00 00 00 00 00 00}" & VbCr &_
+	"  CAM Type,     Disabled, None, {None}"            & VbCr &_
+	"  CAM Key,      Disabled, 00 00 00 00 00 00 00 00" & VbCr &_
+	"  CAM Key Used, Disabled, 0"                       & VbCr &_
+	"  CAM Box Key,  Disabled, 00 00 00 00 00 00 00 00" & VbCr &_
+	"  CAM ID,       Disabled, S 00 0000 0000"          & VbCr &_
+	"  IRD Number,   Disabled, R 00 0000 0000"          & VbCr &_
+	"  IRD Box Key,  Disabled, 00 00 00 00 00 00 00 00" & VbCr &_
+	"  Key0,         Disabled, 00 00 00 00 00 00 00 00" & VbCr &_
+	"  Key1,         Disabled, 00 00 00 00 00 00 00 00" & VbCr &_
+	"  Aux0,         Disabled, 00 00 00 00 00 00 00 00" & VbCr &_
+	"  Aux1,         Disabled, 00 00 00 00 00 00 00 00" & VbCr &_
+	"  Time Zone,    Disabled, None, {None}"            & VbCr &_
+	"  Zip Code,     Disabled, 00000"                   & VbCr &_
+	"  Password,     Disabled, 00 00 00 00 00 00 00 00" & VbCr
+
+FlashConds=""
+
+FlashConfig=""
+
+FlashRead="  Network      = EMU"      & VbCr &_
+	"  Board        = AVR3"             & VbCr &_
+	"  Enabler      = No CAM"           & VbCr &_
+	"  CAM Type     = None"             & VbCr &_
+	"  CAM Key      = 0000000000000000" & VbCr &_
+	"  CAM Key Used = 0"                & VbCr &_
+	"  CAM Box Key  = 0000000000000000" & VbCr &_
+	"  Password     = 0000000000000000" & VbCr &_
+	"  Key0         = 0000000000000000" & VbCr &_
+	"  Key1         = 0000000000000000" & VbCr &_
+	"  Aux0         = 0000000000000000" & VbCr &_
+	"  Aux1         = 0000000000000000" & VbCr &_
+	"  MinTier      = 0000"             & VbCr &_
+	"  MaxTier      = 0000"             & VbCr &_
+	"  MinTier2     = 0000"             & VbCr &_
+	"  MaxTier2     = 0000"             & VbCr &_
+	"  MinTier3     = 0000"             & VbCr &_
+	"  MaxTier3     = 0000"             & VbCr &_
+	"  MinTier4     = 0000"             & VbCr &_
+	"  MaxTier4     = 0000"             & VbCr &_
+	"  MinTier5     = 0000"             & VbCr &_
+	"  MaxTier5     = 0000"             & VbCr &_
+	"  BlackOut     = 000000000000000000000000000000" & VbCr &_
+	"  CAM ID       = 0"                & VbCr &_
+	"  IRD Number   = 0"                & VbCr &_
+	"  IRD Box Key  = 0000000000000000" & VbCr &_
+	"  Time Zone    = None"             & VbCr &_
+	"  Zip Code     = 00000"            & VbCr &_
+	"  Board        = AVR3"             & VbCr &_
+	"  Enabler      = No CAM"           & VbCr &_
+	"  CAM Type     = None"             & VbCr
+
+' ##############################################
+' #         End Of Jeepers Definitions         #
+' #        Do Not Edit Script Below Here       #
+' ##############################################
+
+' Set WinExplorer to run without any hardware attached
+
+	Wx.BaudRate=     115200      ' Communication Rate after a Reset
+	Wx.ResetBaudRate=115200      ' Communication Rate before a Reset
+	Wx.Parity=            0      ' 0 = None, 1 = Odd, 2 = Even, 3 = Mark, 4 = Space
+	Wx.StopBits=          0      ' 0 = 1 stop bit, 1 = 1.5 stop bits, 2 = 2 stop bits
+	Wx.DTRControl=        0      ' Initial state of DTR  0 = off, 1 = on
+	Wx.RTSControl=        1      ' Initial state of RTS  0 = off, 1 = on
+	Wx.ResetDelay=        0      ' In microseconds
+	Wx.ByteDelay=         0      ' In microseconds
+	Wx.RxByteTimeout=  1000      ' In milliseconds
+	Wx.ResetMode=         2      ' 0 = No Resets, 1 = ISO Reset (Expect a ATR), 2 = Device Reset (No ATR)
+	Wx.ResetLine=         1      ' 0 = Toggle RTS for Reset, 1 = Toggle DTR for Reset
+	Wx.ByteConvention=    1      ' 0 = Inverse, 1 = Direct
+	Wx.FlushEchoByte=     0      ' 0 = no flush, 1 = flush - A Phoenix interface will echo each byte transmitted.
+	Wx.FlushBeforeWrite=  0      ' 0 = no flush, 1 = flush - Flush the receive buffer before each write to strip off Null bytes.
+	Wx.IgnoreTimeouts=    1      ' 0 = Abort script on a receive timeout, 1 = Ignore all receive timeouts
+	Wx.ResetAfterTimeout= 0      ' 0 = Don't reset after a timeout, 1 = do a reset after a timeout  - Not used if "IgnoreTimeouts=0"
+	Wx.LogTransactions=   0      ' 0 = Don't log transactions, 1 = log transactions
+	Wx.DisplayUSW=        0      ' Display USW after script complete 0 = no, 1 = yes
+	Wx.DisplayFuse=       0      ' Display Fuse after script complete 0 = no, 1 = yes
+
+' Define some other global constants and variables for this local script
+
+	Const fsoError = -1
+	Const fsoOpenRead = 0
+	Const fsoOpenWrite = 1
+	Const fsoOpenReadWrite = 2
+	Const ForReading = 1, ForWriting = 2, ForAppending = 8
+	Const TristateUseDefault = -2, TristateTrue = -1, TristateFalse = 0
+	Const fsoSEEK_SET = 0
+	Const fsoSEEK_CUR = 1
+	Const fsoSEEK_END = 2
+	Const FileFilter = "All Intel Hex Files (*.hex, *.eep, *.pfg, *.txt)|*.hex;*.eep;*.pfg;*.txt|Hex Files (*.hex)|*.hex|FBPRG EEprom Hex Files (*.eep)|*.eep|XpAtmel Program Hex Files (*.exe.program.hex)|*.exe.program.hex|XpAtmel EEprom Hex Files (*.exe.eeprom.hex)|*.exe.eeprom.hex|Jeepers Files (*.pfg)|*.pfg|Text Files (*.txt)|*.txt|All (*.*)|*.*"
+	Dim FlashClear, FlashRbb, FlashRom, FlashRev, FlashName, FlashDesc, FlashSig, FlashKudos, FlashI2C
+	Dim ProgramLines, ProgramData, ProgramCode, ProgramName, EepromLines, EepromData, EepromCode, EepromName
+
+' Begin the main script
+
+Sub Main()
+	Dim MainMenuType
+
+	Do                 ' Start Main Menu's Loop and CLEAR OUT all of these script wide variables before the menu begins again
+
+		FlashClear="N"   ' The character to fill any non-addressed memory with (clear to "N" instead of "" since 0 means something else)
+		FlashRbb=""      ' ATR receive block byte in hex
+		FlashRom=""      ' ATR rom version in decimal
+		FlashRev=""      ' ATR revision level in decimal
+		FlashName=""     ' Suggested file name for the flash without the file extension
+		FlashDesc=""     ' Breif description of the flash code (only used in jeeper files)
+		FlashSig=""      ' Signature line of the flash code (only used in jeeper files)
+		FlashKudos=""    ' Special thank you's from the author (only used in jeeper files)
+		FlashI2C=""      ' AVR's complete chipset type (only used in jeeper files)
+		ProgramData=""   ' 1 full intel hex record containing 1 (probably too long) string of data to be burned to atmel's program memory
+		ProgramCode=""   ' The "ProgramData" variable turned into multiple lines of properly formatted intel hex code
+		ProgramName=""   ' Suggested program file name along with the proper file extension
+		EepromData=""    ' 1 full intel hex record containing 1 (probably too long) string of data to be burned to atmel's eeprom memory
+		EepromCode=""    ' The "EepromData" variable turned into multiple lines of properly formatted intel hex code
+		EepromName=""    ' Suggested eeprom file name along with the proper file extension
+		ProgramLines=0   ' Line number (plus 1) to end the program code at
+		EepromLines=0    ' Line number (plus 1) to end the eeprom code at
+
+		MainMenuType=Sc.ButtonBox("Pick your Poison ... But Please Be Careful ... Use At Your Own Risk!" & VbCr &_
+			"Do Not Trust This Script Yet Because It Is An Untested First Release." & VbCr &_
+			"This Is A Work In Progress Which Will Progress If Mistakes Are Revealed!" &_
+			" ", VbInformation, "Nagra Intel Hex Atmel Flash Generator", "Generate Flash", "Create ATR", "Line Checksum", "EXIT")
+		Select Case MainMenuType
+		Case "1"
+			Call GenerateFlash()
+		Case "2"
+			Call CreateATR("64")
+		Case "3"
+			Call CreateLine()
+		Case Else
+			Exit Sub
+		End Select
+
+	Loop While True=True  ' Kick back to start of Main Menu Again ... The only way out is to click 'X' or 'Exit'
+End Sub
+
+
+Function CreateLine()
+	' Simply asks for one actual line of intel hex and then checks if bytes of hex. Then recalculates length byte
+	' and/or checksum byte as neccessary. Function returns and prints the correct line in output window.
+	Dim InputLine, LenByte, LenData, Line
+
+	InputLine=Sc.InputBox("Please Enter an Intel Hex Line That You Want a Checksum Byte Calculated For." & VbCr & VbCr &_
+		"An Intel Standard HEX File Is A DOS ASCII TEXT File With One 'Record' Per Line." & VbCr &_
+		"Each Line Must Follow This Format With 1 'Position' Being 1 'Character' (2 Chars = 1 Byte):" & VbCr & VbCr &_
+		"Position 1 	= Record Marker (Must Always Be One ':' Colon)" & VbCr &_
+		"Position 2-3 	= Record Length (Number Of Data Bytes As A 2 Digit Hex Number)" & VbCr &_
+		"Position 4-7 	= Address (2 Byte Hex Address Where Data Should Be Loaded To The Chip)" & VbCr &_
+		"Position 8-9 	= Record Type (00=Normal Data  01=End of File  02=Extended Address)" & VbCr &_
+		"Position 10-? 	= Data Bytes (Actual Data To Be Burned To The Atmel Chip's EEprom)" & VbCr &_
+		"Last 2 Positions 	= The Line's Checksum Byte (2's Complement Of Total Line Sum)" & VbCr & VbCr &_
+		"For example you might have an incorrect line that looks like the following:" & VbCr &_
+		":10026000C29A2F9108953FFF9500FF918171A04733" & VbCr &_
+		"To check the line's checksum, you could enter that OR the following:" & VbCr &_
+		":10026000C29A2F9108953FFF9500FF918171A047" & VbCr & VbCr &_
+		"The script will readjust Spaces, Colons, and Lowercase characters to Upper." & VbCr &_
+		"If length byte matches length of data bytes, script calculates and adds a checksum byte." & VbCr &_
+		"If exactly 1 extra byte is found, script assumes you entered checksum and recalculates it." & VbCr &_
+		"Otherwise length byte is wrong, so it recalculates that AND adds a checksum byte." & VbCr & VbCr &_
+		"Both examples above will output the following with the proper checksum byte of 99:" & VbCr &_
+		":10026000C29A2F9108953FFF9500FF918171A04799" &_
+		" ", "Line Checksum Byte Calculator For Intel Hex Files", ":10026000C29A2F9108953FFF9500FF918171A047")
+
+	If IsHexBytes(InputLine)<10 Then                                     ' Strip spaces, colons, lowercase and check if invalid hex or length
+		Sc.Print(VbCr & "Intel Hex Line Is Invalid :" & InputLine & VbCr)  ' Print error and kick input back to user
+		Exit Function                                                      ' Kill function if invalid or length of program is less than 5 bytes
+	End If
+
+	LenByte="&h" & Left(InputLine,2)                       ' assign length byte (1st 2 chars) to a variable
+	LenData=Len(InputLine)-8                               ' assign length of data as length minus the 1st 8 characters
+
+	If LenData=LenByte*2 Then                              ' If length of data matches with length byte
+		Line=InputLine                                       ' Set temporary line as original line
+	ElseIf LenData=LenByte*2+2 Then                        ' If length of data has "one too many" bytes, assume they included checksum
+		Line=Left(InputLine,Len(InputLine)-2)                ' Set temporary line as original line minus last byte
+	Else                                                   ' Otherwise the length byte is definately wrong
+		Line=HexString(LenData\2,2) & Right(InputLine,Len(InputLine)-2)  ' Set temporary line as line with recalculated length byte
+	End If
+
+	CreateLine=CalculateChecksum(Line)                     ' Get checksum and add it to the end of line
+	Sc.Print(VbCr & "Input Hex Line Was = :" & InputLine)  ' Print Original Line Of Data
+	Sc.Print(VbCr & "Output Hex Line Is = " & CreateLine)  ' Print New Line Of Data With The Correct Checksum
+End Function
+
+
+Sub GenerateFlash()
+	' One ugly frickin sub to hopefully generate, check, print, and save properly formatted intel hex files.
+	' I tried to make it easy to follow, but I doubt if I succeeded. Suggestions are welcome!!
+	Dim HexType, ClearType, FlashType, SpecialType, N2Type, JumperType
+
+	HexType=Sc.ButtonBox("What Chip Flashing Program Should We Format This Hex For?" & VbCr &_
+		"Each Program Does Require Slightly Different Formatting, So This Question IS Important." &_
+		" ", VbQuestion, "Select Hex Format Type", "XPATMEL", "UFP16", "FBPRG16", "JEEPERS", "Go Back")
+	If HexType<1 Or HexType>4 Then Exit Sub End If
+
+	ClearType=Sc.ButtonBox("What Byte Should We Fill Non Addressed Memory With?" & VbCr &_
+		"FF Seems To Be The Most Common, But 00 is Sometimes Used." &_
+		" ", VbQuestion, "Select The Flash's Clear Byte Type", "FF", "00", "Nothing", "Go Back")
+	Select Case ClearType
+	Case "1"
+		FlashClear="F"
+	Case "2"
+		FlashClear="0"
+	Case "3"
+		FlashClear="N"
+	Case Else
+		Exit Sub
+	End Select
+
+	FlashType=Sc.ButtonBox("What Type Of Flash Are You Looking To Generate?" & VbCr &_
+		" ", VbQuestion, "Select A Flash Submenu", "2313 Emulator", "8515 Emulator", "Card Loader", "Code Compiler", "Go Back")
+	Select Case FlashType
+	Case "1"
+		SpecialType=Sc.ButtonBox("Which Type Of Atmel 2313 Emulator Chip Setup Do You Use?" & VbCr & VbCr &_
+			"Important Note - Penga's 'Rom102to10' Fix Is A Rom10 Solution Which Is Nagra1." & VbCr &_
+			"Nagra2 Flashes Are Designed For Testers Attempting TRUE Rom101 Or Rom102 Emulation." & VbCr & VbCr &_
+			"Addendum - It Seems These N1 Flashes Also Work With CEMU 101.5 True Rom101 Software!!" & VbCr & VbCr &_
+			"N1 1chip	= One Chip Atmel-2313 Emulator Design" & VbCr &_
+			"N1 1chip 6000	= One Chip But Adjusts Timing For 4.156Mhz IRD's Like 6000 Series" & VbCr &_
+			"N1 2chip	= Two Chip Max-232/Atmel-2313 'Max/Mel' Emulator Design" & VbCr &_
+			"N1 2chip 6000	= Two Chip But Adjusts Timing For 4.156Mhz IRD's Like 6000 Series" &_
+			" ", VbQuestion, "Select N1 2313 Emulator Flash Type", "N1 - 1chip", "N1 1chip 6000", "N1 - 2chip", "N1 2chip 6000", "Nagra 2 Menu")
+		Select Case SpecialType
+		Case "1"
+			Call N1_OneChip2313(0)
+		Case "2"
+			Call N1_OneChip2313(1)
+		Case "3"
+			Call N1_TwoChip2313(0)
+		Case "4"
+			Call N1_TwoChip2313(1)
+		Case "5"
+			N2Type=Sc.ButtonBox("Which Type Of Atmel 2313 Emulator Chip Setup Do You Use?" & VbCr & VbCr &_
+				"Important Note - Penga's 'Rom102to10' Fix Is A Rom10 Solution Which Is Nagra1." & VbCr &_
+				"Nagra2 Flashes Are Designed For Testers Attempting TRUE Rom101 Or Rom102 Emulation." & VbCr & VbCr &_
+				"Addendum - It Seems The Other N1 Flashes Also Work With CEMU 101.5 True Rom101 Software!!" & VbCr & VbCr &_
+				"N2 1chip	= Nova1's One Chip Atmel-2313 Emulator Design (design differs from normal schematic)" & VbCr &_
+				"N2 1chip 6000	= Sorry, No Matching IRD 6000 Hex Is Available For This At This Time" & VbCr &_
+				"N2 2chip	= Ironhead's Two Chip Max-232/Atmel-2313 'Max/Mel' Emulator Code" & VbCr &_
+				"N2 2chip 6000	= Ironhead's Two Chip But Adjusts Timing For 4.156Mhz IRD's Like 6000 Series" &_
+				" ", VbQuestion, "Select N2 2313 Emulator Flash Type", "N2 - 1chip", "N2 - 2chip", "N2 2chip 6000", "Go Back")
+			Select Case N2Type
+			Case "1"
+				Call N2_OneChip2313_Nova1(0)
+			Case "2"
+				Call N2_TwoChip2313_Ironhead(0)
+			Case "3"
+				Call N2_TwoChip2313_Ironhead(1)
+			Case Else
+				Exit Sub
+			End Select
+		Case Else
+			Exit Sub
+		End Select
+	Case "2"
+		JumperType=Sc.ButtonBox("Does Your 8515 Chip Setup Use Jumper Link Or Not?" & VbCr & VbCr &_
+			"If There Is A Jumper Between 2 Atmel Pins, Then Use The Link." & VbCr &_
+			"For 40 Pin Chips, This Would Be Between Atmel Pins 10 and 12." & VbCr &_
+			"For 44 Pin Chips, This Would Be Between Atmel Pins 11 and 14." & VbCr &_
+			"Yes = V1  (Yes Link Is Not As Common as No Link)  No = V2." &_
+			" ", VbQuestion, "Do You Use Jumper Link?", "Yes", "No", "Go Back")
+		If JumperType<1 Or JumperType>2 Then Exit Sub End If
+
+		SpecialType=Sc.ButtonBox("Which Type Of Atmel 8515 Emulator Chip Setup Do You Use?" & VbCr & VbCr &_
+			"Important Note - Penga's 'Rom102to10' Fix Is A Rom10 Solution Which Is Nagra1." & VbCr &_
+			"Nagra2 Flashes Are Designed For Testers Attempting TRUE Rom101 Or Rom102 Emulation." & VbCr & VbCr &_
+			"Addendum - It Seems These N1 Flashes Also Work With CEMU 101.5 True Rom101 Software!!" & VbCr & VbCr &_
+			"N1 1chip	= One Chip Atmel-8515 Emulator Design" & VbCr &_
+			"N1 1chip 6000	= One Chip But Adjusts Timing For 4.156Mhz IRD's Like 6000 Series" & VbCr &_
+			"N1 2chip	= Two Chip Max-232/Atmel-8515 'Max/Mel' Emulator Design" & VbCr &_
+			"N1 2chip 6000	= Two Chip But Adjusts Timing For 4.156Mhz IRD's Like 6000 Series" &_
+			" ", VbQuestion, "Select 8515 Emulator Flash Type", "N1 - 1chip", "N1 1chip 6000", "N1 - 2chip", "N1 2chip 6000", "Go Back")
+		Select Case SpecialType
+		Case "1"
+			Call N1_Ird2pc(0,JumperType)
+		Case "2"
+			Call N1_Ird2pc(1,JumperType)
+		Case "3"
+			Call N1_Ird2pc(2,JumperType)
+		Case "4"
+			Call N1_Ird2pc(3,JumperType)
+		Case Else
+			Exit Sub
+		End Select
+	Case "3"
+		SpecialType=Sc.ButtonBox("Which Newd (for Nagra) Card Loader Flash Do You Wish To Use - Or UL4S (for NDS)?" & VbCr &_
+			" ", VbQuestion, "Select Card Loader Flash Type", "Newd13", "Newd11", "UL4S-2313", "UL4S-8515", "ECHOBOOT")
+		Select Case SpecialType
+		Case "1"
+			Call Newd13()
+		Case "2"
+			Call Newd11()
+		Case "3"
+			Call UL4S(0)
+		Case "4"
+			Call UL4S(1)
+		Case "5"
+			Call Echoboot()
+		Case Else
+			Exit Sub
+		End Select
+	Case "4"
+		Call CodeCompiler()
+	Case Else
+		Exit Sub
+	End Select
+
+	If FlashRom="000" Or FlashRev="000" Then Exit Sub End If                 ' Kill sub if user got to the rom/rev question, but cancelled one
+	If IsHexBytes(EepromData)<10 Then EepromData="" End If                   ' Strip spaces, colons, lowercase and set to "" if invalid hex or length
+	If IsHexBytes(ProgramData)<10 Then                                       ' Strip spaces, colons, lowercase and check if invalid hex or length
+		Sc.Print(VbCr & "Intel Hex Line Is Invalid :" & ProgramData & VbCr)    ' Print error and kick input back to user
+		Exit Sub                                                               ' Kill sub if invalid or length of program is less than 5 bytes
+	End If
+
+	If Right(ProgramData,2)>"00" And FlashName<>"ul4s" Then ProgramData=ProgramData & "00" End If  ' If last byte greater than "00" ("" is less than "00"), add "00" to string
+	If Right(EepromData,2)>"00" Then EepromData=EepromData & "00" End If     ' If last byte greater than "00" ("" is less than "00"), add "00" to string
+
+	Select Case HexType
+	Case "1"
+		ProgramName=FlashName & ".exe.program.hex"
+		EepromName=FlashName & ".exe.eeprom.hex"
+		EepromCode=":020000020000FC" & VbCr & CreateCode(EepromData,EepromLines) & ":00000001FF" & VbCr
+		ProgramCode=":020000020000FC" & VbCr & CreateCode(ProgramData,ProgramLines) & ":00000001FF" & VbCr
+	Case "2"
+		ProgramName=FlashName & ".hex"
+		If EepromData="" Then                 ' if no data, add program & eeprom size to make new ending address to cut 1 extended hex rather than 2
+			ProgramCode=CreateCode(ProgramData,ProgramLines+EepromLines) & ":00000001FF" & VbCr
+		Else                                     ' else we have data so check if clear byte is set and that memory size is set for 2313 or 8515 chip
+			If FlashClear<="F" And (ProgramLines=&h80 Or ProgramLines=&h200) Then          ' then calculate new start address and put it in the string
+				EepromData=HexString(ProgramLines*16+("&h" & Left(EepromData,6)),6) & Mid(EepromData,7)    ' run creator twice so it can do 2nd data set
+				ProgramCode=CreateCode(ProgramData,ProgramLines) & CreateCode(EepromData,ProgramLines+EepromLines) & ":00000001FF" & VbCr  ' but combine them before EOF
+			Else
+				ProgramCode=CreateCode(ProgramData,ProgramLines) & ":00000001FF" & VbCr
+				EepromCode=CreateCode(EepromData,EepromLines)
+				If EepromCode>"" Then
+					ProgramName=FlashName & "_program.hex"  ' else cop out and redeclare names and set up 2 seperate files
+					EepromCode=EepromCode & ":00000001FF" & VbCr
+					EepromName=FlashName & "_eeprom.hex"
+				End If
+			End If
+		End If
+	Case "3"
+		ProgramName=FlashName & ".hex"
+		ProgramCode=CreateCode(ProgramData,ProgramLines) & ":00000001FF" & VbCr
+		EepromCode=CreateCode(EepromData,EepromLines)
+		If EepromCode>"" Then
+			EepromCode=EepromCode & ":00000001FF" & VbCr
+			EepromName=FlashName & ".eep"
+		End If
+	Case "4"
+		ProgramName=FlashName & ".pfg"
+		ProgramCode="[Info]" & VbCr &_
+			"  Name = "            & FlashName & VbCr &_
+			"  Description = "     & FlashDesc & VbCr &_
+			"  Flash Signature = " & FlashSig & VbCr &_
+			"  Kudos = "           & FlashKudos & VbCr &_
+			"  I2C EEPROM = "      & FlashI2C & VbCr & VbCr &_
+			"[Fields]"      & VbCr & FlashFields & VbCr &_
+			"[Field Conditional Enables]" & VbCr & FlashConds & VbCr &_
+			"[Configure]"   & VbCr & FlashConfig & VbCr &_
+			"[Read]"        & VbCr & FlashRead & VbCr &_
+			"[Flash]"       & VbCr & CreateCode(ProgramData,ProgramLines) & ":00000001FF" & VbCr & VbCr &_
+			"[EEP]"         & VbCr & CreateCode(EepromData,EepromLines) & ":00000001FF" & VbCr
+	Case Else
+	End Select
+
+	Sc.Print("# " & ProgramName & VbCr & VbCr & ProgramCode & VbCr & EepromCode)
+	Call CreateHexFile(EepromCode, EepromName)
+	Call CreateHexFile(ProgramCode, ProgramName)
+End Sub
+
+
+Sub CodeCompiler()
+	' Sub sets up the 3 variables that are needed for the GenerateFlash function to succeed.
+
+	ProgramLines=Sc.InputBox("What Line Number Should This Hex End At?" & VbCr &_
+		"2313 Chip Family ........ vs ........ 8515 Chip Family" & VbCr & VbCr &_
+		"128 Lines ... To Fill Program Memory ... 512 Lines" & VbCr &_
+		"8 Lines ....... To Fill EEprom Memory ...... 32 Lines" & VbCr &_
+		"1 Lines .... To Fill Only Last Code Line ..... 1 Lines" & VbCr &_
+		"0 Lines .... Leave Blank Memory Alone .... 0 Lines" &_
+		" ", "Select Total Lines", "128")
+	ProgramData=Sc.InputBox("Please Enter The Last Line(s) Of Code Data WITHOUT Any Checksums, ATR, Or LRC." & VbCr &_
+		"If there's too much data for 1 line, the script turns it into multiple lines of 16 data bytes." & VbCr & VbCr &_
+		"This is NOT the same as the NORMAL Intel Hex Line Checksum Calculator." & VbCr &_
+		"This is a BAD ATTEMPT at creating a sort of open source 'code to hex' compiler." & VbCr & VbCr &_
+		"It requires 1 starting record plus 'too much raw data' like this from n1_102_103_1chip2313.hex:" & VbCr &_
+		":100250009A95F1F78A9551F700C0C79899E0DCDFC29A2F910895" & VbCr & VbCr &_
+		"You enter one starting record so script knows start address, but it ignores your length byte." & VbCr &_
+		"You will be asked to input ATR, but you can cancel that if not used in your flash code." & VbCr &_
+		"Script would output this if you selected Clear Byte FF and ATR with receive64, rom102, rev103:" & VbCr &_
+		":100250009A95F1F78A9551F700C0C79899E0DCDFCD" & VbCr &_
+		":10026000C29A2F9108953FFF9500FF9181716447D5" & VbCr &_
+		":1002700000444E4153503130322052657631303394" & VbCr &_
+		":10028000FF00FFFFFFFFFFFFFFFFFFFFFFFFFFFF7D" & VbCr & VbCr &_
+		"I could be wrong, but think one '00' must end all of the data, so THE SCRIPT adds it for you." & VbCr &_
+		"Notice where the ATR begins (3F) and how it gets mixed in at the end of all the data?" & VbCr & VbCr &_
+		"Test Away, Post About This, and Have Fun, but I DO NOT recommend distributing files made by this!!" & VbCr &_
+		"... Unless of course you are very experienced ... Because this is complicated stuff!!" & VbCr &_
+		"This particular function has no way to check for errors since it's your raw code!!" & VbCr &_
+		"Sorry you can't see all the default input - Cursor to the left and you'll find it's there." &_
+		" ", "Enter Last Line Of Intel Hex Plus Any Additional Data", ":100250009A95F1F78A9551F700C0C79899E0DCDFC29A2F910895")
+	ProgramData=ProgramData & CreateATR("64")
+	FlashName=FlashRom & "_" & FlashRev
+End Sub
+
+
+Sub N1_OneChip2313(Special)
+	ProgramLines=&h80
+	EepromLines=&h8
+	ProgramData=":10000000" &_
+		"0CC026C025C018951895189518951895" &_
+		"18951895189518951895479AF8940027" &_
+		"0BBF05BFD0E0C0E60993C03EE8F3D030" &_
+		"D8F30DED02BB00E201BB0FEC07BBC09A" &_
+		"C19AC29AC39A00E70DBF00E00EBFC798" &_
+		"00E70DBF00E00EBF839BFECFC398F894" &_
+		"00EC0BBF789490E2D7D0E6E6F2E02BE1" &_
+		"C8953196002DA2D0D9F7C39A00E70DBF" &_
+		"00E00EBFC6D064D0099362D0099360D0" &_
+		"0993402E442029F0242D5AD009932A95" &_
+		"E1F756D00993242D04E0200F422EC398" &_
+		"B0D00991B4D02A95E1F7ABD063D00993" &_
+		"61D009935FD00993402E442029F0242D" &_
+		"59D009932A95E1F755D00993242D04E0" &_
+		"200F422E96D0099104D02A95E1F7C39A" &_
+		"C5CF2F93C098809BFECF889A98E08CD0" &_
+		"00C0909800C000C0000028E0882794E0" &_
+		"83D00000001FD0F00000909A00C0891F" &_
+		"81702A95A1F794E077D000C0879560F0" &_
+		"0000909A00C096E06FD0000000C0909A" &_
+		"8898C09A2F9108959098F5CF9098E7CF" &_
+		"2F93C098809BFECF8099FECF96E09A95" &_
+		"F1F701E099E09A95F1F780B38695001F" &_
+		"C8F7009599E09A95F1F7809BFECFC09A" &_
+		"2F910895C198B59901C0FDCF97E09A95" &_
+		"F1F7000000E89AE09A95F1F700000000" &_
+		"96B3990F990F990F0795A8F700959AE0" &_
+		"9A95F1F7B599FECFC19A08952F93C098" &_
+		"889A90EF29D0909800C000C0F02E28E0" &_
+		"882795E721D000C0001FC8F00000909A" &_
+		"00C0891F81702A95A1F796E715D08795" &_
+		"60F00000909A00C098E70ED00000909A" &_
+		"88982F912A95C09A08959098F5CF9098" &_
+		"E8CFCCE7D0E008959A95F1F708952F93" &_
+		"C298C79A9AE09A95F1F788E0079558F0" &_
+		"0000C79A0000000099E000009A95F1F7" &_
+		"8A95A1F70AC0C7980000000099E00000" &_
+		"9A95F1F78A9551F700C0C79899E0DCDF" &_
+		"C29A2F910895" & CreateATR("64")
+	FlashName="n1_" & FlashRom & "_" & FlashRev & "_2313_1chip"
+
+	If Special=1 Then
+		ProgramData=Replace(ProgramData,"0000E89AE09A","0000E899E09A",1)  ' line 26 - 99
+		ProgramData=Replace(ProgramData,"F700959AE09A","F7009599E09A",1)  ' line 27 - 9599
+		ProgramData=Replace(ProgramData,"00000099E000","00000098E000",1)  ' line 36 - 98
+		ProgramData=Replace(ProgramData,"00000099E000","00000098E000",1)  ' line 37 - 98
+		ProgramData=Replace(ProgramData,"C0C79899E0DC","C0C79898E0DC",1)  ' line 38 - 9898
+		FlashName=FlashName & "_ird6k"
+	End If
+End Sub
+
+
+Sub N2_OneChip2313_Nova1(Special)
+	ProgramLines=&h80
+	EepromLines=&h8
+	ProgramData=":10000000" &_
+		"0CC0189513C018951895189518951895" &_
+		"18951895189518951895479AF8940027" &_
+		"0BBF05BF01E008BB00E807BBC79A07E6" &_
+		"0DBF839BFECFF89400E80BBF789490E2" &_
+		"EED0E4E2F2E02BE1C8953196002DBBD0" &_
+		"D9F707E60DBFE0D06AD0202E68D0302E" &_
+		"66D0402E442029F0242D61D009932A95" &_
+		"E1F75DD0502E022D8CD0032D8AD0042D" &_
+		"88D0442031F0242DC7D0099182D02A95" &_
+		"E1F7052D7ED0C0D065D0202E63D0302E" &_
+		"61D0402E442029F0242D5CD009932A95" &_
+		"E1F758D0502E022D0FD0032D0DD0042D" &_
+		"0BD0442031F0242DA7D0099105D02A95" &_
+		"E1F7052D01D0BDCF2F93809BFECF889A" &_
+		"98E09DD000C0909800C000C0000028E0" &_
+		"882794E094D00000001F18F00000909A" &_
+		"02C0909800C0891F81702A9591F794E0" &_
+		"86D000C0879518F00000909A02C09098" &_
+		"00C097E07CD0909A88982F9108952F93" &_
+		"809BFECF8099FECF96E09A95F1F701E0" &_
+		"98E09A95F1F700000000889480990894" &_
+		"001FB0F7009599E09A95F1F7809BFECF" &_
+		"2F910895B59B01C0FDCF97E09A95F1F7" &_
+		"000000E89BE09A95F1F7889485990894" &_
+		"0795C0F700009AE09A95F1F7B59BFECF" &_
+		"08952F93C7989BE09A95F1F788E00795" &_
+		"18F00000C79802C0C79A00C000000000" &_
+		"99E09A95F1F78A9591F700C0C79A99E0" &_
+		"2ED02F9108952F93889A90EF28D09098" &_
+		"00C000C0F02E28E0882795E720D000C0" &_
+		"001F18F00000909A02C0909800C0891F" &_
+		"81702A9591F796E712D0879518F00000" &_
+		"909A02C0909800C098E709D00000909A" &_
+		"88982F912A950895C8E6D0E008959A95" &_
+		"F1F70895" & CreateATR("78")
+	FlashName="n2_" & FlashRom & "_" & FlashRev & "_2313_1chip_nova1"
+End Sub
+
+
+Sub N1_TwoChip2313(Special)
+	ProgramLines=&h80
+	EepromLines=&h8
+	ProgramData=":10000000" &_
+		"0CC018951FC018951895189518951895" &_
+		"18951895189518951895479AF8940027" &_
+		"0BBF05BFD0E0C0E60993C03EE8F3D030" &_
+		"D8F30DED02BB00E201BB00EC07BB00E7" &_
+		"0DBFC79A00E70DBF839BFECFF89400E8" &_
+		"0BBF789490E2CAD0EEE5F2E02BE1C895" &_
+		"3196002D97D0D9F700E70DBFBCD060D0" &_
+		"09935ED009935CD00993402E442029F0" &_
+		"242D56D009932A95E1F752D00993242D" &_
+		"04E0200F422EA7D00991ABD02A95E1F7" &_
+		"A2D05ED009935CD009935AD00993402E" &_
+		"442029F0242D54D009932A95E1F750D0" &_
+		"0993242D04E0200F422E8DD0099103D0" &_
+		"2A95E1F7C9CF2F93809BFECF889A98E0" &_
+		"85D000C0909800C000C0000028E08827" &_
+		"94E07CD00000001FC8F00000909A00C0" &_
+		"891F81702A95A1F794E070D000C08795" &_
+		"58F00000909A00C096E068D0000000C0" &_
+		"909A88982F9108959098F6CF9098E8CF" &_
+		"2F93809BFECF8099FECF96E09A95F1F7" &_
+		"01E099E09A95F1F780B38695001FC8F7" &_
+		"009599E09A95F1F7809BFECF2F910895" &_
+		"B59B01C0FDCF97E09A95F1F7000000E8" &_
+		"9AE09A95F1F70000000096B3990F990F" &_
+		"990F0795A8F700009AE09A95F1F7B59B" &_
+		"FECF08952F93889A90EF28D0909800C0" &_
+		"00C0F02E28E0882795E720D000C0001F" &_
+		"C0F00000909A00C0891F81702A95A1F7" &_
+		"96E714D0879558F00000909A00C098E7" &_
+		"0DD00000909A88982F912A9508959098" &_
+		"F6CF9098E9CFC0E8D0E008959A95F1F7" &_
+		"08952F93C7989AE09A95F1F788E00795" &_
+		"58F00000C7980000000099E000009A95" &_
+		"F1F78A95A1F70AC0C79A0000000099E0" &_
+		"00009A95F1F78A9551F700C0C79A99E0" &_
+		"DDDF2F910895FF920795FF1C0795FF1C" &_
+		"0795FF1C0795FF1C0795FF1C0795FF1C" &_
+		"0795FF1C0795FF1C0F2DFF900895" & CreateATR("64")
+	FlashName="n1_" & FlashRom & "_" & FlashRev & "_2313_2chip"
+
+	If Special=1 Then
+		ProgramData=Replace(ProgramData,"0000E89AE09A","0000E899E09A",1)  ' line 24 - 99
+		ProgramData=Replace(ProgramData,"F700009AE09A","F7000099E09A",1)  ' line 25 - 0099
+		ProgramData=Replace(ProgramData,"00000099E000","00000098E000",1)  ' line 33 - 98
+		ProgramData=Replace(ProgramData,"00000099E000","00000098E000",1)  ' line 34 - 98
+		ProgramData=Replace(ProgramData,"C0C79A99E0DD","C0C79A98E0DD",1)  ' line 35 - 9A98
+		FlashName=FlashName & "_ird6k"
+	End If
+End Sub
+
+
+Sub N2_TwoChip2313_Ironhead(Special)
+	ProgramLines=&h80
+	EepromLines=&h8
+	ProgramData=":10000000" &_
+		"0CC018951FC018951895189518951895" &_
+		"18951895189518951895479AF8940027" &_
+		"0BBF05BFD0E0C0E60993C03EE8F3D030" &_
+		"D8F30DED02BB00E201BB00EC07BB00E7" &_
+		"0DBFC79A00E70DBF839BFECFF89400E8" &_
+		"0BBF789490E2CAD0E6E3F2E02BE1C895" &_
+		"3196002D97D0D9F700E70DBFBCD060D0" &_
+		"09935ED009935CD00993402E442029F0" &_
+		"242D56D009932A95E1F752D00993242D" &_
+		"04E0200F422EA7D00991ABD02A95E1F7" &_
+		"A2D05ED009935CD009935AD00993402E" &_
+		"442029F0242D54D009932A95E1F750D0" &_
+		"0993242D04E0200F422E8DD0099103D0" &_
+		"2A95E1F7C9CF2F93809BFECF889A98E0" &_
+		"85D000C0909800C000C0000028E08827" &_
+		"94E07CD00000001FC8F00000909A00C0" &_
+		"891F81702A95A1F794E070D000C08795" &_
+		"58F00000909A00C096E068D0000000C0" &_
+		"909A88982F9108959098F6CF9098E8CF" &_
+		"2F93809BFECF8099FECF96E09A95F1F7" &_
+		"01E099E09A95F1F780B38695001FC8F7" &_
+		"009599E09A95F1F7809BFECF2F910895" &_
+		"B59B01C0FDCF97E09A95F1F7000000E8" &_
+		"9AE09A95F1F70000000096B3990F990F" &_
+		"990F0795A8F700009AE09A95F1F7B59B" &_
+		"FECF08952F93889A90EF28D0909800C0" &_
+		"00C0F02E28E0882795E720D000C0001F" &_
+		"C0F00000909A00C0891F81702A95A1F7" &_
+		"96E714D0879558F00000909A00C098E7" &_
+		"0DD00000909A88982F912A9508959098" &_
+		"F6CF9098E9CFC0E8D0E008959A95F1F7" &_
+		"08952F93C7989AE09A95F1F788E00795" &_
+		"58F00000C7980000000099E000009A95" &_
+		"F1F78A95A1F70AC0C79A0000000099E0" &_
+		"00009A95F1F78A9551F700C0C79A99E0" &_
+		"DDDF2F910895" & CreateATR("64")
+	FlashName="n2_" & FlashRom & "_" & FlashRev & "_2313_2chip_ironhead"
+
+	If Special=1 Then
+		ProgramData=Replace(ProgramData,"0000E89AE09A","0000E899E09A",1)  ' line 24 - 99
+		ProgramData=Replace(ProgramData,"F700009AE09A","F7000099E09A",1)  ' line 25 - 0099
+		ProgramData=Replace(ProgramData,"00000099E000","00000098E000",1)  ' line 33 - 98
+		ProgramData=Replace(ProgramData,"00000099E000","00000098E000",1)  ' line 34 - 98
+		ProgramData=Replace(ProgramData,"C0C79A99E0DD","C0C79A98E0DD",1)  ' line 35 - 9A98
+		FlashName=FlashName & "_ird6k"
+	End If
+End Sub
+
+
+Sub N1_Ird2pc(Special, JumperLink)
+	ProgramLines=&h200
+	EepromLines=&h20
+	ProgramData=":10000000" &_
+		"0CC022C021C018951895189518951895" &_
+		"18951895189518951895479AF8940027" &_
+		"0BBF05BFD0E0C0E60993C036E8F3D230" &_
+		"D8F30DED02BB00E201BB00EC07BB00E7" &_
+		"0DBF00E00EBFC79800E70DBF00E00EBF" &_
+		"839BFECFF89400EC0BBF789490E2CCD0" &_
+		"EAE6F2E02BE1C8953196002D99D0D9F7" &_
+		"00E70DBF00E00EBFBCD060D009935ED0" &_
+		"09935CD00993402E442029F0242D56D0" &_
+		"09932A95E1F752D00993242D04E0200F" &_
+		"422EA7D00991ABD02A95E1F7A2D05ED0" &_
+		"09935CD009935AD00993402E442029F0" &_
+		"242D54D009932A95E1F750D00993242D" &_
+		"04E0200F422E8DD0099103D02A95E1F7" &_
+		"C7CF2F93809BFECF889A98E085D000C0" &_
+		"909800C000C0000028E0882794E07CD0" &_
+		"0000001FC8F00000909A00C0891F8170" &_
+		"2A95A1F794E070D000C0879558F00000" &_
+		"909A00C096E068D0000000C0909A8898" &_
+		"2F9108959098F6CF9098E8CF2F93809B" &_
+		"FECF8099FECF96E09A95F1F701E099E0" &_
+		"9A95F1F780B38695001FC8F7009599E0" &_
+		"9A95F1F7809BFECF2F910895B59901C0" &_
+		"FDCF97E09A95F1F7000000E89AE09A95" &_
+		"F1F70000000096B3990F990F990F0795" &_
+		"A8F700959AE09A95F1F7B599FECF0895" &_
+		"2F93889A90EF28D0909800C000C0F02E" &_
+		"28E0882795E720D000C0001FC0F00000" &_
+		"909A00C0891F81702A95A1F796E714D0" &_
+		"879558F00000909A00C098E70DD00000" &_
+		"909A88982F912A9508959098F6CF9098" &_
+		"E9CFC0E8D0E008959A95F1F708952F93" &_
+		"C79A9AE09A95F1F788E0079558F00000" &_
+		"C79A0000000099E000009A95F1F78A95" &_
+		"A1F70AC0C7980000000099E000009A95" &_
+		"F1F78A9551F700C0C79899E0DDDF2F91" &_
+		"0895FF920795FF1C0795FF1C0795FF1C" &_
+		"0795FF1C0795FF1C0795FF1C0795FF1C" &_
+		"0795FF1C0F2DFF900895" & CreateATR("FF")
+	FlashKudos="THANKS TO EVERYONE WHO HELPS FREEWARE BE WHERE IT IS!"
+	FlashI2C="none, none // 24LC64,128,256,515"
+	FlashSig="0120, 8, 909A00C096E068D0"
+	FlashName="n1_" & FlashRom & "_" & FlashRev & "_8515"
+	FlashDesc=" Emulator Flash, Provider 0001, Rom " & FlashRom & ", Rev " & FlashRev
+
+	If JumperLink=2 Then
+		FlashName=FlashName & "v2"
+		FlashDesc="-V2" & FlashDesc & ", Ignores 10/12 Jumper Link"
+		ProgramData=Replace(ProgramData,"0CC022C0","0CC01895",1)  ' line 1 - 1895
+		ProgramData=Replace(ProgramData,"00EC0BBF","00E80BBF",1)  ' line 6 - E8
+	Else
+		FlashName=FlashName & "v1"
+		FlashDesc=FlashDesc & ", Uses 10/12 Jumper Link"
+	End If
+
+	Select Case Special
+	Case "1"
+		FlashName=FlashName & "_1chip_ird6k"
+		FlashDesc="N1 1 Chip AVR-8515 IRD2PC-6Ka" & FlashDesc & ", With 4.156Mhz IRD6000 Adjustment"
+		ProgramData=Replace(ProgramData,"0000E89AE09A","0000E899E09A",1)  ' line 24 - 99
+		ProgramData=Replace(ProgramData,"F700959AE09A","F7009599E09A",1)  ' line 26 - 9599
+		ProgramData=Replace(ProgramData,"00000099E000","00000098E000",1)  ' line 34 - 98
+		ProgramData=Replace(ProgramData,"00000099E000","00000098E000",1)  ' line 35 - 98
+		ProgramData=Replace(ProgramData,"C0C79899E0DD","C0C79898E0DD",1)  ' line 36 - 9898
+	Case "2"
+		FlashName=FlashName & "_2chip"
+		FlashDesc="N1 2 Chip AVR-8515 IRD2PC-232" & FlashDesc
+		ProgramData=Replace(ProgramData,"BFC79800E70D","BFC79A00E70D",1)  ' line 5  - 9A
+		ProgramData=Replace(ProgramData,"95B59901C0FD","95B59B01C0FD",1)  ' line 23 - 9B
+		ProgramData=Replace(ProgramData,"F700959AE09A","F700009AE09A",1)  ' line 26 - 009A
+		ProgramData=Replace(ProgramData,"F7B599FECF08","F7B59BFECF08",1)  ' line 26 - 9B
+		ProgramData=Replace(ProgramData,"93C79A9AE09A","93C7989AE09A",1)  ' line 33 - 98
+		ProgramData=Replace(ProgramData,"00C79A000000","00C798000000",1)  ' line 34 - 98
+		ProgramData=Replace(ProgramData,"C0C798000000","C0C79A000000",1)  ' line 35 - 9A
+		ProgramData=Replace(ProgramData,"C0C79899E0DD","C0C79A99E0DD",1)  ' line 36 - 9A99
+	Case "3"
+		FlashName=FlashName & "_2chip_ird6k"
+		FlashDesc="N1 2 Chip AVR-8515 IRD2PC-232-6Ka" & FlashDesc & ", With 4.156Mhz IRD6000 Adjustment"
+		ProgramData=Replace(ProgramData,"BFC79800E70D","BFC79A00E70D",1)  ' line 5  - 9A
+		ProgramData=Replace(ProgramData,"95B59901C0FD","95B59B01C0FD",1)  ' line 23 - 9B
+		ProgramData=Replace(ProgramData,"0000E89AE09A","0000E899E09A",1)  ' line 24 - 99
+		ProgramData=Replace(ProgramData,"F700959AE09A","F7000099E09A",1)  ' line 26 - 0099
+		ProgramData=Replace(ProgramData,"F7B599FECF08","F7B59BFECF08",1)  ' line 26 - 9B
+		ProgramData=Replace(ProgramData,"93C79A9AE09A","93C7989AE09A",1)  ' line 33 - 98
+		ProgramData=Replace(ProgramData,"00C79A000000","00C798000000",1)  ' line 34 - 98
+		ProgramData=Replace(ProgramData,"00000099E000","00000098E000",1)  ' line 34 - 98
+		ProgramData=Replace(ProgramData,"C0C798000000","C0C79A000000",1)  ' line 35 - 9A
+		ProgramData=Replace(ProgramData,"00000099E000","00000098E000",1)  ' line 35 - 98
+		ProgramData=Replace(ProgramData,"C0C79899E0DD","C0C79A98E0DD",1)  ' line 36 - 9A98
+	Case Else
+		FlashName=FlashName & "_1chip"
+		FlashDesc="N1 1 Chip AVR-8515 IRD2PC" & FlashDesc
+	End Select
+End Sub
+
+
+Sub Echoboot()
+	ProgramLines=&h80
+	EepromLines=&h8
+	ProgramData=":10000000" &_
+		"31C030C02FC02EC02DC02CC050C12AC0" &_
+		"29C028C027C055C099C0A6C0ABC0ADC0" &_
+		"AFC0B1C0B3C0B9C0F2C0EEC0BDC0C3C0" &_
+		"D7C0F5C028C25EC05FC05EC05DC05CC0" &_
+		"5BC05AC072C071C070C06FC077C076C0" &_
+		"75C074C0E6C0EAC0F2C0F7C0F9C0F8C0" &_
+		"F7C0F6C010E518BB16E112BB1FE417BB" &_
+		"1EE711BB15E013BF12E019BF11E81FBD" &_
+		"11E01EBD14E019B918E11AB9BB27DD27" &_
+		"1FED1DBF112739D1E9D09923E9F332F4" &_
+		"E92FE295E770F0E0BA960994092EC0E6" &_
+		"DDD099930A94E1F7EE24E394FF24A0E6" &_
+		"0FC01FED1DBF9A2F9056D6D09F2DD4D0" &_
+		"FF2029F0CF199991CFD0FA94E1F7DCCF" &_
+		"1D91E12FE03118F0E295EF703F96F0E0" &_
+		"3B9609940AD1F4CF1052812F7D916D91" &_
+		"669500F0669510F4000000C063957395" &_
+		"839500006A95E9F700006FE37A95C9F7" &_
+		"00006A958A95A9F7DBCF1F73112E1394" &_
+		"DED09993F3941A94D9F7D2CF1F73112E" &_
+		"13949D91DBD01A94E1F7CACF949A9398" &_
+		"929A95988D9A96988E9A949869EE80E0" &_
+		"90D0959A8D98BCCF95988D9A96988E9A" &_
+		"949AB6CF96988E9AB3CF969A8E98B0CF" &_
+		"869BAECF9ECF8699ABCF9BCF969A8E98" &_
+		"88D08699FECFF894A3CF969A8E9881D0" &_
+		"869BFECFF8949CCF02B2102D1B7F12BB" &_
+		"000002BA95CF02B2102D1B7F12BB0000" &_
+		"02BA6D91669500F0669510F4000000C0" &_
+		"639500006A95E9F712BB000002BA80CF" &_
+		"6D9102B2102D1B7F939A9398669500F0" &_
+		"669510F4000000C0639500006A95E9F7" &_
+		"12BB000002BA6CCF939A939869CF02B2" &_
+		"102D1B7F186012BB000002BA61CFED90" &_
+		"5FCF9927B4999A9527D036CF96E524D0" &_
+		"95E322D09EE220D090E31ED02DCF9370" &_
+		"18B31C7F192B18BB27CF10D0BBBD9ABD" &_
+		"23CFAEBBE09A7DB20895FBDF671429F0" &_
+		"6DBAE29AE19AE199FECF0895C6985F9B" &_
+		"FECFC69A9CB108955D99B799FDCF9CB9" &_
+		"0895669500F0669510F4000000C06395" &_
+		"839500006A95E9F700006FE38A95C9F7" &_
+		"0895A2BF12E018BFDE2C78940895DA94" &_
+		"09F0189506CF8E98969AF3DF869BFECF" &_
+		"8699FECFF89408958E98969AEADF869B" &_
+		"FECFF8940895192F12951927012E000C" &_
+		"000C1025012E000C102510780895E22F" &_
+		"F32F099418C02BC03EC04CC0E42FF52F" &_
+		"09945CC079C093C0A7C01F70012E1370" &_
+		"069406942AE731E0200D3B1F41E851E0" &_
+		"410F5B1F0895C7DF6BE581E0AADF08E0" &_
+		"6CEC82E0A6DF8894869B0894991F0A95" &_
+		"B9F769E287E09DDF96988E980895B3DF" &_
+		"60EA80E096DF08E067E581E092DF8894" &_
+		"869B0894991F0A95B9F764E883E089DF" &_
+		"96988E9A08959FDF6AE080E082DF08E0" &_
+		"63E280E07EDF8894869B0894991F0A95" &_
+		"B9F7089590DF69E080E073DF08E068E2" &_
+		"80E06FDF88948699089497950A95B9F7" &_
+		"66E280E066DF96988E9A089585DF8BDF" &_
+		"6DE985E05EDF0AE0089418F496988E9A" &_
+		"03C00000969A8E9867EC82E052DF110F" &_
+		"991F0A9591F700C0969A8E9860EE81E0" &_
+		"48DF96988E9A089567DF6DDF6EE381E0" &_
+		"40DF0BE0089418F496988E9A03C00000" &_
+		"969A8E9862E581E034DF110F991F0A95" &_
+		"91F763EA80E02DDF96988E9A08954CDF" &_
+		"52DF0AE0089418F496988E9A03C00000" &_
+		"969A8E986FE180E01CDF110F991F0A95" &_
+		"91F796988E98089537DF61E280E011DF" &_
+		"0AE0889418F096988E9A03C00000969A" &_
+		"8E9864E280E005DF96950A9599F76CE0" &_
+		"80E0FFDE08959D91913039F0933031F0" &_
+		"9030B1F0923019F014CE4DC035C091E2" &_
+		"2DDF90E02BDF94EE29DF93E0192E9D91" &_
+		"25DF1A94E1F7F6E0E0E195E8592E10C0" &_
+		"91E21CDF90E01ADF90EE18DF93E0192E" &_
+		"9D9114DF1A94E1F7F5E0EEE891E8592E" &_
+		"2F2E3E2E9DE5192E90E008DF1A94E1F7" &_
+		"152CF22DE32DC89531962F2E3E2E902D" &_
+		"FDDE1A94B1F7ECCD91E2F8DE90E0F6DE" &_
+		"94EEF4DE9D91F2DE9D91F0DE9D91492E" &_
+		"EDDE142C9D91EADE1A94E1F7F7E0E8E1" &_
+		"95E8592E16C091E2E1DE90E0DFDE90EE" &_
+		"DDDE9D91DBDE9D91D9DE9D91492ED6DE" &_
+		"142C9D91D3DE1A94E1F7F6E0E6E991E8" &_
+		"592E2F2E3E2E9DE5192E141821F090E0" &_
+		"C5DE1A94E1F7152CF22DE32DC8953196" &_
+		"2F2E3E2E902DBADE1A94B1F7A9CDFFFF" &_
+		"FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF" &_
+		"FFFFFFFFFFFFFFFFFFFFFFFFFFFF0000" &_
+		"00810000810000008100000000000101" &_
+		"00002100E058A6580000009D009F0000" &_
+		"C0800305A600FE030000CFFF000DC601" &_
+		"A0B761C601A1B762CE01A2BF365AD6FF" &_
+		"FFD701A05A2AF7CD43F7CC7A5A000000" &_
+		"00000000000000000000000000500000" &_
+		"00000000FFFFFFFFFFFFFFFFFFFFFFFF" &_
+		"FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF" &_
+		"FFFFFFFF000000810000810000008100" &_
+		"00000000010100002100E458AA580000" &_
+		"00A100A30000C0800305AA00FE030000" &_
+		"CFFF000DC6019CB761C6019DB762CE01" &_
+		"9EBF365AD6FFFFD7019C5A2AF7CD4383" &_
+		"CC7A4800000000000000000000000000" &_
+		"000000500000FFFFFFFFFFFFFFFFFFFF" &_
+		"FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF" &_
+		"FFFFFFFFFFFF0000008101A381000000" &_
+		"810000000000010100002100E058A658" &_
+		"0000009D009F0000C0800305A600FE03" &_
+		"0000CFFF000DAE80C601A2CD7034C601" &_
+		"A0CE01A1B724BF25C601A2AE96BF50AE" &_
+		"80CD781EA6E1CC771D00000000000000" &_
+		"000000000050000000000000FFFFFFFF" &_
+		"FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF" &_
+		"FFFFFFFFFFFFFFFFFFFFFFFF00000081" &_
+		"019F8100000081000000000001010000" &_
+		"2100E458AA58000000A100A30000C080" &_
+		"0305AA00FE030000CFFF000DAE80C601" &_
+		"9ECD6F1DC6019CCE019DB724BF25C601" &_
+		"9EAE96BF4EAE80CD7803CC76EC000000" &_
+		"00000000000000000000005000000000" &_
+		"00000000000000000000000000000000" &_
+		"00000000000000000000000000000000" &_
+		"00000000000000000000000000000000" &_
+		"00000000000000000000000000000000" &_
+		"00000000000000000000000000000000" &_
+		"00000000000000000000000000000000"
+	EepromData=":10000000" &_
+		"0022EC513A2293C83A0F39587EB4466A" &_
+		"43617264426C61737465722056657273" &_
+		"696F6E20352E300012CA7C4BC99CA95A" &_
+		"C104CD50E500B7E9629B76362FAF840F" &_
+		"00000000000000000000000000000000" &_
+		"00000000000000000000000000000000" &_
+		"00000000000000000000000000000000" &_
+		"00000000000000000000000000000000"
+	FlashName="echoboot"
+End Sub
+
+
+Sub UL4S(Special)
+	ProgramLines=&h80
+	EepromLines=&h8
+	ProgramData=":10000000" &_
+		"31C030C02FC02EC02DC02CC04DC22AC0" &_
+		"29C028C027C056C0BDC0CAC0CFC0D1C0" &_
+		"D3C0D5C0D7C0DDC015C111C1E1C0E3C0" &_
+		"F8C018C147C061C062C061C060C05FC0" &_
+		"5EC07FC075C074C073C072C09BC09AC0" &_
+		"99C098C009C10DC115C11AC12FC125C1" &_
+		"1BC144C114E518BB16E112BB1BE417BB" &_
+		"1EE711BB15E013BF12E019BF11E81FBD" &_
+		"11E01EBD14E019B918E11AB9BB27DD27" &_
+		"1FED1DBF11273BD24424E5D19923E1F3" &_
+		"32F4E92FE295E770F0E0BA960994092E" &_
+		"C0E6D9D199930A94E1F7EE24E394FF24" &_
+		"A0E611C01FED1DBF40FC11C39A2F9056" &_
+		"D0D19F2DCED1FF2029F0CF199991C9D1" &_
+		"FA94E1F7D9CF1D91E12FE03118F0E295" &_
+		"EF703F96F0E03B96099409D2F4CF1052" &_
+		"812F7D916D91669500F0669510F40000" &_
+		"00C063957395839500006A95E9F70000" &_
+		"6FE37A95C9F700006A958A95A9F7DBCF" &_
+		"1F73112E1394DDD19993F3941A94D9F7" &_
+		"D2CF1F70112E139453D29993F3941A94" &_
+		"D9F702B2102D1B7F1860000012BB0000" &_
+		"02BA6D91669500F0669510F4000000C0" &_
+		"639500006A95E9F7000012BB00000000" &_
+		"02BAB1CF1F73112E13949D91B9D11A94" &_
+		"E1F7A9CF949A9398929A95988D9A9698" &_
+		"8E9A949869EE80E069D1959A8D989BCF" &_
+		"95988D9A96988E9A949A95CF96988E9A" &_
+		"92CF969A8E988FCF869B8DCF7BCF8699" &_
+		"8ACF78CF969A8E9861D18699FECFF894" &_
+		"82CF969A8E985AD1869BFECFF8947BCF" &_
+		"6D9180E043D102B2102D1B7F186012BB" &_
+		"000002BA6D91669500F0669510F40000" &_
+		"00C0639500006A95E9F712BB000002BA" &_
+		"62CF6D9102B2102D1B7F1860669500F0" &_
+		"669510F4000000C0639500006A95E9F7" &_
+		"12BB000002BA6D91662361F74CCF939A" &_
+		"939849CF02B2102D1B7F186012BB0000" &_
+		"02BA41CFED903FCF9927B4999A9501D1" &_
+		"13CF95E5FED09CE4FCD094E3FAD093E5" &_
+		"F8D00ACF937018B31C7F192B18BB04CF" &_
+		"EAD0BBBD9ABD00CFAA27D8D07A26972D" &_
+		"E8D0A395A034C8F3F7CEA92FBDD0902D" &_
+		"E0D0912DDED0922DDCD0EECEA92FB4D0" &_
+		"039421F4139411F4239479F014E0A127" &_
+		"622CC0D0AA95612CBDD0AA95602CBAD0" &_
+		"6624A2FD6A94A87FB5D0D6CEA0E0D0E0" &_
+		"C0E693FDA1604A2E977F963F28F49F70" &_
+		"192F9295911BC90FCA9590E1092ECF93" &_
+		"D0E0C0ECA8D099930A94E1F7CF9190E1" &_
+		"092E32D0A0FD53D064D00A94D1F71F93" &_
+		"B0E0A0EC90E1092E11279D9119270A94" &_
+		"E1F7912F1F919923C9F4B0E0A0EC9FE0" &_
+		"092E112319F4C3950A949D909D919993" &_
+		"0A94E1F790E6990D9A959C1B50F493E4" &_
+		"80D0EE24E394FF24A0E6B5CE95E479D0" &_
+		"8BCE9FE476D088CEAF93CF934F92B0E0" &_
+		"A0ECD0E0C0EB44249C919795551C9D93" &_
+		"4394942D983011F459924424A03D09F4" &_
+		"A0ECC03C89F7A0EBC0EC90E1492E9D91" &_
+		"99934A94E1F74F90CF91AF910895AF93" &_
+		"0F92F3E0E2EDB0E0A0EC90E1392EC895" &_
+		"9C9190259D9331963A94C9F70F90AF91" &_
+		"0895AF930F92B0E0A0EC90E1392EF6E0" &_
+		"E0E89C91E90F9927F91FC8950D923A94" &_
+		"B1F70F90AF910895DEADBEEF5B9AF54F" &_
+		"80C1AD642AF672561A8FA0C67F9CA064" &_
+		"0DD0772009F0A460A39508D0072CA395" &_
+		"05D0172CA39502D0272C0895AEBBE09A" &_
+		"7DB20895FBDF671429F06DBAE29AE19A" &_
+		"E199FECF0895C6985F9BFECFC69A9CB1" &_
+		"08955D99B799FDCF9CB90895669500F0" &_
+		"669510F4000000C06395839500006A95" &_
+		"E9F700006FE38A95C9F70895A2BF12E0" &_
+		"18BFDE2C78940895DA9409F018959598" &_
+		"8D9A96988E9A949A05CE8E98969AEEDF" &_
+		"869BFECF8699FECFF89408958E98969A" &_
+		"E5DF869BFECFF8940895192F12951927" &_
+		"012E000C000C1025012E000C10251078" &_
+		"0895E22FF32F099418C02BC051C01AC1" &_
+		"E42FF52F099488C0A5C0BFC085C01F70" &_
+		"012E1370069406942CE732E0200D3B1F" &_
+		"43E852E0410F5B1F089527D06BE581E0" &_
+		"A5DF08E06CEC82E0A1DF8894869B0894" &_
+		"991F0A95B9F769E287E098DF96988E9A" &_
+		"089513D060E580E091DF08E06FE980E0" &_
+		"8DDF8894869B0894991F0A95B9F76EEF" &_
+		"81E084DF96988E9A08958E98969A8EDF" &_
+		"869BFECF8699FECFF894B29B04C00000" &_
+		"B29B00C0089500000000000000000895" &_
+		"ECDF60E580E06ADF08E06FE980E066DF" &_
+		"8894869B0894991F0A95B9F76EEB81E0" &_
+		"5DDF96988E9A089578DF69E080E056DF" &_
+		"08E068E280E052DF8894869908949795" &_
+		"0A95B9F766E280E049DF96988E9A0895" &_
+		"C4DF60E580E042DF08E06FE980E03EDF" &_
+		"8894869B0894991F0A95B9F76D9181E0" &_
+		"35DF96988E9A089559DF5FDF6DE985E0" &_
+		"2DDF0AE0089418F496988E9A03C00000" &_
+		"969A8E9867EC82E021DF110F991F0A95" &_
+		"91F700C0969A8E9860EE81E017DF9698" &_
+		"8E9A08953BDF41DF6EE381E00FDF0BE0" &_
+		"089418F496988E9A03C00000969A8E98" &_
+		"6BE980E003DF110F991F0A9591F761E5" &_
+		"80E0FCDE96988E9A089520DF26DF6EE3" &_
+		"81E0F4DE0BE0089418F496988E9A03C0" &_
+		"0000969A8E986BE980E0E8DE110F991F" &_
+		"0A9591F761E580E0E1DE96988E9A0895" &_
+		"05DF61E280E0DADE0AE0889418F09698" &_
+		"8E9A03C00000969A8E9864E280E0CEDE" &_
+		"96950A9599F76CE080E0C8DE08951127" &_
+		"9A2F9056A0EC9D931927FD921F25CF19" &_
+		"99919D931927AF3CD9F71D9390E1092E" &_
+		"3BDE5DDE6EDE0A94D9F7A0EC9D91A9DE" &_
+		"A03DE1F7A0DE9534C1F39F3411F4A0EC" &_
+		"E7CFB2CC13D06BE581E0A0DE08E06CEC" &_
+		"82E09CDE8894869B0894991F0A95B9F7" &_
+		"69E287E093DE96988E9A08958E98969A" &_
+		"9DDE869BFECF8699FECFF89408950000" &_
+		"00000000000000000000000000000000" &_
+		"00000000000000000000000000000000" &_
+		"00000000000000000000000000000000" &_
+		"00000000000000000000000000000000" &_
+		"00000000000000000000000000000000" &_
+		"00000000000000000000000000000000" &_
+		"00000000000000000000000000000000" &_
+		"00000000000000000000000000000000" &_
+		"000000000000000000000000FFFFFFFF"
+	EepromData=":10000000" &_
+		"0022EC513A2293C83A0F39587EB4466A" &_
+		"546573742041746D656C000000000000" &_
+		"696F6E20352E300012CA7C4BC99CA95A" &_
+		"C104CD50E500B7E9629B76362FAF840F" &_
+		"00000000000000000000000000000000" &_
+		"00000000000000000000000000000000" &_
+		"00000000000000000000000000000000" &_
+		"00000000000000000000000000000000"
+	FlashName="ul4s"
+
+	If Special=1 Then
+		ProgramLines=&h200
+		EepromLines=&h20
+		ProgramData=Replace(ProgramData,"4DC22AC0","2BC04CC2",1)  ' line 1
+		ProgramData=Replace(ProgramData,"11E81FBD","11E21FBD",1)  ' line 8
+		ProgramData=Replace(ProgramData,"D0BBBD9A","D0B9BD98",1)  ' line 42
+		FlashName=FlashName & "_8515"
+	End If
+End Sub
+
+
+Sub Newd11()
+	ProgramLines=&h80
+	EepromLines=&h8
+	ProgramData=":10000000" &_
+		"31C030C02FC02EC02DC02CC09CC12AC0" &_
+		"29C028C027C066C074C07BC07DC084C0" &_
+		"8FC09CC0B4C0DCC01CC128C128C12AC1" &_
+		"2AC12BC129C12BC12CC122C11CC11AC1" &_
+		"1BC11BC13FC13EC146C145C144C143C1" &_
+		"42C141C148C14CC14CC151C154C154C1" &_
+		"54C154C1F89410E118BB12E112BB1FE4" &_
+		"17BB1AE311BBDD27BB2715E013BF12E0" &_
+		"19BFBBBD11E81ABD1FBD11E01EBD14E0" &_
+		"19B918E11AB91FED1DBF14E5612E10E5" &_
+		"812E712E112785D132D13323E9F332F4" &_
+		"E32FE295E770F0E0BA960994032EC0E6" &_
+		"26D139930A94E1F7EE24E394FF24A0E6" &_
+		"1D91E12FE03118F0E295EF703F96F0E0" &_
+		"3B9609941FED1DBF3A2F305614D13F2D" &_
+		"12D1FF2029F0CF1939910DD1FA94E1F7" &_
+		"D3CF949A8E9896989398C298C6989598" &_
+		"DFCF9398C698DCCF9498C69A939AE0E6" &_
+		"F0E0FDD0959AD4CF04E1602E10E1812E" &_
+		"68BA88BA000068BA88BAC69A939AC8CF" &_
+		"04E1602E10E1812E68BA88BA00000000" &_
+		"000068BA88BAC69A939ABACF04E1602E" &_
+		"10E1812E68BA88BAC69A939A00000000" &_
+		"00000000000000000000000004E1602E" &_
+		"10E1812E68BA88BAC69A939AA1CF04E1" &_
+		"602E10E1812E68BA88BAC69A939A0000" &_
+		"000000000000000000000000000004E1" &_
+		"602E10E1812E68BA88BAC69A939A0000" &_
+		"000000000000000000000000000004E1" &_
+		"602E10E1812E68BA88BAC69A939A78CF" &_
+		"04E1602E10E1812E68BA88BAC69A939A" &_
+		"00000000000000000000000004E1602E" &_
+		"10E1812E68BA88BAC69A939A00000000" &_
+		"000000000000000004E1602E10E1812E" &_
+		"68BA88BAC69A939A0000000000000000" &_
+		"0000000004E1602E10E1812E68BA88BA" &_
+		"C69A939A000000000000000000000000" &_
+		"04E1602E10E1812E68BA88BAC69A939A" &_
+		"37CF04E1602E10E1812E68BA88BAC69A" &_
+		"939A2ECF2DCF2CCF2BCF2ACF29CF28CF" &_
+		"27CF26CF25CF24CF23CFED9021CF91D0" &_
+		"1FCF1052712F6D915D91569500F05695" &_
+		"10F4000000C053956395739500005A95" &_
+		"E9F700005FE36A95C9F700005A957A95" &_
+		"A9F706CF1F71112E139465D03993F394" &_
+		"1A94D9F7FDCE1F75112E13943D9162D0" &_
+		"1A94E1F7F5CE3327B4993A9514D0DCCE" &_
+		"DBCE337018B31C7F132B18BBD5CE07D0" &_
+		"BBBD3ABDD1CED0CECFCECECECDCE5F9B" &_
+		"FECF3CB108955D9BFECF3CB90895F695" &_
+		"E7953197F1F7089500E510E108BB00C0" &_
+		"00C018BB3197D1F70895A2BF12E018BF" &_
+		"DE2C78940895DA9409F01895F894949A" &_
+		"8E9896989398C298C4989598C3CE8E98" &_
+		"969AEBDF869BFECF8699FECFF8940895" &_
+		"8E98969AE2DF869BFECFF8940895132F" &_
+		"12951327012E000C000C1025012E000C" &_
+		"102510780895E22DF32D09941CC031C0" &_
+		"47C047C0E42DF52D099444C044C05DC0" &_
+		"5DC01F70012E1370069406943EEC232E" &_
+		"31E0332E200C3B1E35ED432E31E0532E" &_
+		"410E5B1E0895C3DFE4EBF0E0A0DF08E0" &_
+		"EBE6F1E09CDF00C000008894869B0894" &_
+		"331F0A95A9F7EEE9F3E091DF8E989698" &_
+		"0895ADDFEAE0F0E08ADF08E0E7E1F0E0" &_
+		"86DF00C000008894869B0894331F0A95" &_
+		"A9F70000EBE1F0E07ADF8E9896980895" &_
+		"089508950895E8EBF2E071DF99DF9FDF" &_
+		"0AE0089418F496988E9A03C00000969A" &_
+		"8E98E5E1F0E063DF00C0110F331F0A95" &_
+		"89F700008E989698089508950895"
+	EepromData=":10000000" &_
+		"0022EC513A2293C83A0F39587EB4466A" &_
+		"546573742041746D656C000000000000" &_
+		"696F6E20352E300012CA7C4BC99CA95A" &_
+		"C104CD50E500B7E9629B76362FAF840F"
+	FlashName="newd11"
+End Sub
+
+
+Sub Newd13()
+	ProgramLines=&h80
+	EepromLines=&h8
+	ProgramData=":10000000" &_
+		"31C030C02FC02EC02DC02CC0B0C12AC0" &_
+		"29C028C027C066C088C08FC091C098C0" &_
+		"A3C0B0C0C8C0F0C030C164C230C269C2" &_
+		"39C139C1ACC239C13AC132C12FC133C2" &_
+		"46C22DC14DC14CC154C153C152C151C1" &_
+		"50C14FC156C15AC162C167C16AC16AC1" &_
+		"51C23DC2F89410E118BB12E112BB1FE4" &_
+		"17BB1AE311BBDD27BB2715E013BF12E0" &_
+		"19BFBBBD11E81ABD1FBD11E01EBD14E0" &_
+		"19B918E11AB91FED1DBF14E5612E10E5" &_
+		"812E712E112799D146D13323E9F332F4" &_
+		"E32FE295E770F0E0BA960994032EC0E6" &_
+		"3AD139930A94E1F733E0E32EFF24A0E6" &_
+		"1D91E12FE03118F0E295EF703F96F0E0" &_
+		"3B9609941FED1DBF3A2F305628D13F2D" &_
+		"26D1FF2049F01C2FCA1738F031F0CF19" &_
+		"39911DD1FA94E1F7CFCF1F2DEC2FE056" &_
+		"FE1AC8EDCF19399112D1FA94E1F7C0E6" &_
+		"39910DD1EA95E1F7BFCF949A8E989698" &_
+		"9398C298C6989598CBCF9398C698C8CF" &_
+		"9498C69A939AE0E6F0E0FDD0959AC0CF" &_
+		"04E1602E10E1812E68BA88BA000068BA" &_
+		"88BAC69A939AB4CF04E1602E10E1812E" &_
+		"68BA88BA00000000000068BA88BAC69A" &_
+		"939AA6CF04E1602E10E1812E68BA88BA" &_
+		"C69A939A000000000000000000000000" &_
+		"0000000004E1602E10E1812E68BA88BA" &_
+		"C69A939A8DCF04E1602E10E1812E68BA" &_
+		"88BAC69A939A00000000000000000000" &_
+		"00000000000004E1602E10E1812E68BA" &_
+		"88BAC69A939A00000000000000000000" &_
+		"00000000000004E1602E10E1812E68BA" &_
+		"88BAC69A939A64CF04E1602E10E1812E" &_
+		"68BA88BAC69A939A0000000000000000" &_
+		"0000000004E1602E10E1812E68BA88BA" &_
+		"C69A939A000000000000000000000000" &_
+		"04E1602E10E1812E68BA88BAC69A939A" &_
+		"00000000000000000000000004E1602E" &_
+		"10E1812E68BA88BAC69A939A00000000" &_
+		"000000000000000004E1602E10E1812E" &_
+		"68BA88BAC69A939A23CF04E1602E10E1" &_
+		"812E68BA88BAC69A939A1ACF19CF18CF" &_
+		"17CF16CF15CFED9013CF97D011CF1052" &_
+		"712F6D915D91569500F0569510F40000" &_
+		"00C053956395739500005A95E9F70000" &_
+		"5FE36A95C9F700005A957A95A9F7F8CE" &_
+		"1F71112E13946BD03993F3941A94D9F7" &_
+		"EFCE1F75112E13943D9168D01A94E1F7" &_
+		"E7CE3327B4993A951AD0CECE3EE417D0" &_
+		"34E415D031E313D033E311D0C5CE3370" &_
+		"18B31C7F132B18BBBFCE05D0BBBD3ABD" &_
+		"BBCEBACEB9CE5F9BFECF3CB108955D9B" &_
+		"FECF3CB90895F695E7953197F1F70895" &_
+		"00E510E108BB00C000C018BB3197D1F7" &_
+		"0895A2BF12E018BFDE2C78940895DA94" &_
+		"09F01895F894949A8E9896989398C298" &_
+		"C4989598AFCE8E98969AEBDF869BFECF" &_
+		"8699FECFF89408958E98969AE2DF869B" &_
+		"FECFF8940895132F12951327012E000C" &_
+		"000C1025012E000C102510780895E22D" &_
+		"F32D09941CC031C0E1C0B4C0E42DF52D" &_
+		"099442C042C0DAC040C01F70012E1370" &_
+		"0694069432EE232E31E0332E200C3B1E" &_
+		"39EE432E31E0532E410E5B1E0895C3DF" &_
+		"E4EBF0E0A0DF08E0EBE6F1E09CDF00C0" &_
+		"00008894869B0894331F0A95A9F7ECE1" &_
+		"F3E091DF8E9896980895ADDFEAE0F0E0" &_
+		"8ADF08E0E7E1F0E086DF00C000008894" &_
+		"869B0894331F0A95A9F70000EBE1F0E0" &_
+		"7ADF8E98969808950895E8EBF2E073DF" &_
+		"9BDFA1DF0AE0089418F496988E9A03C0" &_
+		"0000969A8E98E5E1F0E065DF00C0110F" &_
+		"331F0A9589F700008E98969808959924" &_
+		"EE2739D0132E9394E92D35D097DF9394" &_
+		"1A94D1F715CE1D91183708F011CEC83D" &_
+		"08F0C0E6112E139482DF3993F394CA17" &_
+		"29F0C83D08F0C0E61A94B1F701CE1D91" &_
+		"112E13943D917ADF1A94E1F7F9CDEE27" &_
+		"12D0132E2CDFE3950ED029DFE3951A94" &_
+		"D9F7DACD1D90EE27312D0BD0E39510D0" &_
+		"E7CDE6CDD1CDE199FECFEEBBE09A3DB3" &_
+		"0895E199FECFEEBB3DBBE29AE19A0895" &_
+		"9D90F1DF391511F0392DF3DFE3951A94" &_
+		"B9F70895BEBDBFBDBDBDBCBD81E011DF" &_
+		"869BFECFF8941FDF8EBD0BDF869BFECF" &_
+		"BEBDF8948CB59DB540979695879513DF" &_
+		"0FD008E00AD08894869B0894331F0A95" &_
+		"C9F703D08E9896980895E82FF92FE3CE" &_
+		"E82FF92F3897F695E795DDCE0895BD90" &_
+		"AD90EA2DFB2D3196AE2EBF2ECBDFCFDE" &_
+		"EA2DFB2D3197C1F793CD"
+	FlashName="newd13"
+End Sub
+
+
+Function CreateATR(DefaultRBB)
+	' Prompts for user input an entire ATR string minus the last LRC byte.
+	' Or user can enter 1 byte (receive block) which will then prompt 2 more questions for Rom & Rev.
+	' Function calculates the string's LRC byte and returns the input string with that byte on the end.
+	Dim ATR, RomBytes, RevBytes
+
+	ATR=Sc.InputBox("Please enter the DishNet ATR that you want to calculate a LRC Byte for." & VbCr &_
+		"OR just enter 2 digit Receive Block Byte (9th ATR byte) to begin creating your own." & VbCr & VbCr &_
+		"Here are some Actual Complete ATR Examples with the correct LRC on the end:" & VbCr &_
+		"Rom003_Rev383 = 3FFF9500FF918171 64 4700444E415350 30 30 33 20526576 33 38 33 F5" & VbCr &_
+		"Rom010_RevA24 = 3FFF9500FF918171 A0 4700444E415350 30 31 30 20526576 41 32 34 4C" & VbCr &_
+		"Rom011_RevB23 = 3FFF9500FF918171 A0 4700444E415350 30 31 31 20526576 42 32 33 49" & VbCr &_
+		"Rom101_Rev007 = 3FFF9500FF918171 A0 4700444E415350 31 30 31 20526576 30 30 37 3D" & VbCr &_
+		"Rom102_Rev103 = 3FFF9500FF918171 FF 4700444E415350 31 30 32 20526576 31 30 33 64" & VbCr & VbCr &_
+		"Receive Block Byte Examples (9th Byte): 64, 78, A0, FF)" & VbCr &_
+		"FF is recommended for most 8515 chip setups no matter what ATR your using." & VbCr &_
+    "64 is recommended for most 2313 chip setups due to the chips smaller buffer size." & VbCr & VbCr &_
+		"Important - If you are checking a complete ATR, please DO NOT include the last byte (LRC)." & VbCr &_
+		"The script uses the whole string and adds the proper LRC byte to the end." & VbCr &_
+		" ", "Nagra ATR Generator", DefaultRBB)
+
+	If IsHexBytes(ATR)=0 Then                   ' Strip spaces, colons, lowercase and check if invalid hex or length
+		Exit Function                             ' Quietly quit because the input must be not be bytes of hex, like if they don't want an ATR
+	End If
+
+	If Len(ATR)=2 Then                          ' If they entered exactly one byte then it's not a full ATR ....
+		FlashRbb=ATR                              ' so let's assume they want that byte as the Receive Block Byte
+
+		FlashRom=Sc.InputBox("Please Enter the ATR's Rom Type." & VbCr & "Examples: 003, 010, 011, 101, 102", "Pick Rom Type", "102")
+		FlashRom=Replace(UCase(FlashRom)," ","")  ' replace spaces and lowercase input since I try to keep the Asc2Hex as true as possible
+		RomBytes=Asc2Hex(FlashRom,3,"0")          ' call our ascii calculator to get the hex translation of user input
+
+		FlashRev=Sc.InputBox("Please Enter the ATR's Revision Level." & VbCr & "Examples: 383, A24, B23, 007, 103", "Pick Revision Level", "103")
+		FlashRev=Replace(UCase(FlashRev)," ","")  ' replace spaces and lowercase input since I try to keep the Asc2Hex as true as possible
+		RevBytes=Asc2Hex(FlashRev,3,"0")          ' call our ascii calculator to get the hex translation of user input
+
+		If FlashRom="000" Or FlashRev="000" Then Exit Function End If  ' Exit if user cancelled during the rom or rev popup
+		ATR="3FFF9500FF918171" & FlashRbb & "4700444E415350" & RomBytes & "20526576" & RevBytes  ' insert user vars into a standard nagra atr string
+	End If
+
+	If Len(ATR)>51 Then                         ' if we have 26 bytes, then we probably have a Nagra ATR, so let's analyze some of it
+		FlashRbb=Mid(ATR,17,2)                    ' byte 9 of ATR is Receive Block Byte
+		RomBytes=Mid(ATR,33,6)                    ' bytes 17-19 of ATR reflect the card rom number
+		RevBytes=Mid(ATR,47,6)                    ' bytes 24-26 of ATR reflect the card revision number
+		FlashRom=Chr("&h" & Mid(RomBytes,1,2)) & Chr("&h" & Mid(RomBytes,3,2)) & Chr("&h" & Mid(RomBytes,5,2))  ' turn hex to decimal to ascii
+		FlashRev=Chr("&h" & Mid(RevBytes,1,2)) & Chr("&h" & Mid(RevBytes,3,2)) & Chr("&h" & Mid(RevBytes,5,2))  ' turn hex to decimal to ascii
+	End If
+
+	CreateATR=CalculateLRC(ATR)                                                                 ' Get LRC Byte and add it to our ATR string
+	Sc.Print(VbCr & "# Input ATR Without LRC Was   = " & SpaceBytes(ATR) & VbCr)                ' Print Original ATR Input
+	Sc.Print("# Output ATR With LRC Byte Is = "        & SpaceBytes(CreateATR) & VbCr)          ' Print What ATR Should Be With Correct LRC
+	Sc.Print("# ATR Receive Block Byte      = " & FlashRbb & " hex" & VbCr)                     ' Print Receive Block Byte in Hex
+	Sc.Print("# ATR Rom Type  =  " & FlashRom & "  = " & SpaceBytes(RomBytes) & " hex" & VbCr)  ' Print Rom Type in Ascii & Hex
+	Sc.Print("# ATR Rev Level =  " & FlashRev & "  = " & SpaceBytes(RevBytes) & " hex" & VbCr)  ' Print Revision Level in Ascii & Hex
+End Function
+
+
+Function CreateCode(LastLineOfData, TotalLines)
+	' 2 input arguments, 1 long line containing the start of 1 intel hex record plus "too much" data
+	' but with no checksums included, and the line number to stop adding clear bytes at.
+	' Function returns data reparsed into complete intel hex records with format based on all previous questions.
+	Dim LastLine, Address, LastData, X, I, Code
+
+	LastLine=LastLineOfData                                    ' reassign last line so we don't modify original input
+	If FlashClear<="F" And TotalLines>1 And LastLine="" Then   ' If flashclear & totallines are both set and lastline is not set
+		LastLine=":10000000" & String(TotalLines*32,FlashClear)  ' Then reassign lastline as one clear string so a blank hex can be created
+	End If
+	If IsHexBytes(LastLine)<10 Then                            ' Strip spaces, colons, lowercase and check if invalid hex or length
+		Exit Function                                            ' Quietly kill function if invalid or length is less than 5 bytes (xpatmel)
+	End If
+
+	Address="&h" & Mid(LastLine,3,4)               ' assign & turn char 3,4,5,6 from hex to decimal address to begin inserting data at
+	LastData=Mid(LastLine,9)                       ' assign char 9 through end of string as the data to be inserted
+
+	If FlashClear<="F" And TotalLines>0 Then       ' If fill character is assigned, do special dances to fill in blanks
+		If Len(LastData) MOD 32 Then                 ' If data length divided by 32 has a remainder greater than 0
+			LastData=LastData & String(32-Len(LastData) MOD 32,FlashClear)  ' add "32 minus remainer" clear chars to the string
+		End If
+		If Address MOD 16 Then                       ' If address divided by 16 has a remainder greater than 0
+			LastData=LastData & String(32,FlashClear)  ' instead of a short line, add 32 more clear chars
+		End If                                       ' This way, the 2nd string after the last data will safely overlap back to an address offset of zero
+	End If
+
+	X=Len(LastData)                                ' Assign a temp variable 'X' since we ask for length many times
+	For I=0 to (X\32-1)                            ' for each full block of 32 characters (16 bytes)
+		Code=Code & CalculateChecksum("10" & HexString(Address,4) & "00" & Mid(LastData,I*32+1,32))  ' add these 16 bytes to output
+		Address=Address+16                           ' increase hex address by 16 for next line
+	Next
+
+	If FlashClear<="F" And TotalLines>1 Then       ' If fill character is assigned AND more than just last line is to be filled, do last special dance
+		For I=(Address\16) to (TotalLines-1)         ' address\16 rounds down to offset 0 | total lines minus 1 because prom starts at 0 not 1
+			Code=Code & CalculateChecksum("10" & HexString(I*16,4) & "00" & String(32,FlashClear))  ' finish adding blank lines
+		Next
+	Else                                           ' Else fill character was not assigned ... so parse final line if there is any data remaining
+		If X MOD 32 Then                             ' Final line's length byte is "remainder of" (chars divided by 2) divided by 16 data bytes per line
+			Code=Code & CalculateChecksum(HexString(X\2 MOD 16,2) & HexString(Address,4) & "00" & Mid(LastData,(X\32)*32+33))
+		End If
+	End If
+
+	CreateCode=Code
+End Function
+
+
+Sub CreateHexFile(HexCode,HexName)
+	' This sub takes 2 arguments, text data to be written to a file and a default name for that file.
+	' This slightly differs in that it modifies VbCr to become VbCrLf for dos intel hex file compatibility.
+	Dim FileCode, FileName, OutFile, fso, f
+
+	FileCode=HexCode                                                 ' reassign code so we don't modify original input
+	FileCode=Replace(Replace(FileCode,VbCrLf,VbCr),VbCr,VbCrLf)      ' switch every carriage return to carriage return with line feed for dos
+	If FileCode>"" And HexName>"" Then                               ' Proceed only if there is something to put inside file and a name was assigned
+		FileName=Fs.FileSaveDialog(FileFilter, "Please select a name to save the hex file as...", HexName)  ' Ask user for filename to save as
+		If FileName<>"" Then                                           ' Proceed only if user chose a name for the new file
+			OutFile=Fs.FileCreate(FileName)                              ' Attempt to create the new file - Outfile is object's number
+			Fs.FileClose(OutFile)                                        ' Close and kill the new creation
+			If OutFile>0 Then                                            ' Proceed only if the new file was actually created
+				Set fso=CreateObject("Scripting.FileSystemObject")         ' Create a new file system object
+				Set f=fso.OpenTextFile(FileName, ForWriting, True)         ' Assign the object as our text file and open it
+				f.Write FileCode                                           ' Write all the code to our file
+				f.Close                                                    ' Close the file
+				Sc.Print("Hex Successfully Saved As: " & FileName & VbCr)  ' Show user we succeeded
+			End If
+		End If
+	End If
+End Sub
+
+
+Function SpaceBytes(Data)
+	' This function takes 1 argument, a string containing any value of any length
+	' and returns the string with one space between every 2 characters.
+	Dim RetVal, I, Bytes
+
+	RetVal=Data                              ' reassign data so we don't modify original input
+	If IsHexBytes(RetVal)>0 Then             ' Strip spaces, colons, lowercase from input, and if valid hex, proceed
+		For I=1 to Len(RetVal) Step 2          ' For each byte of the input string (2 steps because 1 byte is 2 chars)
+			Bytes=Bytes & Mid(RetVal,I,2) & " "  ' Save these bytes to a new variable and space them out
+		Next
+		SpaceBytes=Trim(Bytes)                 ' Return the string, but trim off the last space
+	End If
+End Function
+
+
+Function CalculateChecksum(Data)
+	' This function takes 1 argument, a string with no spaces or colons which contains any value of any length (like a line of intel hex code)
+	' It adds all bytes together to form a Sum and then calculates 2's complement of the Sum which is Checksum.
+	' Function returns string with the Checksum byte added to end.
+	Dim I, OneByte, Sum
+
+	For I=1 to Len(Data) Step 2     ' For each step of the input string (2 chars per step because we are calculating 2's complement)
+		OneByte="&h" & Mid(Data,I,2)  ' Assign and turn this step from hex to decimal
+		Sum=Sum+0+OneByte             ' Assign and add each step's decimal value together to create the total sum of all the data
+	Next                            ' Afterwards, get and return checksum byte which is &h100 minus last 2 hex digits of sum
+	CalculateChecksum=":" & Data & Right(Hex(&h1000000-Sum),2) & VbCr  ' Return line formatted with new checksum byte
+End Function
+
+
+Function CalculateLRC(Data)             ' "LRC" stands for "Longitudinal Redundancy Check", for those keeping score
+	' This function takes 1 argument, a string with no spaces or colons which contains any value of any length (like an ATR)
+	' Function XOR's all bytes together to form a "LRC Byte" and returns the string with it added to end.
+	Dim I, OneByte, LRC
+
+	For I=3 to (Len(Data)) Step 2         ' Go through all of the bytes of the original data one by one, except for the 1st byte
+		OneByte="&h" & Mid(Data,I,2)        ' Assign and turn this step from hex to decimal
+		LRC=LRC XOR OneByte                 ' XOR each byte received
+	Next
+	CalculateLRC=Data & HexString(LRC,2)  ' Return the string with new LRC byte
+End Function
+
+
+Function IsHexBytes(Data)
+	' Function modifies original input by stripping spaces, colons, & changing lower to uppercase.
+	' It returns total number of hex digits in the string if the data is hex and it has an even number of characters, or else 0.
+
+	IsHexBytes=0                                      ' Assume the input is invalid
+	Data=Replace(Replace(UCase(Data),":","")," ","")  ' Strip spaces, colons, lowercase from actual input
+	If IsHex(Data)<>0 And Len(Data) MOD 2=0 Then      ' If data is valid hex and total characters divided by 2 has no remainer
+		IsHexBytes=Len(Data)                            ' return the total number of hex digits (not bytes) the string contains
+	End If
+End Function
+
+
+Function Asc2Hex(Characters,Length,Filler)
+	' This function takes 3 arguments: a string of characters, length to raise input string up to,
+	' and a default character to insert on front of input string if string is too short.
+	' Function returns the exact Hex Equivelant of the Ascii input string (caps, spaces, etc... they ALL matter).
+	Dim I
+
+	If Len(Characters)<Length Then                                   ' If current length is less than the length that we want...
+		Characters=String(Length-Len(Characters),Filler) & Characters  ' Fix input by placing a default character in front until it is length we want
+	End If
+	For I=1 to Length                                                ' For each character in the wanted string length (dumps trailing characters, if any)
+		Asc2Hex=Asc2Hex & HexString(Asc(Mid(Characters,I)),2)          ' Turn it to an Ascii number, then to a hex byte, then place on end of return string
+	Next
+End Function
+
+
+Function HexString(Number,Length)
+	' This function takes 2 arguments, a number and a length.  It converts the decimal
+	' number given by the first argument to a Hexidecimal string with its length
+	' equal to the number of digits given by the second argument
+	Dim RetVal, CurLen
+
+	RetVal=Hex(Number)                           ' Convert the decimal number to a Hex number and save it in a variable named RetVal
+	CurLen=Len(RetVal)                           ' Find the length of the Hex number...How long is it? Then store that answer in CurLen
+	If CurLen<Length Then                        ' If CurLen is < the length that we want it to be then
+		RetVal=String(Length-CurLen,"0") & RetVal  ' Place zeroes in front of our Hex number until it is the length we want it to be
+	End If
+	HexString=RetVal                             ' Return the resulting Hex number back to the program
+End Function
+
+
+Function Hex2Dec(HexNumber)  ' not currently used but has good uses and it's not huring anything.
+	' This function takes 1 argument, a string containing a hex value of any digit length
+	' and returns the decimal equivalent
+	Dim DecimalValue, DigitCount, Digit, HexDigit
+
+	HexNumber=Replace(UCase(HexNumber)," ","")
+	DigitCount=Len(HexNumber)
+	For Digit=1 To DigitCount
+		HexDigit=Mid(HexNumber,Digit,1)
+		If Asc(HexDigit)<58 Then
+			DecimalValue=HexDigit*16^(DigitCount-Digit)
+		Else
+			DecimalValue=(Asc(HexDigit)-55)*16^(DigitCount-Digit)
+		End If
+		Hex2Dec=Hex2Dec+DecimalValue
+	Next
+End Function

@@ -1,0 +1,73 @@
+'
+' New VB Script File - Created 06-10-2003
+'
+Sub Main()
+
+Dim RetValue,A
+
+Sc.Verbose = 0
+
+'Reset Normal
+Sc.Print "Atr Normal Boot..."
+Sc.Write "06 10 0E 06 01 93 00  "
+Sc.Read(&H02)
+RetValue=Sc.GetByte(&H01)
+Sc.Verbose = 1
+Sc.Read(RetValue)
+
+Sc.Print Vbcr
+Sc.Print "Pacote de teste..."
+Sc.Write "0B 15 0E 06 C4 48 06 00 00 00 84 00  "
+Sc.Read(&H02)
+RetValue=Sc.GetByte(&H01)
+Sc.Read(RetValue)
+
+
+'Sc.Verbose = 0
+'Reset Id Factory
+'Send 32 bytes
+Sc.Print VbCr + "Send 32 Bytes of the EEPROM..."
+Sc.Write "08 1A 01 03 20 09 B0 9F 00 "
+Sc.Read(&H02)
+RetValue=Sc.GetByte(&H01)
+Sc.Read(RetValue)
+
+'Envio de bytes em debug mode 35 etu
+
+'Sc.Write "07 10 C2 0702 64  BF00 "
+'Sc.Read(&H02)
+'RetValue=Sc.GetByte(&H01)
+'Sc.Read(RetValue)
+'..................................
+
+
+'FOR A = &h00 To &HFF
+Sc.Write "02 BF 00 "
+Sc.Read(&H02)
+RetValue=Sc.GetByte(&H01)
+Sc.Read(RetValue)
+'Next
+
+'Sc.Write "07 1A C2 00FF 00  BF00 "
+'Sc.Read(&H02)
+'RetValue=Sc.GetByte(&H01)
+'Sc.Read(RetValue)
+'..................................
+
+
+'FOR A = &h00 To &HFF
+Sc.Write "02 80 00 "
+Sc.Read(&H02)
+RetValue=Sc.GetByte(&H01)
+Sc.Read(RetValue)
+'Next
+
+
+
+
+Sc.Write "02 02 00 "
+Sc.Read(&H02)
+RetValue=Sc.GetByte(&H01)
+Sc.Read(RetValue)
+
+End Sub

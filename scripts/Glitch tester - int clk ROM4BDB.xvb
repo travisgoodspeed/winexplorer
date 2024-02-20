@@ -1,0 +1,372 @@
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+' Glitch tester.xvb - Created 2006-10-31
+'
+' for use with modified ND13 atmel flash
+' (INS 30 timer added, INS 0C trigger added, INS 0D glitches added)
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+Option Explicit     ' any used variables must be explicitly declared
+
+
+Sub Main()
+    Dim CS                      ' checksum for packet
+    Dim TestPacketPrefix        ' data sent before the payload of OpcodeTestPacket
+    Dim TestPacketPostfix       ' data sent after the payload of OpcodeTestPacket
+    Dim TestPacketPayload       ' data used as payload of OpcodeTestPacket (code part - loaded to RAM:0080)
+    Dim TestPacketPayloadLen
+    Dim OpcodeTestPacket        ' full packet to send to card to setup payload for execution
+    Dim OpcodeTestPacketLen     ' length of our opcode test packet
+    Dim A0FFPacket              ' packet used to trigger execution of the OpcodeTestPacket payload
+    Dim A0FFPacketLen           ' length of the A0FF packet
+    Dim GlitchPacket
+    Dim GlitchPacketLen
+    Dim PreGlitchDelay
+    Dim GlitchString
+    Dim GlitchVCC
+    Dim RespLen
+    Dim GlitchVCCMax
+    Dim GlitchVCCMin
+    Dim RetVal
+    Dim GotResponseA            ' last response gotten after test
+    Dim GotResponseX            ' last response gotten after test
+    Dim NoResponseA             ' the response byte that has no interest to us
+    Dim NoResponseX             ' the response byte that has no interest to us
+    Dim FreshStart              ' doing a fresh start of a run (reset VCC to max, display run info)
+
+''''''''''''''''''''''''''''''''''''''''''''''
+' set the VCC range
+    GlitchVCCMax = &h08
+    GlitchVCCMin = &h00
+
+
+' set the delay before glitch (to position glitch)
+    PreGlitchDelay = 28
+
+
+' the values of A and X for a normal (no-glitch) response - when these values are received, ==== is displayed onscreen
+    NoResponseA = &h1F
+    NoResponseX = &h00
+
+
+' set the glitchstring to use - 0D01=glitch, 200100=delay, 8A=rx 11 byte response
+    GlitchString = "0D 01 20 01 00 8A 00"
+
+
+''''''''''''''''''''''''''''''''''''''''''''''
+' data used as payload of OpcodeTestPacket (code part only - loaded to RAM:0080)
+
+' int clk test, rom 4BDB (preglitchdelay=28)
+    TestPacketPayload = "00 00 02 20 FB 81 9D 9D 9B CD 54 BD A6 00 20 10  00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  B7 02 B7 0D B7 06 01 00 02 20 FB AD D3 11 00 10 00 AE 05 5A 26 FD A6 AB AE CD 11 00 10 06 9D9D9D  CD4BDB  9D9D 10 00 11 00 10 00 11 00 10 00 CF 0D FC C7 0D FB A6 BB C7 0D FA CD 64 72 AA 03 CC 7A 95"
+'                                                                                                                                                                                                              ~~~~~         ~~~~~~
+'                                                                                                                                                                                                        set CLKREG          glitch target
+
+
+''''''''''''''''''''''''''''''''''''''''''''''
+' define A0FFPacket
+'    A0FFPacket = "21 00 07 A0 FF 00 00 02 48 00 33"         ' use A0FF
+    A0FFPacket = "21 00 07 A0 AD 00 00 02 48 00 61"         ' use A0AD
+
+
+''''''''''''''''''''''''''''''''''''''''''''''
+
+    GlitchVCC = GlitchVCCMax+1
+
+    GlitchPacketLen = 4 + (GetPacketLen(GlitchString)/2)
+
+    TestPacketPayloadLen = GetPacketLen(TestPacketPayload) / 2
+
+' data sent before the payload of OpcodeTestPacket
+    TestPacketPrefix = "21 00" & HexString(TestPacketPayloadLen+&hD,2) & "A0 CA 00 00" & HexString(TestPacketPayloadLen+7,2) & "04" & HexString(TestPacketPayloadLen+5,2) & "01 01 86 00 AA"
+
+' data sent after the payload of OpcodeTestPacket (LRC will be added automatically)
+    TestPacketPostfix = "02"
+
+' setup OpcodeTestPacket
+    OpcodeTestPacket = TestPacketPrefix + TestPacketPayload + TestPacketPostfix
+
+    OpcodeTestPacketLen = GetPacketLen(OpcodeTestPacket)    ' calculate length of the packet
+    OpcodeTestPacketLen = OpcodeTestPacketLen / 2
+    OpcodeTestPacketLen = OpcodeTestPacketLen + 1           ' adjust for checksum
+
+    CS = DoCheckSum(OpcodeTestPacket)
+    OpcodeTestPacket = OpcodeTestPacket + CS
+
+' setup A0FF packet
+    A0FFPacketLen = GetPacketLen(A0FFPacket)
+    A0FFPacketLen = A0FFPacketLen / 2
+
+
+''''''''''''''''''''''''''''''''''''''''''''''
+' hide comm
+    Sc.Verbose = False
+'    Sc.Verbose = True
+
+' reset card and receive ATR
+'    Sc.Reset                ' this doesn't seem to work to reset the atmel
+
+    Sc.Write("90")          ' read atmel version
+    Sc.Read(4)
+
+    RetVal = 1              ' default to single-shot mode
+    GotResponseA = NoResponseA
+    GotResponseX = NoResponseX
+
+    FreshStart = 1
+
+
+' main() loop
+    While 1
+
+' if last response received wasn't 0, then pop up dialog again, otherwise skip by
+        If( (RetVal = 3) and ( GotResponseA<>NoResponseA or GotResponseX<>NoResponseX ) ) Then
+            RetVal = 1
+        End If
+
+
+        Do
+            If( (RetVal <> 2) and (RetVal <>3) ) Then
+                RetVal = Sc.ButtonBox("Delay: " & PreGlitchDelay & VbCr & VbCr & "Select a test option", vbDefaultButton1 + vbQuestion, "Test options",  "Single", "Auto", "Seek", "Delay -", "Delay +")
+
+                If( RetVal = 2 or RetVal = 3) Then
+                    FreshStart = 1
+                End If
+            End If
+
+            If( RetVal = 0) Then        ' user pressed X
+                Exit Sub
+            End If
+
+            If( RetVal = 4 ) Then       ' user pressed Delay-
+                PreGlitchDelay = PreGlitchDelay - 1
+                FreshStart = 1
+            End If
+            If( RetVal = 5) Then        ' user pressed Delay+
+                PreGlitchDelay = PreGlitchDelay + 1
+                FreshStart = 1
+            End If
+
+        Loop While RetVal > 3
+
+
+        If( FreshStart <> 0 ) Then
+            GlitchVCC = GlitchVCCMax+1
+            FreshStart = 0
+
+            Sc.Print (VbCr & "Payload: " & TestPacketPayload )
+
+            Sc.Print( VbCr & "Delay: " & PreGlitchDelay & "   VCC Max: " & HexString(GlitchVCCMax,2) & "   VCC Min: " & HexString(GlitchVCCMin,2) )
+            Sc.Print( "   A: " & HexString(NoResponseA,2) & "   X: " & HexString(NoResponseX,2) & VbCr)
+        End If
+
+
+        Do
+            Sc.Write("07 10 01 01 01 03 9A 00")
+            Sc.Read(2)
+            RespLen = Sc.GetByte(1)
+            If(Sc.GetByte(1) > 0) Then  ' sb 27
+                Sc.Read( Sc.GetByte(1) )
+                RespLen = Sc.GetByte(0)
+            End If
+            If( RespLen <> &h3F ) Then
+                Sc.Reset
+            End If
+        Loop While RespLen <> &h3F
+
+' set baud rate = high speed (32 cycles per bit)
+        Sc.Write("04 15 0E 20 00")
+        Sc.Read(2)
+
+' send the OpcodeTestPacket
+        Sc.Write( HexString(4+OpcodeTestPacketLen, 2) & "60" & HexString(OpcodeTestPacketLen-1, 2) & OpcodeTestPacket & "86 00")
+        Sc.Read(2)
+        If(Sc.GetByte(1) > 0) Then  ' sb 7
+            Sc.Read( Sc.GetByte(1) )
+        End If
+
+' send the A0FFPacket (execute the OpcodeTestPacket)
+        Sc.Write( HexString(2+A0FFPacketLen, 2) & HexString(&h9F+A0FFPacketLen, 2) & A0FFPacket & "00")
+        Sc.Read(2)
+
+
+' delay so that the card is ready when the atmel does sync pulse on IO
+        Sc.Delay(20)
+
+
+' setup voltage level for glitch
+        GlitchVCC = GlitchVCC - 1
+        If(GlitchVCC < GlitchVCCMin) Then
+            GlitchVCC = GlitchVCCMax
+            Sc.Print( VbCr )        ' put a newline after every cycle through VCC range
+        End If
+
+' set VCC level for glitch
+        Sc.Write("B0" & HexString(GlitchVCC,2))
+
+
+'        Sc.Print("Del: " & PreGlitchDelay & "  VCC: " & HexString(GlitchVCC,2) & "  ")
+
+' exec INS 0C to trigger test function on card, synchronize and exec GlitchString after PreGlitchDelay
+        GlitchPacket = HexString(GlitchPacketLen, 2) & "0C 20" & HexString(PreGlitchDelay, 4) & GlitchString
+        Sc.Write(GlitchPacket)
+        Sc.Read(2)
+
+        RespLen = Sc.GetByte(1)
+        If(RespLen > 0) Then
+            Sc.Read( Sc.GetByte(1) )
+
+        End If
+
+        If( RespLen = &hB ) Then
+            GotResponseA = Sc.GetByte(6)
+            GotResponseX = Sc.GetByte(7)
+
+            If( (Sc.GetByte(5) = &hBB) and ( GotResponseA <> NoResponseA or GotResponseX <> NoResponseX ) ) Then
+                Sc.Print( HexString( GotResponseA, 2 ) & HexString( GotResponseX, 2 ) & " " )
+            End If                      ' print hex values of A and X if they are different from NoResponseA/NoResponseX
+            If( (Sc.GetByte(5) = &hBB) and GotResponseA = NoResponseA and GotResponseX = NoResponseX ) Then
+                Sc.Print( "==== " )     ' ==== is printed if the response indicates NoResponseA/NoResponseX
+            End If
+            If( (Sc.GetByte(5) <> &hBB) ) Then
+                Sc.Print( "---- " )     ' ---- is printed if the response is garbled (usually due to card reset)
+
+' don't stop after ----
+            GotResponseA = NoResponseA
+            GotResponseX = NoResponseX
+
+            End If
+        Else
+            Sc.Print("~~~~ ")           ' ~~~~ is printed if a reponse of 11 bytes was not received
+            GotResponseA = NoResponseA
+            GotResponseX = NoResponseX
+        End If
+    Wend
+
+End Sub
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+' the rest of this file is helper functions
+' ripped from ROM102_ND13_A0FF-INTERCEPT-autoVCC_20_Smart.xvb
+'
+' DoCheckSum(Packet) - calculate checksum for Packet
+' Hex2Dec(HexNumber) - takes a string with a hex value, returns decimal value
+' HexString(Number,Length) - convert Number to a string containing Length-digit hex value
+' GetPacketLen(Packet) - returns length (in characters) of Packet
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+' DoCheckSum(Packet) - calculate checksum for Packet
+'
+' ripped from ROM102_ND13_A0FF-INTERCEPT-autoVCC_20_Smart.xvb
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+Function DoCheckSum (Packet)
+ Dim Temp
+ Dim Length
+ Dim PK
+ Dim CheckSum
+ Dim i
+
+ PK=""
+
+ Length = Len(Packet)           'get packet length with spaces
+
+ for i = 1 to Length
+    Temp = Mid(Packet, i, 1)
+    if Temp <> " " then         'remove all spaces in packet
+        PK = PK + Temp
+    End if
+ next
+
+ Length = Len(PK)               'get packet length without spaces
+
+ CheckSum = 0
+
+ for i = 0 to Length
+     i=i+1                      'Simulate Step 2 in VB scripting
+     Temp = Mid(PK, i, 2)
+     CheckSum = CheckSum XOR Hex2Dec(Temp)  'Calc Checksum
+ next
+
+ DoCheckSum = HexString(CheckSum, 2) 'convert checksum to a hex strimg and return it to caller
+
+End Function
+
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+' Hex2Dec(HexNumber) - takes a string with a hex value, returns decimal value
+'
+' ripped from ROM102_ND13_A0FF-INTERCEPT-autoVCC_20_Smart.xvb
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+Function Hex2Dec(HexNumber)
+    ' This function takes 1 argument, a string containing a hex value of any digit length
+    ' and returns the decimal equivalent
+    Dim DecimalValue
+    Dim DigitCount
+    Dim Digit
+    Dim HexDigit
+
+    HexNumber = Replace(UCase(HexNumber), " ", "")
+    DigitCount = Len(HexNumber)
+
+    For Digit = 1 To DigitCount
+
+        HexDigit = Mid(HexNumber, Digit, 1)
+        If Asc(HexDigit) < 58 Then
+            DecimalValue = HexDigit * 16 ^ (DigitCount - Digit)
+        Else
+            DecimalValue = (Asc(HexDigit) - 55) * 16 ^ (DigitCount - Digit)
+        End If
+        Hex2Dec = Hex2Dec + DecimalValue
+    Next
+
+End Function
+
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+' HexString(Number,Length) - convert Number to a string containing Length-digit hex value
+'
+' ripped from ROM102_ND13_A0FF-INTERCEPT-autoVCC_20_Smart.xvb
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+Function HexString(Number,Length)
+    ' This function takes 2 arguments, a number and a length.  It converts the decimal
+    ' number given by the first argument to a Hexidecimal string with its length
+    ' equal to the number of digits given by the second argument
+    Dim RetVal
+    Dim CurLen
+    RetVal=Hex(Number)
+    CurLen=Len(RetVal)
+    If CurLen<Length Then
+        RetVal=String(Length-CurLen,"0") & RetVal
+    End If
+    HexString=RetVal
+End Function
+
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+' GetPacketLen(Packet) - returns length (in characters) of Packet
+' note: returned value = length in bytes * 2
+'
+' ripped from ROM102_ND13_A0FF-INTERCEPT-autoVCC_20_Smart.xvb
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+Function GetPacketLen(Packet)
+ Dim Length
+ Dim Temp
+ Dim PK
+ Dim i
+
+ PK = ""
+
+ Length = Len(Packet)                   'get packet length with spaces
+
+ for i = 1 to Length
+    Temp = Mid(Packet, i, 1)
+    if Temp <> " " then                 'remove all spaces in packet
+        PK = PK + Temp
+    End if
+ next
+
+ GetPacketLen = Len(PK)                 'return packet length without spaces
+
+End Function

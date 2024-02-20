@@ -1,0 +1,2188 @@
+' Results, comments, ideas, critisism, suggestions, theories, facts, All Welcome
+
+' This script attempts to help teach how a card normally operates.
+' You get out of this script... what you put in.... LITERALLY!!!
+' It doesn't wipe ppv's... or unmarry cards... or give tv...
+' This is a tool to be wisely used and learned from.
+
+' I think a big part of the key to writing to card is the order of events
+' HU Sandbox made the pc simulate a card.
+' PacketWriter is made to simulate an IRD (works with any smartcard really).
+' Study stream logs of a card/ird and attempt to figure out how flags get used.
+' Not all packets come from the sky, some get inserted to the stream by the IRD.
+
+' This script is made for all types of people, guru's and newbies alike.
+' The heart of this is the "CheckPacket" Feature which checks packets for integrity.
+' Start with "Beginner" SkillLevel until you understand everything that's going on.
+' Intermediate and better gets rid of popup if the packet checks out OK.
+' Advanced SkilLevel gives ability to override script's "CheckPacket Feature".
+' Expert SkillLevel is like Advanced but also gets rid of all text message prints.
+
+' Multiple INI files makes it easy to save different ways to run.
+' Like for example... One INI per card/ird combo (with packets made for it).
+' Or maybe one with ISO packets and another with UL4S packets (like the included).
+' Thee's no limit to number of INI files you can create, just name each different.
+
+' This is open source so people can learn from it.
+' Learn about writing XVB script files...
+' Learn about ISO packet structure...
+' Learn about card answers...
+' Learn about flags and triggers...
+' Learn about difference between True ISO Structure vs UL4S Phoenix Packets.
+' Compare and find similarities between P3 Instructions vs P4 Instructions.
+' Attempt to extract keys from your card that might be useful for other purposes.
+' Learn SOMETHING... ANYTHING... Good Luck in your adventure...
+' .... Then come back and help teach me, lol.
+
+' Without naming 100 guru's for snippets of knowledge (but thinking of you all),
+' I'd like to thank Stars for StarGlitch (I learned a lot of XVB tricks)
+' Also a thanks to the old P2 "Teaser Scripts" from 1998!!!!
+' Also a thanks to the author of P4PacketTest.xvb which gives UL4S P4 abilities.
+' And last but DEFINATELY not the least... A HUGE THANKS To all you loggers!!!!
+' KMAC Logger is probably one of the most useful programs ever created
+' If you've never logged, well there's no better time than the present to start
+
+' Ohh, and yes, the use of an INI file will probably set off your Antivirus.
+' It may give a "malicious script warning" because it's calling your .INI file".
+' It's NOT storing stuff in registry or calling out any ports... whathaveyou...
+' If you don't like it, then don't use an INI file, no big deal.
+' Just modify the script's user settings as desired instead.
+'
+' ##############################################################################
+' ##############################################################################
+' ###  P2-ATR : 3F 78 12 25 01 40 B0 03 4A 50 20 48 55                       ###
+' ###  P3-ATR : 3F 7F 13 25 03 38 B0 04 FF FF 4A 50 00 00 29 48 55 55 00 00  ###
+' ###  P4-ATR : 3F 78 13 25 03 40 B0 20 FF FF 4A 50 00                       ###
+' ###                                                                        ###
+' ###       Overriding Timeouts is highly discouraged for this script        ###
+' ###      Timeouts usually mean improper setup and/or needs resetting       ###
+' ###                                                                        ###
+' ###     Change "Prompt_Ini" below from "0" to a "1" to use an INI file     ###
+' ###     Or else just edit this file itself under "Start User Settings"     ###
+' ###                 Packet Writer Script Is Beginning Now                  ###
+' ##############################################################################
+' ##############################################################################
+
+Option Explicit
+  Const IniFilter = "PacketWriter Profile (*.ini)|*.ini"
+  Dim Prompt_Ini, WinExSetting, UL4S, ErrorPacket, ErrorInput, ErrorString, MenuPrompt, Choice, CChoice, Mainlist, Misclist
+  Dim MiscHead1, MiscData1, MiscHead2, MiscData2, MiscHead3, MiscData3, MiscHead4, MiscData4, MiscHead5, MiscData5
+  Dim MiscHead6, MiscData6, MiscHead7, MiscData7, MiscHead8, MiscData8, MiscHead9, MiscData9, MiscHead10, MiscData10
+  Dim MiscHead11, MiscData11, MiscHead12, MiscData12, MiscHead13, MiscData13, MiscHead14, MiscData14, MiscHead15, MiscData15
+  Dim MiscHead16, MiscData16, MiscHead17, MiscData17, MiscHead18, MiscData18, MiscHead19, MiscData19, MiscHead20, MiscData20
+  Dim MiscHead21, MiscData21, MiscHead22, MiscData22, MiscHead23, MiscData23, MiscHead24, MiscData24, MiscHead25, MiscData25
+  Dim MiscHead26, MiscData26, MiscHead27, MiscData27, MiscHead28, MiscData28, MiscHead29, MiscData29, MiscHead30, MiscData30
+  Dim MiscHead31, MiscData31, MiscHead32, MiscData32, MiscHead33, MiscData33, MiscHead34, MiscData34, MiscHead35, MiscData35
+  Dim MiscHead36, MiscData36, MiscHead37, MiscData37, MiscHead38, MiscData38, MiscHead39, MiscData39, MiscHead40, MiscData40
+  Dim DefaultBOXKEY, DefaultHeader, DefaultData, DefaultIns46Slot, DefaultIns46Flag, DefaultIns46Data, DefaultPassword
+  Dim DefaultRating, DefaultSpending, BOXKEY, Ins46Slot, Ins46Flag, Ins46Data, AnswerBUYPPV, DefaultMaxAttempts, MaxAttempts
+  Dim Spending, SpendingLimit, SpendingMsg, AnswerSpending, Rating, RatingLimit, RatingMsg, RatingDec, AnswerRating
+  Dim Password, PasswordLimit, PasswordMsg, AnswerPassword, AnswerIns4C, AnswerIns58, CMD91, RetVal, RetVal2, DigitStr, I
+  Dim SkillLevel, GotInput, GotData, GotATR, GotResponse, ATRAttempt, Counter1, Counter2, DAC, Delay1, Packet
+  Dim InsHeaderPrefix, InsHeader, InsHeaderSuffix, InsDataPrefix, InsData, InsDataSuffix, Loops56, Length56, Length5E
+  ErrorInput = VbCr & "Invalid Input!  Please Try Again" & VbCr & VbCr
+
+
+Prompt_Ini = 0   ' 0 = Use settings below     1 = Popup Box asks for .ini file
+
+If Prompt_Ini < 1 Then
+Sc.Print("Using settings in the script" & VbCr)
+
+' ##############################################################################
+' ##############################################################################
+' ###       Copy Below Settings to your .INI file if Prompt_Ini = 1          ###
+' ###                        Start User Settings                             ###
+' ##############################################################################
+' ##############################################################################
+
+UL4S                =  "0"     '0=ISO Menu    1=UL4S Menu
+WinExSetting        =  "0"     '0=No Change   1=ISO w/flush   2=ISO noflush  3=UL4S
+SkillLevel          =  "0"     '0=Beginner    1=Intermediate  2=Advanced   3=Expert
+DefaultBOXKEY       =  "00 00 00 00 00 00 00 00 00"
+                    '(9 Byte Boxkey is the IRD# this card is really married to)
+                    '(use a datalogger in IRD to obtain the Ins4c you need for that box)
+                    '(Be Careful... this can MARRY... NOT UNMARRY... Leave zero's if unsure)
+
+Delay1              =  "250"   'FA - 2nd Byte of UL4S Headers (250 Decimal Value)
+DefaultMaxAttempts  =  "10"    'Number of tries to send Ins w/ UL4S before aborting
+
+DefaultRating       =  "0d"    'Hex Rating Limit
+DefaultSpending     =  "03e8"  'Hex Spending Limit Per Purchase
+DefaultPassword     =  "0000"  'Hex Password from 0000-270F
+
+DefaultIns46Slot    =  "20"    'Default PPV Slot to toy with (NOT RECOMMENDED for P4)
+DefaultIns46Flag    =  "01"    'Default PPV Flag Byte (always starts as 01)
+DefaultIns46Data    =  "90 1f 80 03 01 94 0b 4d a5 02 04 06 8b 28 94 0f 01 8f 00 01 26 01 8f 67 08 26 cf a0 8c 42 15 c4 f4"
+                    '(INS46 Data is the CMD90 data for the PPV event your playing with)
+                    '(This WRITES PPV's... It does NOT WIPE them... Experiment with P3)
+
+DefaultHeader       =  "48 5e 00 0b 11"      'Default Header displayed for #99
+DefaultData         =  ""      'Default Data displayed for #99
+
+MiscHead1  = "48 82 7d 56 0d"
+MiscData1  = ""
+MiscHead2  = "48 82 88 95 19"
+MiscData2  = ""
+MiscHead3  = "48 88 54 7a 04"
+MiscData3  = ""
+MiscHead4  = "48 a2 de c0 1a"
+MiscData4  = ""
+MiscHead5  = "48 b0 e5 da 0c"
+MiscData5  = ""
+MiscHead6  = "48 b0 1e d2 16"
+MiscData6  = ""
+MiscHead7  = "48 ba c3 7a 07"
+MiscData7  = ""
+MiscHead8  = "48 c0 58 b2 15"
+MiscData8  = ""
+MiscHead9  = "48 c0 89 da 04"
+MiscData9  = ""
+MiscHead10 = "48 d0 b7 32 0a"
+MiscData10 = ""
+MiscHead11 = "48 d0 10 85 1c"
+MiscData11 = ""
+MiscHead12 = "48 d0 d0 96 1f"
+MiscData12 = ""
+MiscHead13 = "48 e0 3c 3b 07"
+MiscData13 = ""
+MiscHead14 = "48 f0 af bf 02 "
+MiscData14 = ""
+MiscHead15 = "48 86 7c 29 02"
+MiscData15 = "94 34"
+MiscHead16 = "48 86 dd 40 0c"
+MiscData16 = "00 00 00 00 00 00 00 00 00 00 00 00"
+MiscHead17 = "48 8e 0c 90 1c"
+MiscData17 = "00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00"
+MiscHead18 = "48 ae 75 67 1f"
+MiscData18 = "00 64 00 14 c4 00 3e 27 94 09 01 33 1d e7 74 bf 35 1e 2d 09 30 10 00 01 94 0c 42 14 02 81 e6"
+MiscHead19 = "48 ae 19 fb 1c"
+MiscData19 = "27 94 09 01 33 1d e7 74 bf 35 1e 2d 09 30 10 00 01 94 0c 42 14 02 81 e6 05 02 42 00"
+MiscHead20 = "48 c4 aa be 08"
+MiscData20 = "00 00 00 00 00 00 00 00"
+MiscHead21 = "48 cc 34 87 18"
+MiscData21 = "00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00"
+MiscHead22 = "48 bc 11 e0 01"
+MiscData22 = "05"
+MiscHead23 = "48 bc bb aa 01"
+MiscData23 = "47"
+MiscHead24 = "48 de d5 f7 0b"
+MiscData24 = "00 00 00 00 00 00 00 00 00 00 00"
+MiscHead25 = ""
+MiscData25 = ""
+MiscHead26 = ""
+MiscData26 = ""
+MiscHead27 = ""
+MiscData27 = ""
+MiscHead28 = ""
+MiscData28 = ""
+MiscHead29 = ""
+MiscData29 = ""
+MiscHead30 = ""
+MiscData30 = ""
+MiscHead31 = ""
+MiscData31 = ""
+MiscHead32 = ""
+MiscData32 = ""
+MiscHead33 = ""
+MiscData33 = ""
+MiscHead34 = ""
+MiscData34 = ""
+MiscHead35 = ""
+MiscData35 = ""
+MiscHead36 = ""
+MiscData36 = ""
+MiscHead37 = ""
+MiscData37 = ""
+MiscHead38 = ""
+MiscData38 = ""
+MiscHead39 = ""
+MiscData39 = ""
+MiscHead40 = ""
+MiscData40 = ""
+
+' ###############################################################################
+' ******************          End User Settings              ********************
+
+' ******************  Start INI and WinExp Settings Changes  ********************
+' ###############################################################################
+
+End If ' leave this here, it ends the "If Prompt_Ini" way up above
+If Prompt_Ini = 1 Then
+  Call Setup_INI()
+End If
+If WinExSetting = 1 Then
+  Call Setup_ISO()
+End If
+If WinExSetting = 2 Then
+  Call Setup_AltISO()
+End If
+If WinExSetting = 3 Then
+  Call Setup_UL4S()
+End If
+
+' ###############################################################################
+' *******************  End INI and WinExp Settings Changes  *********************
+
+' *******************            Start Main                 *********************
+' ###############################################################################
+
+Sub Main()
+Sc.Verbose = True
+Sc.Reset
+If Sc.Version < 4.5 Then
+  ErrorString = "You need version 4.5 or greater of WinExplorer to run this script"
+  Call Sc.MsgBox(ErrorString, vbCritical + vbOKOnly, "Newer version of WinExplorer needed")
+  Exit Sub
+End If
+If UL4S = 1 Then
+  MenuPrompt = VbCr & "This Part is Under Construction" & VbCr
+  MenuPrompt = MenuPrompt & "This functionality will probably expand more" & VbCr
+  MenuPrompt = MenuPrompt & "But I need feedback on header's/suffix's to do it" & VbCr & VbCr
+  MenuPrompt = MenuPrompt & "Are you POSITIVE your using a P4 Card and a UL4S Loader??" & VbCr & VbCr
+  Choice = Sc.MsgBox(MenuPrompt, VbYesNo + vbQuestion, "Ready For P4 UL4S ??")
+  Select Case Choice
+  Case VbYes
+    Call Main_UL4S()
+  Case Else
+  End Select
+  EXIT Sub
+End If
+Do
+  MenuPrompt = "Simulate IRD" & VbTab & VbTab & "Simulates the Starting Sequence of an IRD" & VbTab & "**** SAFE EXCEPT FOR INS 4C ****" & vbCr
+  MenuPrompt = MenuPrompt & "Send Freeview" & VbTab & VbTab & "Sends Freeview Ins 42/40/54 Packets" & VbTab & VbTab & "**** VERY SAFE ****" & vbCr
+  MenuPrompt = MenuPrompt & "Send BUY PPV" & VbTab & VbTab & "Send PPV BUY Ins 46/30" & VbTab & VbTab & VbTab & "**** EXTREMELY RISKY ****" & vbCr
+  MenuPrompt = MenuPrompt & "Custom List" & VbTab & VbTab & " Custom List of Miscellaneous INS Packets" & VbTab & "**** EXTREMELY RISKY ****" & vbCr
+  MenuPrompt = MenuPrompt & "Main List" & VbTab & VbTab & " Main List of Common INS Packets" & VbTab & VbTab & "**** MOSTLY LOW RISK ****" & vbCr
+  Choice = Sc.ButtonBox(MenuPrompt, VbInformation, "PacketWriter ISO : Select Operation  or  Click X to Exit ----->>>", "Simulate IRD", "Send Freeview", "Send BUY PPV", "Custom List", "Main List")
+Select Case Choice
+Case "0"
+  Exit Sub
+
+Case "1"
+  Call SimulateIRDstartup()
+
+Case "2"
+  Call SendFreeview()
+
+Case "3"
+  Call SendBUYPPV()
+
+Case "4"
+  Misclist = True
+  Do
+    Call MiscMenu()
+    If Not InsHeader = "" Then
+      Call SendInsISO(InsHeader,InsData)
+    End If
+  Loop While Misclist = True
+
+Case "5"
+  Mainlist = True
+  Do
+  Call ClearMem()
+  MenuPrompt = " 1: Send Ins 02      " & VbTab & "Read 8 Byte Card Version" & VbCr
+  MenuPrompt = MenuPrompt & " 2: Send Ins 06      " & VbTab & "Read Byte @ 2016 (for P3)" & VbCr
+  MenuPrompt = MenuPrompt & " 3: Send Ins 12      " & VbTab & "Read 1st 4 Bytes of EEprom" & VbCr
+  MenuPrompt = MenuPrompt & " 4: Send Ins 26      " & VbTab & "?? Some sort of Clear Packet ??" & VbCr
+  MenuPrompt = MenuPrompt & " 5: Send Ins 28      " & VbTab & "Read #00h #80h (for P3)" & VbCr
+  MenuPrompt = MenuPrompt & " 6: Send Ins 2c_00   " & VbTab & "Read Spending Limit" & VbCr
+  MenuPrompt = MenuPrompt & " 7: Send Ins 2C_80   " & VbTab & "Read Rating Limit" & VbCr
+  MenuPrompt = MenuPrompt & " 8: Send Ins 2E_00   " & VbTab & "Write Spending Limit" & VbCr
+  MenuPrompt = MenuPrompt & " 9: Send Ins 2E_80   " & VbTab & "Write Rating Limit" & VbCr
+  MenuPrompt = MenuPrompt & "10: Send Ins 38      " & VbTab & "?? Enable Card Swap ??" & VbCr
+  MenuPrompt = MenuPrompt & "11: Send Ins 48_00   " & VbTab & "Write Password" & VbCr
+  MenuPrompt = MenuPrompt & "12: Send Ins 4A      " & VbTab & "Generate a New Random Number  R  (do #15 after)" & VbCr
+  MenuPrompt = MenuPrompt & "13: Send Ins 4C      " & VbTab & "Send 9 byte IRD Box Key (DANGEROUS)" & VbCr
+  MenuPrompt = MenuPrompt & "14: Send Ins 52      " & VbTab & "Read Password" & VbCr
+  MenuPrompt = MenuPrompt & "15: Send Ins 54      " & VbTab & "Read Video Seed Answer" & VbCr
+  MenuPrompt = MenuPrompt & "16: Send Ins 56      " & VbTab & "Read Info From Swapper Card (auto calls #11 first)" & VbCr
+  MenuPrompt = MenuPrompt & "17: Send Ins 58      " & VbTab & "Read Card Information" & VbCr
+  MenuPrompt = MenuPrompt & "18: Send Ins 5A_10_01" & VbTab & "Read Current Value of  R^2 mod N  (do #16 OR #17 after)" & VbCr
+  MenuPrompt = MenuPrompt & "19: Send Ins 5A_10_02" & VbTab & "Read Current Value of  R" & VbCr
+  MenuPrompt = MenuPrompt & "20: Send Ins 5A_11_02" & VbTab & "Read Current Value of  R*S mod N" & VbCr
+  MenuPrompt = MenuPrompt & "21: Send Ins 5C_00   " & VbTab & "Read Status Bytes 00" & VbCr
+  MenuPrompt = MenuPrompt & "22: Send Ins 5C_01   " & VbTab & "Read Status Bytes 01" & VbCr
+  MenuPrompt = MenuPrompt & "23: Send Ins 5C_02   " & VbTab & "Read Status Bytes 02" & VbCr
+  MenuPrompt = MenuPrompt & "24: Send Ins 5c_03   " & VbTab & "Read Status Bytes 03" & VbCr
+  MenuPrompt = MenuPrompt & "25: Send Ins 5c_04   " & VbTab & "Read Status Bytes 04" & VbCr
+  MenuPrompt = MenuPrompt & "26: Send Ins 5c_05   " & VbTab & "Read Status Bytes 05" & VbCr
+  MenuPrompt = MenuPrompt & "27: Send Ins 5E_08_0B" & VbTab & "Read PPV Provider Info ??" & VbCr
+  MenuPrompt = MenuPrompt & "28: Send Ins 5E_08_0E" & VbTab & "Read 25 PPV Slots" & VbCr
+  MenuPrompt = MenuPrompt & "29: Send Ins 5E_28_04" & VbTab & "?? Hmmm, 2804 was Tier Update Routine for P3 ??" & VbCr & VbCr
+  MenuPrompt = MenuPrompt & "98: Send a Card Reset (Resets the ATR)" & VbCr
+  MenuPrompt = MenuPrompt & "99: Menu to Let You Type in ANY OTHER Packet" & VbCr & VbCr
+  MenuPrompt = MenuPrompt & "X:  Exit"
+  CChoice = Sc.InputBox(MenuPrompt, "Main Packet Headers List")
+  Select Case CChoice
+  Case "1"
+    SendIns02()
+  Case "2"
+    SendIns06()
+  Case "3"
+    SendIns12()
+  Case "4"
+    SendIns26()
+  Case "5"
+    SendIns28()
+  Case "6"
+    ReadSpending()
+  Case "7"
+    ReadRating()
+  Case "8"
+    WriteSpending()
+  Case "9"
+    WriteRating()
+  Case "10"
+    SendIns38()
+  Case "11"
+    WritePass()
+  Case "12"
+    SendIns4A()
+  Case "13"
+    SendIns4C()
+  Case "14"
+    ReadPass()
+  Case "15"
+    SendIns54()
+  Case "16"
+    SendIns56()
+  Case "17"
+    SendIns58()
+  Case "18"
+    SendIns5A_10_01()
+  Case "19"
+    SendIns5A_10_02()
+  Case "20"
+    SendIns5A_11_02()
+  Case "21"
+    SendIns5C_00()
+  Case "22"
+    SendIns5C_01()
+  Case "23"
+    SendIns5C_02()
+  Case "24"
+    SendIns5C_03()
+  Case "25"
+    SendIns5C_04()
+  Case "26"
+    SendIns5C_05()
+  Case "27"
+    ReadPPVprovider()
+  Case "28"
+    ReadPPVSlots()
+  Case "29"
+    SendUpdateTier()
+  Case "98"
+    Sc.Reset
+    Sc.Print(VbCr & "Card ATR Was Reset By User")
+  Case "99"
+    InsHeader=EnterHeader()
+    If Not InsHeader = "" Then
+      InsData=EnterData()
+      If Not InsHeader = "" Then
+        Call SendInsISO(InsHeader,InsData)
+      End If
+    End If
+  Case "X", "x", ""
+    Mainlist = False
+  Case Else
+    Sc.MsgBox(ErrorInput)
+  End Select
+  Loop While Mainlist = True
+
+Case Else
+End Select
+Loop While True = True
+End Sub
+
+' ###############################################################################
+' *******************              End Main                **********************
+
+' *******************     Open INI file if neccessary      **********************
+' ###############################################################################
+
+Sub Setup_INI()
+Dim FileName, fso, ts, x, regEx, buf
+  FileName = ""
+  FileName = Fs.FileOpEndialog(IniFilter, "Please Load your settings file", "PacketWriter.ini")
+  Set fso = CreateObject("Scripting.FileSystemObject")
+  Set ts = fso.OpenTextFile(FileName)
+  Do While Not ts.AtEndOfStream
+    buf = buf + ts.ReadLine + VbCr
+  loop
+  ts.Close
+  ExecuteGlobal buf
+  PW_Print(FileName & " Settings Loaded" & VbCr & VbCr)
+End Sub
+
+' ###############################################################################
+' *******************     Close INI file if neccessary     **********************
+
+' *******************   Start Device Setup if neccessary   **********************
+' ###############################################################################
+
+Sub Setup_ISO()
+    PW_Print("Changing WinExplorer Settings to ISO Mode (Flush Buffer Before Writes)" & VbCr)
+    Wx.BaudRate          = 38400    ' Baud Rate After ATR
+    Wx.ResetBaudRate     = 9600     ' Baud Rate to Get ATR
+    Wx.Parity            = 1        ' 0 = None, 1 = Odd, 2 = Even, 3 = Mark, 4 = Space
+    Wx.RxByteTimeout     = 200      ' In milliseconds
+    Sc.ByteDelay         = 40000    ' In milliseconds
+    Wx.ResetDelay        = 40000    ' In milliseconds
+    Wx.StopBits          = 2        ' 0 = 1 stop bit, 1 = 1.5 stop bits, 2 = 2 stop bits
+    Wx.ByteConvention    = 0        ' 0 = Inverse, 1 = Direct
+    Wx.FlushEchoByte     = 1        ' 0 = no flush, 1 = flush - A Phoenix interface will echo each byte transmitted.
+    Wx.FlushBeforeWrite  = 1        ' 0 = no flush, 1 = flush - Flush the receive buffer before each write to strip off Null bytes.
+    Wx.ResetMode         = 1        ' 0 = No Resets, 1 = ISO Reset (Expect a ATR), 2 = Device Reset (No ATR)
+    Wx.IgnoreTimeouts    = 0        ' 0 = Abort script on a receive timeout, 1 = Ignore all receive timeouts
+    Wx.ResetAfterTimeout = 1        ' 0 = Don't reset after a timeout, 1 = do a reset after a timeout  - Not used if "IgnoreTimeouts=0"
+    Wx.DTRControl        = 1        ' Initial state of DTR  0 = off, 1 = on
+    Wx.RTSControl        = 0        ' Initial state of RTS  0 = off, 1 = on
+    Wx.ResetLine         = 0        ' 0 = Toggle RTS for Reset, 1 = Toggle DTR for Reset
+    Wx.LogTransactions   = 0        ' 0 = Don't log transactions, 1 = log transactions
+    Wx.DisplayFuse       = 0        ' Display Fuse after script complete 0 = no, 1 = yes
+    Wx.DisplayUSW        = 0        ' Display USW after script complete 0 = no, 1 = yes
+End Sub
+
+Sub Setup_AltISO()
+    PW_Print("Changing WinExplorer Settings to Alternate ISO Mode (Don't Flush Buffer Before Writes)" & VbCr)
+    Wx.BaudRate          = 38400    ' Baud Rate After ATR
+    Wx.ResetBaudRate     = 9600     ' Baud Rate to Get ATR
+    Wx.Parity            = 1        ' 0 = None, 1 = Odd, 2 = Even, 3 = Mark, 4 = Space
+    Wx.RxByteTimeout     = 200      ' In milliseconds
+    Sc.ByteDelay         = 70000    ' In milliseconds
+    Wx.ResetDelay        = 40000    ' In milliseconds
+    Wx.StopBits          = 2        ' 0 = 1 stop bit, 1 = 1.5 stop bits, 2 = 2 stop bits
+    Wx.ByteConvention    = 0        ' 0 = Inverse, 1 = Direct
+    Wx.FlushEchoByte     = 1        ' 0 = no flush, 1 = flush - A Phoenix interface will echo each byte transmitted.
+    Wx.FlushBeforeWrite  = 0        ' 0 = no flush, 1 = flush - Flush the receive buffer before each write to strip off Null bytes.
+    Wx.ResetMode         = 1        ' 0 = No Resets, 1 = ISO Reset (Expect a ATR), 2 = Device Reset (No ATR)
+    Wx.IgnoreTimeouts    = 0        ' 0 = Abort script on a receive timeout, 1 = Ignore all receive timeouts
+    Wx.ResetAfterTimeout = 1        ' 0 = Don't reset after a timeout, 1 = do a reset after a timeout  - Not used if "IgnoreTimeouts=0"
+    Wx.DTRControl        = 1        ' Initial state of DTR  0 = off, 1 = on
+    Wx.RTSControl        = 0        ' Initial state of RTS  0 = off, 1 = on
+    Wx.ResetLine         = 0        ' 0 = Toggle RTS for Reset, 1 = Toggle DTR for Reset
+    Wx.LogTransactions   = 0        ' 0 = Don't log transactions, 1 = log transactions
+    Wx.DisplayFuse       = 0        ' Display Fuse after script complete 0 = no, 1 = yes
+    Wx.DisplayUSW        = 0        ' Display USW after script complete 0 = no, 1 = yes
+End Sub
+
+Sub Setup_UL4S()
+    PW_Print("Changing WinExplorer Settings to P4 UL4S Mode" & VbCr)
+    Wx.BaudRate          = 115200   ' Baud Rate After ATR
+    Wx.ResetBaudRate     = 115200   ' Baud Rate to Get ATR
+    Wx.Parity            = 0        ' 0 = None, 1 = Odd, 2 = Even, 3 = Mark, 4 = Space
+    Wx.RxByteTimeout     = 200      ' In milliseconds
+    Sc.ByteDelay         = 0        ' In microseconds
+    Wx.ResetDelay        = 0        ' In microseconds
+    Wx.StopBits          = 0        ' 0 = 1 stop bit, 1 = 1.5 stop bits, 2 = 2 stop bits
+    Wx.ByteConvention    = 1        ' 0 = Inverse, 1 = Direct
+    Wx.FlushEchoByte     = 0        ' 0 = no flush, 1 = flush - A Phoenix interface will echo each byte transmitted.
+    Wx.FlushBeforeWrite  = 0        ' 0 = no flush, 1 = flush - Flush the receive buffer before each write to strip off Null bytes.
+    Wx.ResetMode         = 2        ' 0 = No Resets, 1 = ISO Reset (Expect a ATR), 2 = Device Reset (No ATR)
+    Wx.IgnoreTimeouts    = 1        ' 0 = Abort script on a receive timeout, 1 = Ignore all receive timeouts
+    Wx.ResetAfterTimeout = 0        ' 0 = Don't reset after a timeout, 1 = do a reset after a timeout  - Not used if "IgnoreTimeouts=0"
+    Wx.DTRControl        = 0        ' Initial state of DTR  0 = off, 1 = on
+    Wx.RTSControl        = 1        ' Initial state of RTS  0 = off, 1 = on
+    Wx.ResetLine         = 1        ' 0 = Toggle RTS for Reset, 1 = Toggle DTR for Reset
+    Wx.LogTransactions   = 0        ' 0 = Don't log transactions, 1 = log transactions
+    Wx.DisplayFuse       = 0        ' Display Fuse after script complete 0 = no, 1 = yes
+    Wx.DisplayUSW        = 0        ' Display USW after script complete 0 = no, 1 = yes
+End Sub
+
+' ###############################################################################
+' *******************    End Device Setup if neccessary    **********************
+
+' *******************      Start Simulate IRD Startup      **********************
+' ###############################################################################
+
+Sub SimulateIRDstartup()
+  SendIns4C()
+  SendIns58()
+  ReadPass()
+  ReadPPVSlots()
+  SendIns26()
+  SendIns5C_05()
+  WriteRating()
+  WriteSpending()
+  WriteRating()
+  WriteSpending()
+  SendIns26()
+  SendIns5C_05()
+  SendIns4A()
+  SendIns5A_10_01()
+  SendIns5A_10_02()
+  SendIns26()
+  SendIns5C_05()
+  Call SendFreeview()
+End Sub
+
+' ###############################################################################
+' *******************      End Simulate IRD Startup        **********************
+
+' *******************        Start FreeView Packets        **********************
+' ###############################################################################
+
+Sub SendFreeview()
+SendIns5C_05()
+sc.write("48 42 00 00 54")
+PW_Print("  - Sending Freeview Packet Set #1")
+sc.read(1)
+PW_Print("              - Ack Byte")
+sc.write("90 52 40 03 75 a0 67 a9 df b7 8d 01 20 7c e1 5f 4f 49 f8 b8 4b 7f 8b 47 21 8f e9 f1 9b dc 9e d9 19 74 89 7f e7 a8 d2 00 c1 79 42 ba a5 71 5b 04 08 8e 79 fd 77 b3 1a a9 56 49 78 d8 c5 48 94 9b 0b f4 97 0b b2 7b d9 62 fc ec dc 08 39 b1 54 de 39 b3 b4 83")
+sc.read(2)
+sc.write("48 42 00 00 5a")
+sc.read(1)
+PW_Print("              - Ack Byte")
+sc.write("90 58 40 04 52 62 38 4f b9 00 a1 15 77 10 50 d7 d8 02 e3 cc 23 af 96 94 76 b8 bd ad b2 18 2f 06 09 53 84 cf 71 31 86 39 7e 18 80 58 7a d0 a0 45 fd 26 ad 30 ee 7d ee f8 4c 06 4d 0e 3f 72 5b 11 60 76 40 7e 59 a9 19 7a db 0b 58 49 cd 76 10 77 94 90 78 ac 05 1c 00 98 51 70")
+sc.read(2)
+sc.write("48 40 20 00 27")
+sc.read(1)
+PW_Print("              - Ack Byte")
+sc.write("94 09 01 45 2e d3 32 0e db ff 66 09 30 10 00 01 94 0c 41 fd 02 81 e6 05 02 42 00 00 cd 67 08 28 00 c0 40 28 00 c0 40")
+sc.read(2)
+sc.write("48 54 00 00 0d")
+sc.read(1)
+PW_Print("              - Ack Byte")
+sc.read(13)
+sc.read(2)
+PW_Print("           - Above was an Ins54 Video Seed")
+SendIns5C_05()
+sc.write("48 42 00 00 64")
+PW_Print("  - Sending Freeview Packet Set #2")
+sc.read(1)
+PW_Print("              - Ack Byte")
+sc.write("90 62 40 03 75 ae 83 03 f1 2c 98 30 21 cf 40 64 b6 7c 54 8e 21 16 a6 a1 58 c9 0f a0 c0 eb 8b 0f ac 7a 54 d4 f8 7f 99 8d 5a c7 b7 df d0 9c bf 37 18 5b e5 ee 96 65 82 68 b4 e5 f5 e7 ae 91 38 f5 10 46 51 db 06 32 ef cd 96 ec f0 76 58 24 86 a8 95 10 a4 c6 c0 d0 0f 3e e3 1a 3f 08 fa 4e 4f 78 a0 a0 d0 06")
+sc.read(2)
+sc.write("48 42 00 00 54")
+sc.read(1)
+PW_Print("              - Ack Byte")
+sc.write("90 52 40 03 75 82 03 13 b6 86 5f ea 1f a5 06 ad de 0e 97 9f 27 bc c1 1b b5 b0 a0 87 3a 31 98 22 ea 22 2c 1e 4d c2 e6 57 46 05 1b d6 20 83 52 7c d1 f6 ed 6d 8d 80 93 44 46 d6 2b ea f7 cc 85 fe 90 fd c2 7c 42 5e 49 af cc ed 49 08 d2 3e ce ee 7b 71 82 99")
+sc.read(2)
+sc.write("48 42 00 00 5a")
+sc.read(1)
+PW_Print("              - Ack Byte")
+sc.write("90 58 40 03 75 91 24 c1 51 69 38 c2 75 87 00 45 0d 93 36 ef 05 6c 9a 98 3a d8 40 ac 5a 45 f0 64 5c 96 19 fd a9 13 8f eb fc 6f 7b 5b ea 02 83 b5 be fc 10 bd 18 37 70 57 e1 34 94 f5 f9 c1 f8 ed 1f b5 fb 00 29 64 3e 8e 64 71 cc df fe 4f 24 5c 51 08 d2 b3 6a 56 b4 f0 04 10")
+sc.read(2)
+sc.write("48 42 00 00 5a")
+sc.read(1)
+PW_Print("              - Ack Byte")
+sc.write("90 58 40 04 91 94 f3 47 49 f6 58 ca e2 06 8a 89 14 ef 6a 0f b0 33 01 76 60 18 cf 1d cc d3 ac c1 37 ef a0 e5 83 8f 39 96 9f 89 c7 1b 2b fa 33 87 fe 50 5b 67 93 6a 72 6d 08 4e 0d f8 bf 3d fc fc ea bb b4 82 31 c4 6a 0f 1c e8 19 b5 71 01 8e ad 74 db 1c 03 35 3e 20 94 44 5c")
+sc.read(2)
+sc.write("48 40 20 00 27")
+sc.read(1)
+PW_Print("              - Ack Byte")
+sc.write("94 09 01 b4 1d 26 56 68 6d bf 0c 09 30 10 00 01 94 0c 42 03 02 81 e6 05 02 42 00 00 cd 67 08 28 00 c0 40 28 00 c0 40")
+sc.read(2)
+sc.write("48 54 00 00 0d")
+sc.read(1)
+PW_Print("              - Ack Byte")
+sc.read(13)
+sc.read(2)
+PW_Print("           - Above was an Ins54 Video Seed")
+SendIns5C_05()
+End Sub
+
+' ###############################################################################
+' *******************        End of FreeView Packets       **********************
+
+' ******************* Start of INS 46 & Ins 30 PPV Packets **********************
+' ###############################################################################
+
+Sub SendBUYPPV()
+Ins46Slot=EnterIns46Slot()
+If Ins46Slot="" Then
+EXIT Sub
+End If
+Ins46Flag=EnterIns46Flag()
+If Ins46Flag="" Then
+EXIT Sub
+End If
+Ins46Data=EnterIns46Data()
+If Ins46Data="" Then
+EXIT Sub
+End If
+RetVal=HexString(Len(Ins46Data)/2,2)
+sc.write("48 46 " & Ins46Slot & Ins46Flag & RetVal)
+PW_Print("  - Datastream Sends Ins 46 PPV Header")
+sc.read(1)
+PW_Print("              - Ack Byte")
+sc.write(Ins46Data)
+sc.read(2)
+PW_Print("           - x1x1 would mean Flag Open & Card Accepted Write")
+sc.write("48 30 " & Ins46Slot & Ins46Flag & " 0c")
+PW_Print("  - IRD Inserts Request for Ins 30 PPV Event Status")
+sc.read(1)
+PW_Print("              - Ack Byte")
+sc.read(1)
+PW_Print("              - ??80=Available/30=Purchased/36=Canceled/00=Not Available??")
+sc.read(2)
+PW_Print("           - ?? Unknown ??")
+sc.read(1)
+PW_Print("              - Rating of PPV Event")
+sc.read(2)
+PW_Print("           - $$$ Amount of PPV")
+sc.read(2)
+PW_Print("           - $$$ Amount of PPV")
+sc.read(4)
+PW_Print("     - ?? Unknown ??")
+sc.read(2)
+AnswerBUYPPV = CardAnswer()
+If Ins46Flag = 02 Then
+  sc.write("48 5c 00 00 04")
+  sc.read(1)
+  sc.read(4)
+  RetVal = GetByte(00)
+  RetVal2 = GetByte(01)
+  Length5E = GetByte(03)
+  sc.read(2)
+  sc.write("48 5e " & HexString(RetVal,2) & HexString(RetVal2,2) & HexString(Length5E,2))
+  sc.read(1)
+  sc.read(Length5E)
+  sc.read(2)
+End If
+If Ins46Flag = 10 Then
+  SendIns26()
+  SendIns5C_05()
+  SendIns5C_03()
+  ReadPPVSlots()
+End If
+If Ins46Flag = 20 Then
+  SendIns26()
+  SendIns5C_05()
+  SendIns5C_03()
+  ReadPPVSlots()
+End If
+End Sub
+
+' ###############################################################################
+' *******************  End of INS 46 & Ins 30 PPV Packets  **********************
+
+' *******************  Start of Miscellaneous Packet Menu  **********************
+' ###############################################################################
+
+Sub MiscMenu()
+  Call ClearMem()
+  MenuPrompt = " 1: Send    " & MiscHead1 & VbTab & VbTab & "21: Send    " & MiscHead21 & VbCr
+  MenuPrompt = MenuPrompt & " 2: Send    " & MiscHead2 & VbTab & VbTab & "22: Send    " & MiscHead22 & VbCr
+  MenuPrompt = MenuPrompt & " 3: Send    " & MiscHead3 & VbTab & VbTab & "23: Send    " & MiscHead23 & VbCr
+  MenuPrompt = MenuPrompt & " 4: Send    " & MiscHead4 & VbTab & VbTab & "24: Send    " & MiscHead24 & VbCr
+  MenuPrompt = MenuPrompt & " 5: Send    " & MiscHead5 & VbTab & VbTab & "25: Send    " & MiscHead25 & VbCr
+  MenuPrompt = MenuPrompt & " 6: Send    " & MiscHead6 & VbTab & VbTab & "26: Send    " & MiscHead26 & VbCr
+  MenuPrompt = MenuPrompt & " 7: Send    " & MiscHead7 & VbTab & VbTab & "27: Send    " & MiscHead27 & VbCr
+  MenuPrompt = MenuPrompt & " 8: Send    " & MiscHead8 & VbTab & VbTab & "28: Send    " & MiscHead28 & VbCr
+  MenuPrompt = MenuPrompt & " 9: Send    " & MiscHead9 & VbTab & VbTab & "29: Send    " & MiscHead29 & VbCr
+  MenuPrompt = MenuPrompt & "10: Send    " & MiscHead10 & VbTab & VbTab & "30: Send    " & MiscHead30 & VbCr
+  MenuPrompt = MenuPrompt & "11: Send    " & MiscHead11 & VbTab & VbTab & "31: Send    " & MiscHead31 & VbCr
+  MenuPrompt = MenuPrompt & "12: Send    " & MiscHead12 & VbTab & VbTab & "32: Send    " & MiscHead32 & VbCr
+  MenuPrompt = MenuPrompt & "13: Send    " & MiscHead13 & VbTab & VbTab & "33: Send    " & MiscHead33 & VbCr
+  MenuPrompt = MenuPrompt & "14: Send    " & MiscHead14 & VbTab & VbTab & "34: Send    " & MiscHead34 & VbCr
+  MenuPrompt = MenuPrompt & "15: Send    " & MiscHead15 & VbTab & VbTab & "35: Send    " & MiscHead35 & VbCr
+  MenuPrompt = MenuPrompt & "16: Send    " & MiscHead16 & VbTab & VbTab & "36: Send    " & MiscHead36 & VbCr
+  MenuPrompt = MenuPrompt & "17: Send    " & MiscHead17 & VbTab & VbTab & "37: Send    " & MiscHead37 & VbCr
+  MenuPrompt = MenuPrompt & "18: Send    " & MiscHead18 & VbTab & VbTab & "38: Send    " & MiscHead38 & VbCr
+  MenuPrompt = MenuPrompt & "19: Send    " & MiscHead19 & VbTab & VbTab & "39: Send    " & MiscHead39 & VbCr
+  MenuPrompt = MenuPrompt & "20: Send    " & MiscHead20 & VbTab & VbTab & "40: Send    " & MiscHead40 & VbCr & VbCr
+  MenuPrompt = MenuPrompt & "98: Send a Card Reset (Resets the ATR)" & VbCr
+  MenuPrompt = MenuPrompt & "99: Menu to Let You Type in ANY OTHER Packet" & VbCr & VbCr
+  MenuPrompt = MenuPrompt & " X: Exit" & VbCr
+  CChoice = Sc.InputBox(MenuPrompt, "Miscellaneous Custom Headers List")
+  Select Case CChoice
+  Case "1"
+    InsHeader=MiscHead1
+    InsData=MiscData1
+  Case "2"
+    InsHeader=MiscHead2
+    InsData=MiscData2
+  Case "3"
+    InsHeader=MiscHead3
+    InsData=MiscData3
+  Case "4"
+    InsHeader=MiscHead4
+    InsData=MiscData4
+  Case "5"
+    InsHeader=MiscHead5
+    InsData=MiscData5
+  Case "6"
+    InsHeader=MiscHead6
+    InsData=MiscData6
+  Case "7"
+    InsHeader=MiscHead7
+    InsData=MiscData7
+  Case "8"
+    InsHeader=MiscHead8
+    InsData=MiscData8
+  Case "9"
+    InsHeader=MiscHead9
+    InsData=MiscData9
+  Case "10"
+    InsHeader=MiscHead10
+    InsData=MiscData10
+  Case "11"
+    InsHeader=MiscHead11
+    InsData=MiscData11
+  Case "12"
+    InsHeader=MiscHead12
+    InsData=MiscData12
+  Case "13"
+    InsHeader=MiscHead13
+    InsData=MiscData13
+  Case "14"
+    InsHeader=MiscHead14
+    InsData=MiscData14
+  Case "15"
+    InsHeader=MiscHead15
+    InsData=MiscData15
+  Case "16"
+    InsHeader=MiscHead16
+    InsData=MiscData16
+  Case "17"
+    InsHeader=MiscHead17
+    InsData=MiscData17
+  Case "18"
+    InsHeader=MiscHead18
+    InsData=MiscData18
+  Case "19"
+    InsHeader=MiscHead19
+    InsData=MiscData19
+  Case "20"
+    InsHeader=MiscHead20
+    InsData=MiscData20
+  Case "21"
+    InsHeader=MiscHead21
+    InsData=MiscData21
+  Case "22"
+    InsHeader=MiscHead22
+    InsData=MiscData22
+  Case "23"
+    InsHeader=MiscHead23
+    InsData=MiscData23
+  Case "24"
+    InsHeader=MiscHead24
+    InsData=MiscData24
+  Case "25"
+    InsHeader=MiscHead25
+    InsData=MiscData25
+  Case "26"
+    InsHeader=MiscHead26
+    InsData=MiscData26
+  Case "27"
+    InsHeader=MiscHead27
+    InsData=MiscData27
+  Case "28"
+    InsHeader=MiscHead28
+    InsData=MiscData28
+  Case "29"
+    InsHeader=MiscHead29
+    InsData=MiscData29
+  Case "30"
+    InsHeader=MiscHead30
+    InsData=MiscData30
+  Case "31"
+    InsHeader=MiscHead31
+    InsData=MiscData31
+  Case "32"
+    InsHeader=MiscHead32
+    InsData=MiscData32
+  Case "33"
+    InsHeader=MiscHead33
+    InsData=MiscData33
+  Case "34"
+    InsHeader=MiscHead34
+    InsData=MiscData34
+  Case "35"
+    InsHeader=MiscHead35
+    InsData=MiscData35
+  Case "36"
+    InsHeader=MiscHead36
+    InsData=MiscData36
+  Case "37"
+    InsHeader=MiscHead37
+    InsData=MiscData37
+  Case "38"
+    InsHeader=MiscHead38
+    InsData=MiscData38
+  Case "39"
+    InsHeader=MiscHead39
+    InsData=MiscData39
+  Case "40"
+    InsHeader=MiscHead40
+    InsData=MiscData40
+  Case "98"
+    Sc.Reset
+    Sc.Print(VbCr & "Card ATR Was Reset By User")
+  Case "99"
+    InsHeader=EnterHeader()
+    If Not InsHeader = "" Then
+      InsData=EnterData()
+    End If
+  Case "X", "x", ""
+    Misclist = False
+  Case Else
+    Sc.MsgBox(ErrorInput)
+  End Select
+End Sub
+
+' ###############################################################################
+' *******************   End of Miscellaneous Packet Menu   **********************
+
+' *******************  Start of Main List's Parsed Packets **********************
+' ###############################################################################
+
+Function SendIns02()
+Sc.Write("48 02 00 00 08")
+PW_Print("  - Read 8 Byte Card Version")
+Sc.Read(1)
+PW_Print("              - Ack Byte")
+Sc.Read(8)
+Sc.Read(2)
+End Function
+
+
+Function SendIns06()
+Sc.Write("48 06 00 00 01")
+PW_Print("  - Read Byte @ 2016 (for P3)")
+Sc.Read(1)
+PW_Print("              - Ack Byte")
+Sc.Read(1)
+Sc.Read(2)
+End Function
+
+
+Function SendIns12()
+Sc.Write("48 12 00 00 08")
+PW_Print("  - ?? Read 1st 8 Bytes of EEprom ??")
+Sc.Read(1)
+PW_Print("              - Ack Byte")
+Sc.Read(8)
+Sc.Read(2)
+End Function
+
+
+Function SendIns26()
+sc.write("48 26 00 00 00")
+PW_Print("  - ?? Some sort of Clear Packet ??")
+sc.read(2)
+PW_Print("           - Notice Packet Lengths of 00 Don't Return Ack Byte")
+End Function
+
+
+Function SendIns28()
+Sc.Write("48 28 00 00 02")
+PW_Print("  - Read #00h #80h (for P3)")
+Sc.Read(1)
+PW_Print("              - Ack Byte")
+Sc.Read(2)
+Sc.Read(2)
+End Function
+
+
+Function ReadSpending()
+Sc.Write("48 2c 00 00 02")
+PW_Print("  - Read Spending Limit")
+Sc.Read(1)
+PW_Print("              - Ack Byte")
+Sc.Read(2)
+SpendingMsg = ((Sc.GetByte(00)* &H100) + (Sc.GetByte(01)))/100
+PW_Print("           - Spending Limit was : $") & (SpendingMsg) & " Per Event"
+Sc.Read(2)
+End Function
+
+
+Function ReadRating()
+Sc.Write("48 2c 80 00 02")
+PW_Print("  - Read Rating Limit")
+Sc.Read(1)
+PW_Print("              - Ack Byte")
+Sc.Read(2)
+RatingDec = Sc.GetByte(00)
+Select Case RatingDec
+Case "0"
+RatingMsg = "All Locked"
+Case "1"
+RatingMsg = "NR"
+Case "2"
+RatingMsg = "G"
+Case "4"
+RatingMsg = "PG"
+Case "6"
+RatingMsg = "PG-13"
+Case "7"
+RatingMsg = "NR-Content"
+Case "9"
+RatingMsg = "R"
+Case "11"
+RatingMsg = "NR-Mature"
+Case "13"
+RatingMsg = "NC-17"
+Case Else
+RatingMsg = "Invalid Value!!!"
+End Select
+PW_Print("           - Rating Limit was : ") & (RatingMsg)
+Sc.Read(2)
+End Function
+
+
+Function WriteSpending()
+SpendingLimit = EnterSpending()
+If SpendingLimit = "" Then
+EXIT Function
+End if
+Sc.Write("48 2e 00 00 02")
+PW_Print("  - Write Spending Limit")
+Sc.Read(1)
+PW_Print("              - Ack Byte")
+Sc.Write(SpendingLimit)
+PW_Print("           - Spending Limit is now : $") & (SpendingMsg) & " Per Event"
+Sc.Read(2)
+AnswerSpending = CardAnswer()
+End Function
+
+
+Function WriteRating()
+RatingLimit = EnterRating()
+If RatingLimit = "" Then
+EXIT Function
+End if
+Sc.Write("48 2e 80 00 02")
+PW_Print("  - Write Rating Limit")
+Sc.Read(1)
+PW_Print("              - Ack Byte")
+Sc.Write(RatingLimit)
+PW_Print("           - Rating Limit is now : ") & (RatingMsg)
+Sc.Read(2)
+AnswerRating = CardAnswer()
+End Function
+
+
+Function SendIns38()
+Sc.Write("48 38 00 00 02")
+Sc.Delay(500)
+PW_Print("  - Enable Card Swap")
+Sc.Read(1)
+PW_Print("              - Ack Byte")
+Sc.Read(2)
+PW_Print("           - Param 2 and Length for Ins 56")
+Loops56 = GetByte(00)
+Length56 = GetByte(01)
+Sc.Read(2)
+End Function
+
+
+Function WritePass()
+PasswordLimit = EnterPassword()
+If PasswordLimit = "" Then
+EXIT Function
+End If
+Sc.Write("48 48 00 00 04")
+PW_Print("  - Write Password")
+Sc.Read(1)
+PW_Print("              - Ack Byte")
+Sc.Write(PasswordLimit)
+PW_Print("     - Password is now : ") & (PasswordMsg)
+Sc.Read(2)
+AnswerPassword = CardAnswer()
+End Function
+
+
+Function SendIns4A()
+Sc.Write("48 4a 10 01 01")
+PW_Print("  - Generate a New Random Number  R")
+Sc.Read(1)
+PW_Print("              - Ack Byte")
+Sc.Write("01")
+PW_Print("              - 3rd bit 1=select SecondaryZKT , 3rd bit 0=select PrimaryZKT")
+Sc.Read(2)
+End Function
+
+
+Function SendIns4C()
+BOXKEY = EnterBOXKEY()
+If BOXKEY="" Then
+Exit Function
+End If
+Sc.Write("48 4c 00 00 09")
+PW_Print("  - Send 9 Byte IRD Box Key (DANGEROUS)")
+Sc.Read(1)
+PW_Print("              - Ack Byte")
+Sc.Write(BOXKEY)
+Sc.Read(2)
+AnswerIns4C = CardAnswer()
+End Function
+
+
+Function ReadPass()
+Sc.Write("48 52 00 00 04")
+PW_Print("  - Read Password")
+Sc.Read(1)
+PW_Print("              - Ack Byte")
+Sc.Read(4)
+PasswordMsg = (Sc.GetByte(02)* &h100) + Sc.GetByte(03)
+PW_Print(("     - Password was : ") & (PasswordMsg))
+Sc.Read(2)
+End Function
+
+
+Function SendIns54()
+Sc.Write("48 54 00 00 0d")
+PW_Print("  - Read Video Seed Answer")
+Sc.Read(1)
+PW_Print("              - Ack Byte")
+Sc.Read(13)
+Sc.Read(2)
+End Function
+
+
+Function SendIns56()
+RetVal = 0
+Call SendIns38()
+Do
+  Sc.Write("48 56 " & HexString(RetVal,2) & HexString(Loops56,2) & HexString(Length56,2))
+  Sc.Delay(500)
+  PW_Print("  - Read Info From First of 2 Swap Cards")
+  Sc.Read(1)
+  PW_Print("              - Ack Byte")
+  Sc.Read(Length56)
+  Sc.Read(2)
+  RetVal = RetVal + 1
+Loop Until RetVal >= Loops56 + 1
+End Function
+
+
+Function SendIns58()
+Sc.Write("48 58 00 00 17")
+Sc.Delay(500)
+PW_Print("  - Read Card Information")
+Sc.Read(1)
+PW_Print("              - Ack Byte")
+Sc.Read(1)
+PW_Print("              - Fuse Byte")
+Sc.Read(4)
+PW_Print("     - Card ID# in Hex")
+Sc.Read(1)
+PW_Print("              - (P3 used to call CEEF)")
+Sc.Read(4)
+PW_Print("     - ?? Changes Often ??")
+Sc.Read(1)
+PW_Print("              - Time Zone")
+Sc.Read(1)
+PW_Print("              - Byte at Ram 0000")
+Sc.Read(1)
+PW_Print("              - Guide Byte")
+Sc.Read(4)
+PW_Print("     - Future Replacement CAM ID#")
+Sc.Read(4)
+PW_Print("     - Old CAM ID# This Card Replaced")
+Sc.Read(2)
+PW_Print("           - ?? Unknown ??")
+Sc.Read(2)
+AnswerIns58 = CardAnswer()
+End Function
+
+
+Function SendIns5A_10_01()
+Sc.Write("48 5a 10 01 08")
+PW_Print("  - Read Current Value of  R^2 mod N (hashed)")
+Sc.Read(1)
+PW_Print("              - Ack Byte")
+Sc.Delay(1000)
+Sc.Read(8)
+Sc.Read(2)
+End Function
+
+
+Function SendIns5A_10_02()
+Sc.Write("48 5a 10 02 40")
+PW_Print("  - Read Current Value of  R")
+Sc.Read(1)
+PW_Print("              - Ack Byte")
+Sc.Delay(1000)
+Sc.Read(16)
+Sc.Read(16)
+Sc.Read(16)
+Sc.Read(16)
+Sc.Read(2)
+End Function
+
+
+Function SendIns5A_11_02()
+Sc.Write("48 5a 11 02 40")
+PW_Print("  - Read Current Value of  R*S mod N")
+Sc.Read(1)
+PW_Print("              - Ack Byte")
+Sc.Delay(1000)
+Sc.Read(16)
+Sc.Read(16)
+Sc.Read(16)
+Sc.Read(16)
+Sc.Read(2)
+End Function
+
+
+Function SendIns5C_00()
+Sc.Write("48 5c 00 00 04")
+PW_Print("  - Read Status Bytes 00")
+Sc.Read(1)
+PW_Print("              - Ack Byte")
+Sc.Read(4)
+Sc.Read(2)
+End Function
+
+
+Function SendIns5C_01()
+Sc.Write("48 5c 01 00 04")
+PW_Print("  - Read Status Bytes 01")
+Sc.Read(1)
+PW_Print("              - Ack Byte")
+Sc.Read(4)
+Sc.Read(2)
+End Function
+
+
+Function SendIns5C_02()
+Sc.Write("48 5c 02 00 04")
+PW_Print("  - Read Status Bytes 02")
+Sc.Read(1)
+PW_Print("              - Ack Byte")
+Sc.Read(4)
+Sc.Read(2)
+End Function
+
+
+Function SendIns5C_03()
+Sc.Write("48 5c 03 00 04")
+PW_Print("  - Read Status Bytes 03")
+Sc.Read(1)
+PW_Print("              - Ack Byte")
+Sc.Read(4)
+Sc.Read(2)
+End Function
+
+
+Function SendIns5C_04()
+Sc.Write("48 5c 04 00 04")
+PW_Print("  - Read Status Bytes 04")
+Sc.Read(1)
+PW_Print("              - Ack Byte")
+Sc.Read(4)
+Sc.Read(2)
+End Function
+
+
+Function SendIns5C_05()
+Sc.Write("48 5c 05 00 04")
+PW_Print("  - Read Status Bytes 05")
+Sc.Read(1)
+PW_Print("              - Ack Byte")
+Sc.Read(4)
+Sc.Read(2)
+End Function
+
+
+Function ReadPPVprovider()
+Sc.Write("48 5e 00 0b 11")
+PW_Print("  - Reading PPV Provider Info (IRD Dialout #'s for P3)")
+Sc.Read(1)
+PW_Print("              - Ack Byte")
+Sc.Read(1)
+Sc.Read(8)
+Sc.Read(8)
+Sc.Read(2)
+End Function
+
+
+Function ReadPPVSlots()
+Sc.Write("48 5e 08 0e 4b")
+Sc.Delay(500)
+PW_Print("  - Reading 25 PPV Slots")
+Sc.Read(1)
+PW_Print("              - Ack Byte")
+Sc.Read(3)
+Sc.Read(3)
+Sc.Read(3)
+Sc.Read(3)
+Sc.Read(3)
+Sc.Read(3)
+Sc.Read(3)
+Sc.Read(3)
+Sc.Read(3)
+Sc.Read(3)
+Sc.Read(3)
+Sc.Read(3)
+Sc.Read(3)
+Sc.Read(3)
+Sc.Read(3)
+Sc.Read(3)
+Sc.Read(3)
+Sc.Read(3)
+Sc.Read(3)
+Sc.Read(3)
+Sc.Read(3)
+Sc.Read(3)
+Sc.Read(3)
+Sc.Read(3)
+Sc.Read(3)
+Sc.Read(2)
+End Function
+
+
+Function SendUpdateTier()
+CMD91 = "28 04"
+sc.write("48 5E " & CMD91 & " 06")
+PW_Print("  - Hmmm, 2804 was Tier Update Routine for P3")
+sc.read(1)
+PW_Print("              - Ack Byte")
+sc.read(1)
+PW_Print("              - ?? Some Flag ??")
+sc.read(2)
+PW_Print("           - ?? Tier ??")
+sc.read(2)
+PW_Print("           - ?? Date ??")
+sc.read(1)
+PW_Print("              - ?? Some Flag ??")
+sc.read(2)
+PW_Print("           - Card Answer")
+End Function
+
+' ###############################################################################
+' *******************  End of Main List's Parsed Packets   **********************
+
+' ******************  Start of "P4PacketTest.XVB" for UL4S  *********************
+' ###############################################################################
+
+Sub Main_UL4S()
+  Sc.Verbose = true
+  If DefaultMaxAttempts > 0 Then
+    MaxAttempts = DefaultMaxAttempts
+  Else
+    MaxAttempts = 10
+  End If
+  ATRattempt = 0
+  Counter1 = 0
+  Counter2 = Counter1
+  Sc.Write("A0")      ' Turn the LED off if it is on
+  PW_Print("              - Resetting Loader")
+  Sc.Write("020200")  ' Power down the card
+  PW_Print("        - Resetting Card")
+  Sc.Delay(300)       ' Wait about 1 second
+  Sc.Reset()          ' Power up the card
+  RetVal = Sc.Flush() ' Flush the receive buffer
+  Call GetATR()
+  Do
+    If GotATR = "Wrong" Then
+      GotATR = ""
+      RetVal=Sc.MsgBox(ErrorString, vbCritical)
+      Sc.Print(ErrorString)
+      PW_Print(VbCr & "Shutting Down Card and Loader")
+      sc.write ("A0")
+      sc.write("02 02 00")
+      sc.read(02)
+      sc.flush
+      EXIT Sub
+    End If
+    Call ClearMem()
+    MenuPrompt = " 1: Send INS 02       - " & vbCr
+    MenuPrompt = MenuPrompt & " 2: Send INS 12       - " & vbCr
+    MenuPrompt = MenuPrompt & " 3: Send INS 2C 00  - Read Spending Limit" & vbCr
+    MenuPrompt = MenuPrompt & " 4: Send INS 2C 80  - Read Rating Limit" & vbCr
+    MenuPrompt = MenuPrompt & " 5: Send INS 2E 00  - Write Sending Limit" & vbCr
+    MenuPrompt = MenuPrompt & " 6: Send INS 2E 80  - Write Rating Limit" & vbCr
+    MenuPrompt = MenuPrompt & " 7: Send INS 48       - Write Password" & vbCr
+    MenuPrompt = MenuPrompt & " 8: Send INS 4C       - Write BOXKEY" & vbCr
+    MenuPrompt = MenuPrompt & " 9: Send INS 52       - Read Password" & vbCr
+    MenuPrompt = MenuPrompt & "10: Send INS 58       - Read Card Info" & vbCr & vbCr
+    MenuPrompt = MenuPrompt & "98: Custom List of Miscellaneous INS Packets" & vbCr
+    MenuPrompt = MenuPrompt & "99: Menu to Let You Type in ANY OTHER Packet" & vbCr & vbCr
+    MenuPrompt = MenuPrompt & " X: Exit" & vbCr
+    Choice = Sc.InputBox(MenuPrompt, "PacketWriter UL4S for P4")
+    Select Case Choice
+    Case "1"
+      Call INS02()
+    Case "2"
+      Call INS12()
+    Case "3"
+      Call INS2C00()
+    Case "4"
+      Call INS2C80()
+    Case "5"
+      Call INS2E00()
+    Case "6"
+      Call INS2E80()
+    Case "7"
+      Call INS48()
+    Case "8"
+      Call INS4C()
+    Case "9"
+      Call INS52()
+    Case "10"
+      Call INS58()
+    Case "98"
+      Misclist = True
+      Do
+        Call MiscMenu()
+        If Not InsHeader = "" Then
+          Call SendInsUL4S()
+        End If
+      Loop While Misclist = True
+      InsHeader = ""
+    Case "99"
+      InsHeader=EnterHeader()
+      If Not InsHeader = "" Then
+        InsData=EnterData()
+      End If
+    Case "X", "x", ""
+      PW_Print(VbCr & "Shutting Down Card and Loader")
+      sc.write ("A0")
+      sc.write("02 02 00")
+      sc.read(02)
+      sc.flush
+      EXIT Sub
+    Case Else
+      Sc.MsgBox(ErrorInput)
+    End Select
+    If Not InsHeader = "" Then
+      Call SendInsUL4S()
+    End If
+  Loop While True = True
+End Sub
+
+
+Sub GetATR()
+  Do
+    GotATR = False
+    DAC = INT(RND * &h03) + &h96         ' 80 - A0 hex
+    Counter2 = Counter2 + 1
+    If Counter2 >= Counter1 + MaxAttempts  Then
+      RetVal=Sc.MsgBox("Shutting Down Card after " & MaxAttempts & " Failed Attempts in a Row")
+      EXIT Sub
+    End If
+    Sc.Verbose = False
+    sc.delay(80)
+    Sc.Write("D0")
+    sc.read(02)
+    Sc.Write("E0")
+    do
+      sc.delay(80)
+      sc.read(sc.bytesinbuffer)
+    loop until sc.bytesinbuffer = 0
+    Sc.Write("80")
+    sc.read(01)
+    Sc.Write("90")
+    sc.read(04)
+    sc.write("A1")
+    sc.flush
+    Sc.Verbose = True
+    ATRattempt = ATRattempt + 1
+    PW_Print(VbCr & "ATR Attempt #" & ATRattempt)
+    sc.write("B0 " & HexString(DAC,2))
+    PW_Print("           - Using DAC : " & DAC)
+    Sc.Write("0A100E1001032002838C00")                ' this command receives the ATR of an P4 card
+    Sc.Delay(500)
+    If Sc.BytesInBuffer >1 then
+      Sc.Read(&h02)
+      RetVal2 = Sc.BytesInBuffer
+      Sc.Read(RetVal2)
+      If RetVal2 >= 13 Then
+        RetVal2 = RetVal2 - 1
+        Retval = ""
+        For I = 0 to RetVal2
+          RetVal = RetVal & HexString(Sc.GetByte(I),2)
+        NEXT
+        RetVal = Replace(UCase(RetVal), " ", "")
+        If Mid(RetVal, 1, 2) = "3F" And Mid(RetVal, 7, 2) = "25" And Mid(RetVal, 13, 2) = "B0" then
+          If Mid(RetVal, 3, 4) = "7812" And Mid(RetVal, 9, 4) = "0140" And Mid(RetVal, 15, 12) = "034A50204855" then
+            ErrorString=VbCr & "PacketWriter UL4S can't currently handle a P2 card...."
+            GotATR = "Wrong"
+            EXIT Sub
+          End if
+          If Mid(RetVal, 3, 4) = "7F13" And Mid(RetVal, 9, 4) = "0338" And Mid(RetVal, 15, 12) = "04FFFF4A5000" then
+            ErrorString=VbCr & "PacketWriter UL4S can't currently handle a P3 card...."
+            GotATR = "Wrong"
+            EXIT Sub
+          End if
+          If Mid(RetVal, 3, 4) = "7813" And Mid(RetVal, 9, 4) = "0340" And Mid(RetVal, 15, 12) = "20FFFF4A5000" then
+            PW_Print("  - P4/P5/D1 ATR Found... Continuing")
+            GotATR = True
+          End if
+        End if
+      End if
+    End if
+  Loop Until GotATR = True
+End Sub
+
+
+Sub SendInsUL4S()
+  GotData = CheckPacket(InsHeaderPrefix & InsHeader & InsHeaderSuffix, InsDataPrefix & InsData & InsDataSuffix)
+  If Not GotData = 1 And Not GotData = 2 Then
+    If SkillLevel =< 1 Then
+      ErrorString = VbCr & ErrorPacket & VbCr & VbCr & "Aborting Packet Send" & VbCr
+      RetVal=Sc.MsgBox(ErrorString, VbCritical, "Packet Code #" & GotData)
+      EXIT Sub
+    Else
+      ErrorString = VbCr & ErrorPacket & VbCr & VbCr & "Are you sure you want to continue this operation?" & VbCr
+      RetVal=Sc.MsgBox(ErrorString, VbYesNo + VbCritical, "Packet Code #" & GotData)
+      Select Case RetVal
+      Case VbYes
+      Case Else
+        EXIT Sub
+      End Select
+    End If
+  End If
+  If SkillLevel = 0 Then
+    ErrorString = VbCr & ErrorPacket & VbCr & VbCr & "Would you like to continue this operation?" & VbCr
+    RetVal=Sc.MsgBox(ErrorString, VbYesNo, "Packet Code #" & GotData)
+    Select Case RetVal
+    Case VbYes
+    Case Else
+      EXIT Sub
+    End Select
+  End If
+  Counter1 = Counter1 + 1
+  Counter2 = Counter1
+  PW_Print(VbCr & "# of times you clicked and ran a menu function:  " & Counter1)
+  PW_Print(VbCr & "Next Packet Code: " & GotData & ErrorPacket)
+  Do
+    Do
+      If GotATR = "Wrong" Then
+        EXIT Sub
+      End If
+      If Counter2 >= Counter1 + MaxAttempts  Then
+        EXIT Sub
+      End If
+      GotResponse = False
+      Sc.Flush
+      Sc.Write("B0 " & HexString(Delay1,2))
+      PW_Print("           - Using Delay1: " & Delay1)
+      Sc.Write(InsHeaderPrefix)
+      PW_Print("        - UL4S Header Prefix")
+      Sc.Write(InsHeader)
+      PW_Print("  - The Actual Packet Header")
+      Sc.Write(InsHeaderSuffix)
+      PW_Print("           - UL4S Header Suffix")
+      Sc.Delay(500)
+      RetVal = Sc.BytesInBuffer
+      Select Case RetVal
+      Case "-1", "0"
+        Sc.Read(0)
+        PW_Print("                 - Response Failed... No Bytes in Buffer")
+        Call GetATR()
+      Case "1"
+        Sc.Read(1)
+        PW_Print("              - Response Failed... Only 1 Byte in Buffer")
+        Call GetATR()
+      Case "2"
+        Sc.Read(2)
+        PW_Print("           - Response Failed... Only 2 Bytes in Buffer")
+        Call GetATR()
+      Case Else
+        Sc.Read(2)
+        PW_Print("           - 2nd Byte is number of Incoming Bytes")
+        RetVal = Sc.GetByte(&h01)
+        Sc.Read(RetVal)
+        PW_Print("              - The Response")
+        If Sc.BytesInBuffer > 0 Then
+          Sc.Read(Sc.BytesInBuffer)
+          PW_Print("           - Flushing this from the Buffer")
+        End If
+        GotResponse = True
+      End Select
+    Loop Until GotResponse = True
+    If Not InsData = "" Then
+      GotResponse = False
+      Sc.Write(InsDataPrefix)
+      PW_Print("        - UL4S Data Prefix")
+      Sc.Write(InsData)
+      PW_Print("  - The Actual Packet Data You Sent")
+      Sc.Write(InsDataSuffix)
+      PW_Print("           - UL4S Data Suffix")
+      Sc.Delay(500)
+      RetVal = Sc.BytesInBuffer
+      Select Case RetVal
+      Case "-1", "0"
+        Sc.Read(0)
+        PW_Print("                 - Response Failed... No Bytes in Buffer")
+        Call GetATR()
+      Case "1"
+        Sc.Read(1)
+        PW_Print("              - Response Failed... Only 1 Byte in Buffer")
+        Call GetATR()
+      Case "2"
+        Sc.Read(2)
+        PW_Print("           - Response Failed... Only 2 Bytes in Buffer")
+        Call GetATR()
+      Case Else
+        Sc.Read(2)
+        PW_Print("           - 2nd Byte is number of Incoming Bytes")
+        RetVal = Sc.GetByte(&h01)
+        Sc.Read(RetVal)
+        PW_Print("              - The Response")
+        If Sc.BytesInBuffer > 0 Then
+          Sc.Read(Sc.BytesInBuffer)
+          PW_Print("           - Flushing this from the Buffer")
+        End If
+        GotResponse = True
+      End Select
+    End If
+  Loop Until GotResponse = True
+  sc.delay(00)
+End Sub
+
+
+Sub ClearMem() ' Please don't modify this one, but do as you wish with the rest!!!
+  InsHeaderPrefix = ""
+  InsHeader       = ""
+  InsHeaderSuffix = ""
+  InsDataPrefix   = ""
+  InsData         = ""
+  InsDataSuffix   = ""
+End Sub
+
+
+Sub INS02()
+  InsHeaderPrefix = "09 15 C4"
+  InsHeader       = "48 02 00 00 08"
+  InsHeaderSuffix = "8A 00"
+End Sub
+
+
+Sub INS06()
+  InsHeaderPrefix = "09 15 C4"
+  InsHeader       = "48 06 00 00 01"
+  InsHeaderSuffix = "83 00"
+End Sub
+
+
+Sub INS12()
+  InsHeaderPrefix = "09 15 C4"
+  InsHeader       = "48 12 00 00 08"
+  InsHeaderSuffix = "8A 00"
+End Sub
+
+
+Sub INS2C00()
+  InsHeaderPrefix = "09 15 C4"
+  InsHeader       = "48 2C 00 00 02"
+  InsHeaderSuffix = "84 00"
+End Sub
+
+
+Sub INS2C80()
+  InsHeaderPrefix = "09 15 C4"
+  InsHeader       = "48 2C 80 00 02"
+  InsHeaderSuffix = "84 00"
+End Sub
+
+
+Sub INS2E00()
+SpendingLimit = EnterSpending()
+If SpendingLimit="" Then
+Exit Sub
+End If
+  InsHeaderPrefix = "0B 15 C4"
+  InsHeader       = "48 2E 00 00 02"
+  InsHeaderSuffix = "70 CA 08 00"
+  InsDataPrefix   = "06 15 C1"
+  InsData         = SpendingLimit
+  InsDataSuffix   = "81 00"
+End Sub
+
+
+Sub INS2E80()
+RatingLimit = EnterRating()
+If RatingLimit="" Then
+Exit Sub
+End If
+  InsHeaderPrefix = "0B 15 C4"
+  InsHeader       = "48 2E 80 00 02"
+  InsHeaderSuffix = "70 CA 08 00"
+  InsDataPrefix   = "06 15 C1"
+  InsData         = RatingLimit
+  InsDataSuffix   = "81 00"
+End Sub
+
+
+Sub INS48()
+PasswordLimit = EnterPassword()
+If PasswordLimit="" Then
+Exit Sub
+End If
+  InsHeaderPrefix = "09 15 C4"
+  InsHeader       = "48 48 00 00 04"
+  InsHeaderSuffix = "80 00"
+  InsDataPrefix   = "08 15 C3"
+  InsData         = PasswordLimit
+  InsDataSuffix   = "81 00"
+End Sub
+
+
+Sub INS4C()
+BOXKEY = EnterBOXKEY()
+If BOXKEY="" Then
+Exit Sub
+End If
+  InsHeaderPrefix = "09 15 C4"
+  InsHeader       = "48 4C 00 00 09"
+  InsHeaderSuffix = "80 00"
+  InsDataPrefix   = "0D 15 C8"
+  InsData         = BOXKEY
+  InsDataSuffix   = "81 00"
+End Sub
+
+
+Sub INS52()
+  InsHeaderPrefix = "09 15 C4"
+  InsHeader       = "48 52 00 00 04"
+  InsHeaderSuffix = "86 00"
+End Sub
+
+
+Sub INS58()
+  InsHeaderPrefix = "09 15 C4"
+  InsHeader       = "48 58 00 00 17"
+  InsHeaderSuffix = "99 00"
+End Sub
+
+' ###############################################################################
+' *******************  End of "P4PacketTest.XVB" for UL4S  **********************
+
+' *******************   Start of Special Value Handlers    **********************
+' ###############################################################################
+
+Function EnterHeader()
+Dim GotInput, RetVal, RetVal2
+  Do
+    GotInput = False
+    InsHeader=sc.inputbox("Type in your 5 Byte Packet Header" & VbCr &_
+      "VALUES HAVE TO BE IN HEXADECIMAL" & VbCr & VbCr &_
+      "YOU ARE COMPLETELY ON YOUR OWN!!!!" & VbCr &_
+      "THIS IS MORE THAN EXTREMELY DANGEROUS" & VbCr & VbCr &_
+      "YOU ARE COMPLETELY ON YOUR OWN!!!!" & VbCr &_
+      "Leave blank or cancel to EXIT","Input Packet Header",DefaultHeader)
+    RetVal = Replace(UCase(InsHeader), " ", "")
+    If Sc.IsHex(RetVal) Then
+      RetVal2 = RetVal
+      GotInput = True
+    End If
+    IF RetVal = "" THEN
+      RetVal2 = ""
+      GotInput = True
+    END IF
+    If GotInput = False Then
+      Sc.MsgBox(ErrorInput)
+    End If
+  Loop Until GotInput = True
+  EnterHeader = RetVal2
+End Function
+
+
+Function EnterData()
+Dim GotInput, RetVal, RetVal2
+  Do
+    GotInput = False
+    InsData=sc.inputbox("Cut and Paste Any Other Data to send as Part of this INS" & VbCr &_
+      "VALUES HAVE TO BE IN HEXADECIMAL" & VbCr & VbCr &_
+      "Leave blank or cancel to EXIT","Input Packet Data","")
+    RetVal = Replace(UCase(InsData), " ", "")
+    If Sc.IsHex(RetVal) Then
+      RetVal2 = RetVal
+      GotInput = True
+    End If
+    IF RetVal = "" THEN
+      RetVal2 = ""
+      GotInput = True
+    END IF
+    If GotInput = False Then
+      Sc.MsgBox(ErrorInput)
+    End If
+  Loop Until GotInput = True
+  EnterData = RetVal2
+End Function
+
+
+Function EnterIns46Slot()
+Dim GotInput, RetVal, RetVal2
+  Do
+    GotInput = False
+    Ins46Slot=sc.inputbox("PPV Slot to Write to" & VbCr &_
+      "VALUE HAS TO BE IN HEXADECIMAL FROM 20-38","Input PPV Slot",DefaultIns46Slot)
+    RetVal = Replace(UCase(Ins46Slot), " ", "")
+    If IsHex(RetVal) And Len(RetVal) = 2 Then
+      RetVal2 = RetVal
+      GotInput = True
+    End If
+    IF RetVal = "" THEN
+      RetVal2 = ""
+      GotInput = True
+    END IF
+    If GotInput = False Then
+      Sc.MsgBox(ErrorInput)
+    End If
+  Loop Until GotInput = True
+  EnterIns46Slot = RetVal2
+End Function
+
+
+Function EnterIns46Flag()
+Dim GotInput, RetVal, RetVal2
+  Do
+    GotInput = False
+    Ins46Flag=sc.inputbox("Pick the 4th header byte Flag" & VbCr &_
+      "Values Seen So Far... And Speculation" & VbCr & VbCr &_
+      "  01 = Checking" & VbCr &_
+      "  02 = Purchasing" & VbCr &_
+      "  10 = Canceling" & VbCr &_
+      "  20 = ??Call Update Tier??","Input PPV Flag",DefaultIns46Flag)
+    RetVal = Replace(UCase(Ins46Flag), " ", "")
+    If IsHex(RetVal) And Len(RetVal) = 2 Then
+      RetVal2 = RetVal
+      GotInput = True
+    End If
+    IF RetVal = "" THEN
+      RetVal2 = ""
+      GotInput = True
+    END IF
+    If GotInput = False Then
+      Sc.MsgBox(ErrorInput)
+    End If
+  Loop Until GotInput = True
+  EnterIns46Flag = RetVal2
+End Function
+
+
+Function EnterIns46Data()
+Dim GotInput, RetVal, RetVal2
+  Do
+    GotInput = False
+    Ins46Data=sc.inputbox("INPUT THE REST OF YOUR INS 46 PACKET DATA" & VbCr &_
+      "VALUES HAVE TO BE IN HEXADECIMAL","Input Data",DefaultIns46Data)
+    RetVal = Replace(UCase(Ins46Data), " ", "")
+    If IsHex(RetVal) Then
+      RetVal2 = RetVal
+      GotInput = True
+    End If
+    IF RetVal = "" THEN
+      RetVal2 = ""
+      GotInput = True
+    END IF
+    If GotInput = False Then
+      Sc.MsgBox(ErrorInput)
+    End If
+  Loop Until GotInput = True
+  EnterIns46Data = RetVal2
+End Function
+
+
+Function EnterBOXKEY()
+Dim GotInput, RetVal, RetVal2
+  Do
+    GotInput = False
+    BOXKEY=sc.inputbox("9 BYTE INS 4C BOX KEY FOR ACCESS CONTROL" & VbCr &_
+      "VALUES HAVE TO BE IN HEXADECIMAL" & VbCr & VbCr &_
+      "THIS IS ONLY FOR PEOPLE WHO KNOW THEIR IRD BOXKEY" & VbCr &_
+      "THIS IS ONLY FOR PREVIOUSLY MARRIED CARDS" & VbCr & VbCr &_
+      "DO NOT BLAME ME WHEN YOUR CARD MARRIES SOME WEIRD NUMBER" & VbCr &_
+      "BECAUSE I'M WARNING YOU NOW THAT IT WILL IF CARD IS VIRGIN" & VbCr & VbCr &_
+      "USE A P3 WITH A LOGGER TO FIND OUT YOUR IRD'S INS 4C BOXKEY" & VbCr &_
+      "THE INS 4C PACKET IS FIRST OR SECOND PACKET AT STARTUP" & VbCr & VbCr &_
+      "     #####################################################" & VbCr &_
+      "     ####     CLICK CANCEL AND ASK IF YOUR UNSURE     ####" & VbCr &_
+      "     #####################################################","Input Box Key",DefaultBOXKEY)
+    RetVal = Replace(UCase(BOXKEY), " ", "")
+    If IsHex(RetVal) And Len(RetVal) = 18 Then
+      DigitStr = RetVal
+      RetVal2 = DigitStr
+      For I = 1 To 2
+        DigitStr = RetVal
+        RetVal2 = DigitStr
+      Next
+      GotInput = True
+    End If
+    If RetVal = "" Then
+      RetVal2 = ""
+      GotInput = True
+    End If
+    If GotInput = False Then
+      Sc.MsgBox(ErrorInput)
+    End If
+  Loop Until GotInput = True
+  EnterBOXKEY = RetVal2
+End Function
+
+
+Function EnterPassword()
+Dim GotInput, RetVal, RetVal2
+  Do
+    GotInput = False
+    MenuPrompt = "Use Two Hex Bytes" & VbCr & VbCr
+    MenuPrompt = MenuPrompt & "Example" & VbCr
+    MenuPrompt = MenuPrompt & "" & VbCr
+    MenuPrompt = MenuPrompt & "07D0 = 2000" & VbCr
+    MenuPrompt = MenuPrompt & "03E8 = 1000" & VbCr
+    MenuPrompt = MenuPrompt & "04D2 = 1234" & VbCr
+    MenuPrompt = MenuPrompt & "270F = 9999" & VbCr & VbCr
+    MenuPrompt = MenuPrompt & "Above 270F is Invalid" & VbCr
+    Password = Sc.InputBox(MenuPrompt, "Set Password", DefaultPassword)
+    RetVal = Replace(UCase(Password), " ", "")
+    If IsHex(RetVal) And Len(RetVal) = 4 Then
+      DigitStr = RetVal
+      RetVal2 = DigitStr
+      For I = 1 To 2
+        DigitStr = RetVal
+        RetVal2 = DigitStr
+      Next
+      PasswordMsg = Hex2Dec(RetVal2)
+      If PasswordMsg =< 9999 And PasswordMsg >= 0 Then
+        GotInput = True
+      End If
+    End If
+    If RetVal = "" Then
+      RetVal2 = ""
+      GotInput = True
+    End If
+    If GotInput = False Then
+      Sc.MsgBox(ErrorInput)
+    End If
+  Loop Until GotInput = True
+  EnterPassword = "0000" & RetVal2
+End Function
+
+
+Function EnterSpending()
+Dim GotInput, RetVal, RetVal2
+  Do
+    GotInput = False
+    MenuPrompt = "Use Two Hex Bytes" & VbCr & VbCr
+    MenuPrompt = MenuPrompt & "Example" & VbCr
+    MenuPrompt = MenuPrompt & "" & VbCr
+    MenuPrompt = MenuPrompt & " FDE8 = $650.00" & VbCr
+    MenuPrompt = MenuPrompt & " 03E8 = $10.00" & VbCr
+    Spending = Sc.InputBox(MenuPrompt, "Set Spending Limit", DefaultSpending)
+    RetVal = Replace(UCase(Spending), " ", "")
+    If IsHex(RetVal) And Len(RetVal) = 4 Then
+      DigitStr = RetVal
+      RetVal2 = DigitStr
+      For I = 1 To 2
+        DigitStr = RetVal
+        RetVal2 = DigitStr
+      Next
+      SpendingMsg = Hex2Dec(RetVal2)/100
+      GotInput = True
+    End If
+    If RetVal = "" Then
+      RetVal2 = ""
+      GotInput = True
+    End If
+    If GotInput = False Then
+      Sc.MsgBox(ErrorInput)
+    End If
+  Loop Until GotInput = True
+  EnterSpending = RetVal2
+End Function
+
+
+Function EnterRating()
+Dim GotInput, RetVal, RetVal2
+  Do
+    GotInput = True
+    MenuPrompt = "Use One Hex Byte" & VbCr & VbCr
+    MenuPrompt = MenuPrompt & "Example" & VbCr
+    MenuPrompt = MenuPrompt & "" & VbCr
+    MenuPrompt = MenuPrompt & " 00 = All Locked" & VbCr
+    MenuPrompt = MenuPrompt & " 01 = NR" & VbCr
+    MenuPrompt = MenuPrompt & " 02 = G" & VbCr
+    MenuPrompt = MenuPrompt & " 04 = PG" & VbCr
+    MenuPrompt = MenuPrompt & " 06 = PG-13" & VbCr
+    MenuPrompt = MenuPrompt & " 07 = NR-Content" & VbCr
+    MenuPrompt = MenuPrompt & " 09 = R" & VbCr
+    MenuPrompt = MenuPrompt & " 0B = NR-Mature" & VbCr
+    MenuPrompt = MenuPrompt & " 0D = NC-17" & VbCr
+    Rating = Sc.InputBox(MenuPrompt, "Set Rating Limit", DefaultRating)
+    Select Case Rating
+    Case ""
+      EnterRating = ""
+      EXIT Function
+    Case "00"
+      RatingMsg = "All Locked"
+    Case "01"
+      RatingMsg = "NR"
+    Case "02"
+      RatingMsg = "G"
+    Case "04"
+      RatingMsg = "PG"
+    Case "06"
+      RatingMsg = "PG-13"
+    Case "07"
+      RatingMsg = "NR-Content"
+    Case "09"
+      RatingMsg = "R"
+    Case "0b", "0B"
+      RatingMsg = "NR-Mature"
+    Case "0d", "0D"
+      RatingMsg = "NC-17"
+    Case Else
+      GotInput = False
+      Sc.MsgBox(ErrorInput)
+    End Select
+  Loop Until GotInput = True
+  EnterRating = Rating & "00"
+End Function
+
+' ###############################################################################
+' *******************    End of Special Value Handlers     **********************
+
+' *******************  Start of ISO Packet Check and Send  **********************
+' ###############################################################################
+
+Sub SendInsISO(Header,Data)
+  GotData = CheckPacket(Header,Data)
+  If Not GotData = 3 And Not GotData = 4 Then
+    If SkillLevel =< 1 Then
+      ErrorString = VbCr & ErrorPacket & VbCr & VbCr & "Aborting Packet Send" & VbCr
+      RetVal=Sc.MsgBox(ErrorString, VbCritical, "Packet Code #" & GotData)
+      EXIT Sub
+    Else
+      ErrorString = VbCr & ErrorPacket & VbCr & VbCr & "Are you sure you want to continue this operation?" & VbCr
+      RetVal=Sc.MsgBox(ErrorString, VbYesNo + VbCritical, "Packet Code #" & GotData)
+      Select Case RetVal
+      Case VbYes
+      Case Else
+        EXIT Sub
+      End Select
+    End If
+  End If
+  If SkillLevel = 0 Then
+    ErrorString = VbCr & ErrorPacket & VbCr & VbCr & "Would you like to continue this operation?" & VbCr
+    RetVal=Sc.MsgBox(ErrorString, VbYesNo, "Packet Code #" & GotData)
+    Select Case RetVal
+    Case VbYes
+    Case Else
+      EXIT Sub
+    End Select
+  End If
+  PW_Print(VbCr & "Next Packet Code: " & GotData & ErrorPacket)
+  Sc.Write(Header)
+      Sc.Delay(500)
+  PW_Print("  - Sending INS Header")
+  Sc.Read(Sc.BytesInBuffer)
+  PW_Print("  - This Came Out of WinExplorer's Buffer")
+  If Not Data = "" Then
+    Sc.Write(Data)
+      Sc.Delay(500)
+    PW_Print("  - Sending Additional Data")
+    Sc.Read(Sc.BytesInBuffer)
+    PW_Print("  - This Came Out of WinExplorer's Buffer")
+  End If
+End Sub
+
+' ###############################################################################
+' *******************   End of ISO Packet Check and Send   **********************
+
+' *******************   Start of Packet Checking Function  **********************
+' ###############################################################################
+
+Function CheckPacket(Header,Data)
+Dim RetVal, Digitstr, I
+' This Function checks several things about the packet's structure and returns a code # with message string.
+' Design your script so it checks this errorlevel before it goes to write to the card
+' You need to input at least a Header like this...   CheckPacket(HEX Header String)
+' OR BOTH a Header and Data like this.............   CheckPacket(HEX Header String, HEX Data String)
+' ..... Your input variables can be variables and/or have spaces in them, no big thing!!!
+' ..... But note the key is the seperation by a comma!!!
+' ..... It returns an error code number as a number from 1 to 10 (99 if you confuse it)
+' ..... It also makes a text message variable:  ErrorPacket
+' ..... If designing your own script, you have to Dim ErrorPacket a global variable at the top (like this script did)
+' Here's the error codes CheckPacket can return:
+'   1  = (UL4S Read) Header is more than 5 bytes w/ No Data
+'   2  = (UL4S Write) Header is more than 5 bytes w/ Good Data
+'   3  = (ISO Write) Length of Header Is 5 Bytes w/ Good Data
+'   4  = (ISO Read) Header Is 5 Bytes w/ No Data
+'   5  = (5th Header Byte mismatch) Should be number of bytes in Data
+'   6  = (1st Header Byte not 48) Non Standard Packet
+'   7  = (Header less than 5 Bytes)
+'   8  = (Invalid Hex In Data)
+'   9  = (Invalid Hex In Header)
+'   10 = (Empty Header)
+'   99 = (Unknown Error)
+
+  Header = Replace(UCase(Header), " ", "")
+  Data = Replace(UCase(Data), " ", "")
+  If Len(Header) > 11 And Data = "" Then
+    CheckPacket = 1
+    ErrorPacket = " (UL4S READ) Header is more than 5 bytes w/ No Data"
+  End If
+  If Len(Header) > 11 And IsHex(Data) Then
+    CheckPacket = 2
+    ErrorPacket = " (UL4S WRITE) Header is more than 5 bytes w/ Good Data"
+  End If
+  If Len(Header) = 10 And IsHex(Data) Then
+    CheckPacket = 3
+    ErrorPacket = " (ISO WRITE) Length of Header Is 5 Bytes w/ Good Data"
+  End If
+  If Len(Header) = 10 And Data = "" Then
+    CheckPacket = 4
+    ErrorPacket = " (ISO READ) Header Is 5 Bytes w/ No Data"
+  End If
+  If Len(Header) = 10 And Len(Data) > 0 And Hex2Dec(Mid(Header,9,2))*2 <> Len(Data) Then
+    CheckPacket = 5
+    ErrorPacket = " (5th Header Byte mismatch) Should be number of bytes in Data"
+  End If
+  If Len(Header) = 10 And Not Mid(Header,1,2) = "48" Then
+    CheckPacket = 6
+    ErrorPacket = " (1st Header Byte not 48) Non Standard Packet"
+  End If
+  If Len(Header) > 1 And Len(Header) < 10 Then
+    CheckPacket = 7
+    ErrorPacket = " (Header less than 5 Bytes)"
+  End If
+  If IsHex(Data) = False And Len(Data) > 0 Then
+    CheckPacket = 8
+    ErrorPacket = " (Invalid Hex In Data)"
+  End If
+  If IsHex(Header) = False Then
+    CheckPacket = 9
+    ErrorPacket = " (Invalid Hex In Header)"
+  End If
+  If Header = "" Then
+    CheckPacket = 10
+    ErrorPacket = " (Empty Header)"
+  End If
+  If CheckPacket = "" Then
+    CheckPacket = 99
+    ErrorPacket = " (Unknown Error)"
+  End If
+  If IsHex(Header) And Len(Header) > 0 Then
+    DigitStr = Header
+    RetVal = DigitStr
+    For I = 1 To 2
+      DigitStr = Header
+      RetVal = DigitStr
+    Next
+    Header = RetVal
+  Else
+    Header = ""
+  End If
+  If IsHex(Data) And Len(Data) > 0 Then
+    DigitStr = Data
+    RetVal = DigitStr
+    For I = 1 To 2
+      DigitStr = Data
+      RetVal = DigitStr
+    Next
+    Data = RetVal
+  Else
+    Data = ""
+  End If
+'  Sc.Print(VbCr & "Next Packet Code: " & CheckPacket & ErrorPacket)
+End Function
+
+' ###############################################################################
+' *******************    End of Packet Checking Function   **********************
+
+' *******************    Start of Other Script Handlers    **********************
+' ###############################################################################
+
+Function CardAnswer()
+Dim ThisByte, I
+  For I = 0 to 1
+    ThisByte = ThisByte & Sc.GetByte(I)
+  NEXT
+  Select Case ThisByte
+  Case 1440
+    CardAnswer = "90 00"
+    PW_Print("           - No Flag Bits Set Before OR During This Instruction")
+  Case 1441
+    CardAnswer = "90 01"
+    PW_Print("           - Final Flag Set!!!")
+  Case 14432
+    CardAnswer = "90 20"
+    PW_Print("           - IRD Match")
+  Case 14433
+    CardAnswer = "90 21"
+    PW_Print("           - IRD Match & Final Flag Set!!!")
+  Case 144128
+    CardAnswer = "90 80"
+    PW_Print("           - Filters Open")
+  Case 144129
+    CardAnswer = "90 81"
+    PW_Print("           - Filters Open & Final Flag Set!!!")
+  Case 144160
+    CardAnswer = "90 a0"
+    PW_Print("           - Filters Open & IRD Match")
+  Case 144161
+    CardAnswer = "90 a1"
+    PW_Print("           - Filters Open & IRD Match & Final Flag Set!!!")
+  Case 1450
+    CardAnswer = "91 00"
+    PW_Print("           - Only First Flag Set Before OR During This Instruction")
+  Case 1451
+    CardAnswer = "91 01"
+    PW_Print("           - First Flag & Final Flag Set!!!")
+  Case 14532
+    CardAnswer = "91 20"
+    PW_Print("           - First Flag & IRD Match")
+  Case 14533
+    CardAnswer = "91 21"
+    PW_Print("           - First Flag & IRD Match & Final Flag Set!!!")
+  Case 145128
+    CardAnswer = "91 80"
+    PW_Print("           - First Flag & Filters Open")
+  Case 145129
+    CardAnswer = "91 81"
+    PW_Print("           - First Flag & Filters Open & Final Flag Set!!!")
+  Case 145160
+    CardAnswer = "91 a0"
+    PW_Print("           - First Flag & Filters Open & IRD Match")
+  Case 145161
+    CardAnswer = "91 a1"
+    PW_Print("           - First Flag & Filters Open & IRD Match & Final Flag Set!!!")
+  Case Else
+    CardAnswer=""
+    PW_Print(VbCr & "  - This Card Answer is not a valid responce!!!!")
+    PW_Print(VbCr & "  - Check your hardware and software settings!!!")
+  End Select
+End Function
+
+
+Function HexString(Number,Length)
+Dim RetValue, CurLen
+  ' This function takes 2 arguments, a number and a length.  It converts the decimal
+  ' number given by the first argument to a Hexidecimal string with its length
+  ' equal to the number of digits given by the second argument
+  RetValue = Hex(Number)
+  CurLen = Len(RetValue)
+  If CurLen < Length Then
+    RetValue = String(Length-CurLen,"0") & RetValue
+  End If
+  HexString = RetValue
+End Function
+
+
+Function Hex2Dec(HexNumber)
+Dim DecimalValue, DigitCount, Digit, HexDigit
+  ' This function takes 1 argument, a string containing a hex value of any digit length
+  ' and returns the decimal equivalent
+  HexNumber = Replace(UCase(HexNumber), " ", "")
+  DigitCount = Len(HexNumber)
+  For Digit = 1 To DigitCount
+    HexDigit = Mid(HexNumber, Digit, 1)
+    If Asc(HexDigit) < 58 Then
+      DecimalValue = HexDigit * 16 ^ (DigitCount - Digit)
+    Else
+      DecimalValue = (Asc(HexDigit) - 55) * 16 ^ (DigitCount - Digit)
+    End If
+    Hex2Dec = Hex2Dec + DecimalValue
+  Next
+End Function
+
+
+Function PW_Print(Message)
+  ' This function allows user to turn turn on/off all the PW_Print Functions.
+  ' Just Search and Replace "PW_Print" to "PW_Print" (like this script does)
+  ' Then add a Global Variable of  SkillLevel=0  to enable seeing all the print.
+  If SkillLevel < 3 Then
+    Sc.Print(Message)
+  End If
+End Function
+
+' ###############################################################################
+' *******************     End of Other Script Handlers     **********************

@@ -1,0 +1,613 @@
+'
+' Created 02/12/2001 DB
+'
+' BACKDOOR ROUTINE FOR USING A REGULAR ISO7816 PROGRAMMER FOR THE P3/HU
+'
+'  New in V2..
+'             - Moved code to pevent looping due to backdoor overwriting usw updates
+'             - Added Dynamic code execution ability
+'
+'
+
+
+' NOTE: This is only for development purposes and not to be used in normal TV viewing operations.
+'
+' !!!!EDUCATIONAL PURPOSES ONLY!!!!
+'
+'
+' Installation - Run the Script and click install(It is installed Via loader first).
+'                This will install the backdoor routine to 2B0x with a jump
+'                point at 307BH (INS 08 Decoy)
+'
+' Removal      - Use ExtremeHU to Clean your card, there is no removal.
+'
+'
+' TESTING: To Test the backdoor, after installation run backdoorroutines.xvb.   The test simply
+'          includes the NewEra 3M, It's removal.  It will also read 8 bytes from a blank area to
+'          get eeprom key.
+'
+'
+'
+'--------------------------------------BackDoorRoutine------------------------------------------------
+'
+'Parm1 = 10h Parm2 = 12h
+'
+'                org        02B00h
+'
+'                       push          014h                      ; Save Packet Lenth on the stack
+'                       call          0C416h                    ; Receive 14h bytes to 006x
+'                       clr           B                         ; clear b offset pointer
+'    keyloop            mov           *bdkey[B],a               ; Check BackdoorKey loop
+'                       cmp           *0060[B],a                ;|
+'                       jne           exit                      ;| if there's a byte that dosent match, Exit backdoor
+'                       inc           B                         ;|
+'                       cmp           #04h,B                    ;|
+'                       jne           keyloop                   ;|_| Loop untill all 4 bytes have been checked
+'                       pop           014h                      ; Restore packet lenth
+'                       sbb           #005h,014h                ; Subtract the backdoor key bytes & Address from the lenth
+'    Write              btjz          #010h,010h,WriteEncrypted ; Check Parm1 for EepromWrite
+'                       movw          r065h,r02Ah               ; Put write address in 029:02Ah
+'                       mov           #066h,015h                ; Set source of data 0066h
+'                       mov           014h,04h                  ; Lenth to write
+'                       trap          8                         ; Write 04h bytes to 29:2Ah
+'                       rts                                     ; Exit
+'    WriteEncrypted     btjz          #020h,010h,SendData       ; Check for WriteEncrypted
+'                       movw          r065h,r032h               ; Setup Trap 2 with destination address in r031:32h
+'                       movw          #0066h,r030h              ; Setup Source address
+'                       mov           014h,006h                 ; Lenth
+'                       trap          2                         ; EE Encrypt and Write
+'                       rts                                     ; Exit
+'    SendData           btjz          #040h,010h,executedynamicode ; Check Parm1 for SendData
+'                       cmp           #000h,012h                ; check if lenth in parm2 is 00h
+'                       jz            exit                      ; exit if it is
+'    sendloop           mov           *065h,a                   ; copy byte from eeprom address in 064:65h to A
+'                       trap          14                        ; Send it
+'                       incw          #001h,r065h               ; increase to next byte
+'                       djnz          012h,sendloop             ; Loop until 012h bytes have been sent
+'    exit               rts                                     ; exit
+'    executedynamicode  btjz          #080,010h,exit            ; Check Parm1 for Executedynamic code
+'                       br            00064h                    ; Execute Code & Exit
+'                                                               ;
+'    bdkey              db           011h,022h,033h,044h        ; Backdoor Key
+'
+'
+' ---------------------------------------------------------------------------------------
+' Greez to ops in #dsstech (irc.hitecsat.com)
+'
+' Special thanx to Mex for the simple clean routine and for
+' testing, and to RedWS6 for all the great beta testing :)
+'
+' Thanx to the A.D.N.S. Team for the BootStrap routine used in all Freeware script today
+' ---------------------------------------------------------------------------------------
+'
+
+
+Option Explicit
+
+Const backdoorkey="11223344"
+Const software="backdoor"
+Dim BDKey
+
+Call Loader()  ' Set up Loader settings
+
+Sub Main()
+Dim MenuPrompt
+Dim Choice
+Dim GotInput
+
+'Get Ver
+
+      Do
+            Gotinput = False
+            MenuPrompt = "                 I S O  B A C K  D O O R"
+            MenuPrompt = MenuPrompt & "" & vbCrLf & vbCrLf
+            MenuPrompt = MenuPrompt & " This will install a backdoor to your HU card" & vbcrlf
+            MenuPrompt = MenuPrompt & " so that you can use a regual iso programmer" & vbcrlf
+            MenuPrompt = MenuPrompt & " to read and write data to the card."
+            Choice = Sc.ButtonBox(MenuPrompt,0,"BackDoor","Install","Exit")
+
+            Select Case Choice
+
+        Case 1
+
+            Call LoadBootStrap()
+            Call InstallBackDoor()
+
+        Case 2
+            Gotinput = True
+                        End Select
+Loop Until Gotinput = True
+End Sub
+
+
+Function InstallBackDoor()
+Sc.Write("A2")
+
+
+Sc.Print "Installing BackDoor....." & vbcrlf
+Call WDTMR()
+             Call WriteviaLoader("2B00","D8148EC416C5AA2B51AD003C063BC35D")
+             Call WriteviaLoader("2B10","0406F3D4147805147710100B98652A72")
+             Call WriteviaLoader("2B20","6615421404E7F97720100C9865328800")
+             Call WriteviaLoader("2B30","6630421406EDF97740100F7D00120209")
+             Call WriteviaLoader("2B40","9A65E1700165DA12F7F9775010FB8C00")
+             Call WriteviaLoader("2B50","64" & backdoorkey)
+
+Sc.Print "Activating BackDoor....." & vbcrlf
+
+             Call WriteviaLoader("307B", "2B00") 'ins 08 decoy
+
+Sc.Print "Complete!" & vbcrlf
+
+Sc.Write("A0")
+Sc.Write("020200")
+Sc.Delay(2000)
+Sc.Read(&h02)
+End Function
+
+
+
+
+
+Function HexString(Number,Length)
+    ' This function takes 2 arguments, a number and a length.  It converts the decimal
+    ' number given by the first argument to a Hexidecimal string with its length
+    ' equal to the number of digits given by the second argument
+    Dim RetVal
+    Dim CurLen
+    RetVal=Hex(Number)
+    CurLen=Len(RetVal)
+    If CurLen<Length Then
+        RetVal=String(Length-CurLen,"0") & RetVal
+    End If
+    HexString=RetVal
+End Function
+
+Function Hex2Dec(HexNumber)
+    ' This function takes 1 argument, a string containing a hex value of any digit length
+    ' and returns the decimal equivalent
+    Dim DecimalValue
+    Dim DigitCount
+    Dim Digit
+    Dim HexDigit
+
+    HexNumber = Replace(UCase(HexNumber), " ", "")
+    DigitCount = Len(HexNumber)
+
+    For Digit = 1 To DigitCount
+
+        HexDigit = Mid(HexNumber, Digit, 1)
+        If Asc(HexDigit) < 58 Then
+            DecimalValue = HexDigit * 16 ^ (DigitCount - Digit)
+        Else
+            DecimalValue = (Asc(HexDigit) - 55) * 16 ^ (DigitCount - Digit)
+        End If
+        Hex2Dec = Hex2Dec + DecimalValue
+    Next
+
+End Function
+
+
+Sub LoadBootStrap()
+Sc.Verbose = False
+    Dim RetValue
+    Dim GotInput
+    Dim DAC
+    Dim ATRDAC
+    Dim Delay
+    Dim Counter
+    Dim Counter2
+    Dim Counter3
+    Dim Byte1
+    Dim Byte2
+    Dim Byte3
+    Dim Byte4
+    Dim Byte5
+    Dim Byte6
+    Dim Byte7
+    Dim Byte8
+    Dim Byte9
+    Dim DisVal1
+    Dim DisVal2
+    Dim DisVal3
+    Dim XORedByte1
+    Dim XORedByte2
+    Dim XORedByte3
+    Dim XORedByte4
+    Dim XORedByte5
+    Dim XORedByte6
+    Dim XORedByte7
+    Dim XORedByte8
+    Dim XORedByte9
+
+    DisVal1 = "00"
+    DisVal2 = "00"
+    DisVal3 = "00"
+    Counter = 0
+    Counter2 = 0
+    Counter3 = 0
+    ATRDAC = &h70
+    DAC = &h8C
+    Delay = &h1A
+
+Do
+Call IsCardPresent()
+Sc.Write("A1")
+GotInput = False
+
+If Counter = 30 then
+Counter = 0
+DAC = &h8C
+Delay = &h1A
+end if
+
+If Counter = 1 then
+DAC = &h8C
+Delay = &h8E
+end if
+If Counter = 2 then
+DAC = &h8A
+Delay = &h1A
+end if
+If Counter = 3 then
+DAC = &h8A
+Delay = &h8E
+end if
+If Counter = 4 then
+DAC = &h88
+Delay = &h1A
+end if
+If Counter = 5 then
+DAC = &h88
+Delay = &h8E
+end if
+If Counter = 6 then
+DAC = &h86
+Delay = &h1A
+end if
+If Counter = 7 then
+DAC = &h86
+Delay = &h8E
+end if
+If Counter = 8 then
+DAC = &h84
+Delay = &h1A
+end if
+If Counter = 9 then
+DAC = &h84
+Delay = &h8E
+end if
+If Counter = 10 then
+DAC = &h82
+Delay = &h1A
+end if
+    If Counter = 11 then
+        DAC = &h82
+        Delay = &h8E
+    end if
+    If Counter = 12 then ' begin added glitch points
+        DAC = &h80
+        Delay = &h1A
+    end if
+    If Counter = 13 then
+        DAC = &h80
+        Delay = &h8E
+    end if
+    If Counter = 14 then
+        DAC = &h7E
+        Delay = &h1A
+    end if
+    If Counter = 15 then
+        DAC = &h7E
+        Delay = &h8E
+    end if
+    If Counter = 16 then
+        DAC = &h7C
+        Delay = &h1A
+    end if
+    If Counter = 17 then
+        DAC = &h7C
+        Delay = &h8E
+    end if
+    If Counter = 18 then
+        DAC = &h7A
+        Delay = &h1A
+    end if
+    If Counter = 19 then
+        DAC = &h7A
+        Delay = &h8E
+    end if
+    If Counter = 20 then
+        DAC = &h78
+        Delay = &h1A
+    end if
+    If Counter = 21 then
+        DAC = &h78
+        Delay = &h8E
+    end if
+    If Counter = 22 then
+        DAC = &h76
+        Delay = &h1A
+    end if
+    If Counter = 23 then
+        DAC = &h76
+        Delay = &h8E
+    end if
+    If Counter = 24 then
+        DAC = &h74
+        Delay = &h1A
+    end if
+    If Counter = 25 then
+        DAC = &h74
+        Delay = &h8E
+    end if
+    If Counter = 26 then
+        DAC = &h72
+        Delay = &h1A
+    end if
+    If Counter = 27 then
+        DAC = &h72
+        Delay = &h8E
+    end if
+    If Counter = 28 then
+        DAC = &h70
+        Delay = &h1A
+    end if
+    If Counter = 29 then ' end extra glitch points
+        DAC = &h70
+        Delay = &h8E
+        Counter2 = Counter2 + 1
+    end if
+
+If Counter2 = 5 then
+Counter2 = 0
+ATRDAC = &h70
+end if
+
+If Counter2 = 2 then
+ATRDAC = &h78
+end if
+If Counter2 = 3 then
+ATRDAC = &h80
+end if
+If Counter2 = 4 then
+ATRDAC = &h88
+end if
+
+Call Sc.ProgressBox (vbcr & "Glitching:  " & Hexstring(counter,2) & "\" & HexString(ATRDAC,2) & "\" & HexString(DAC,2) & "\" & HexString(Delay,2) & "\" & HexString(DisVal1,2) & "\" & HexString(DisVal2,2) & "\" & HexString(DisVal3,2) & "\...", 1, 999, Software & " - Glitching, Please Wait")
+
+Do
+
+If Counter3 =  60 then 'begin counter 3 modification
+ATRDAC = &h70
+Counter = 0
+end if
+
+If Counter3 = 10 then
+ATRDAC = &h74
+end if
+If Counter3 = 20 then
+ATRDAC = &h78
+end if
+If Counter3 = 30 then
+ATRDAC = &h80
+end if
+If Counter3 = 40 then
+ATRDAC = &h84
+end if
+If Counter3 = 50 then
+ATRDAC = &h88
+end if
+
+Sc.Write("B0")
+Sc.Write(HexString(ATRDAC,2))
+
+Sc.Write("06100E10019300")
+Sc.Delay(80)
+Sc.Read(&h02)
+        RetValue = Sc.GetByte(&h01)
+        Sc.Read (RetValue)
+
+Sc.Write("0B100E03018520004209BF00")
+Sc.Delay(80)
+Sc.Read(&h02)
+        RetValue = Sc.GetByte(&h01)
+        If RetValue = &h46 then
+        Sc.Read(RetValue)
+        Byte4 = Sc.GetByte(61)
+        Byte5 = Sc.GetByte(62)
+        Byte6 = Sc.GetByte(63)
+        Byte7 = Sc.GetByte(64)
+        Byte8 = Sc.GetByte(65)
+        GotInput = True
+        else
+        Sc.Read(RetValue)
+        GotInput = False
+        Counter3 = Counter3 + 1
+        end if
+        Loop Until GotInput = True
+        GotInput = False
+
+Sc.Write("02BF00")
+Sc.Delay(80)
+Sc.Read(&h02)
+        RetValue = Sc.GetByte(&h01)
+        Sc.Read (RetValue)
+
+Sc.Write("02BF00")
+Sc.Delay(80)
+Sc.Read(&h02)
+        RetValue = Sc.GetByte(&h01)
+        If RetValue = &h40 then
+        Sc.Read (RetValue)
+        Byte1 = Sc.GetByte(44)
+        Byte2 = Sc.GetByte(45)
+        Byte3 = Sc.GetByte(46)
+        Byte9 = Byte1
+        else
+        Sc.Read (RetValue)
+        end if
+DisVal1 = RetValue
+Call Sc.ProgressBox (vbcr & "Glitching:  " & Hexstring(counter,2) & "\" & HexString(ATRDAC,2) & "\" & HexString(DAC,2) & "\" & HexString(Delay,2) & "\" & HexString(DisVal1,2) & "\" & HexString(DisVal2,2) & "\" & HexString(DisVal3,2) & "\...", 1, 999, Software & " - Glitching, Please Wait")
+
+Sc.Write("02BF00")
+Sc.Delay(80)
+Sc.Read(&h02)
+        RetValue = Sc.GetByte(&h01)
+        Sc.Read (RetValue)
+
+Sc.Write("028700")
+Sc.Delay(80)
+Sc.Read(&h02)
+        RetValue = Sc.GetByte(&h01)
+        Sc.Read (RetValue)
+
+Sc.Write("B0")
+Sc.Write(HexString(DAC,2))
+Sc.Write("0F1AC4485E000A01822000230C"& HexString(Delay,2) & "8100")
+Sc.Delay(80)
+Sc.Read(&h02)
+        RetValue = Sc.GetByte(&h01)
+        Sc.Read (RetValue)
+
+Sc.Write("0915C4484C0000098000")
+Sc.Delay(80)
+Sc.Read(&h02)
+        RetValue = Sc.GetByte(&h01)
+        Sc.Read (RetValue)
+
+XORedByte4 = HexString(Byte4 XOR &HC4, 2)
+XORedByte5 = HexString(Byte5 XOR &H0F, 2)
+XORedByte6 = HexString(Byte6 XOR &HC0, 2)
+XORedByte7 = HexString(Byte7 XOR &HDC, 2)
+XORedByte8 = HexString(Byte8 XOR &HC4, 2)
+XORedByte9 = HexString(Byte9 XOR &H26, 2)
+
+Sc.Write("0CC9" & HexString(Byte1,2) & HexString(Byte2,2) & HexString(Byte3,2) & XORedByte4 & XORedByte5 & XORedByte6 & XORedByte7 & XORedByte8 & XORedByte9 & "0000")
+Sc.Delay(100)
+If Sc.BytesInBuffer > 0 then
+Sc.Read(&h02)
+else
+end if
+
+Sc.Write("34F00000000069FFFFFFFF523FFD2284E172400772FF14C5E2AB0100C3DA07F88C0100000000000000000000000000000000008000")
+Sc.Delay(80)
+Sc.Read(&h02)
+DisVal2 = Sc.GetByte(&h0)
+DisVal3 = Sc.GetByte(&h01)
+Call Sc.ProgressBox (vbcr & "Glitching:  " & Hexstring(counter,2) & "\" & HexString(ATRDAC,2) & "\" & HexString(DAC,2) & "\" & HexString(Delay,2) & "\" & HexString(DisVal1,2) & "\" & HexString(DisVal2,2) & "\" & HexString(DisVal3,2) & "\...", 1, 999, Software & " - Glitching, Please Wait")
+        If Sc.GetByte(&h0) = &h34 then
+        If Sc.GetByte(&h01) = &h01 then
+        Sc.Read(&h01)
+        If Sc.GetByte(&h0) = &h84 then
+        GotInput = True
+        else
+        GotInput = False
+        end if
+        end if
+        end if
+        Counter = Counter + 1
+        Loop Until GotInput = True
+Call Sc.ProgressBox (vbcr & "Glitching:  " & Hexstring(counter,2) & "\" & HexString(ATRDAC,2) & "\" & HexString(DAC,2) & "\" & HexString(Delay,2) & "\" & HexString(DisVal1,2) & "\" & HexString(DisVal2,2) & "\" & HexString(DisVal3,2) & "\...", 1, 999, Software & " - Glitching, Please Wait")
+Sc.Write("42FF225272FF14E1E2D007E2D029E2D02A77800718753F07D307D807C5E2AB0060C3DA07F8726015D404E700D57640070DD3078ECEFB70012ADA07F700C49E2A00FA00")
+Sc.Delay(80)
+Sc.Read(&h02)
+
+Call Sc.ProgressBox ("", 0, 0, "")
+
+end sub
+
+
+Function WriteViaLoader(address,data)
+dim dLen
+dim tlen
+dim parm1
+dim parm2
+dim write
+
+dLen = len(data)
+dLen = dLen / 2
+tLen = len(data)
+tLen = tlen + 10
+tLen = tlen / 2
+tLen = hexstring(tlen,2)
+        parm1 = Hex(dLen + &HC2)
+        Parm2 = Hex(dLen + &H7F)
+
+            write = tLen & " " & parm1 & " " & parm2 & " " & address & " " & data & " " & "00"
+Sc.Write("A2")
+sc.write(write)
+sc.read(&h02)
+Call WDTMR()
+Sc.Write("A0")
+
+End Function
+
+
+Sub IsCardPresent()
+    Dim RetValue
+    Dim GotInput
+Do
+Sc.Write("A0")
+Sc.Write("80")                'Card?
+Sc.Delay(100)
+If Sc.BytesInBuffer > 0 then
+Sc.Read(&h01)
+RetValue = Sc.GetByte(0)
+end if
+
+If RetValue = &h0 then
+Call Sc.ProgressBox ("Please Insert Card...", 1, 999, Software)
+GotInput = False
+else
+If RetValue = &hFF then
+GotInput = True
+else
+If RetValue <> &h0 or RetValue <> &hFF then
+Sc.Write("A0")
+Sc.Write("020200")
+Sc.Delay(100)
+If Sc.BytesInBuffer > 1 then
+Sc.Read(&h02)
+GotInput = False
+else
+GotInput = False
+end if
+end if
+End if
+End if
+Loop Until GotInput = True
+end sub
+
+Sub WDTMR()
+    Dim RetValue
+
+Sc.Write("05150E108000")'SET WDTMR
+Sc.Read(&h02)
+        RetValue = Sc.GetByte(&h01)
+        Sc.Read(RetValue)
+end sub
+
+
+Sub Loader()
+
+    Wx.BaudRate = 115200
+    Wx.ResetBaudRate = 115200
+    Wx.Parity = 0                    ' 0 = None, 1 = Odd, 2 = Even, 3 = Mark, 4 = Space
+    Wx.StopBits = 0                  ' 0 = 1 stop bit, 1 = 1.5 stop bits, 2 = 2 stop bits
+    Wx.DTRControl = 0                ' Initial state of DTR  0 = off, 1 = on
+    Wx.RTSControl = 1                ' Initial state of RTS  0 = off, 1 = on
+    Wx.ResetDelay = 0                ' In microseconds
+    Wx.ByteDelay = 0                 ' In microseconds
+    Wx.RxByteTimeout = 200           ' In milliseconds
+    Wx.ResetMode = 2                 ' 0 = No Resets, 1 = ISO Reset (Expect a ATR), 2 = Device Reset (No ATR)
+    Wx.ResetLine = 1                 ' 0 = Toggle RTS for Reset, 1 = Toggle DTR for Reset
+    Wx.ByteConvention = 1            ' 0 = Inverse, 1 = Direct
+    Wx.FlushEchoByte = 0             ' 0 = no flush, 1 = flush - A Phoenix interface will echo each byte transmitted.
+    Wx.FlushBeforeWrite = 0          ' 0 = no flush, 1 = flush - Flush the receive buffer before each write to strip off Null bytes.
+    Wx.IgnoreTimeouts = 1            ' 0 = Abort script on a receive timeout, 1 = Ignore all receive timeouts
+    Wx.ResetAfterTimeout = 0         ' 0 = Don't reset after a timeout, 1 = do a reset after a timeout  - Not used if "IgnoreTimeouts=0"
+    Wx.LogTransactions = 0           ' 0 = Don't log transactions, 1 = log transactions
+    Wx.DisplayUSW = 0                ' Display USW after script complete 0 = no, 1 = yes
+    Wx.DisplayFuse = 0               ' Display Fuse after script complete 0 = no, 1 = yes
+End Sub

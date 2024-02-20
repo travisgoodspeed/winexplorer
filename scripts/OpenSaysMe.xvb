@@ -1,0 +1,424 @@
+'OpenSaysMe 
+'Tweaked by Budmanny55
+'Use newd11, but newd8 and newd9 will work too.
+'Edit your own Vccstart and End if you know it
+'to save time
+
+Option Explicit
+
+Dim Shell
+Set Shell = CreateObject("WScript.Shell")
+
+Dim MainMenu
+Dim DelayStart
+Dim DelayEnd
+Dim Delay
+Dim VCCStart
+Dim VCCEnd
+Dim VCC
+Dim Try
+Dim TryLimit
+Dim Bytes
+Dim Bytes2
+Dim ResetCounter
+Dim Provider
+Dim StartDate
+Dim Temp
+Dim i
+Dim ThisByte
+Dim EEPROMFileName
+Dim ROMFileName
+Dim OutFileHndl
+Const FileFilter = "Eeprom Files (*.bin)|*.bin;"
+
+'==================================================================================================================================================
+
+'VCC range variables should only be set here if VCC Analyzer is not chosen from menu -or- VCC Analyzer set incorrect values.
+'Ball Park Ranges would be T911 High 22  Low 14
+'Ball Park Ranges would be MikIII  High 5A  Low 50
+VCCStart            =   &h57   'High --My tweaked high for MikIII
+VCCEnd              =   &h53   'Low  --My tweaked Low  for MikIII
+
+'Delay ranges Normal is &h0280 to &h02B8 Bad is &h0C20 to &h0C40
+DelayStart          =   &h0C20 '  Normal Start is &h0280 
+DelayEnd            =   &h0C40 '  Normal End is &h02B8
+
+'Tries
+Const TriesPerLine  =  50
+TryLimit = Int(TriesPerLine / (VCCStart - VCCEnd + 1))
+
+'==================================================================================================================================================
+
+WinExConfig()
+
+Sub Main()
+
+    sc.verbose = true
+
+    'ATR
+    Sc.Write("08 0e 03 10 01 01 03 9a 00")
+    Sc.Read(02)
+    Bytes = Sc.Getbyte(1)
+    if Bytes > 25 then
+        Sc.Read(27)
+    end if
+
+    sc.verbose = false
+
+    Do
+
+    MainMenu        = Sc.ButtonBox("", vbDefaultButton2, "ROM101 READER", "VCC Analyzer ->", "Install Intercept", "Read Eeprom")
+
+    Select Case MainMenu
+        Case 0
+            Exit Sub
+        Case 1
+            VCCAnalyzer()
+            InstallIntercept()
+       Case 2
+            InstallIntercept()
+        Case 3
+            ReadEeprom()
+    End Select
+
+    Loop
+
+End Sub
+
+'=============================================================================================================================================
+
+Sub InstallIntercept()
+
+DisplayInitialParms()
+
+Do
+
+For Delay = DelayStart To DelayEnd
+
+    sc.print vbcr & HexString(Delay, 4)& " "
+
+    For Try = 1 To TryLimit
+
+        For VCC = VCCStart To VCCEnd Step -1
+
+        Sc.Write("B0" & HexString(VCC, 2))
+
+        Sc.Write("58 03 15 F0 21004DA0CA000047074501018600AA9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9DCD57FBA6AACD44D1A64BB76ACD9489C301BE0220FEBC8002F9 0E10 87 00")
+        Sc.Read(02)
+        Bytes = Sc.Getbyte(1)
+        If Bytes > 0 Then
+            Sc.Read(Bytes)
+            Bytes = Sc.Getbyte(0)
+            Bytes2 = Sc.Getbyte(3)
+            If Bytes <> &h12 Or Bytes2 <> &h87 Then
+                Print VbCr & "--- ECM FAILED ---"
+                Exit Sub
+            End If
+        End If
+
+        Sc.Write("16 15 AB 210008A0CA0000024900868E 20" & HexString(Delay, 4) & "09 0E02 9F 00")
+        Sc.Read(02)
+        Bytes = Sc.Getbyte(1)
+        If Bytes > 0 Then
+            Sc.Read(Bytes)
+
+            Bytes  = Sc.Getbyte(0)
+            Print HexString(Bytes, 2)
+
+            If Bytes = &hAA Then
+
+                sc.print
+                sc.print "===========================================" & vbcr
+                sc.print "********* SUCCESSFUL GLITCH DATA **********"& VbCr
+                sc.print "===========================================" & vbcr
+                sc.print "Delay:      " & HexString(Delay, 4) & "  VCC:        " & HexString(VCC, 2) & vbcr
+                sc.print "VCCStart:   " & HexString(VCCStart, 2) &   "    VCCEnd:     " & HexString(VCCEnd, 2) & vbcr
+                sc.print "DelayStart: " & HexString(DelayStart, 4) & "  DelayLimit: " & HexString(DelayEnd, 2) & vbcr
+                sc.print "TryLimit:   " & TryLimit & vbcr
+                sc.print "Elapsed:    " & TimeDiff(StartDate,Now()) & vbcr
+                sc.print "===========================================" & vbcr
+
+                Shell.Run "%comspec% /c echo " & Chr(07) & Chr(07) & Chr(07) & Chr(07) & Chr(07), 0, True
+
+                Exit Sub
+
+            End If
+
+        Else
+            sc.print "XX"
+            ResetCounter = ResetCounter + 1
+            If ResetCounter > 2 Then
+                ResetCounter = 0
+                sc.write("02 03 00")
+                sc.write("02 02 00")
+            End If
+
+        End If
+
+        Sc.Write("08 0e 03 10 01 01 03 9a 00")
+        sc.read(02)
+        sc.delay(16)
+
+        Next
+
+    Next
+
+    sc.print " " & TimeDiff(StartDate,Now())
+
+Next
+
+Loop
+
+End Sub
+
+'===============================================================================================================
+
+Sub ReadEeprom()
+
+Dim Address
+Dim PBCounter
+
+    GetEEPROMFileName()
+
+    Sc.Write("08 0e 03 10 01 01 03 9a 00")
+    Sc.read(02)
+    Sc.Delay(16)
+    PBCounter = 1
+
+    For Address = &hC000 To &hDFE0 Step &h20
+
+    Bytes = "21004DA0CA000047074501018600AA5FD6" & HexString(Address, 4) & "D703005CA32026F5A620B750CD44B6CC912E9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D02"
+    Bytes = Bytes & LRC("51" & HexString(Address,4))
+
+    Sc.Write("58 03 15 F0" & Bytes & "0E10 87 00")
+    Sc.Read(02)
+    Bytes = Sc.Getbyte(1)
+    If Bytes > 0 Then
+       Sc.Read(Bytes)
+       Bytes = Sc.Getbyte(0)
+       Bytes2 = Sc.Getbyte(3)
+       If Bytes <> &h12 Or Bytes2 <> &h87 Then
+          Print VbCr & "--- ECM FAILED ---"
+          Exit Sub
+       End If
+    End If
+
+    Sc.Write("0F 15 AA 210007A0CA000002480006 9F 00")
+    Sc.Read(02)
+    Bytes = Sc.Getbyte(1)
+
+
+        If Bytes = 32 Then
+            Sc.Read(Bytes)
+            For i = 0 to 31
+                Call Fs.FilePutc(OutFileHndl, Sc.GetByte(i))
+            Next
+
+            Call Sc.ProgressBox ("Block: $" & Hexstring(Address,4), PBCounter, 256, "Saving Eeprom...")
+        End If
+
+    PBCounter = PBCounter + 1
+
+    Next
+
+    Call Sc.ProgressBox("", 0, 256)
+
+    Fs.FileClose(OutFileHndl)
+
+End Sub
+
+'===============================================================================================================
+
+Sub GetEEPROMFileName()
+    EEPROMFileName = Fs.FileSaveDialog(FileFilter, "Please select a filename for the saved EEPROM file", "SVG_EEPROM101.bin")
+    If EEPROMFileName <> "" Then
+        OutFileHndl = Fs.FileCreate(EEPROMFileName)
+    End If
+
+End Sub
+
+'================================================================================================================
+
+Sub VCCAnalyzer()
+
+    Const vaVCCTestMax  = &h60          '<--- Set this to the MAXIMUM VCC to test the card with.
+    Const vaVCCTestMin  = &h15          '<--- Set this to the MINIMUM VCC to test the card with.
+    Const vaTryLimit    = 50            '<--- Set this to the NUMBER of times to glitch each VCC.
+    Const vaDelay       = &h0C25        '<--- Set this to the DELAY to use for each glitch.
+    Const vaFFTgtPct    = .6            '<--- Set this to the FF TARGET PERCENTAGE, i.e. the "sweet spot".
+
+    Dim vaVCCCeiling,vaVCCFloor
+    Dim vaVCC
+    Dim vaTry
+    Dim vaBytes
+    Dim va79Counter, vaFFCounter
+    Dim va79Pct, vaFFPct
+    Dim vaFlag
+    Dim vaResetCounter
+
+    vaFlag = 0
+
+    For vaVCC = vaVCCTestMax To vaVCCTestMin Step -1
+
+        va79Counter = 0
+        vaFFCounter = 0
+
+        Sc.Write("B0" & HexString(vaVCC, 2))
+        sc.print vbcr & HexString(vaDelay,4) & "/" & HexString(vaVCC, 2) & " "
+
+        For vaTry = 1 to vaTryLimit
+
+            Sc.Write("16 15 AB 210008A0CA0000024900868E 20" & HexString(Delay, 4) & "09 0E02 9F 00")   'Rx 32 bytes.
+            Sc.Read(02)
+            vaBytes = Sc.Getbyte(1)
+            If vaBytes > 4 Then
+                Sc.Read(vaBytes)
+                vaBytes = sc.getbyte(3)
+
+                Select Case vaBytes
+                    Case &h79
+                        sc.print "+"
+                        va79Counter = va79Counter+1
+                    Case &hFF
+                        sc.print "-"
+                        vaFFCounter = vaFFCounter+1
+                    Case Else       sc.print "?"
+                End Select
+
+           Else
+                sc.print "X"
+                ResetCounter = ResetCounter + 1
+                If ResetCounter > 2 Then
+                    ResetCounter = 0
+                    sc.write("02 03 00")
+                    sc.write("02 02 00")
+                End If
+            End If
+
+            sc.write("08 0e 03 10 01 01 03 9a 00")
+            sc.read(02)
+
+            sc.delay(16)
+
+        Next
+
+        sc.print " " & HexString(vaDelay,4) & "/" & HexString(vaVCC, 2)
+
+        va79Pct = va79Counter/vaTryLimit
+        vaFFPct = vaFFCounter/vaTryLimit
+        sc.print "  6F = " & FormatPercent(va79Pct,0,-1) & "   FF = " & FormatPercent(vaFFPct,0,-1)
+
+        If vaFFPct >= vaFFTgtPct And vaFlag = 0 Then
+            vaFlag = 1
+            vaVCCCeiling = vaVCC + 2
+            vaVCCFloor = vaVCC - 1
+        End If
+
+        If vaFFPct >= .98 Then
+            Exit For
+        End If
+
+    Next
+
+    sc.print vbcr & vbcr
+
+    VCCStart = vaVCCCeiling
+    VCCEnd   = vaVCCFloor
+
+End Sub
+
+'================================================================================================================
+
+Function WinExConfig()
+Wx.BaudRate = 115200
+Wx.ResetBaudRate = 115200
+Wx.Parity = 0 ' 0 = None, 1 = Odd, 2 = Even, 3 = Mark, 4 = Space
+Wx.StopBits = 0 ' 0 = 1 stop bit, 1 = 1.5 stop bits, 2 = 2 stop bits
+Wx.DTRControl = 0 ' Initial state of DTR 0 = off, 1 = on
+Wx.RTSControl = 1 ' Initial state of RTS 0 = off, 1 = on
+Wx.ResetDelay = 100 ' In microseconds
+Wx.ByteDelay = 10 ' In microseconds
+Wx.RxByteTimeout = 500 ' In milliseconds
+Wx.ResetMode = 2 ' 0 = No Resets, 1 = ISO Reset (Expect a ATR), 2 = Device Reset (No ATR)
+Wx.ResetLine = 1 ' 0 = Toggle RTS for Reset, 1 = Toggle DTR for Reset
+Wx.ByteConvention = 1 ' 0 = Inverse, 1 = Direct
+Wx.FlushEchoByte = 0 ' 0 = no flush, 1 = flush - A Phoenix interface will echo each byte transmitted.
+Wx.FlushBeforeWrite = 1 ' 0 = no flush, 1 = flush - Flush the receive buffer before each write to strip off Null bytes.
+Wx.IgnoreTimeouts = 1 ' 0 = Abort script on a receive timeout, 1 = Ignore all receive timeouts
+Wx.ResetAfterTimeout = 0 ' 0 = Don't reset after a timeout, 1 = do a reset after a timeout - Not used if "IgnoreTimeouts=0"
+Wx.LogTransactions = 0 ' 0 = Don't log transactions, 1 = log transactions
+Wx.DisplayUSW = 0 ' Display USW after script complete 0 = no, 1 = yes
+Wx.DisplayFuse = 0 ' Display Fuse after script complete 0 = no, 1 = yes
+End function
+
+'================================================================================================================
+Sub DisplayInitialParms()
+
+    StartDate = Now()
+
+    sc.print vbcr
+    sc.print "===========================================" & vbcr
+    sc.print "************ INITIAL PARAMETERS ***********"& VbCr
+    sc.print "===========================================" & vbcr
+    sc.print "StartDate:  " & StartDate & vbcr
+    sc.print "Provider:   " & HexString(Provider, 2) & vbcr
+    sc.print "VCCStart:   " & HexString(VCCStart, 2) &   "    VCCEnd:     " & HexString(VCCEnd, 2) & vbcr
+    sc.print "DelayStart: " & HexString(DelayStart, 4) & "  DelayLimit: " & HexString(DelayEnd, 2) & vbcr
+    sc.print "TryLimit:   " & TryLimit & vbcr
+    sc.print "===========================================" & vbcr & vbcr
+    sc.print vbcr
+
+End Sub
+
+'================================================================================================================
+Function TimeDiff (StartTime, EndTime)
+    Dim Hours, Minutes, Seconds
+    Seconds = DateDiff("s", StartTime, EndTime)
+    If Seconds > 90000 Then Seconds = 90000
+    If Seconds < 0 Then Seconds = 0
+    Minutes = Seconds / 60
+    Minutes = Fix(Minutes)
+    Seconds = Seconds - (Minutes * 60)
+    Hours = Minutes / 60
+    Hours = Fix(Hours)
+    Minutes = Minutes - (Hours * 60)
+    Seconds = CStr(Seconds)
+    Minutes = CStr(Minutes)
+    Hours = CStr(Hours)
+    If Len(Seconds) = 1 Then Seconds = "0" + Seconds
+    If Len(Minutes) = 1 Then Minutes = "0" + Minutes
+    If Len(Hours) = 1 Then Hours = "0" + Hours
+    TimeDiff = Hours & ":" & Minutes & ":" & Seconds
+End Function
+
+'===============================================================================================================
+Function HexString(Number,Length)
+
+Dim RetVal
+Dim CurLen
+
+    RetVal=Hex(Number)
+    CurLen=Len(RetVal)
+    If CurLen<Length Then
+        RetVal=String(Length-CurLen,"0") & RetVal
+    End If
+    HexString=RetVal
+
+End Function
+
+'===============================================================================================================
+Function LRC(Cmd)
+
+Dim CmdLen
+Dim j
+
+    CmdLen = Len(Cmd)
+    For j = 1 to CmdLen Step 2
+        LRC = "&h" & mid(Cmd,j,2) Xor LRC
+    Next
+
+    LRC = Right("0" + Hex(LRC), 2)
+
+End Function
+
+'===============================================================================================================

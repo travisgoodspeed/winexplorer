@@ -1,0 +1,225 @@
+'Option Explicit
+
+'Let's follow the NAGRA standard and use real PCB
+Dim PCB
+PCB = "00"
+Dim ResponseLength(15)
+
+sub main()
+    Dim ERL
+    Dim Response
+    Dim DataLength
+    Dim Data
+    ERL = ""
+
+    MsgBox "Nagra2Datatypes is an experimental script to retrieve datatypes from Nagra2 cards." & vbcrlf & vbcrlf & "It supports identifying CAM ID, Reciever ID and IRD info. Be careful posting results from DT0 result and CAM ID request. DT0 contains the Reciever ID TWICE, once normal, once reversed. Find the hex and censor it. Also, I suspect DT8 to be confidential too - keep those two censored for own protection." & vbcrlf & "FearHQ"
+
+    Sc.Verbose = true
+
+    Sc.Write("21C10159B8")                       ' IFS command
+    Sc.Flush()
+    Sc.Delay(1000)
+
+    Response = SendCommand("C0", "", "06")       'Get CAM status
+    Sc.Delay(100)
+
+    Response = SendCommand("12", "", "06")       'Get CAM ID
+    CamID = "&H" & mid(Response, 11, 8)
+    CamID = CamID + 0
+    CamID = "00" & CamID
+    Sc.Print(vbC & "Cam ID: " & CamID & vbCr)
+    MsgBox "CAM ID: " & CamID
+    Sc.Delay(100)
+
+    Response = SendCommand("15", "", "08")        'Old CMD 14
+    Sc.Delay(100)
+
+    Response = SendCommand("C7", "", "04")
+    Sc.Delay(100)
+
+    'Initialise ResponseLength array
+    ResponseLength(0) = "39"
+    ResponseLength(1) = "0E"
+    ResponseLength(2) = "2F"
+    ResponseLength(3) = "1C"
+    ResponseLength(4) = "44"
+    ResponseLength(5) = "57"
+    ResponseLength(6) = "13"
+    ResponseLength(7) = "20"
+    ResponseLength(8) = "4B"
+    ResponseLength(9) = "06"
+    ResponseLength(10) = "06"
+    ResponseLength(11) = "06"
+    ResponseLength(12) = "06"
+    ResponseLength(13) = "06"
+    ResponseLength(14) = "06"
+    ResponseLength(15) = "06"
+
+
+    For X = 0 to 15
+
+        DataType = ToHex(X, 2)
+        Response = SendCommand("22", DataType, ResponseLength(X))
+        Sc.Delay(100)
+        DataLength = "&H" & mid(Response, 9, 2)
+        DataLength = DataLength * 2
+        Data = mid(Response, 11, DataLength)
+        Result = CheckData(Data)
+        If Result <> 0 Then
+            Sc.Print("DT " & X & ": " & Data & vbCr)
+            Call DecodeData(Data, X)
+            DataType = ToHex(X + 128, 2)
+        End If
+
+        Do While (Result <> 0)
+            Response = SendCommand("22", DataType, ResponseLength(X))
+            Sc.Delay(100)
+            DataLength = "&H" & mid(Response, 9, 2)
+            DataLength = DataLength * 2
+            Data = mid(Response, 11, DataLength)
+            Result = CheckData(Data)
+            If Result <> 0 Then
+                Sc.Print("DT " & X & "(subsequent): " & Data & vbCr)
+                Call DecodeData(Data, X)
+            End If
+        Loop
+
+    Next
+
+end sub
+
+'Process any known data
+Function DecodeData(Data, DataType)
+
+    Select Case DataType
+        Case 0
+            IRDNum =  "&H" & mid(Data, 25, 8)
+            IRDNum = IRDNum + 0
+            IRDNum = "00" & IRDNum
+            Sc.Print(vbC & "IRD Number: " & IRDNum & vbCr)
+            MsgBox "IRD Number: " & IRDNum
+            IRDInfo = mid(Data, 63, 24)
+            Sc.Print(vbC & "IRD Bootstrap/Firmware: " & IRDInfo & vbCr)
+    End Select
+
+end Function
+
+'Checks returned data for all zero response
+Function CheckData(Data)
+    Dim Length
+    Dim Result
+    Result = 0
+
+    Length = Len(Data)/2
+
+    For X=0 to (Length -1)
+        Result = Result Or ("&H" & mid(Data, (X * 2) + 1, 2))
+    Next
+
+    CheckData = Result
+
+end Function
+
+'Parameters (all in hex): Command number, data and expected response length
+Function SendCommand(command, data, ERL)
+    Dim message
+    message = ""
+    Dim dataLength
+    dataLength = 0
+
+    dataLength = Len(data)/2
+
+    message = message & ToHex(dataLength + 2, 2)
+    message = message & command
+    message = message & ToHex(dataLength, 2)
+    message = message & data
+    message = message & ERL
+    SendMessage(message)
+    SendCommand = ReadMessage(ERL)
+
+
+end Function
+
+
+Function SendMessage(command)
+    Dim NAD
+    NAD = "21"
+    Dim LEN_
+    LEN_ = &H0
+    Dim LRC
+    LRC = &H0
+    Dim header
+    header = "A0CA0000"
+    Dim message
+    message = ""
+
+    LEN_ = ToHex(((Len(header) + Len(command)) / 2), 2)
+    message = message & NAD & PCB & LEN_ & header & command
+    LRC = CalculateLRC(message)
+    message = message & LRC
+    Sc.Write(message)
+
+    'Alternate PCB between 40 and 00
+    If PCB = "00" then
+        PCB = "40"
+    Else
+        PCB = "00"
+    End if
+
+
+end Function
+
+Function ReadMessage(ERL)
+    Dim length
+    Dim response
+    response = ""
+    Dim ReadByte
+
+    length = "&H" & ERL
+    length = length + 6
+    Sc.Read(length)
+
+    For X = 0 to (length - 1)
+        ReadByte = Hex(Sc.GetByte(X))
+        if Len(ReadByte) = 1 then
+            ReadByte = "0" & ReadByte
+        end if
+
+        response = response & ReadByte
+
+    Next
+
+    ReadMessage = response
+
+end Function
+
+Function CalculateLRC(message)
+    Dim LRC
+    Dim buffer
+    LRC = &H0
+
+    For X = 0 to ((Len(message)/2) - 1)
+        buffer = "&H" & mid(message, (X * 2) + 1, 2)
+        LRC = LRC Xor buffer
+    Next
+
+    CalculateLRC = ToHex(LRC, 2)
+
+end Function
+
+
+Function ToHex(number, length)
+    Dim hexNumber
+    Dim actualLength
+
+    hexNumber = Hex(number)
+    actualLength = Len(hexNumber)
+
+    'Padd with leading zeroes
+    If actualLength then
+        hexNumber = String(length - actualLength, "0") & hexNumber
+    End If
+
+    ToHex = hexNumber
+
+end Function

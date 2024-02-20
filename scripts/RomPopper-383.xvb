@@ -1,0 +1,780 @@
+' RomPopper V383
+' Opens the following cards:
+' - Bev Rom 3 Rev 380/381
+' - Bev Rom 10 Rev A3D
+' - Dish Rom 3 Rev 381/383
+' - Dish Rom 10 Rev A21
+'
+' Script by Beaviholio
+' Version 383 - Aug 10/04-  Rom 3 @ 383
+' Version 0.2 - Apr 30/04 - Public release
+' Version 0.1 - Apr 30/04 - Bigtime editing, more testing
+' Version 0.0 - Apr 30/04 - Creation, editing, testing
+
+' Thanks to the following people for all their hard work:
+' Penga, Blizzard, dNh_301, IMnuts, atlas, H00k, and many more that there just isn't space to mention
+' Thanks to CC mods/admins for keeping the info free!
+' Enjoy!
+
+
+' You can change the retry_constant if the Rom 3 unlock attempts are failing.
+' This determines how many times the overflow packet will be sent. Usually two is enough.
+' Try a value of 10 or so if your unlock attempts are failing.
+' Note: It will have no effect on Rom 10 unlocking.
+const retry_constant = 2
+
+' You can change the retry_delay value if the Rom 3 unlock attempts are failing.
+' This determines how long to wait between sending overflow packets to the card.
+' This value is in microseconds. You should not need to change this value.
+' Note: It will have no effect on Rom 10 unlocking.
+const retry_delay  = 120
+
+' You can change initdelay if you want more time in between sending packets.
+' This value is in microseconds. You should not need to change this value.
+' Note: This is a global value, and is used throughout the entire script.
+const initdelay=2000
+
+' This is code to display the initial menu:
+Sub Main()
+MenuPrompt = "Please select the appropriate provider/Rom version to open:"  & vbCrLf
+    RWChoice = Sc.ButtonBox(MenuPrompt, VbInformation, "Note: If you want to exit, click the X before it's too late!", "Bev Rev381", "Bev RevA3D", "Dish Rev383", "Dish RevA21", "Update Card")
+Select Case RWChoice
+
+
+' If X is clicked:
+Case "0"
+'MsgBox "Sub Main, Case 0"
+Exit Sub
+
+' If Bev Rom 3 is selected:
+Case "1"
+'MsgBox "Sub Main, Case 1"
+
+        'Verify choice:
+    MenuPrompt = MenuPrompt & "Note: This will unlock Bev Rom 3 Rev 381. Continue?" & vbCrLf
+        UpdateChoice = Sc.ButtonBox(MenuPrompt, VbInformation, "Continue?", "Yes", "NO!")
+        Select Case UpdateChoice
+            Case "0"
+'        MsgBox "Verify, Case 0"
+            Exit Sub
+
+        Case "1"
+'        MsgBox "Verify, Case 1"
+        Call BevRom3Main()
+        Exit Sub
+
+            Case "2"
+'        MsgBox "Verify, Case 2"
+            Exit Sub
+        End Select
+
+
+' If Bev Rom 10 is selected:
+Case "2"
+'MsgBox "Sub Main, Case 2"
+
+        'Verify choice:
+    MenuPrompt = MenuPrompt & "Note: This will unlock Bev Rom 10 Rev A3D. Continue?" & vbCrLf
+        UpdateChoice = Sc.ButtonBox(MenuPrompt, VbInformation, "Continue?", "Yes", "NO!")
+        Select Case UpdateChoice
+            Case "0"
+'        MsgBox "Verify, Case 0"
+            Exit Sub
+
+        Case "1"
+'        MsgBox "Verify, Case 1"
+        Call BevRom10Main()
+        Exit Sub
+
+            Case "2"
+'        MsgBox "Verify, Case 2"
+            Exit Sub
+        End Select
+
+
+
+' If Dish Rom 3 is selected:
+Case "3"
+'MsgBox "Sub Main, Case 3"
+
+        'Verify choice:
+    MenuPrompt = MenuPrompt & "Note: This will unlock Dish Rom 3 Rev 383. Continue?" & vbCrLf
+        UpdateChoice = Sc.ButtonBox(MenuPrompt, VbInformation, "Continue?", "Yes", "NO!")
+        Select Case UpdateChoice
+            Case "0"
+'        MsgBox "Verify, Case 0"
+            Exit Sub
+
+        Case "1"
+'        MsgBox "Verify, Case 1"
+        Call DishRom3Main()
+        Exit Sub
+
+            Case "2"
+'        MsgBox "Verify, Case 2"
+            Exit Sub
+        End Select
+
+
+' If Dish Rom 10 is selected:
+Case "4"
+'MsgBox "Sub Main, Case 4"
+
+        'Verify choice:
+    MenuPrompt = MenuPrompt & "Note: This will unlock Dish Rom 10 Rev A21. Continue?" & vbCrLf
+        UpdateChoice = Sc.ButtonBox(MenuPrompt, VbInformation, "Continue?", "Yes", "NO!")
+        Select Case UpdateChoice
+            Case "0"
+'        MsgBox "Verify, Case 0"
+            Exit Sub
+
+        Case "1"
+'        MsgBox "Verify, Case 1"
+        Call DishRom10Main()
+        Exit Sub
+
+            Case "2"
+'        MsgBox "Verify, Case 2"
+            Exit Sub
+        End Select
+
+' If Update Card selected,
+Case "5"
+'MsgBox "Sub Main, Case 5"
+
+' run the following code to display another menu:
+
+MenuPrompt = "Please select the appropriate card revision to be updated:"  & vbCrLf
+MenuPrompt = "Note: Only use these if you are certain of your Rom revision!"  & vbCrLf
+    UpdChoice = Sc.ButtonBox(MenuPrompt, VbInformation, "Update Card Revision", "Bev Rev380", "Bev RevA3B", "Dish Rev380", "Dish RevA20", "None, Exit")
+Select Case UpdChoice
+    'If X is clicked:
+    Case "0"
+'    MsgBox "Update menu, Case 0"
+    Call QuitProg
+
+    'Bev Rom 3 Update Rev 380 to Rev 381
+    Case "1"
+'    MsgBox "Update menu, Case 1"
+
+        'Verify choice:
+    MenuPrompt = MenuPrompt & "Note: This will update Bev Rev 380 to Rev 381. Continue?" & vbCrLf
+        UpdateChoice = Sc.ButtonBox(MenuPrompt, VbInformation, "Continue?", "Yes", "NO!")
+        Select Case UpdateChoice
+            Case "0"
+'        MsgBox "Verify, Case 0"
+            Exit Sub
+
+        Case "1"
+'        MsgBox "Verify, Case 1"
+        Call BevRom3Update()
+        Exit Sub
+
+            Case "2"
+'        MsgBox "Verify, Case 2"
+            Exit Sub
+        End Select
+
+    'Bev Rom 10 Update Rev A3B to Rev A3D
+    Case "2"
+'   MsgBox "Update menu, Case 2"
+
+        'Verify choice:
+    MenuPrompt = MenuPrompt & "Note: This will update Bev Rev A3B to Rev A3D. Continue?" & vbCrLf
+        UpdateChoice = Sc.ButtonBox(MenuPrompt, VbInformation, "Continue?", "Yes", "NO!")
+        Select Case UpdateChoice
+            Case "0"
+'        MsgBox "Verify, Case 0"
+            Exit Sub
+
+        Case "1"
+'        MsgBox "Verify, Case 1"
+        Call BevRom10Update()
+        Exit Sub
+
+            Case "2"
+'        MsgBox "Verify, Case 2"
+            Exit Sub
+        End Select
+
+    'Dish Rom 3 Update Rev 380 to Rev 381
+    Case "3"
+'    MsgBox "Update menu, Case 3"
+
+        'Verify choice:
+    MenuPrompt = MenuPrompt & "Note: This will update Dish Rev 380 to Rev 381. Continue?" & vbCrLf
+        UpdateChoice = Sc.ButtonBox(MenuPrompt, VbInformation, "Continue?", "Yes", "NO!")
+        Select Case UpdateChoice
+            Case "0"
+'        MsgBox "Verify, Case 0"
+            Exit Sub
+
+        Case "1"
+'        MsgBox "Verify, Case 1"
+        Call DishRom3Update()
+        Exit Sub
+
+            Case "2"
+'        MsgBox "Verify, Case 2"
+            Exit Sub
+        End Select
+
+
+    'Dish Rom 10 Update Rev A20 to Rev A21
+    Case "4"
+ '   MsgBox "Update menu, Case 4"
+
+        'Verify choice:
+    MenuPrompt = MenuPrompt & "Note: This will update Dish Rev A20 to Rev A21. Continue?" & vbCrLf
+        UpdateChoice = Sc.ButtonBox(MenuPrompt, VbInformation, "Continue?", "Yes", "NO!")
+        Select Case UpdateChoice
+            Case "0"
+'        MsgBox "Verify, Case 0"
+            Exit Sub
+
+        Case "1"
+'        MsgBox "Verify, Case 1"
+        Call DishRom10Update()
+        Exit Sub
+
+            Case "2"
+'        MsgBox "Verify, Case 2"
+            Exit Sub
+        End Select
+
+'If Exit is clicked:
+        Case "5"
+'    MsgBox "Update menu, Case 5"
+        Exit Sub
+
+   'End of Update menu Select
+   End Select
+
+'End of Main menu Select
+End Select
+
+'End of Sub Main()
+End Sub
+
+
+' Below are subroutines for unlocking cards
+' Code for unlocking Bev Rom 3 Rev 380/381:
+    Sub BevRom3Main()
+    sc.verbose = false
+    ClearOutputWindow
+
+    sc.print "Sending keychange packet..." & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080122D03D99338E6D6E1BB18088F5316A927A76F6B97B5E46DC0EAB1A629FA8C4F23E5DFDB2949A8FA4D1604D08DAC511CD4E56BD6FB75EFB99D99DF02F99ACF9B1B0954B541C31B18D850533")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    answer = read_answer()
+    sc.print
+    sc.delay(initdelay)
+    wx.closeport
+    wx.openport
+
+
+    For retries = 1 to retry_constant
+            sc.print
+            sc.print "Sending overflow packet, attempt number " & cstr(retries)& vbcr & "================="
+            sc.print
+            sc.write("21405DA0CA00003703350901106D15CC0090CC00909D9D513850A39D11420F513850A39D11420F513850A39D11420F513850A39D11420F513850A39D11420F439953AE014680BA56D97511B64336707ABF1A0C496250F6CEF9637680DDF57B05C4")
+            sc.print "Response from card: " & vbcr
+            sc.delay(80)
+            answer = read_answer()
+            sc.print
+            sc.print "Waiting 3 seconds before reset..."
+            sc.delay(retry_delay)
+            wx.closeport
+            wx.openport
+    Next
+
+    sc.print
+    sc.print "Card should now be unlocked! Open Nagraedit and try One Step Backup. Enjoy!" & vbcr
+    sc.print
+    sc.print "Note: If you still get Backdoor Reported Disable then run script again. Repeat as necessary." & vbcr
+    sc.print
+    End Sub
+
+
+' Code for unlocking Bev Rom 10 Rev A3D
+     Sub BevRom10Main ()
+     sc.verbose = false
+     ClearOutputWindow
+
+     sc.print "Sending packet 1 of 7..." & vbcr & "=================" & vbcr
+     sc.write("21C101A041")
+     sc.print "Response from card: " & vbcr
+     sc.delay(80)
+     answer = read_answer()
+     sc.print
+     sc.delay(initdelay)
+
+     sc.print "Sending packet 2 of 7..." & vbcr & "=================" & vbcr
+     sc.write("210008A0CA000002C0000687")
+     sc.print "Response from card: " & vbcr
+     sc.delay(80)
+     answer = read_answer()
+     sc.print
+     sc.delay(initdelay)
+
+     sc.print "Sending packet 3 of 7..." & vbcr & "=================" & vbcr
+     sc.write("21000DA0CA000000030008001010150058")
+     sc.print "Response from card: " & vbcr
+     sc.delay(80)
+     answer = read_answer()
+     sc.print
+     sc.delay(initdelay)
+
+     sc.print "Sending packet 4 of 7..." & vbcr & "=================" & vbcr
+     sc.write("210008A0CA000002C0000687 ")
+     sc.print "Response from card: " & vbcr
+     sc.delay(80)
+     answer = read_answer()
+     sc.print
+     sc.delay(initdelay)
+
+     sc.print "Sending packet 5 of 7..." & vbcr & "=================" & vbcr
+     sc.write("210008A0CA000002C0000687")
+     sc.print "Response from card: " & vbcr
+     sc.delay(80)
+     answer = read_answer()
+     sc.print
+     sc.delay(initdelay)
+
+     sc.print "Sending packet 6 of 7..." & vbcr & "=================" & vbcr
+     sc.write("210064A0CA00004D034B080C206F15CD7AB7C0A1A696B78D4CF0AAA61D0DAA1E17E67F1E1A14910CCD320C5AEA2D2D0CCD320C5AEA2D2D0CCD320C5AEA2D2D0CCD320C5AEA2D2D0CCD320C5AEA2D2D0CCD320C5AEA2D2D997985044C63D5E70CCD320C5AEA2D2D37")
+     sc.print "Response from card: " & vbcr
+     sc.delay(80)
+     answer = read_answer()
+     sc.print
+     sc.delay(initdelay)
+
+     sc.print "Sending packet 7 of 7..." & vbcr & "=================" & vbcr
+     sc.write("219200B3")
+     sc.print "Response from card: " & vbcr
+     sc.delay(80)
+     answer = read_answer()
+     sc.print
+     sc.delay(initdelay)
+
+     wx.closeport
+     sc.delay(initdelay)
+     wx.openport
+
+
+    sc.print
+    sc.print "Card should now be unlocked! Open Nagraedit and try One Step Backup. Enjoy!" & vbcr
+    sc.print
+    sc.print "Note: If you still get Backdoor Reported Disable then run script again. Repeat as necessary." & vbcr
+    sc.print
+    End Sub
+
+
+' Code for unlocking Dish Rom 3 Rev 381
+    Sub DishRom3Main ()
+    sc.verbose = false
+    ClearOutputWindow
+
+    sc.print "Sending keychange packet..." & vbcr & "=================" & vbcr
+    sc.write("210053A0CA00004D004B0001621C88E4173260F208FDDF1879A3963D197F505E8B69601C7CF7FCAA4AFAAE7FF57F0093083C1387A30EC8DA2B9625D1CE24E5A7FF4091DB78B96AF93109716A80AEF7A26062B901010515")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    answer = read_answer()
+    sc.print
+    sc.delay(initdelay)
+    wx.closeport
+    wx.openport
+
+
+    For retries = 1 to retry_constant
+            sc.print
+            sc.print "Sending overflow packet, attempt number " & cstr(retries)& vbcr & "================="
+            sc.print
+            sc.write("21405DA0CA00003703350101106D15BAADBADDDEADDEADF900C40016C82592ADD6BFDEA16EC7BC2A84BC0296E445D1ADE779964E8246D4E64DC7F058CCC2DAE64DC7F058CCC2DAE64DC7F058CCC2DAE64DC7F058CCC2DA2EACC54D9D179C0405A5")
+            sc.print "Response from card: " & vbcr
+            sc.delay(80)
+            answer = read_answer()
+            sc.print
+            sc.print "Waiting 3 seconds before reset..."
+            sc.delay(retry_delay)
+            wx.closeport
+            wx.openport
+    Next
+
+    sc.print
+    sc.print "Card should now be unlocked! Open Nagraedit and try One Step Backup. Enjoy!" & vbcr
+    sc.print
+    sc.print "Note: If you still get Backdoor Reported Disable then run script again. Repeat as necessary." & vbcr
+    sc.print
+    End Sub
+
+' Code for unlocking Dish Rom 10 Rev A21
+    Sub DishRom10Main ()
+    sc.verbose = false
+    ClearOutputWindow
+
+    sc.print "Sending packet 1 of 7..." & vbcr & "=================" & vbcr
+    sc.write("21C101A041")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    answer = read_answer()
+    sc.print
+    sc.delay(initdelay)
+
+    sc.print "Sending packet 2 of 7..." & vbcr & "=================" & vbcr
+    sc.write("210008A0CA000002C0000687")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    answer = read_answer()
+    sc.print
+    sc.delay(initdelay)
+
+    sc.print "Sending packet 3 of 7..." & vbcr & "=================" & vbcr
+    sc.write("21000DA0CA000000030000001010150050")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    answer = read_answer()
+    sc.print
+    sc.delay(initdelay)
+
+    sc.print "Sending packet 4 of 7..." & vbcr & "=================" & vbcr
+    sc.write("21000DA0CA000000030000001010150050")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    answer = read_answer()
+    sc.print
+    sc.delay(initdelay)
+
+    sc.print "Sending packet 5 of 7..." & vbcr & "=================" & vbcr
+    sc.write("210064A0CA00004D034B0038206F150CCD320C5AEA2D2D0CCD320C5AEA2D2D0CCD320C5AEA2D2D0CCD320C5AEA2D2D0CCD320C5AEA2D2D462DF670F1966715902789FF42D38BB50B00BFDC9852BBB70CCD320C5AEA2D2D0CCD320C5AEA2D2D0CCD320C5AEA2D2D70")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    answer = read_answer()
+    sc.print
+    sc.delay(initdelay)
+
+    sc.print "Sending packet 6 of 7..." & vbcr & "=================" & vbcr
+    sc.write("210008A0CA000002C0000687")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    answer = read_answer()
+    sc.print
+    sc.delay(initdelay)
+
+    sc.print "Sending packet 7 of 7..." & vbcr & "=================" & vbcr
+    sc.write("219200B3")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    answer = read_answer()
+    sc.print
+    sc.delay(initdelay)
+
+        wx.closeport
+        sc.delay(initdelay)
+        wx.openport
+
+    sc.print
+    sc.print "Card should now be unlocked! Open Nagraedit and try One Step Backup. Enjoy!" & vbcr
+    sc.print
+    sc.print "Note: If you still get Backdoor Reported Disable then run script again. Repeat as necessary." & vbcr
+    sc.print
+    End Sub
+
+' Below are subroutines for Update EMM's
+' Bev Rom 3 Rev 380 to Rev 383
+    Sub BevRom3Update ()
+    sc.verbose = false
+    ClearOutputWindow
+
+           sc.print "Sending EMM update packet 1 of 2..." & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080142939ADF550D35879CEAE9519136F386CE98B1C6011D411EE34CB07539C46AF3BBB39582421E956A6CA0306C1A7347381B96EF7FFD4DB23752AE666F3752D9122807BBFAFF35EE4B58054C")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    answer = read_answer()
+    sc.print
+    sc.delay(initdelay)
+
+           sc.print "Sending EMM update packet 2 of 2..." & vbcr & "=================" & vbcr
+    sc.write("210053A0CA00004D004B080182C5CD7036DF83CBA04A0DB9EBDD8B7D71630355620FC8B85C47FA3EA3D90F6A4535DD33C8E7D65F8549C68D2A2347B2BCF4186D40BC25DE6E4E2B496D4B72CF46DAF5C957C90A5B130592")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    answer = read_answer()
+    sc.print
+    sc.delay(initdelay)
+    wx.closeport
+    wx.openport
+
+    sc.print
+    sc.print "Card should now be updated to Rev 381. Open Nagraedit and try Reset ATR to verify." & vbcr
+    sc.print
+    sc.print "Note: If card is still not updated, run script again. Repeat as necessary." & vbcr
+    sc.print
+    End Sub
+
+' Bev Rom 10 Rev A3B to Rev A3D
+    Sub BevRom10Update ()
+    sc.verbose = false
+    ClearOutputWindow
+
+           sc.print "Sending EMM update packet 1 of 10..." & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B08012AFC7228EC926EFE6C949919836682FF7AAEFF82C01615234679CE21F585EF3A632CCE838757F808373570863FA2F9975D870F1BCEBE03B747EB99BF4929D2E9CAA250174CC43F820E0506")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    answer = read_answer()
+    sc.print
+    sc.delay(initdelay)
+
+           sc.print "Sending EMM update packet 2 of 10..." & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B08012AF77A82378F95216FC387D2DA10AFC1B974DB1FB1F1CC9F8AACB10278C888707C0546A39EB1EC8DADEFBF2359D29F1F0BA889058155CCD598732749C9925B45E7770B152B96A0443E052D")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    answer = read_answer()
+    sc.print
+    sc.delay(initdelay)
+
+           sc.print "Sending EMM update packet 3 of 10..." & vbcr & "=================" & vbcr
+    sc.write("210053A0CA00004D004B08012AF1E9403E450034E279825687FAFDA4E04900A7F4A62CE0A8D85B4232AE4E8502E65159C0D996E9F9A2DFCC57BD83CD014BB6A757DFFAA33A437A8164FEE78FCC43D138BD14E51D700531")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    answer = read_answer()
+    sc.print
+    sc.delay(initdelay)
+
+           sc.print "Sending EMM update packet 4 of 10..." & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B08012AE502BED25161931D74DA9576CA55296909D5B0C203DAE2A6C8AA8B739D508A30B46725AA634E8984D46E76A20DC27B5289FC0B79AA0D4D35A138431965BE70941032404A6006830D0511")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    answer = read_answer()
+    sc.print
+    sc.delay(initdelay)
+
+           sc.print "Sending EMM update packet 5 of 10..." & vbcr & "=================" & vbcr
+    sc.write("210053A0CA00004D004B0801AADD0360F45A9104D6EA6ED7066BAA121F3805BB44C4017E1B57FF41A6D3F1E073C0D93A5E35B30198BF1AD0062DB8BF99DD52A87BE91A5B191D394234D824B25458DEABE0BC8A4D8005DF")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    answer = read_answer()
+    sc.print
+    sc.delay(initdelay)
+
+           sc.print "Sending EMM update packet 6 of 10..." & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B0801AA868B8057FD94389F28D5AE0C9951F88D3A99E07E5E5E41C4A4719D66A49C6090A15BE32263F5D2034961422629B5B951A7B8B8AD2C2EB69C4517B23A3AAA8A4CB7D9CE878DABB2010508")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    answer = read_answer()
+    sc.print
+    sc.delay(initdelay)
+
+           sc.print "Sending EMM update packet 7 of 10..." & vbcr & "=================" & vbcr
+    sc.write("210053A0CA00004D004B08012AA64AE39489E92043471970CFEE18E5909C320D0C453602E956466A6B9AD3B455A7550FEB4C95EA6FCE4FBAE12A04BA15DF7CEC8238A8C9634F4DBCD42AA4775DDCE6EB6BC1326DAA05EA")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    answer = read_answer()
+    sc.print
+    sc.delay(initdelay)
+
+           sc.print "Sending EMM update packet 8 of 10..." & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B08016A97AD0D78355F2F0C161140493F496E587446E36D75A75F81556EBF81C2B9E34316BC3D909F814839417C10B168D043C6CC2836AC71F9714142A0881A79F57BD9DD199BFF4E63038A054B")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    answer = read_answer()
+    sc.print
+    sc.delay(initdelay)
+
+           sc.print "Sending EMM update packet 9 of 10..." & vbcr & "=================" & vbcr
+    sc.write("210053A0CA00004D004B0801AA40FE939A810E6856BD3A949747D7E704E929036DE514D4E521614E3984D34BE74EDB0F92EA5A195E9CD2F962773AA35000E52F0904FF67EE130069B66196575401580E7FC7DE167E05AF")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    answer = read_answer()
+    sc.print
+    sc.delay(initdelay)
+
+           sc.print "Sending EMM update packet 10 of 10..." & vbcr & "=================" & vbcr
+    sc.write("210053A0CA00004D004B08012A1E7A75B9B96669886A11AA35EC2DB3589CE275358B968C99321EAF4EB6A9B425014D88CE61C2F3C05BE4154B0B76399E2694DBE1D21CBF11B6EB9F0D9EE349E42C5F17CFEC65C56505C1")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    answer = read_answer()
+    sc.print
+    sc.delay(initdelay)
+    wx.closeport
+    wx.openport
+
+    sc.print
+    sc.print "Card should now be updated to Rev A3D. Open Nagraedit and try Reset ATR to verify." & vbcr
+    sc.print
+    sc.print "Note: If card is still not updated, run script again. Repeat as necessary." & vbcr
+    sc.print
+    End Sub
+
+' Dish Rom 3 Rev 380 to Rev 383
+    Sub DishRom3Update ()
+    sc.verbose = false
+    ClearOutputWindow
+
+           sc.print "Sending EMM update packet 1 of 2..." & vbcr & "=================" & vbcr
+    sc.write("210053A0CA00004D004B0001824989CA79B4BFDE25DF2E1128760AB95F57ED864D0E4DF6546097ED7E3A58E5A2054A4BC960D7676DA3AE14D5C6ABD6210196EB7773C185DB66A45F06F0406D90B4962A9F70065F8305B2")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    answer = read_answer()
+    sc.print
+    sc.delay(initdelay)
+
+           sc.print "Sending EMM update packet 2 of 2..." & vbcr & "=================" & vbcr
+    sc.write("210053A0CA00004D004B000102BA23C1A841B481B82195B4A174DF9CD091FB75963028675BF4D31F57CB8852EF1CED31E36E51B70DDA0CEB66363D734F557901F66F88F0E6DDD53D64365A4B298EAC21EBE83AC87D056E")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    answer = read_answer()
+    sc.print
+    sc.delay(initdelay)
+    wx.closeport
+    wx.openport
+
+    sc.print
+    sc.print "Card should now be updated to Rev 381. Open Nagraedit and try Reset ATR to verify." & vbcr
+    sc.print
+    sc.print "Note: If card is still not updated, run script again. Repeat as necessary." & vbcr
+    sc.print
+    End Sub
+
+' Dish Rom 10 Rev A20 to Rev A21
+    Sub DishRom10Update ()
+    sc.verbose = false
+    ClearOutputWindow
+
+           sc.print "Sending EMM update packet 1 of 10..." & vbcr & "=================" & vbcr
+    sc.write("210053A0CA00004D004B00016A07D3B8D252DBD85C084B4B58170E9B0B735C1A01E90CFE0FA9764A108D6E8AB75F53941E8200AFCC7B57B7DA93B6C2BAE5E7AD2D81F5C60ED06670AD7B0DA62FBD392F047C62FD0605FA")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    answer = read_answer()
+    sc.print
+    sc.delay(initdelay)
+
+           sc.print "Sending EMM update packet 2 of 10..." & vbcr & "=================" & vbcr
+    sc.write("210053A0CA00004D004B00012A09373EC2D2B0EA3DFCE965039FC31EB59453B767586166FDFA7FD867EBC272F683BB4A66411A9E3886506609E2D1845A375625BB549484F708DF19055A9140B00111ED610FE72CD5056D")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    answer = read_answer()
+    sc.print
+    sc.delay(initdelay)
+
+           sc.print "Sending EMM update packet 3 of 10..." & vbcr & "=================" & vbcr
+    sc.write("210053A0CA00004D004B00012A71DD90500D01A6C11303A2F38B8F794B0A19C5AF797287062EB6EFFDF4DC0CC4D14043FCB15B82288B591AEFEE7BB4F0EA7A58015625673E18A03D37AABC645A5817E698C8F3967505D1")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    answer = read_answer()
+    sc.print
+    sc.delay(initdelay)
+
+           sc.print "Sending EMM update packet 4 of 10..." & vbcr & "=================" & vbcr
+    sc.write("210053A0CA00004D004B0001AA9408D71A6ABEC7DFAAE8FCD1D508727D2C98D695A84C7C95D1F6C51859617D397E55D3B5809FC5C93B5319E9D70338F1758CF625D0338B6104465A239DCE0DF3AFD50E6C8118E83505DE")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    answer = read_answer()
+    sc.print
+    sc.delay(initdelay)
+
+           sc.print "Sending EMM update packet 5 of 10..." & vbcr & "=================" & vbcr
+    sc.write("210053A0CA00004D004B00012A2891AEA9706A7BD0B98CCF8F582E3DCED2CA797CC61CA10958BAB356A4C66923287283259369E9A9F21B23EC7A5DBE43718DDA4B5423F4A9082BCFDE12EAC687CEADEE1C68E5F4460557")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    answer = read_answer()
+    sc.print
+    sc.delay(initdelay)
+
+           sc.print "Sending EMM update packet 6 of 10..." & vbcr & "=================" & vbcr
+    sc.write("210053A0CA00004D004B00016ADEFB422655918477A87750BCFF788CEC4C03AF1577C5BF17F247502EF6FA87A76ECB31BD45ED326DB6442C4CC805F3A4C354721F6D37CCB58BD411D7E4EB774EE5BE0EA0DDEEEFD30580")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    answer = read_answer()
+    sc.print
+    sc.delay(initdelay)
+
+           sc.print "Sending EMM update packet 7 of 10..." & vbcr & "=================" & vbcr
+    sc.write("210053A0CA00004D004B00016AF335649B2A9A35F88C0225E40FEFAA48B1781AF579E32FAE4166999411381937B2DD3C08DD23110F0B5924AEDFB6960D9F499B9192683209AF19F7DEE22F59E772FC0265FC4C66BD058B")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    answer = read_answer()
+    sc.print
+    sc.delay(initdelay)
+
+           sc.print "Sending EMM update packet 8 of 10..." & vbcr & "=================" & vbcr
+    sc.write("210053A0CA00004D004B00012ADEAC13E1FA6BF5B6FB51893156FB9FE77ED0E9057C5A72769C3F1802854E1C01E1ADE6A64328F3BD62A2D0887F43099019FB0A13DD55EA8CB6255753A9E349E8EA454BA08E479CA30565")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    answer = read_answer()
+    sc.print
+    sc.delay(initdelay)
+
+           sc.print "Sending EMM update packet 9 of 10..." & vbcr & "=================" & vbcr
+    sc.write("210053A0CA00004D004B00012AEB03CF6F5BF7BE736D37A72C56D3F0869AB8654B1C5550E33A1CF8117C1A4A2A5C8D07D6976BD08F10378C933D42C78759DCCF0108C271F0DF7EC64A9E6B0FC5CB29DCE15A22A50005B0")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    answer = read_answer()
+    sc.print
+    sc.delay(initdelay)
+
+           sc.print "Sending EMM update packet 10 of 10..." & vbcr & "=================" & vbcr
+    sc.write("210053A0CA00004D004B0001AA9371636C5F029E250D363D4F956F5B4ABD046EC25030E0B45A68189D1D78FE4E4CC73A9ED974706597D9BFA0D63ED95C319B04036F629A6C490E172F2F8E261DDD2EB61D844D2F6E0592")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    answer = read_answer()
+    sc.print
+    sc.delay(initdelay)
+    wx.closeport
+    wx.openport
+
+    sc.print
+    sc.print "Card should now be updated to Rev A21. Open Nagraedit and try Reset ATR to verify." & vbcr
+    sc.print
+    sc.print "Note: If card is still not updated, run script again. Repeat as necessary." & vbcr
+    sc.print
+    End Sub
+
+
+
+
+Sub QuitProg()
+    sc.print "Exited."
+End Sub
+' End of the script, below are functions and settings which should never need to be changed:
+
+function read_answer()
+length = sc.bytesinbuffer
+sc.read(length)
+if length = 0 then
+    answer=""
+    sc.print("(No answer)")
+else
+    For X = 0 to length - 1
+        ThisByte = Hex(Sc.GetByte(X))
+        if Len(ThisByte) = 1 then ThisByte = "0" & ThisByte
+        Thisbyte = Thisbyte & " "
+        res = res & Thisbyte
+        Sc.Print(ThisByte)
+    Next
+end if
+Sc.Print
+read_answer = answer
+end function
+
+' Settings
+Wx.ResetDelay = 150
+Wx.ByteDelay = 0
+Wx.RxByteTimeout = 50
+Wx.CommPort = "com1:"
+Wx.BaudRate = 115200
+Wx.ResetBaudRate = 9600
+Wx.Parity = 1
+Wx.StopBits = 2
+Wx.DTRControl = 1
+Wx.RTSControl = 0
+Wx.ResetMode = 1
+Wx.ResetLine = 0
+Wx.ByteConvention = 0
+Wx.FlushEchoByte = 1
+Wx.FlushBeforeWrite = 1
+Wx.IgnoreTimeouts = 0
+Wx.ResetAfterTimeout = 0
+Wx.LogTransactions = 0
+Wx.DisplayUSW = 0
+Wx.DisplayFuse = 0

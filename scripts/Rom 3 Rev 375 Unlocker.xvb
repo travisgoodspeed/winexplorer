@@ -1,0 +1,459 @@
+'Menthol's Rom 3 Rev 375 Unlocker Script
+
+Const fsoError=-1
+Const fsoOpenRead=0
+Const fsoOpenWrite=1
+Const fsoOpenReadWrite=2
+Const fsoSEEK_SET=0
+Const fsoSEEK_CUR=1
+Const fsoSEEK_END=2
+dim vresponse
+dim vbackdoor
+dim ganswercount
+dim timeoutcount
+
+Sub Main ()
+      MsgPrompt="                            Please select the correct serial port your ISO Programmer uses."
+
+        MenuChoice=Sc.ButtonBox(MsgPrompt & "",vbDefaultButton1,ScriptName+" "+ScriptVer+"Rom 3 Rev 375 Unlocker, by Menthol. irc.outsiderz.com #dishnetworks","Com1:","Com2:","Com3:","Com4:","Exit")
+
+        Select Case MenuChoice
+            Case 1:
+
+            Wx.CommPort = "com1:"
+
+            Case 2:
+
+            Wx.CommPort = "com2:"
+
+            Case 3:
+
+            Wx.CommPort = "com3:"
+
+            Case 4:
+
+            Wx.CommPort = "com4:"
+
+            Case 5:
+
+        exit sub
+
+        End Select
+call echosettings()
+wx.closeport
+wx.openport
+
+const retry = 1000
+sc.verbose = false
+vresponse = 0
+I=0
+While VResponse = 0
+I=I+1
+sc.print "Sending 378 update packet number 1. Attempt Number: "& cstr(i) & vbcr
+sc.write("210053A0CA00004D004B0001020D733C2B8BB22518EBCC600C5FD10C36A50B6DA26889932607AB7E41BE41C86B17F1AABAEE76CBA5D1139007E1DC0BC17CDD8C2F51C32551FFDFB56A84C49E7806DEA44A09B0B7320565")
+sc.delay(80)
+call read_answer()
+sc.delay(retry)
+Wend
+vresponse = 0
+I=0
+While VResponse = 0
+I=I+1
+sc.print "Sending 378 update packet number 2. Attempt Number: "& cstr(i) & vbcr
+sc.write("210053A0CA00004D004B000102DB062399E00537DCB743B7A0288F7707A0C6A18BFB279DCE8B882B5898ADA3F3742C6714BB9122EEC399FEFDDED8ED6DA13CBF790175FA17986A4A27E056DC771F8F65D28E06A91B05DC")
+sc.delay(80)
+call read_answer()
+sc.delay(retry)
+Wend
+vresponse = 0
+I=0
+While VResponse = 0
+I=I+1
+sc.print "Sending 378 update packet number 3. Attempt Number: "& cstr(i) & vbcr
+sc.write("210053A0CA00004D004B0001420794601298567B930EAFFD370224EBBF6F86B19C9DAC59D4804BF7528A4D39FD84E8100CDB934033AA4548F312772C81410D6A3B124D57369BEEDBE897B1F39E8BB9A32B07767BB5056F")
+sc.delay(80)
+call read_answer()
+sc.delay(retry)
+Wend
+vresponse = 0
+I=0
+While VResponse = 0
+I=I+1
+sc.print "Sending 378 update packet number 4. Attempt Number: "& cstr(i) & vbcr
+sc.write("210053A0CA00004D004B0001029E97BA01262CBFD59E962B63EFCC34731BD2EB78AED53C7FA8B5735205A50F595F78BFC68F64398B602286177BE0DAFE936D95D83B2AE8AE3C38B055FF9FD4CD63A8A1B2E4710415050D")
+sc.delay(80)
+call read_answer()
+sc.delay(retry)
+Wend
+
+vresponse = 0
+I=0
+While VResponse = 0
+I=I+1
+sc.print "Sending 380 update packet number 1. Attempt Number: "& cstr(i) & vbcr
+sc.write("210053A0CA00004D004B0001021391227B2CF9940493B1C7230537F2050056854D8681BB21EF3D1B78561E1F479D14842B9936424816EC3ECE875E273C9CEEBA88CDAFEFAE2306221F234F3C9B3C0BEBAB11928D8E052B")
+sc.delay(80)
+call read_answer()
+sc.delay(retry)
+Wend
+
+vresponse = 0
+I=0
+While VResponse = 0
+I=I+1
+sc.print "Sending 380 update packet number 2. Attempt Number: "& cstr(i) & vbcr
+sc.write("210053A0CA00004D004B000182D621B6C2219610A46A5F65E780FE437F0498230DDE6572DC9184569F651E12E2D00AEAF25A04FAD49E781257A8C29452ABB21775C3837A844DFAAF791707EC223B9DCF80EF78EA8105CF")
+sc.delay(80)
+call read_answer()
+sc.delay(retry)
+Wend
+
+vresponse = 0
+I=0
+While VResponse = 0
+I=I+1
+sc.print "Sending 380 update packet number 3. Attempt Number: "& cstr(i) & vbcr
+sc.write("210053A0CA00004D004B00010257B67D023D08432429179FD358ABD68D625BBB906F750D3256007801F56B4B6D3F91CF0C56DCF46B84DDA2103BBF4B8DEC35FBB142AD189CF264173ABB3E37491F8CA6B813A4524B05E4")
+sc.delay(80)
+call read_answer()
+sc.delay(retry)
+Wend
+
+wx.closeport
+wx.openport
+vresponse=0
+sc.delay(5000)
+I=0
+While VResponse = 0
+I=I+1
+sc.print "Sending 381 update packet number 1. Attempt Number: "& cstr(i) & vbcr
+sc.write("210053A0CA00004D004B0001824989CA79B4BFDE25DF2E1128760AB95F57ED864D0E4DF6546097ED7E3A58E5A2054A4BC960D7676DA3AE14D5C6ABD6210196EB7773C185DB66A45F06F0406D90B4962A9F70065F8305B2")
+sc.delay(80)
+call read_answer()
+sc.delay(retry)
+Wend
+
+vresponse = 0
+I=0
+While VResponse = 0
+I=I+1
+sc.print "Sending 381 update packet number 2. Attempt Number: "& cstr(i) & vbcr
+sc.write("210053A0CA00004D004B000102BA23C1A841B481B82195B4A174DF9CD091FB75963028675BF4D31F57CB8852EF1CED31E36E51B70DDA0CEB66363D734F557901F66F88F0E6DDD53D64365A4B298EAC21EBE83AC87D056E")
+sc.delay(80)
+call read_answer()
+sc.delay(retry)
+Wend
+sc.verbose = false
+wx.closeport
+wx.openport
+Clearoutputwindow
+Sc.print
+sc.print "Sending keychange packet"
+for i=1 to 2
+vresponse = 0
+timeoutcount=0
+While VResponse = 0
+Timoutcount=timoutcount+1
+sc.print "."
+if timoutcount = 10 then
+Timeoutcount = 0
+sc.print
+sc.print "Operation timed out Resetting CAM . . ." & vbcr
+wx.closeport
+wx.openport
+Clearoutputwindow
+sc.print "Sending keychange packet"
+else
+sc.write("210053A0CA00004D004B0001621C88E4173260F208FDDF1879A3963D197F505E8B69601C7CF7FCAA4AFAAE7FF57F0093083C1387A30EC8DA2B9625D1CE24E5A7FF4091DB78B96AF93109716A80AEF7A26062B901010515")
+sc.delay(80)
+call read_answer()
+sc.delay(retry)
+end if
+wend
+next
+wx.closeport
+wx.openport
+Clearoutputwindow
+sc.print
+sc.print "Sending overflow packet"
+For I=1 to 2
+vresponse = 0
+timeoutcount = 0
+While VResponse = 0
+Timoutcount=timoutcount+1
+sc.print"."
+if timoutcount = 10 then
+Timeoutcount = 0
+sc.print
+sc.print "Operation timed out Resetting CAM . . ." & vbcr
+wx.closeport
+wx.openport
+Clearoutputwindow
+sc.print "Sending overflow packet"
+else
+sc.write("21405DA0CA00003703350101106D15BAADBADDDEADDEADF900C40016C82592ADD6BFDEA16EC7BC2A84BC0296E445D1ADE779964E8246D4E64DC7F058CCC2DAE64DC7F058CCC2DAE64DC7F058CCC2DAE64DC7F058CCC2DA2EACC54D9D179C0405A5")
+sc.delay(80)
+call read_answer()
+sc.delay(retry)
+end if
+wend
+Next
+
+
+call backdoor_check()
+sc.delay(retry)
+End sub
+
+sub read_answer()
+length = sc.bytesinbuffer
+sc.read(length)
+if length = 0 then
+    answer=""
+    VResponse = 0
+else
+If length = 11 then
+if sc.getbyte(8) = 144 and sc.getbyte(9) = 0 then
+   VResponse = 1
+   ganswercount=ganswercount+1
+end if
+else
+   VResponse = 0
+end if
+end if
+end sub
+
+sub backdoor_check()
+wx.closeport
+wx.openport
+Clearoutputwindow
+sc.print "Checking for BackDoor"
+count=0
+While vbackdoor=0 and count<10
+sc.print "."
+count=count+1
+sc.write("210025A0200000208FABC264449AFE701DE762FAB14C310600112233445566778899AABBCCDDEEFFDE")
+sc.delay(80)
+length = sc.bytesinbuffer
+sc.read(length)
+if length = 0 then
+    answer=""
+    Vbackdoor = 0
+    sc.delay(2000)
+else
+If length = 6 then
+if sc.getbyte(3) = 99 and sc.getbyte(4) = 0 then
+   Vbackdoor = 1
+   sc.delay(2000)
+end if
+else
+   Vbackdoor = 0
+   sc.delay(2000)
+end if
+    end if
+Wend
+If vbackdoor = 0 then
+   sc.print
+   sc.print "BackDoor appears to be closed, please try again." & vbcr
+else
+   sc.print
+   sc.print "BackDoor appears to be open, continuing..." & vbcr
+   sc.Print "Retrieving BackDoor password." & vbcr
+   call R3Login()
+if len(R3Login)=32 then
+   sc.print "Password: "& R3Login & vbcr
+   sc.print "Login Successful" & vbcr
+   call r3dump()
+   else
+   sc.Print R3Login & vbcr
+end if
+   sc.print
+   sc.print "Card should now be unlocked. Open Nagraedit and try One Step Clean." & vbcr
+   sc.print "One step clean may not work on first try so try at least 5 times miniumum." & vbcr
+   sc.print "If it still reports backdoor disabled after 5 tries then run this script again." & vbcr
+   end if
+end sub
+
+Function R3Login()
+   dim bdoor1(15)
+   bdoor=""
+   loginstr="210025A0200000208FABC264449AFE701DE762FAB14C3106"
+   sc.verbose=false
+   chk0=0
+   tries=0
+   while chk0<>&h81
+   sc.reset()
+   sc.write("2100C4010203A405060708090A0B0C0D0E0F10110203040A060708595A0B0C0D0E0F10C10203D4050607C8290A0B0C0D0E0F1031D2030405060708390A0B0C0D0E0F10410203D405060708490A0B0C0D0E0F10510203040506E708590A0A0C0A0E0F10610203040001020304050B0708090A0B0C0D0E0F00F102030405E60708090A0B0CFD0C0F00010203050A060708090A0B0C0D0E0F010101000000FF0752567303CDDC34C39B9C9D9DC6E020CD42D73C6626F69D9D9D9D9D9D9D9DED9ACC7381E80000006055")
+   sc.read(4)
+   chk0=sc.getbyte(01)
+   chk1=sc.getbyte(03)
+   if chk1<>&h81 then
+   chk0=0
+   end if
+   tries=tries+1
+   if tries=10 then
+   R3Login="Error retrieving backdoor password!"
+   exit function
+   end if
+   wend
+   sc.read(16)
+   sc.reset()
+   loginlrc=&hDE
+
+    for bd=0 to 15
+       bdoor1(bd)=sc.getbyte(bd)
+    next
+
+    for bd=0 to 15
+       bdoor=bdoor+hexstring(bdoor1(bd),2)
+    next
+
+   lrc1=0
+   for lrc=0 to 15
+   lrc1=lrc1 xor bdoor1(lrc)
+   next
+
+   lrc1=lrc1 xor loginlrc
+   lrc=hexstring(lrc1,2)
+
+   backdoor=loginstr+bdoor+lrc
+count=0
+tryagain=0
+   while tryagain=0 and count<10
+count=count+1
+   sc.delay(150)
+   sc.write(backdoor)
+   sc.delay(150)
+
+   sc.verbose = false
+   length = sc.bytesinbuffer
+
+   If length =6 then
+   sc.read(length)
+   if sc.getbyte(03)<>&h90 or sc.getbyte(04)<>&h00 then
+   tryagain=0
+   R3Login="Error logging in!"
+   else
+   tryagain=1
+   R3Login=bdoor
+   end if
+   else
+   tryagain=0
+   end if
+   wend
+End Function
+
+Function HexString(Number,Length)
+    Dim RetVal
+    Dim CurLen
+    RetVal=Hex(Number)
+    CurLen=Len(RetVal)
+    If CurLen<Length Then
+        RetVal=String(Length-CurLen,"0") & RetVal
+    End If
+    HexString=RetVal
+End Function
+
+Sub echosettings()
+Wx.ResetDelay = 150
+Wx.ByteDelay = 0
+Wx.RxByteTimeout = 50
+Wx.BaudRate = 115200
+Wx.ResetBaudRate = 9600
+Wx.Parity = 1
+Wx.StopBits = 2
+Wx.DTRControl = 1
+Wx.RTSControl = 0
+Wx.ResetMode = 1
+Wx.ResetLine = 0
+Wx.ByteConvention = 0
+Wx.FlushEchoByte = 1
+Wx.FlushBeforeWrite = 1
+Wx.IgnoreTimeouts = 0
+Wx.ResetAfterTimeout = 0
+Wx.LogTransactions = 0
+Wx.DisplayUSW = 0
+Wx.DisplayFuse = 0
+end sub
+sub R3Dump()
+
+ Dim Outfile
+ Dim FileName
+
+        FileName = ""
+        FileName = Fs.FileSaveDialog("*.bn3", "Filename:", "Rom 3 Rev 381 unlocked.bn3")
+
+        If FileName <> "" Then
+            OutFile = Fs.FileCreate(FileName)
+          call Fs.FileSeek(OutFile,0,fsoSEEK_SET)
+        End If
+
+
+   sc.verbose = false
+
+   chk1=0
+   while chk1<>&h12
+   sc.write("210007A0B09400000010B2")
+   sc.read(4)
+   chk0=sc.getbyte(00)
+   chk1=sc.getbyte(02)
+   if chk0<>&h12 then
+   chk1=0
+   end if
+   wend
+
+   dumpstr1="210007A0B0"
+   dumpstr2="000010"
+   dumpstr3=0
+   dumpstr4=0
+   dumplrc1=&h26
+
+   sc.print vbcrlf
+   while dumpstr3 < &h10
+
+   dumplrc1=&h26
+   dumplrc1=dumplrc1 xor dumpstr3
+   dumplrc1=dumplrc1 xor dumpstr4
+
+   dump=dumpstr1 + hexstring(dumpstr3,2) + hexstring(dumpstr4,2) + dumpstr2 + hexstring(dumplrc1,2)
+   sc.verbose=false
+
+   chk1=0
+   while chk1<>&h12
+   sc.write dump
+   sc.read(3)
+   chk0=sc.getbyte(00)
+   chk1=sc.getbyte(02)
+   if chk0<>&h12 then
+   chk1=0
+   end if
+   wend
+
+   sc.verbose=false
+
+   sc.read(18)
+
+   npatch=npatch+"E"+ hexstring(dumpstr3,1) + hexstring(dumpstr4,2) + ": "
+
+   for times = 0 to 15
+   cardbyte=sc.getbyte(times)
+   call Fs.FilePutc(OutFile, cardbyte)
+   npatch=npatch + hexstring(sc.getbyte(times),2) + " "
+   next
+
+   npatch=npatch + chr(&h0A)
+
+   sc.print npatch
+   npatch=""
+
+   dumpstr4=dumpstr4+&h10
+   if dumpstr4 > &hF0 then
+   dumpstr4=0
+   dumpstr3=dumpstr3+1
+   end if
+   wend
+   Fs.FileClose(OutFile)
+
+   msgbox vbcrlf & "           File Was successfully saved!           " & vbcrlf
+
+   sc.reset()
+End Sub

@@ -1,0 +1,73 @@
+'ESTOS GUSANOS ESTAN HECHOS PARA TRATAR DE ABRIR
+'LAS TARJETAS EN A21 SI NO ABRE CON ESTOS GUSANOS
+'PONGAN A TRABAJAR EL CEREBRO
+''''''''''''''''''''''''POR JUAN''''''''''''''''''''''''
+Sub Main()
+msgbox"These worms are for ROM 10 only"
+MenuPrompt = dacmsg & "  AQUI TENEMOS 4 GUSANOS PARA HABRIR LAS PINCHES TARJETAS CERRADAS POR CHARLY "  & vbCrLf
+    MenuPrompt = MenuPrompt & "1. Gusano Sencillo" & vbCrLf
+    MenuPrompt = MenuPrompt & "2. Gusano Aprendis" & vbCrLf
+    MenuPrompt = MenuPrompt & "3. Gusano Cabron" & vbCrLf
+    MenuPrompt = MenuPrompt & "4. Gusano De Tierra" & vbCrLf
+    RWChoice = Sc.ButtonBox(MenuPrompt, VbInformation, " Hunter Script:         If Not These Insurance you Give him to click The X to Leave------------>", "GUSANOS")
+Select Case RWChoice
+Case "0"
+exit sub
+
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+case "1"
+
+MenuPrompt = " Gusanos Para Enviar:" & vbCrLf
+ RWChoice = Sc.ButtonBox(MenuPrompt, VbInformation, " Super Worms: Select The Worm or Click X to Leave------------------------>", "   Gusano sencillo  ","   gusano aprendis  ","   gusano cabron  ","   gusano de tierra  ")
+Select Case RWChoice
+ Case "0"
+ Case "1"
+ If sc.write("21001c0a20004E69705045722049732061206275110017031541011011054E697050457220497320612062755474269")  Then
+
+       Else
+       sc.delay(400)
+            sc.read(sc.bytesinbuffer)
+            end if
+
+
+
+ Case "2"
+
+
+ If sc.write("210053A0CA00004D004B4001824F05DF62AE63822E7DD66B8DA094383F53EDFF75CF2870D5E84346676FDE1ACA26AD70889B246BA87E9551875486AFC77A4C68BEA6D09FF7B637895E9B18D8F5099E0A2E172B700105DD")   Then
+
+Else
+sc.delay(400)
+ sc.read(sc.bytesinbuffer)
+     end if
+ case "3"
+ if sc.write("210045A0D7100040F257FFBACE811F827EB1A20D885872C74D0222C70195971122AA06B5D0D36AC988136444D14DC1018DD698F1B7325F0E8456C9139E3CD854A7B74E13A1A651345F") then
+    else
+    sc.delay(500)
+    sc.read(bytesinbuffer)
+    end if
+    case "4"
+    if sc.write("210053A0CA00004D004BA521165774BF20BED0870317D0960082237CA13356F3162A0E5D78D264107115494B00A1586B8CABC2DC9804697D93C3009115DD8DAEE41F222C8A1E67278BE683CF06CD4AEAF07A7218DE0B1FBB6BADCCA") then
+    else
+    sc.delay(300)
+    sc.read(sc.bytesinbuffer)
+    end if
+
+   Sc.Print VbCr & "Sent worm with exito" & VbCr
+   end select
+
+exit sub
+
+
+
+
+
+
+
+
+
+Exit Sub
+
+End select
+
+end sub

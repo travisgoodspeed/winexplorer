@@ -1,0 +1,109 @@
+' #2 Script Dish to Bev 02.xvb
+' 77matrix or Vindicative
+' irc.kickinchicken.org
+' Channel #kickinchicken
+' Vindicative
+' Hope this helps you out. It worked for me this fixed My bd3 00 login
+' I lost my Password for my Rom10 <$C600> Once will never happen again
+' LOL I was out of cards so I had to fix this one Hope it help you out
+' WinExplorer v5.0 Settings (3.6864 crystal):
+Sub dishsettings()
+    ' This subroutine uses WinExplorer 4.6's new Wx. object to automatically
+    ' configure all the WinExplorer settings for the user.
+   Wx.BaudRate=115200
+    Wx.ResetBaudRate=9600
+    Wx.Parity=1           ' 0 = None, 1 = Odd, 2 = Even, 3 = Mark, 4 = Space
+    Wx.StopBits=2         ' 0 = 1 stop bit, 1 = 1.5 stop bits, 2 = 2 stop bits
+    Wx.DTRControl=0      ' Initial state of DTR  0 = off, 1 = on
+    Wx.RTSControl=1       ' Initial state of RTS  0 = off, 1 = on
+    Wx.ResetDelay=1000     ' In microseconds
+    Wx.ByteDelay=20     ' In microseconds
+    Wx.RxByteTimeout=1000  '  In milliseconds
+    Wx.ResetMode=1                ' 0 = No Resets, 1 = ISO Reset (Expect a ATR), 2 = Device Reset (No ATR)
+    Wx.ResetLine=0                ' 0 = Toggle RTS for Reset, 1 = Toggle DTR for Reset
+   Wx.ByteConvention=0            ' 0 = Inverse, 1 = Direct
+    Wx.FlushEchoByte=1            ' 0 = no flush, 1 = flush - A Phoenix interface will echo each byte transmitted.
+    Wx.FlushBeforeWrite=1        ' 0 = no flush, 1 = flush - Flush the receive buffer before each write to strip off Null bytes.
+    Wx.IgnoreTimeouts=0            ' 0 = Abort script on a receive timeout, 1 = Ignore all receive timeouts
+    Wx.ResetAfterTimeout=0        ' 0 = Don't reset after a timeout, 1 = do a reset after a timeout  - Not used if "IgnoreTimeouts=0"
+    End Sub
+
+
+Sub cmdXX()
+Sc.Print("Cam ID Request") &vbCrLf
+Sc.Print("#2 77matrix Vindicative Rom 10 Bd3 00 login fix")
+MsgBox "This will change the cam to fix Bd3 00 login"
+Sc.Write("21000DA0CA00000721050103FFFF002047")
+Sc.read(15)
+Sc.read(4)
+Sc.Print(" <--- IRD#")
+Sc.Write("21000DA0CA00000721050603FFFF002040")
+Sc.read(8)
+Sc.read(4)
+Sc.Print(" <--- camid") &vbCrLf
+
+If MsgBox("You should see your CAM ID/IRD# above in HEX." & vbCrlf & "Proceed?", vbYesNo) = vbyes then
+ans = Yes
+else
+ans = no
+   Exit Sub
+End If
+
+   If (ans = Yes) Then
+    Print("attempting to log into card")&vbCrLf
+    Sc.Verbose = false
+'Package----00
+    Sc.Write("210025A0CA00001F031D40011099054E697050457220497320612062755474260000000000000005FD")
+    Sc.Verbose = true
+    Sc.read(4)
+    Sc.Print("data pack----LOGIN")
+    Sc.Verbose = false
+'Package----01
+    Sc.Write("210045A0D71000406A9A5ED124D2B33E9DD69408D17448BD69C6DE48966E9FCFDF6744147D2666D5B7C145C0B0AF8775AF05261038EA95C8C2668432AC0042FD0EB957B7E592E68D16")
+    Sc.Verbose = true
+    Sc.read(4)
+    Sc.Print("data pack----01")
+    Sc.Verbose = false
+'Package----02
+    Sc.Write("210045A0D7104040F6DDE717F945B98AFCB6506524A206F2998CA630CE320E8D19349C5ADE974179698E587C188BA3A3A43008730CC9D608E9A80C4BE6AC3D762B3A469EEC4F37EF2D")
+    Sc.Verbose = true
+    Sc.read(4)
+    Sc.Print("data pack----02")
+    Sc.Verbose = false
+'Package----03
+    Sc.Write("210045A0D710804072AC3EA575E0649DA9F9A5B9EDE5A356C2C1C6EF84E3D0662D4DB7ACA940D9ADA55E5C59F4184292CA3F7EE0A3DEF1E33CF75F054B3EDADC32D69A3F3D4CFA6FC7")
+    Sc.Verbose = true
+    Sc.read(4)
+    Sc.Print("data pack----03")
+    Sc.Verbose = false
+'Package----04
+    Sc.Write("210045A0D710C040C531B9969926E8D98EE7D3A48ADC4A5B04B13B7D93902E6A7CD1BDFEAAF9051CB73E782E8BE597897F66FE699F4809F71431570830FC53D4410D2B35D2CE7ACA58")
+    Sc.Verbose = true
+    Sc.read(4)
+    Sc.Print("data pack----04")
+    Sc.Verbose = false
+'Package----05
+    Sc.Write("210053A0CA00004D004B4001026992FDB10D58F0A41CB6C8D76839ABC25C1F2831FD5B7D4D75B5F07E046F4E228EE71C40640C8FCFB5741A5E08B66DDBABDFD8620183007A98A01035E96FFAEBC4A20FBD6DA2E1380508")
+    Sc.Verbose = true
+    Sc.read(11)
+    Sc.Print("Backdoor 1")
+    Sc.Verbose = false
+'Package----06
+    Sc.Write("210053A0CA00004D004B4001028D5894CB4AFD0D78D57880DAECC0E72C3DFBF52F6A288DF1F58A5764C12CD62210E22A1B5816F6BC874DA7ADF49FA97469B344C94C7334428AEADB5F0CB77272263A41EBBE88BCB6050D")
+    Sc.Verbose = true
+    Sc.read(11)
+    Sc.Print("Backdoor 2")
+    Sc.Verbose = false
+
+        End If
+If (ans = No) Then
+
+End If
+
+Sc.Print(vbCrLf & "Now wait 30 sec to let the cam cool down and now go to #3 4001 to 5601.xvb")
+End Sub
+
+Sub Main()
+    dishsettings
+    cmdXX
+End sub

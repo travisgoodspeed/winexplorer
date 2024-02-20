@@ -1,0 +1,514 @@
+'
+' New VB Script File - Created 03/27/2004
+'
+' This script will send an INS Packet to a P4 Access card
+' and return a valid response. It is crude, and requires the use of UL4S Flash and a H/HU unlooper
+' set dips to 1 and 5 on...   1 =  use unlooper setiings  Reset Delay set to 0
+' Byte Delay set to 0 
+
+
+ATRattempt = 0
+counter = "01"
+
+Sub Main()
+
+Call GetATR()
+  Do
+        MsgPrompt=" P4== PACKET"+ScriptName+" "+ScriptVer+"TEST ==P4 "+vbCr+vbCr
+        MenuChoice=Sc.ButtonBox(MsgPrompt,vbDefaultButton4,ScriptName+" "+ScriptVer+" - Main Menu","More INS","Send INS58","Get Password","Set Password","EXIT")
+
+
+
+
+        Select Case MenuChoice
+            Case 1:
+
+
+                Call MoreINS()
+
+
+
+
+
+            Case 2:
+
+
+               Call INS58()
+
+            Case 3:
+
+
+               Call INS52()
+
+            Case 4:
+
+
+               Call INS48()
+
+
+        End Select
+
+    Loop Until MenuChoice=5
+sc.write ("A0")
+sc.write("02 02 00")
+sc.read(02)
+    end sub
+
+
+
+
+
+
+
+
+Function GetATR ()
+DAC = INT(RND * &h03) + &h96         ' 80 - A0 hex
+
+sc.verbose=False
+sc.delay(80)
+Sc.Write("D0")
+sc.read(02)
+
+Sc.Write("E0")
+
+
+        do
+    sc.delay(80)
+    sc.read(sc.bytesinbuffer)
+        loop until sc.bytesinbuffer = 0
+
+        Sc.Write("80")
+        sc.read(01)
+        Sc.Write("90")
+        sc.read(04)
+        sc.write("A1")
+
+        sc.flush
+sc.verbose = true
+ATRattempt = ATRattempt + 1
+sc.write "B0 " & HexString(DAC,2)
+
+    Dim temp
+
+    Sc.Write("0A100E1001032002838C00")
+Sc.Delay(500)
+
+If Sc.BytesInBuffer >1 then
+            Sc.Read(&h02)
+                temp = Sc.GetByte(&h01)
+                Sc.Read (temp)
+end if
+
+  sc.print (temp & VbTab)
+
+    if(temp <> 13) then
+        GetATR = False
+    else
+        GetATR = True
+    End if
+
+End Function
+
+
+Sub WDTMR()
+    Dim RetValue
+
+Sc.Write("05150E108000")'SET WDTMR
+Sc.Read(&h02)
+        RetValue = Sc.GetByte(&h01)
+        Sc.Read(RetValue)
+end sub
+
+Function HexString(Number,Length)
+    ' This function takes 2 arguments, a number and a length.  It converts the decimal
+    ' number given by the first argument to a Hexidecimal string with its length
+    ' equal to the number of digits given by the second argument
+    Dim RetVal
+    Dim CurLen
+    RetVal=Hex(Number)
+    CurLen=Len(RetVal)
+    If CurLen<Length Then
+        RetVal=String(Length-CurLen,"0") & RetVal
+    End If
+    HexString=RetVal
+End Function
+
+
+sub INS06()
+do
+sc.flush
+sc.write("B0 FA")
+sc.write("A0")
+
+
+
+sc.print (length)
+length = HexString(counter,2)
+
+
+sc.write ("09 15 C4 48 2A 0000 01 83 00")
+
+
+sc.read(02)
+If  sc.getbyte(&h01) >= 1 then
+  GotResponse = True
+sc.read (sc.getbyte(&h01))
+else
+  GotResponse = False
+  Call GetATR()
+end if
+loop until GotResponse = True
+sc.delay (00)
+
+
+
+counter = counter +1
+
+IF ATRattempt > 1 then
+sc.print "ATR locked and Packet sent after "& ATRattempt &" Attempts"
+else
+sc.print "ATR locked and Packet sent after "& ATRattempt &" Attempt"
+end if
+End Sub
+
+
+
+sub INS58()
+
+do
+sc.flush
+sc.write("B0 FA")
+sc.write("A0")
+
+sc.print (length)
+length = HexString(counter,2)
+
+sc.write ("09 15 C4 48 58 0000 17 99 00")
+
+
+sc.read(02)
+If  sc.getbyte(&h01) >= 1 then
+  GotResponse = True
+sc.read (sc.getbyte(&h01))
+else
+  GotResponse = False
+  Call GetATR()
+end if
+loop until GotResponse = True
+
+sc.delay (00)
+
+
+
+counter = counter +1
+
+IF ATRattempt > 1 then
+sc.print "ATR locked and Packet sent after "& ATRattempt &" Attempts"
+else
+sc.print "ATR locked and Packet sent after "& ATRattempt &" Attempt"
+end if
+End Sub
+
+
+sub INS52()
+
+do
+sc.flush
+sc.write("B0 FA")
+sc.write("A0")
+
+sc.print (length)
+length = HexString(counter,2)
+
+sc.write ("09 15 C4 48 52 0000 04 86 00")' Reads P4 Password
+
+
+sc.read(02)
+If  sc.getbyte(&h01) >= 1 then
+  GotResponse = True
+sc.read (sc.getbyte(&h01))
+else
+  GotResponse = False
+  Call GetATR()
+end if
+loop until GotResponse = True
+
+sc.delay (00)
+
+
+counter = counter +1
+
+IF ATRattempt > 1 then
+sc.print "ATR locked and Packet sent after "& ATRattempt &" Attempts"
+else
+sc.print "ATR locked and Packet sent after "& ATRattempt &" Attempt"
+end if
+End Sub
+
+
+sub INS48()
+
+do
+do
+sc.flush
+sc.write("B0 FA")
+sc.write("A0")
+
+sc.print (length)
+length = HexString(counter,2)
+
+sc.write ("09 15 C4 48 48 0000 04 80 00")' Sets P4 Password
+
+
+sc.read(02)
+If  sc.getbyte(&h01) >= 1 then
+  GotResponse = True
+sc.read (sc.getbyte(&h01))
+else
+  GotResponse = False
+  Call GetATR()
+end if
+loop until GotResponse = True
+
+RetVal2 = Sc.InputBox("Enter Your New Password (HEXIDECIMAL FORMAT)", "New Password", "")
+
+
+
+sc.write("08 15 C3 " & RetVal2 &  "81 00")'' Sets P4 Password
+sc.delay (00)
+
+sc.read(02)
+If  sc.getbyte(&h01) >= 1 then
+  GotResponse = True
+sc.read (sc.getbyte(&h01))
+else
+  GotResponse = False
+  Call GetATR()
+end if
+loop until GotResponse = True
+
+
+counter = counter +1
+
+IF ATRattempt > 1 then
+sc.print "ATR locked and Packet sent after "& ATRattempt &" Attempts"
+else
+sc.print "ATR locked and Packet sent after "& ATRattempt &" Attempt"
+end if
+End Sub
+
+
+
+sub INS02()
+
+do
+sc.flush
+sc.write "B0" & HexString(Delay1,2)
+sc.write("A0")
+
+sc.print (length)
+length = HexString(counter,2)
+
+
+sc.write ("09 15 C4 48 02 00 00 08 8A 00")
+
+sc.read(02)
+If  sc.getbyte(&h01) >= 1 then
+  GotResponse = True
+sc.read (sc.getbyte(&h01))
+else
+  GotResponse = False
+  Call GetATR()
+end if
+loop until GotResponse = True
+
+sc.delay (00)
+
+
+
+counter = counter +1
+
+IF ATRattempt > 1 then
+sc.print "ATR locked and Packet sent after "& ATRattempt &" Attempts"
+else
+sc.print "ATR locked and Packet sent after "& ATRattempt &" Attempt"
+end if
+End Sub
+
+
+
+sub INS2C00()
+
+
+do
+sc.flush
+sc.write("B0 FA")
+sc.write("A0")
+
+sc.print (length)
+length = HexString(counter,2)
+
+sc.write ("09 15 C4 48 2C 0000 02 84 00")
+
+
+sc.read(02)
+If  sc.getbyte(&h01) >= 1 then
+  GotResponse = True
+sc.read (sc.getbyte(&h01))
+else
+  GotResponse = False
+  Call GetATR()
+end if
+loop until GotResponse = True
+
+
+counter = counter +1
+
+IF ATRattempt > 1 then
+sc.print "ATR locked and Packet sent after "& ATRattempt &" Attempts"
+else
+sc.print "ATR locked and Packet sent after "& ATRattempt &" Attempt"
+end if
+
+
+End Sub
+
+sub INS2E00()
+
+do
+do
+sc.flush
+sc.write("B0 FA")
+sc.write("A0")
+
+sc.print (length)
+length = HexString(counter,2)
+
+Sc.Write("0B 15 C4 48 2E 00 00 02 70 CA 08 00")
+
+
+
+sc.read(02)
+If  sc.getbyte(&h01) >= 1 then
+  GotResponse = True
+sc.read (sc.getbyte(&h01))
+else
+  GotResponse = False
+  Call GetATR()
+end if
+loop until GotResponse = True
+
+ RetVal2 = Sc.InputBox("Enter Your New Spending limit (HEXIDECIMAL FORMAT)", "IRD Number", "03E8")
+
+
+
+sc.write("06 15 C1 " & RetVal2 &  "81 00")'' Sets P4 Password
+sc.delay (00)
+
+sc.read(02)
+If  sc.getbyte(&h01) >= 1 then
+  GotResponse = True
+sc.read (sc.getbyte(&h01))
+else
+  GotResponse = False
+  Call GetATR()
+end if
+loop until GotResponse = True
+
+
+counter = counter +1
+
+IF ATRattempt > 1 then
+sc.print "ATR locked and Packet sent after "& ATRattempt &" Attempts"
+else
+sc.print "ATR locked and Packet sent after "& ATRattempt &" Attempt"
+end if
+
+End Sub
+
+sub INS12()
+'''
+'
+' soon UNMARRY & WipePPV
+'
+'Wishful thinking?
+'''
+
+
+do
+sc.flush
+sc.write("B0 FA")
+sc.write("A0")
+
+sc.print (length)
+length = HexString(counter,2)
+
+sc.write ("09 15 C4 48 12 0000 08 8A00")
+
+
+sc.read(02)
+If  sc.getbyte(&h01) >= 1 then
+  GotResponse = True
+sc.read (sc.getbyte(&h01))
+else
+  GotResponse = False
+  Call GetATR()
+end if
+loop until GotResponse = True
+
+sc.delay (00)
+
+
+
+counter = counter +1
+
+IF ATRattempt > 1 then
+sc.print "ATR locked and Packet sent after "& ATRattempt &" Attempts"
+else
+sc.print "ATR locked and Packet sent after "& ATRattempt &" Attempt"
+end if
+
+
+
+
+end sub
+
+
+sub MoreINS()
+
+  Do
+        MsgPrompt=" P4== PACKET"+ScriptName+" "+ScriptVer+"RESPONSE ==P4 "+vbCr+vbCr
+        MenuChoice=Sc.ButtonBox(MsgPrompt,vbDefaultButton4,ScriptName+" "+ScriptVer+" - Main Menu","Send INS02","Set User limits","Get User limits","Send INS12","Back to Main")
+
+
+
+
+        Select Case MenuChoice
+            Case 1:
+
+
+                Call INS02()
+
+
+
+
+            Case 2:
+
+
+               Call INS2E00()
+
+            Case 3:
+
+
+               Call INS2C00()
+
+            Case 4:
+
+
+               Call INS12()
+
+
+        End Select
+
+    Loop Until MenuChoice=5
+end sub

@@ -1,0 +1,193 @@
+' New VB Script File - Created 10/15/04
+' THIS WILL OPEN ANY ROM 3 THAT IS NOT LOOPED.
+' OPENS BLOCKERED CAMS.
+' OPENS STREAMLOCKED 383, 382, 381, 380, 378, 375,
+' OPENS DEALER LOCKED CAMS.
+' OPENS BOTH PROVIDERS
+' OPENS SOFTLOOPED CAMS
+' THANKS TO NO1B4ME. PENGA
+
+'**************************************************************************************
+
+'Instruction Table
+'01 Reset Card (Leaves card clock off)
+'02 4.608 MHz Card Clock Off -FREEZE CAM
+'03 4.608 MHz Card Clock On - FREE RUNNING CAM
+'04 XX XX Delay $XXXX card clocks and glitch VCC on high phase with 1.152 MHz Card clock
+'05 XX XX Delay $XXXX card clocks and glitch VCC on high phase with 1.536 MHz Card clock
+'07 XX XX Delay $XXXX card clocks and glitch VCC on low phase with 1.152 MHz Card clock
+'06 XX XX Delay $XXXX card clocks and glitch VCC on low phase with 1.536 MHz Card clock
+'0E XX SET WD TIMER
+'0F POWER DOWN CAM
+'1X TX RX SPEED
+
+'2X XX XX Delay $X XX XX Atmel clock cycles
+
+'8X-BX Rx from card, instruction anded with $3f plus 1 bytes Ex. $BF = rx $40 bytes
+'CX-FX Tx to card, instruction anded with $3f plus 1 bytes Ex. $FF = Tx $40 bytes
+'**************************************************************************************
+'Commands
+'80 Check Card Presence - Sends 1 byte
+'90 Get chip ID - Sends 4 Bytes (DISH)
+'AX Set Bi-color Led - X = 0 off, X = 1 Red, X = 2 Green
+'B0 XX Set Glitch VCC - VCC = (5/255) * XX
+
+Option Explicit
+    Dim Bytes
+    dim bytes2
+    Dim BR2(5)
+    Dim VCC
+    dim vccstart
+    dim vcclimit
+    Dim Delay
+    Dim DelayLimit
+    Dim GlitchType
+    DIM TRYCNT2
+    Dim glitchDelay
+    Dim opencam
+    dim try
+    opencam = 0
+    TRYCNT2=1
+
+Sub Main()
+Sc.reset
+
+' add your testglitch values below
+' suggested glitch delay = &h10A5
+    VCC = &h20
+    glitchType  = &h06
+    glitchDelay = &h10A5
+
+
+' try = the number of try's per delay
+    try = 30
+
+    ' turn led off
+    sc.verbose=TRUE
+    Sc.Write("A0")
+    Sc.Delay(500)
+    Delay = glitchDelay - &h04
+    delaylimit = glitchDelay + &h03
+    vccstart = vcc + &h04
+    vcclimit = vcc - &h04
+    vcc = vccstart
+    ' card is in turn led on
+    Sc.Write("A1")
+
+    ' get atr, reset card
+    sc.verbose=TRUE
+    Sc.Write("07 0e 03 10 01 03 9a 00")
+    Sc.Read(02)
+    Bytes = Sc.Getbyte(1)
+    if Bytes > 25 then
+    Sc.Read(25)
+    end if
+    sc.verbose=false
+
+Do
+
+' script is set to try all glitches
+' if you want just yours, put a ' in front of them
+            if GlitchType < &h40 then
+            GlitchType = GlitchType + 1
+            end if
+            if GlitchType = &h08 then
+            GlitchType = &h04
+            end if
+'
+'
+    vcc = vcc - 1
+    if vcc < vcclimit then
+        vcc = vccstart
+    end if
+
+    Sc.Write("B0" & HexString(VCC, 2))
+
+    Sc.Write("0E 10 0e 03 01 02"&  HexString(GlitchType, 2)  & HexString(Delay, 4) &  "03 23 9B 80 02 00")
+    Sc.Read(02)
+
+    BYTES = 0
+    SENDOVERFLOW()
+    BYTES = 0
+
+        if opencam = 1 then
+          'TURN LED OFF
+          print
+          print"=============================== "& VbCr
+          print"= Rom 3 CAM IS OPEN NOW !!!!! = "& VbCr
+          print"=============================== "& VbCr
+          Sc.Write("A0")
+          Exit Sub
+        end if
+
+        TryCnt2 = TryCnt2 + 1
+
+        if trycnt2 > try then
+            IF DELAY > Delaylimit THEN
+            DELAY = glitchDelay - &h05
+            END IF
+             Delay = Delay + 1
+             TRYCNT2 = 0
+             print
+             PRINT "--- try to hit 0C bug at " & HexString(DELAY, 4)  & " --" & vbcr
+        END IF
+LOOP
+
+End Sub
+
+Function HexString(Number,Length)
+    ' This function takes 2 arguments, a number and a length.  It converts the decimal
+    ' number given by the first argument to a Hexidecimal string with its length
+    ' equal to the number of digits given by the second argument
+    Dim RetVal
+    Dim CurLen
+    RetVal=Hex(Number)
+    CurLen=Len(RetVal)
+    If CurLen<Length Then
+        RetVal=String(Length-CurLen,"0") & RetVal
+    End If
+    HexString=RetVal
+End Function
+
+Sub SENDOVERFLOW()
+
+SC.DELAY(30)
+' SC.Delay (50)
+PRINT "O"
+
+Sc.Write("470E051503FFFF00BC00000000000000000000000000")
+Sc.Write("00000000000000000000000000000000")
+Sc.Write("00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00")
+Sc.Write("00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 02 00")
+
+Sc.Read(2)
+
+Sc.Write("46 0E 05 03 FF 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00")
+Sc.Write("00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00")
+Sc.Write("00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00")
+Sc.Write("00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 02 00")
+Sc.Read(2)
+
+Sc.Write("460E0503FF0000000000000030313233E051813741")
+Sc.Write("42434445464748010100000000FF0000")
+Sc.Write("000000CD0000C39B9CAE71A696B74EA6")
+Sc.Write("05CD7801CC73810000000000000000000200")
+Sc.Read(2)
+
+Sc.Write("0D 0E 05 03 C7 60 00 60 00 60 00 60 AA 00")
+Sc.Read(2)
+
+
+Sc.Write("2F 03 0E 05 E8 21 00 25 A0 20 00 00 20 8F AB C2 64 44 9A FE 70 1D E7 62 FA B1 4C 31 06 00 11 22 33 44 55 66 77 88 99 AA BB CC DD EE FF DE 85 00")
+Sc.Read (2)
+ Bytes = Sc.Getbyte(1)
+     if Bytes > 4 then
+        Bytes = Sc.Read(4)
+        Bytes = Sc.Getbyte(3)
+        if bytes = &h63 then
+        OPENCAM = 1
+        end if
+    end if
+PRINT HEXSTRING(bytes,2)
+
+END SUB

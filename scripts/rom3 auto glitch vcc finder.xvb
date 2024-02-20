@@ -1,0 +1,236 @@
+' New VB Script File - Created 9/15/04
+' FOR TEST BIN TO GET GLITCHING TIMED IN
+
+'**************************************************************************************
+
+'Instruction Table
+'01 Reset Card (Leaves card clock off)
+'02 4.608 MHz Card Clock Off -FREEZE CAM
+'03 4.608 MHz Card Clock On - FREE RUNNING CAM
+'04 XX XX Delay $XXXX card clocks and glitch VCC on high phase with 1.152 MHz Card clock
+'05 XX XX Delay $XXXX card clocks and glitch VCC on high phase with 1.536 MHz Card clock
+'07 XX XX Delay $XXXX card clocks and glitch VCC on low phase with 1.152 MHz Card clock
+'06 XX XX Delay $XXXX card clocks and glitch VCC on low phase with 1.536 MHz Card clock
+'0E XX SET WD TIMER
+'0F POWER DOWN CAM
+'1X TX RX SPEED
+
+'2X XX XX Delay $X XX XX Atmel clock cycles
+
+'8X-BX Rx from card, instruction anded with $3f plus 1 bytes Ex. $BF = rx $40 bytes
+'CX-FX Tx to card, instruction anded with $3f plus 1 bytes Ex. $FF = Tx $40 bytes
+'**************************************************************************************
+'Commands
+'80 Check Card Presence - Sends 1 byte
+'90 Get chip ID - Sends 4 Bytes (DISH)
+'AX Set Bi-color Led - X = 0 off, X = 1 Red, X = 2 Green
+'B0 XX Set Glitch VCC - VCC = (5/255) * XX
+
+Option Explicit
+    Dim Bytes
+    dim bytes2
+    Dim BR2(5)
+    Dim VCCStart
+    Dim VCCLimit
+    Dim VCC
+    Dim Delay
+    Dim DelayLimit
+    Dim DelayStart
+    Dim GlitchType
+    dim Glitchstart
+    dim Glitchend
+    Dim TryCnt
+    DIM TryLimit
+    DIM TRYCNT2
+    DIM RT
+    dim atr
+    Dim opencam
+    opencam = 0
+    RT = &h2A
+    TRYCNT2=1
+
+Sub Main()
+sc.reset
+    ' turn led off
+    sc.verbose=TRUE
+    Sc.Write("A0")
+    Sc.Delay(500)
+    ' card is in turn led on
+    Sc.Write("A1")
+
+' get atr
+    sc.verbose=TRUE
+    Sc.Write("07 0e 03 10 01 03 9a 00")    'reset card
+    Sc.Read(02)
+    Bytes = Sc.Getbyte(1)
+    if Bytes > 25 then
+    Sc.Read(25)
+    end if
+    DelayStart = &h40
+    DelayLimit =  &h5f
+    VCCStart = &h99 'YOU CAN CHANGE THIS FROM 20 TO 50 241A
+    VCCLimit = &h00 'YOU CAN CHANGE THIS FROM 1A TO 30
+    Glitchtype = &h0A
+    TryCnt = 1
+    Delay = DelayStart
+    VCC = VCCStart
+glitchtype = Glitchtype
+
+    sc.verbose=false
+
+sc.print vbcr&"trying glitchtype  = "& hexstring(glitchtype,2)&vbcr
+Do
+
+
+
+
+               delay = delay + 0.10
+               if delay > delayLimit then
+               delay = delayStart
+               END IF
+            RT = RT + 1
+               if rt > &H33 then
+               rt = &H2C
+               END IF
+           'GlitchType = &h04
+'vcc =&H78
+
+call Sc.ProgressBox ("Glitching...   " & HexString(vcc,2)&"/"&  HexString(GlitchType, 2)  & "/" & HexString(Delay,4)& "           trys   " &trycnt&vbcr& "ATR:" &(atr),1,999,"Rom3 glitchfinder" )
+    Sc.Write("B0" & HexString(VCC, 2))
+
+    Sc.Write("0B 10 0e 03 01 02"&  HexString(GlitchType, 2)  & HexString(Delay, 4) &  "03 9A 00")
+    Sc.Read(02)
+
+    Bytes = Sc.Getbyte(1)
+
+        if Bytes > 10 then
+        Bytes = Sc.Read(9)
+        Bytes = Sc.Getbyte(0)
+        atr =  hexstring (sc.getbyte(0),2)& hexstring (sc.getbyte(1),2)& hexstring (sc.getbyte(2),2)& hexstring (sc.getbyte(3),2)& VbCr
+        'PRINT HEXSTRING(bytes,2)
+        'PRINT ""
+        SC.DELAY(2)
+ if Bytes = &H00 then
+             print
+             Sc.Print "===========================================" & VbCr
+             Sc.Print "VCC = "& HexString(VCC, 2)
+             SC.PRINT "-" &  HexString(GlitchType, 2)  & HexString(Delay, 4)&" success on trycnt #"& trycnt & VbCr
+             Sc.Print " unknown " & VbCr
+             PRINT HEXSTRING(SC.GETBYTE(0),2) & HEXSTRING(SC.GETBYTE(1),2) & HEXSTRING(SC.GETBYTE(2),2)& HEXSTRING(SC.GETBYTE(3),2)& VbCr
+             Sc.Print "===========================================" & VbCr
+             End if
+            if Bytes = &H0A then
+             print
+             Sc.Print "===========================================" & VbCr
+             Sc.Print "VCC = "& HexString(VCC, 2)
+             SC.PRINT "-" &  HexString(GlitchType, 2)  & HexString(Delay, 4)&" success on trycnt #"& trycnt & VbCr
+             Sc.Print " GLITCHED past 01 BUG" & VbCr
+             PRINT HEXSTRING(SC.GETBYTE(0),2) & HEXSTRING(SC.GETBYTE(1),2) & HEXSTRING(SC.GETBYTE(2),2)& HEXSTRING(SC.GETBYTE(3),2)& VbCr
+             Sc.Print "===========================================" & VbCr
+             End if
+            if Bytes = &H0B then
+             print
+             Sc.Print "===========================================" & VbCr
+             Sc.Print "VCC = "& HexString(VCC, 2)
+             SC.PRINT "-" &  HexString(GlitchType, 2)  & HexString(Delay, 4)
+             Sc.Print " GLITCHED past 0A BUG" & VbCr
+             PRINT HEXSTRING(SC.GETBYTE(0),2) & HEXSTRING(SC.GETBYTE(1),2) & HEXSTRING(SC.GETBYTE(2),2)& HEXSTRING(SC.GETBYTE(3),2)& VbCr
+             Sc.Print "===========================================" & VbCr
+             End if
+            if Bytes = &H3F then
+             print
+             Sc.Print "===========================================" & VbCr
+             Sc.Print "VCC = "& HexString(VCC, 2)
+             SC.PRINT "-" &  HexString(GlitchType, 2)  & HexString(Delay, 4)
+             Sc.Print " GLITCHED past 0C BUG" & VbCr
+             PRINT HEXSTRING(SC.GETBYTE(0),2) & HEXSTRING(SC.GETBYTE(1),2) & HEXSTRING(SC.GETBYTE(2),2)& HEXSTRING(SC.GETBYTE(3),2)& VbCr
+             Sc.Print "===========================================" & VbCr
+            End if
+Sc.Write("12 15 A5 21 00 02 A0 28 AB 80 02 " & HexString(GlitchType, 2)  &  HexString(RT, 4) & " 03 0E 05 8a 00")
+   Sc.Read(02)
+
+   Bytes = Sc.Getbyte(1)
+   'bytes = 0
+    if Bytes > 7 then
+        Bytes = Sc.Read(7)
+ Bytes = Sc.Getbyte(1)
+
+      PRINT HexString(bytes, 2)
+   if Bytes = &Hff then
+    vcc = vcc + 0.21
+end if
+    if bytes = &HAA then
+    vcc = vcc - 0.21
+end if
+trycnt = trycnt +1
+if trycnt > 500 then
+            GlitchType = GlitchType + 1
+trycnt = 0
+            if GlitchType > &h0B then
+             GlitchType = &H0A
+              end if
+              sc.print vbcr&"trying glitchtype  = "& hexstring(glitchtype,2)&vbcr
+end if
+end if
+end if
+LOOP
+
+End Sub
+
+Function HexString(Number,Length)
+    ' This function takes 2 arguments, a number and a length.  It converts the decimal
+    ' number given by the first argument to a Hexidecimal string with its length
+    ' equal to the number of digits given by the second argument
+    Dim RetVal
+    Dim CurLen
+    RetVal=Hex(Number)
+    CurLen=Len(RetVal)
+    If CurLen<Length Then
+        RetVal=String(Length-CurLen,"0") & RetVal
+    End If
+    HexString=RetVal
+End Function
+
+Sub SENDOVERFLOW()
+
+PRINT "OVERFLOW WAS SENT TO 00 E050, READ CAM LATER WITH NAGRA EDIT TO SEE E050" & VBCR
+PRINT "CHANGED FROM FF TO 00. IF IT DID WE KNOW OVERFLOW IS WORKING."
+PRINT
+SC.DELAY(100)
+
+Sc.Write("470E051503FFFF00BC00000000000000000000000000")
+Sc.Write("00000000000000000000000000000000")
+Sc.Write("00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00")
+Sc.Write("00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 02 00")
+
+Sc.Read(2)
+
+Sc.Write("46 0E 05 03 FF 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00")
+Sc.Write("00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00")
+Sc.Write("00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00")
+Sc.Write("00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 02 00")
+Sc.Read(2)
+
+Sc.Write("460E0503FF0000000000000030313233E050813741")
+Sc.Write("42434445464748010100000000FF0000")
+Sc.Write("000000CD0000C39B9CAE71A696B74EA6")
+Sc.Write("05CD7801CC73810000000000000000000200")
+Sc.Read(2)
+
+Sc.Write("0D 0E 05 03 C7 60 00 60 00 60 00 60 AA 00")
+Sc.Read(2)
+
+
+Sc.Write("2F 03 0E 05 E8 21 00 25 A0 20 00 00 20 8F AB C2 64 44 9A FE 70 1D E7 62 FA B1 4C 31 06 00 11 22 33 44 55 66 77 88 99 AA BB CC DD EE FF DE 85 00")
+Sc.Read (2)
+ Bytes = Sc.Getbyte(1)
+     if Bytes > 4 then
+        Bytes = Sc.Read(bytes)
+        Bytes = Sc.Getbyte(3)
+        'if bytes = &h63 then
+        'OPENCAM = 1
+      'end if
+ BYTES = 0
+ end if
+
+END SUB

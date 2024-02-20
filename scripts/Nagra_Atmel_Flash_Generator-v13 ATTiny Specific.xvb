@@ -1,0 +1,466 @@
+' Hex Atmel Flash Generator v13 - ATTiny Specific
+' Original VB Script File - Created 10/5/2007 by John Nobody
+' Modified 10/6/2007 by Joe's brother to add code for ATTiny and fixed code where any non mod-32 flash was truncated
+' Skinny version created 10/6/2007 to be specific to the ATTiny
+Option Explicit
+Dim FlashFields, FlashConds, FlashConfig, FlashRead
+
+' Set WinExplorer to run without any hardware attached
+
+    Wx.BaudRate=     115200      ' Communication Rate after a Reset
+    Wx.ResetBaudRate=115200      ' Communication Rate before a Reset
+    Wx.Parity=            0      ' 0 = None, 1 = Odd, 2 = Even, 3 = Mark, 4 = Space
+    Wx.StopBits=          0      ' 0 = 1 stop bit, 1 = 1.5 stop bits, 2 = 2 stop bits
+    Wx.DTRControl=        0      ' Initial state of DTR  0 = off, 1 = on
+    Wx.RTSControl=        1      ' Initial state of RTS  0 = off, 1 = on
+    Wx.ResetDelay=        0      ' In microseconds
+    Wx.ByteDelay=         0      ' In microseconds
+    Wx.RxByteTimeout=  1000      ' In milliseconds
+    Wx.ResetMode=         2      ' 0 = No Resets, 1 = ISO Reset (Expect a ATR), 2 = Device Reset (No ATR)
+    Wx.ResetLine=         1      ' 0 = Toggle RTS for Reset, 1 = Toggle DTR for Reset
+    Wx.ByteConvention=    1      ' 0 = Inverse, 1 = Direct
+    Wx.FlushEchoByte=     0      ' 0 = no flush, 1 = flush - A Phoenix interface will echo each byte transmitted.
+    Wx.FlushBeforeWrite=  0      ' 0 = no flush, 1 = flush - Flush the receive buffer before each write to strip off Null bytes.
+    Wx.IgnoreTimeouts=    1      ' 0 = Abort script on a receive timeout, 1 = Ignore all receive timeouts
+    Wx.ResetAfterTimeout= 0      ' 0 = Don't reset after a timeout, 1 = do a reset after a timeout  - Not used if "IgnoreTimeouts=0"
+    Wx.LogTransactions=   0      ' 0 = Don't log transactions, 1 = log transactions
+    Wx.DisplayUSW=        0      ' Display USW after script complete 0 = no, 1 = yes
+    Wx.DisplayFuse=       0      ' Display Fuse after script complete 0 = no, 1 = yes
+
+' Define some other global constants and variables for this local script
+
+    Const fsoError = -1
+    Const fsoOpenRead = 0
+    Const fsoOpenWrite = 1
+    Const fsoOpenReadWrite = 2
+    Const ForReading = 1, ForWriting = 2, ForAppending = 8
+    Const TristateUseDefault = -2, TristateTrue = -1, TristateFalse = 0
+    Const fsoSEEK_SET = 0
+    Const fsoSEEK_CUR = 1
+    Const fsoSEEK_END = 2
+    Const FileFilter = "All Intel Hex Files (*.hex, *.eep, *.pfg, *.txt)|*.hex;*.eep;*.pfg;*.txt|Hex Files (*.hex)|*.hex|FBPRG EEprom Hex Files (*.eep)|*.eep|XpAtmel Program Hex Files (*.exe.program.hex)|*.exe.program.hex|XpAtmel EEprom Hex Files (*.exe.eeprom.hex)|*.exe.eeprom.hex|Jeepers Files (*.pfg)|*.pfg|Text Files (*.txt)|*.txt|All (*.*)|*.*"
+    Dim FlashClear, FlashRbb, FlashRom, FlashRev, FlashName, FlashDesc, FlashSig, FlashKudos, FlashI2C
+    Dim ProgramLines, ProgramData, ProgramCode, ProgramName, EepromLines, EepromData, EepromCode, EepromName
+
+' Begin the main script
+
+Sub Main()
+    Dim MainMenuType
+
+    Do                 ' Start Main Menu's Loop and CLEAR OUT all of these script wide variables before the menu begins again
+
+        FlashClear="N"   ' The character to fill any non-addressed memory with (clear to "N" instead of "" since 0 means something else)
+        FlashRbb=""      ' ATR receive block byte in hex
+        FlashRom=""      ' ATR rom version in decimal
+        FlashRev=""      ' ATR revision level in decimal
+        FlashName=""     ' Suggested file name for the flash without the file extension
+        FlashDesc=""     ' Breif description of the flash code (only used in jeeper files)
+        FlashSig=""      ' Signature line of the flash code (only used in jeeper files)
+        FlashKudos=""    ' Special thank you's from the author (only used in jeeper files)
+        FlashI2C=""      ' AVR's complete chipset type (only used in jeeper files)
+        ProgramData=""   ' 1 full intel hex record containing 1 (probably too long) string of data to be burned to atmel's program memory
+        ProgramCode=""   ' The "ProgramData" variable turned into multiple lines of properly formatted intel hex code
+        ProgramName=""   ' Suggested program file name along with the proper file extension
+        EepromData=""    ' 1 full intel hex record containing 1 (probably too long) string of data to be burned to atmel's eeprom memory
+        EepromCode=""    ' The "EepromData" variable turned into multiple lines of properly formatted intel hex code
+        EepromName=""    ' Suggested eeprom file name along with the proper file extension
+        ProgramLines=0   ' Line number (plus 1) to end the program code at
+        EepromLines=0    ' Line number (plus 1) to end the eeprom code at
+
+        MainMenuType=Sc.ButtonBox("Choose an option ... Use At Your Own Risk!" & VbCr &_
+            "Should be good for 2-Chip ATTiny 2313!" &_
+            " ", VbInformation, "Hex Atmel Flash Generator", "Generate Flash", "Create ATR", "Line Checksum", "EXIT")
+        Select Case MainMenuType
+        Case "1"
+            Call GenerateFlash()
+        Case "2"
+            Call CreateATR("FF")
+        Case "3"
+            Call CreateLine()
+        Case Else
+            Exit Sub
+        End Select
+
+    Loop While True=True  ' Kick back to start of Main Menu Again ... The only way out is to click 'X' or 'Exit'
+End Sub
+
+
+Function CreateLine() ' OK
+    ' Simply asks for one actual line of intel hex and then checks if bytes of hex. Then recalculates length byte
+    ' and/or checksum byte as neccessary. Function returns and prints the correct line in output window.
+    Dim InputLine, LenByte, LenData, Line
+
+    InputLine=Sc.InputBox("Please Enter an Intel Hex Line That You Want a Checksum Byte Calculated For." & VbCr & VbCr &_
+        "An Intel Standard HEX File Is A DOS ASCII TEXT File With One 'Record' Per Line." & VbCr &_
+        "Each Line Must Follow This Format With 1 'Position' Being 1 'Character' (2 Chars = 1 Byte):" & VbCr & VbCr &_
+        "Position 1     = Record Marker (Must Always Be One ':' Colon)" & VbCr &_
+        "Position 2-3     = Record Length (Number Of Data Bytes As A 2 Digit Hex Number)" & VbCr &_
+        "Position 4-7     = Address (2 Byte Hex Address Where Data Should Be Loaded To The Chip)" & VbCr &_
+        "Position 8-9     = Record Type (00=Normal Data  01=End of File  02=Extended Address)" & VbCr &_
+        "Position 10-?     = Data Bytes (Actual Data To Be Burned To The Atmel Chip's EEprom)" & VbCr &_
+        "Last 2 Positions     = The Line's Checksum Byte (2's Complement Of Total Line Sum)" & VbCr & VbCr &_
+        "For example you might have an incorrect line that looks like the following:" & VbCr &_
+        ":10026000C29A2F9108953FFF9500FF918171A04733" & VbCr &_
+        "To check the line's checksum, you could enter that OR the following:" & VbCr &_
+        ":10026000C29A2F9108953FFF9500FF918171A047" & VbCr & VbCr &_
+        "The script will readjust Spaces, Colons, and Lowercase characters to Upper." & VbCr &_
+        "If length byte matches length of data bytes, script calculates and adds a checksum byte." & VbCr &_
+        "If exactly 1 extra byte is found, script assumes you entered checksum and recalculates it." & VbCr &_
+        "Otherwise length byte is wrong, so it recalculates that AND adds a checksum byte." & VbCr & VbCr &_
+        "Both examples above will output the following with the proper checksum byte of 99:" & VbCr &_
+        ":10026000C29A2F9108953FFF9500FF918171A04799" &_
+        " ", "Line Checksum Byte Calculator For Intel Hex Files", ":10026000C29A2F9108953FFF9500FF918171A047")
+
+    If IsHexBytes(InputLine)<10 Then                                     ' Strip spaces, colons, lowercase and check if invalid hex or length
+        Sc.Print(VbCr & "Intel Hex Line Is Invalid :" & InputLine & VbCr)  ' Print error and kick input back to user
+        Exit Function                                                      ' Kill function if invalid or length of program is less than 5 bytes
+    End If
+
+    LenByte="&h" & Left(InputLine,2)                       ' assign length byte (1st 2 chars) to a variable
+    LenData=Len(InputLine)-8                               ' assign length of data as length minus the 1st 8 characters
+
+    If LenData=LenByte*2 Then                              ' If length of data matches with length byte
+        Line=InputLine                                       ' Set temporary line as original line
+    ElseIf LenData=LenByte*2+2 Then                        ' If length of data has "one too many" bytes, assume they included checksum
+        Line=Left(InputLine,Len(InputLine)-2)                ' Set temporary line as original line minus last byte
+    Else                                                   ' Otherwise the length byte is definately wrong
+        Line=HexString(LenData\2,2) & Right(InputLine,Len(InputLine)-2)  ' Set temporary line as line with recalculated length byte
+    End If
+
+    CreateLine=CalculateChecksum(Line)                     ' Get checksum and add it to the end of line
+    Sc.Print(VbCr & "Input Hex Line Was = :" & InputLine)  ' Print Original Line Of Data
+    Sc.Print(VbCr & "Output Hex Line Is = " & CreateLine)  ' Print New Line Of Data With The Correct Checksum
+End Function
+
+
+Sub GenerateFlash()
+    ' One ugly frickin sub to hopefully generate, check, print, and save properly formatted intel hex files.
+    ' I tried to make it easy to follow, but I doubt if I succeeded. Suggestions are welcome!!
+    Dim HexType, ClearType, FlashType, SpecialType, N2Type, JumperType
+    HexType=2
+    ClearType=Sc.ButtonBox("What Byte Should We Fill Non Addressed Memory With?" & VbCr &_
+        "FF Seems To Be The Most Common, But 00 is Sometimes Used and Nothing should be used for AVReal with ATTiny." &_
+        " ", VbQuestion, "Select The Flash's Clear Byte Type", "FF", "00", "Nothing", "Go Back")
+    Select Case ClearType
+    Case "1"
+        FlashClear="F"
+    Case "2"
+        FlashClear="0"
+    Case "3"
+        FlashClear="N"
+    Case Else
+        Exit Sub
+    End Select
+    FlashType="5"
+    SpecialType="5"
+    N2Type=Sc.ButtonBox("Which Type Of Atmel 2313 Emulator Chip Setup Do You Use?" & VbCr & VbCr &_
+        "N2 2chip    = Two Chip Max-232/ATTiny-2313 'Max/Mel' Emulator Code" & VbCr &_
+        "N2 2chip 6000    = Two Chip But Adjusts Timing For 4.156Mhz IRD's Like 6000 Series" &_
+        " ", VbQuestion, "Select N2 ATTiny 2313 Emulator Flash Type", "ATTiny - 2chip", "ATTiny 2chip 6K", "Go Back")
+       Select Case N2Type
+            Case "1"
+               Call N2_TwoChip2313_ATTiny(0)
+            Case "2"
+               Call N2_TwoChip2313_ATTiny(1)
+            Case Else
+                Exit Sub
+       End Select
+    If FlashRom="000" Or FlashRev="000" Then Exit Sub End If                 ' Kill sub if user got to the rom/rev question, but cancelled one
+    If IsHexBytes(EepromData)<10 Then EepromData="" End If                   ' Strip spaces, colons, lowercase and set to "" if invalid hex or length
+    If IsHexBytes(ProgramData)<10 Then                                       ' Strip spaces, colons, lowercase and check if invalid hex or length
+        Sc.Print(VbCr & "Intel Hex Line Is Invalid :" & ProgramData & VbCr)    ' Print error and kick input back to user
+        Exit Sub                                                               ' Kill sub if invalid or length of program is less than 5 bytes
+    End If
+
+    If Right(ProgramData,2)>"00" And FlashName<>"ul4s" Then ProgramData=ProgramData & "00" End If  ' If last byte greater than "00" ("" is less than "00"), add "00" to string
+    If Right(EepromData,2)>"00" Then EepromData=EepromData & "00" End If     ' If last byte greater than "00" ("" is less than "00"), add "00" to string
+    ProgramName=FlashName & ".hex"
+    ProgramCode=CreateCode(ProgramData,ProgramLines+EepromLines) & ":00000001FF" & VbCr
+    Sc.Print("# " & ProgramName & VbCr & VbCr & ProgramCode & VbCr & EepromCode)
+    Call CreateHexFile(EepromCode, EepromName)
+    Call CreateHexFile(ProgramCode, ProgramName)
+End Sub
+
+Sub N2_TwoChip2313_ATTiny(Special)
+    ProgramLines=&h80
+    EepromLines=&h8
+    ProgramData=":10000000" &_
+        "0CC0189521C018951895189518951895" &_
+        "18951895189518951895479AF8940027" &_
+        "0BBF05BFD0E0C0E60993C03EE8F3D030" &_
+        "D8F30DED02BB00E201BB00EC07BB00E7" &_
+        "0DBF00E00EBFC79A00E70DBF00E00EBF" &_
+        "839BFECFF89400E80BBF789490E2CCD0" &_
+        "EAE6F2E02BE1C8953196002D99D0D9F7" &_
+        "0FED0DBF00E00EBFBCD060D009935ED0" &_
+        "09935CD00993402E442029F0242D56D0" &_
+        "09932A95E1F752D00993242D04E0200F" &_
+        "422EA7D00991ABD02A95E1F7A2D05ED0" &_
+        "09935CD009935AD00993402E442029F0" &_
+        "242D54D009932A95E1F750D00993242D" &_
+        "04E0200F422E8DD0099103D02A95E1F7" &_
+        "C7CF2F93809BFECF889A98E085D000C0" &_
+        "909800C000C0000028E0882794E07CD0" &_
+        "0000001FC8F00000909A00C0891F8170" &_
+        "2A95A1F794E070D000C0879558F00000" &_
+        "909A00C096E068D0000000C0909A8898" &_
+        "2F9108959098F6CF9098E8CF2F93809B" &_
+        "FECF8099FECF96E09A95F1F701E099E0" &_
+        "9A95F1F780B38695001FC8F7009599E0" &_
+        "9A95F1F7809BFECF2F910895B59B01C0" &_
+        "FDCF97E09A95F1F7000000E89AE09A95" &_
+        "F1F70000000096B3990F990F990F0795" &_
+        "A8F700009AE09A95F1F7B59BFECF0895" &_
+        "2F93889A90EF28D0909800C000C0F02E" &_
+        "28E0882795E720D000C0001FC0F00000" &_
+        "909A00C0891F81702A95A1F796E714D0" &_
+        "879558F00000909A00C098E70DD00000" &_
+        "909A88982F912A9508959098F6CF9098" &_
+        "E9CFC0E6D0E008959A95F1F708952F93" &_
+        "C7989AE09A95F1F788E0079558F00000" &_
+        "C7980000000099E000009A95F1F78A95" &_
+        "A1F70AC0C79A0000000099E000009A95" &_
+        "F1F78A9551F700C0C79A99E0DDDF2F91" &_
+        "0895FF920795FF1C0795FF1C0795FF1C" &_
+        "0795FF1C0795FF1C0795FF1C0795FF1C" &_
+        "0795FF1C0F2DFF900895" & CreateATR("FF")
+    FlashName="n2_" & FlashRom & "_" & FlashRev & "_2313_2chip_ATTiny"
+
+    If Special=1 Then
+        ProgramData=Replace(ProgramData,"0000E89AE09A","0000E899E09A",1)  ' line 24 - 99
+        ProgramData=Replace(ProgramData,"F700009AE09A","F7000099E09A",1)  ' line 25 - 0099
+        ProgramData=Replace(ProgramData,"00000099E000","00000098E000",1)  ' line 33 - 98
+        ProgramData=Replace(ProgramData,"00000099E000","00000098E000",1)  ' line 34 - 98
+        ProgramData=Replace(ProgramData,"C0C79A99E0DD","C0C79A98E0DD",1)  ' line 35 - 9A98
+        FlashName=FlashName & "_ird6k"
+    End If
+End Sub
+
+
+
+
+Function CreateATR(DefaultRBB) ' OK
+    ' Prompts for user input an entire ATR string minus the last LRC byte.
+    ' Or user can enter 1 byte (receive block) which will then prompt 2 more questions for Rom & Rev.
+    ' Function calculates the string's LRC byte and returns the input string with that byte on the end.
+    Dim ATR, RomBytes, RevBytes
+
+    ATR=Sc.InputBox("Please enter the DishNet ATR that you want to calculate a LRC Byte for." & VbCr &_
+        "OR just enter 2 digit Receive Block Byte (9th ATR byte) to begin creating your own." & VbCr & VbCr &_
+        "Here are some Actual Complete ATR Examples with the correct LRC on the end:" & VbCr &_
+        "Rom003_Rev383 = 3FFF9500FF918171 64 4700444E415350 30 30 33 20526576 33 38 33 F5" & VbCr &_
+        "Rom010_RevA24 = 3FFF9500FF918171 A0 4700444E415350 30 31 30 20526576 41 32 34 4C" & VbCr &_
+        "Rom011_RevB23 = 3FFF9500FF918171 A0 4700444E415350 30 31 31 20526576 42 32 33 49" & VbCr &_
+        "Rom101_Rev007 = 3FFF9500FF918171 A0 4700444E415350 31 30 31 20526576 30 30 37 3D" & VbCr &_
+        "Rom102_Rev103 = 3FFF9500FF918171 FF 4700444E415350 31 30 32 20526576 31 30 33 64" & VbCr & VbCr &_
+        "Receive Block Byte Examples (9th Byte): 64, 78, A0, FF)" & VbCr &_
+        "FF is recommended for most 8515 chip setups no matter what ATR your using." & VbCr &_
+    "64 is recommended for most 2313 chip setups due to the chips smaller buffer size." & VbCr & VbCr &_
+        "Important - If you are checking a complete ATR, please DO NOT include the last byte (LRC)." & VbCr &_
+        "The script uses the whole string and adds the proper LRC byte to the end." & VbCr &_
+        " ", "Nagra ATR Generator", DefaultRBB)
+
+    If IsHexBytes(ATR)=0 Then                   ' Strip spaces, colons, lowercase and check if invalid hex or length
+        Exit Function                             ' Quietly quit because the input must be not be bytes of hex, like if they don't want an ATR
+    End If
+
+    If Len(ATR)=2 Then                          ' If they entered exactly one byte then it's not a full ATR ....
+        FlashRbb=ATR                              ' so let's assume they want that byte as the Receive Block Byte
+
+        FlashRom=Sc.InputBox("Please Enter the ATR's Rom Type." & VbCr & "Examples: 003, 010, 011, 101, 102", "Pick Rom Type", "102")
+        FlashRom=Replace(UCase(FlashRom)," ","")  ' replace spaces and lowercase input since I try to keep the Asc2Hex as true as possible
+        RomBytes=Asc2Hex(FlashRom,3,"0")          ' call our ascii calculator to get the hex translation of user input
+
+        FlashRev=Sc.InputBox("Please Enter the ATR's Revision Level." & VbCr & "Examples: 383, A24, B23, 007, 10C, 38C", "Pick Revision Level", "10C")
+        FlashRev=Replace(UCase(FlashRev)," ","")  ' replace spaces and lowercase input since I try to keep the Asc2Hex as true as possible
+        RevBytes=Asc2Hex(FlashRev,3,"0")          ' call our ascii calculator to get the hex translation of user input
+
+        If FlashRom="000" Or FlashRev="000" Then Exit Function End If  ' Exit if user cancelled during the rom or rev popup
+        ATR="3FFF9500FF918171" & FlashRbb & "4700444E415350" & RomBytes & "20526576" & RevBytes  ' insert user vars into a standard nagra atr string
+    End If
+
+    If Len(ATR)>51 Then                         ' if we have 26 bytes, then we probably have a Nagra ATR, so let's analyze some of it
+        FlashRbb=Mid(ATR,17,2)                    ' byte 9 of ATR is Receive Block Byte
+        RomBytes=Mid(ATR,33,6)                    ' bytes 17-19 of ATR reflect the card rom number
+        RevBytes=Mid(ATR,47,6)                    ' bytes 24-26 of ATR reflect the card revision number
+        FlashRom=Chr("&h" & Mid(RomBytes,1,2)) & Chr("&h" & Mid(RomBytes,3,2)) & Chr("&h" & Mid(RomBytes,5,2))  ' turn hex to decimal to ascii
+        FlashRev=Chr("&h" & Mid(RevBytes,1,2)) & Chr("&h" & Mid(RevBytes,3,2)) & Chr("&h" & Mid(RevBytes,5,2))  ' turn hex to decimal to ascii
+    End If
+
+    CreateATR=CalculateLRC(ATR)                                                                 ' Get LRC Byte and add it to our ATR string
+    Sc.Print(VbCr & "# Input ATR Without LRC Was   = " & SpaceBytes(ATR) & VbCr)                ' Print Original ATR Input
+    Sc.Print("# Output ATR With LRC Byte Is = "        & SpaceBytes(CreateATR) & VbCr)          ' Print What ATR Should Be With Correct LRC
+    Sc.Print("# ATR Receive Block Byte      = " & FlashRbb & " hex" & VbCr)                     ' Print Receive Block Byte in Hex
+    Sc.Print("# ATR Rom Type  =  " & FlashRom & "  = " & SpaceBytes(RomBytes) & " hex" & VbCr)  ' Print Rom Type in Ascii & Hex
+    Sc.Print("# ATR Rev Level =  " & FlashRev & "  = " & SpaceBytes(RevBytes) & " hex" & VbCr)  ' Print Revision Level in Ascii & Hex
+End Function
+
+
+Function CreateCode(LastLineOfData, TotalLines)
+    ' 2 input arguments, 1 long line containing the start of 1 intel hex record plus "too much" data
+    ' but with no checksums included, and the line number to stop adding clear bytes at.
+    ' Function returns data reparsed into complete intel hex records with format based on all previous questions.
+    Dim LastLine, Address, LastData, X, I, Code
+
+    LastLine=LastLineOfData                                    ' reassign last line so we don't modify original input
+    If FlashClear<="F" And TotalLines>1 And LastLine="" Then   ' If flashclear & totallines are both set and lastline is not set
+        LastLine=":10000000" & String(TotalLines*32,FlashClear)  ' Then reassign lastline as one clear string so a blank hex can be created
+    End If
+    If IsHexBytes(LastLine)<10 Then                            ' Strip spaces, colons, lowercase and check if invalid hex or length
+        Exit Function                                            ' Quietly kill function if invalid or length is less than 5 bytes (xpatmel)
+    End If
+
+    Address="&h" & Mid(LastLine,3,4)               ' assign & turn char 3,4,5,6 from hex to decimal address to begin inserting data at
+    LastData=Mid(LastLine,9)                       ' assign char 9 through end of string as the data to be inserted
+    If FlashClear<="F" And TotalLines>0 Then       ' If fill character is assigned, do special dances to fill in blanks
+        If Len(LastData) MOD 32 Then                 ' If data length divided by 32 has a remainder greater than 0
+            LastData=LastData & String(32-Len(LastData) MOD 32,FlashClear)  ' add "32 minus remainer" clear chars to the string
+        End If
+        If Address MOD 16 Then                       ' If address divided by 16 has a remainder greater than 0
+            LastData=LastData & String(32,FlashClear)  ' instead of a short line, add 32 more clear chars
+        End If                                       ' This way, the 2nd string after the last data will safely overlap back to an address offset of zero
+    End If
+    X=Len(LastData)                                ' Assign a temp variable 'X' since we ask for length many times
+    For I=0 to (X\32-1)                            ' for each full block of 32 characters (16 bytes)
+        Code=Code & CalculateChecksum("10" & HexString(Address,4) & "00" & Mid(LastData,I*32+1,32))  ' add these 16 bytes to output
+        Address=Address+16                           ' increase hex address by 16 for next line
+    Next
+    If FlashClear<="F" And TotalLines>1 Then       ' If fill character is assigned AND more than just last line is to be filled, do last special dance
+        For I=(Address\16) to (TotalLines-1)         ' address\16 rounds down to offset 0 | total lines minus 1 because prom starts at 0 not 1
+            Code=Code & CalculateChecksum("10" & HexString(I*16,4) & "00" & String(32,FlashClear))  ' finish adding blank lines
+        Next
+    Else                                           ' Else fill character was not assigned ... so parse final line if there is any data remaining
+        If X MOD 32 Then                             ' Final line's length byte is "remainder of" (chars divided by 2) divided by 16 data bytes per line
+            Code=Code & CalculateChecksum(HexString(X\2 MOD 16,2) & HexString(Address,4) & "00" & Mid(LastData,(((X\32)-1)*32)+33,X MOD 32))
+        End If
+    End If
+    CreateCode=Code
+End Function
+
+
+Sub CreateHexFile(HexCode,HexName)
+    ' This sub takes 2 arguments, text data to be written to a file and a default name for that file.
+    ' This slightly differs in that it modifies VbCr to become VbCrLf for dos intel hex file compatibility.
+    Dim FileCode, FileName, OutFile, fso, f
+
+    FileCode=HexCode                                                 ' reassign code so we don't modify original input
+    FileCode=Replace(Replace(FileCode,VbCrLf,VbCr),VbCr,VbCrLf)      ' switch every carriage return to carriage return with line feed for dos
+    If FileCode>"" And HexName>"" Then                               ' Proceed only if there is something to put inside file and a name was assigned
+        FileName=Fs.FileSaveDialog(FileFilter, "Please select a name to save the hex file as...", HexName)  ' Ask user for filename to save as
+        If FileName<>"" Then                                           ' Proceed only if user chose a name for the new file
+            OutFile=Fs.FileCreate(FileName)                              ' Attempt to create the new file - Outfile is object's number
+            Fs.FileClose(OutFile)                                        ' Close and kill the new creation
+            If OutFile>0 Then                                            ' Proceed only if the new file was actually created
+                Set fso=CreateObject("Scripting.FileSystemObject")         ' Create a new file system object
+                Set f=fso.OpenTextFile(FileName, ForWriting, True)         ' Assign the object as our text file and open it
+                f.Write FileCode                                           ' Write all the code to our file
+                f.Close                                                    ' Close the file
+                Sc.Print("Hex Successfully Saved As: " & FileName & VbCr)  ' Show user we succeeded
+            End If
+        End If
+    End If
+End Sub
+
+
+Function SpaceBytes(Data)
+    ' This function takes 1 argument, a string containing any value of any length
+    ' and returns the string with one space between every 2 characters.
+    Dim RetVal, I, Bytes
+
+    RetVal=Data                              ' reassign data so we don't modify original input
+    If IsHexBytes(RetVal)>0 Then             ' Strip spaces, colons, lowercase from input, and if valid hex, proceed
+        For I=1 to Len(RetVal) Step 2          ' For each byte of the input string (2 steps because 1 byte is 2 chars)
+            Bytes=Bytes & Mid(RetVal,I,2) & " "  ' Save these bytes to a new variable and space them out
+        Next
+        SpaceBytes=Trim(Bytes)                 ' Return the string, but trim off the last space
+    End If
+End Function
+
+
+Function CalculateChecksum(Data)
+    ' This function takes 1 argument, a string with no spaces or colons which contains any value of any length (like a line of intel hex code)
+    ' It adds all bytes together to form a Sum and then calculates 2's complement of the Sum which is Checksum.
+    ' Function returns string with the Checksum byte added to end.
+    Dim I, OneByte, Sum
+
+    For I=1 to Len(Data) Step 2     ' For each step of the input string (2 chars per step because we are calculating 2's complement)
+        OneByte="&h" & Mid(Data,I,2)  ' Assign and turn this step from hex to decimal
+        Sum=Sum+0+OneByte             ' Assign and add each step's decimal value together to create the total sum of all the data
+    Next                            ' Afterwards, get and return checksum byte which is &h100 minus last 2 hex digits of sum
+    CalculateChecksum=":" & Data & Right(Hex(&h1000000-Sum),2) & VbCr  ' Return line formatted with new checksum byte
+' Sc.Print("CCS " & CalculateChecksum & VbCr)
+End Function
+
+
+Function CalculateLRC(Data)             ' "LRC" stands for "Longitudinal Redundancy Check", for those keeping score
+    ' This function takes 1 argument, a string with no spaces or colons which contains any value of any length (like an ATR)
+    ' Function XOR's all bytes together to form a "LRC Byte" and returns the string with it added to end.
+    Dim I, OneByte, LRC
+
+    For I=3 to (Len(Data)) Step 2         ' Go through all of the bytes of the original data one by one, except for the 1st byte
+        OneByte="&h" & Mid(Data,I,2)        ' Assign and turn this step from hex to decimal
+        LRC=LRC XOR OneByte                 ' XOR each byte received
+    Next
+    CalculateLRC=Data & HexString(LRC,2)  ' Return the string with new LRC byte
+End Function
+
+
+Function IsHexBytes(Data)
+    ' Function modifies original input by stripping spaces, colons, & changing lower to uppercase.
+    ' It returns total number of hex digits in the string if the data is hex and it has an even number of characters, or else 0.
+
+    IsHexBytes=0                                      ' Assume the input is invalid
+    Data=Replace(Replace(UCase(Data),":","")," ","")  ' Strip spaces, colons, lowercase from actual input
+    If IsHex(Data)<>0 And Len(Data) MOD 2=0 Then      ' If data is valid hex and total characters divided by 2 has no remainer
+        IsHexBytes=Len(Data)                            ' return the total number of hex digits (not bytes) the string contains
+    End If
+End Function
+
+
+Function Asc2Hex(Characters,Length,Filler)
+    ' This function takes 3 arguments: a string of characters, length to raise input string up to,
+    ' and a default character to insert on front of input string if string is too short.
+    ' Function returns the exact Hex Equivelant of the Ascii input string (caps, spaces, etc... they ALL matter).
+    Dim I
+
+    If Len(Characters)<Length Then                                   ' If current length is less than the length that we want...
+        Characters=String(Length-Len(Characters),Filler) & Characters  ' Fix input by placing a default character in front until it is length we want
+    End If
+    For I=1 to Length                                                ' For each character in the wanted string length (dumps trailing characters, if any)
+        Asc2Hex=Asc2Hex & HexString(Asc(Mid(Characters,I)),2)          ' Turn it to an Ascii number, then to a hex byte, then place on end of return string
+    Next
+End Function
+
+
+Function HexString(Number,Length)
+    ' This function takes 2 arguments, a number and a length.  It converts the decimal
+    ' number given by the first argument to a Hexidecimal string with its length
+    ' equal to the number of digits given by the second argument
+    Dim RetVal, CurLen
+
+    RetVal=Hex(Number)                           ' Convert the decimal number to a Hex number and save it in a variable named RetVal
+    CurLen=Len(RetVal)                           ' Find the length of the Hex number...How long is it? Then store that answer in CurLen
+    If CurLen<Length Then                        ' If CurLen is < the length that we want it to be then
+        RetVal=String(Length-CurLen,"0") & RetVal  ' Place zeroes in front of our Hex number until it is the length we want it to be
+    End If
+    HexString=RetVal                             ' Return the resulting Hex number back to the program
+End Function
+
+
+Function Hex2Dec(HexNumber)  ' not currently used but has good uses and it's not huring anything.
+    ' This function takes 1 argument, a string containing a hex value of any digit length
+    ' and returns the decimal equivalent
+    Dim DecimalValue, DigitCount, Digit, HexDigit
+
+    HexNumber=Replace(UCase(HexNumber)," ","")
+    DigitCount=Len(HexNumber)
+    For Digit=1 To DigitCount
+        HexDigit=Mid(HexNumber,Digit,1)
+        If Asc(HexDigit)<58 Then
+            DecimalValue=HexDigit*16^(DigitCount-Digit)
+        Else
+            DecimalValue=(Asc(HexDigit)-55)*16^(DigitCount-Digit)
+        End If
+        Hex2Dec=Hex2Dec+DecimalValue
+    Next
+End Function

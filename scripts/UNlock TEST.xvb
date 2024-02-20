@@ -1,0 +1,190 @@
+'Backdoor TEST script for locked out HU 3M cards
+'This script uses the backdoor code listed in un_lockout.hex, and I
+'have reason to believe that un_lockout.hex is the HEX script of
+'DssStealthProHu. If the original backdoor code was NOT modified by
+'the dealer, you should have success glitching your card.
+'
+'It is safe to run this script to your card. Should you have to edit
+'the script, ONLY EDIT THE BACKDOOK CODE!!!
+'
+'This backdoor code is a signature. If the below listed backdoor code
+'does not work for you, try a different combination of the 4 byte code.
+'Examples: FFD4C3A2, D4C3A2FF, C3A2FFD4, A2FFD4C3, etc...for you race
+'horse fans, box the 4 bytes. You have a better chance of recovering
+'your card if you know the backdoor code.
+'
+'FOR EDUCATIONAL PURPOSES - USE THIS SCRIPT AT YOUR OWN RISK!
+
+Option Explicit
+
+Const ins="0E" 'Ins for backdoor
+Const backdoorkey="FFD4C3A2"  'backdoor code
+Const SOFTWARE = " V 1 "
+Dim GB
+
+Sub main()
+'Sc.verbose = False
+
+Dim MenuPrompt
+Dim Choice
+Dim GotInput
+
+'Get Ver
+    If Sc.Version < 4.6 Then
+        ErrorString = "You need version 4.6 or greater of WinExplorer to run this script"
+        Sc.MsgBox ErrorString, vbCritical
+        Err.Raise 1050, , ErrorString
+        End If
+Call P3settings() ' Set up winexplorer for P3
+      Do
+            Gotinput = False
+            MenuPrompt = SOFTWARE & vbCrLf & vbCrLf
+            MenuPrompt = MenuPrompt & "Lock Off  -  removes the glitch block" & vbCrLf & vbCrLf
+            MenuPrompt = MenuPrompt & "Lock On -  install the glitch block" & vbcrlf & vbCrLf
+            MenuPrompt = MenuPrompt & "Read    -  reads the glitch block byte" & vbcrlf & vbCrLf
+            Choice = Sc.ButtonBox(MenuPrompt,0,"GLITCH BLOCK","Lock Off","Lock On","Read","Exit")
+
+            Select Case Choice
+
+        Case 1
+            Call Remove()
+            Call Read2654()
+            IF GB <> "7F" then
+            Sc.msgbox("GLITCH LOCK OFF!")
+            ELSE
+            Sc.msgbox("GLITCH LOCK ON!")
+            END IF
+        Case 2
+            Call Install()
+            CALL Read2654()
+            IF GB <> "7F" then
+            Sc.msgbox("GLITCH LOCK OFF!")
+            ELSE
+            Sc.msgbox("GLITCH LOCK ON!")
+            END IF
+        Case 3
+            Call Read2654()
+            Sc.msgbox("GLITCH LOCK ON = 7F, GLITCH LOCK = " & GB)
+        Case 4
+            Gotinput = True
+                        End Select
+Loop Until Gotinput = True
+
+End sub
+
+
+Function Read2654()
+GB = ReadBackdoor("2654","01")
+Sc.print vbcrlf & "GLITCH BLOCK: " & GB & vbcrlf
+End Function
+
+
+Function Install()
+Call WriteBackDoor("2654","7F","D")
+End function
+
+
+Function Remove()
+Call WriteBackDoor("2654","46","D")
+End Function
+
+
+Function WriteBackDoor(address,data,o)
+Dim inslenth
+Dim ToWrite
+address=Replace(address," ","")
+data=Replace(data," ","")
+        inslenth=Len(data)
+        inslenth=Hexstring((inslenth/2+6),2)
+        if Ucase(o)="D" then
+               ToWrite="48" & ins & "1000" & inslenth
+            else if Ucase(o)="E" then
+               ToWrite="48" & ins & "2000" & inslenth
+            else
+                msgbox "Error, Invailed option " & o & ".  E & D are vailed"
+                Exit function
+        End if
+            End if
+Sc.Write(ToWrite)
+Sc.Read(&H01)
+Sc.Write(backdoorkey & address & data)
+Sc.Read(&H02)
+
+End function
+
+
+Function ReadBackDoor(address,numberOfbytes)
+Dim ToWrite
+Dim i
+        numberOfBytes=Hexstring(numberofbytes,2)
+        ToWrite="48" & ins & "40" & numberOfbytes & "06"
+      Sc.Write(ToWrite)
+         Sc.Read(&H01)
+              Sc.Write(backdoorkey&address)
+          Sc.read(numberOfBytes)
+      numberofbytes=(numberofbytes - &H01)
+        For i=0 to Hex2Dec(numberofbytes)
+             ReadBackDoor=ReadBackdoor & Hexstring(Sc.Getbyte(Hexstring(i,2)),2)
+    Next
+Sc.Read(&H02)
+
+End function
+
+Function HexString(Number,Length)
+
+    Dim RetVal
+    Dim CurLen
+    RetVal=Hex(Number)
+    CurLen=Len(RetVal)
+    If CurLen<Length Then
+        RetVal=String(Length-CurLen,"0") & RetVal
+    End If
+    HexString=RetVal
+End Function
+
+Function Hex2Dec(HexNumber)
+
+    Dim DecimalValue
+    Dim DigitCount
+    Dim Digit
+    Dim HexDigit
+
+    HexNumber = Replace(UCase(HexNumber), " ", "")
+    DigitCount = Len(HexNumber)
+
+    For Digit = 1 To DigitCount
+
+        HexDigit = Mid(HexNumber, Digit, 1)
+        If Asc(HexDigit) < 58 Then
+            DecimalValue = HexDigit * 16 ^ (DigitCount - Digit)
+        Else
+            DecimalValue = (Asc(HexDigit) - 55) * 16 ^ (DigitCount - Digit)
+        End If
+        Hex2Dec = Hex2Dec + DecimalValue
+    Next
+
+End Function
+
+
+Sub P3Settings()
+
+    Wx.BaudRate = 38400
+    Wx.ResetBaudRate = 9600
+    Wx.Parity = 1
+    Wx.StopBits = 2
+    Wx.DTRControl = 1
+    Wx.RTSControl = 0
+    Wx.ResetDelay = 4000
+    Wx.ByteDelay = 4000
+    Wx.RxByteTimeout = 200
+    Wx.ResetMode = 1
+    Wx.ResetLine = 0
+    Wx.ByteConvention = 0
+    Wx.FlushEchoByte = 1
+    Wx.FlushBeforeWrite = 1
+    Wx.IgnoreTimeouts = 0
+    Wx.ResetAfterTimeout = 0
+    Wx.LogTransactions = 0
+    Wx.DisplayUSW = 1                ' Display USW after script complete 0 = no, 1 = yes
+    Wx.DisplayFuse = 1               ' Display Fuse after script complete 0 = no, 1 = yes
+End Sub

@@ -1,0 +1,84 @@
+' DishRom3Popper
+' Credit goes to: Penga69 (he created the CMD03 packet)
+'                 and Vu43 (he found the key change packet)
+
+const retry_constant = 10
+const initdelay=2000
+const retry_delay  = 3000
+
+Sub Main ()
+sc.verbose = false
+ClearOutputWindow
+
+sc.print "Sending keychange packet..." & vbcr & "=================" & vbcr
+sc.write("210053A0CA00004D004B0001621C88E4173260F208FDDF1879A3963D197F505E8B69601C7CF7FCAA4AFAAE7FF57F0093083C1387A30EC8DA2B9625D1CE24E5A7FF4091DB78B96AF93109716A80AEF7A26062B901010515")
+sc.print "Response from card: " & vbcr
+sc.delay(80)
+answer = read_answer()
+sc.print
+sc.delay(initdelay)
+wx.closeport
+wx.openport
+
+
+for retries = 1 to retry_constant
+    sc.print
+    sc.print "Sending overflow packet, attempt number " & cstr(retries)& vbcr & "================="
+    sc.print
+    sc.write("21405DA0CA00003703350101106D15BAADBADDDEADDEADF900C40016C82592ADD6BFDEA16EC7BC2A84BC0296E445D1ADE779964E8246D4E64DC7F058CCC2DAE64DC7F058CCC2DAE64DC7F058CCC2DAE64DC7F058CCC2DA2EACC54D9D179C0405A5")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    answer = read_answer()
+    sc.print
+    sc.print "Waiting 3 seconds before reset..."
+    sc.delay(retry_delay)
+    wx.closeport
+    wx.openport
+next
+
+sc.print
+sc.print "Card should now be unlocked! Open Nagraedit and try One Step Backup. Enjoy!" & vbcr
+sc.print
+sc.print "Note: If you still get Backdoor Reported Disable then run script again. Repeat as necessary." & vbcr
+sc.print
+End sub
+
+function read_answer()
+length = sc.bytesinbuffer
+sc.read(length)
+if length = 0 then
+    answer=""
+    sc.print("(No answer)")
+else
+    For X = 0 to length - 1
+        ThisByte = Hex(Sc.GetByte(X))
+        if Len(ThisByte) = 1 then ThisByte = "0" & ThisByte
+        Thisbyte = Thisbyte & " "
+        res = res & Thisbyte
+        Sc.Print(ThisByte)
+    Next
+end if
+Sc.Print
+read_answer = answer
+end function
+
+Wx.ResetDelay = 150
+Wx.ByteDelay = 0
+Wx.RxByteTimeout = 50
+Wx.CommPort = "com1:"
+Wx.BaudRate = 115200
+Wx.ResetBaudRate = 9600
+Wx.Parity = 1
+Wx.StopBits = 2
+Wx.DTRControl = 1
+Wx.RTSControl = 0
+Wx.ResetMode = 1
+Wx.ResetLine = 0
+Wx.ByteConvention = 0
+Wx.FlushEchoByte = 1
+Wx.FlushBeforeWrite = 1
+Wx.IgnoreTimeouts = 0
+Wx.ResetAfterTimeout = 0
+Wx.LogTransactions = 0
+Wx.DisplayUSW = 0
+Wx.DisplayFuse = 0

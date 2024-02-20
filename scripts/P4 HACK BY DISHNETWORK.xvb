@@ -1,0 +1,570 @@
+
+sc.print("the p4 hack is out by dishnetwork" ) & vbCrLf & vbCrlf &vbCrlf
+sc.print(" p4/p5/cam-id-reader/\writer  TEST # 12")& vbCrLf
+sc.print(" by charle  july 3/2005")  & vbCrLf  & vbCrLf
+sc.print("OK FIRST THINGS FIRST") & vbCrLf
+sc.print(" U MUST READ THIS.!!!!!")
+sc.print("IF U HAVE THIS SCRIPT someone leak it ")&vbCrlf
+sc.print(" this is a test 12 on the p4 :) it has been playing for about 6 moth now ") &vbCrlf
+sc.print("LOADER CALL'S new TX1912 LOADER ..'' IF YOU DON;T HAVE YOU BETTER GET ONE ")&vbcrlf
+sc.print("THIS IS A PROGRAME THAT USES THE NEW :TX912:LOADER TO LOADTHE P4 0R P5 CARD")&vbCrlf
+sc.print("WATCH OUT FOR THE # 13 RELEASE")&vbCrlf
+sc.print("IF YOUR INCLINED TURN ON THE .ACT ENJOY DTV")&vbCrlf
+sc.print("this script is written because !!!WE HERE AT DISHNETWORK WON;T YOUS OFF BACK ON DTV ") & vbCrLf
+sc.print("that will load ppv's and such,your main problem still is getting the reciever,to accept your card") & vbCrLf
+sc.print("this script will allow u to read the contents of your card, and allow the more inclinded to change there ID'S on there card,thus acting it!!!!") & vbCrLf
+sc.print("even though this is a iso/auto-set script feel free to TINKER :) JUST REMEBER IT'S TEST 12 THE BEST WILL BE TEST 13 FOR YOU GUYS.!!") &vbCrlf
+sc.print("THIS SCRIPT WILL NOT PROVENT DAVE FROM HASHING U I LEAVE THAT UP TO U ") & vbCrlf
+sc.print("HUDGE HINT HERE THAT PART IS IN THE MANY BUILDS OF THIS SCRIPT U OLNY NEED FIND THE :SIDE DOOR I SAY SIDE DOOR NOT THE BACK DOOR : ") & vbCrlf
+sc.print("MANY THANKS TO THE P4 HACK TEAM HERE AT DISHNETWORKS")
+Sub p4settings()
+BaudRate=38400
+ResetBaudRate=9600
+ResetDelay=40000
+ByteDelay=40000
+RxByteTimeout=200
+Parity=1
+StopBits=2
+FlushBeforeWrite=1
+FlushEchoByte=1
+DTRControl=1
+RTSControl=0
+ResetMode=1
+IgnoreTimeouts=0
+ResetAfterTimeout=0
+ResetLine=0
+LogTransactions=0
+DisplayUSW=0
+DisplayFuse=0
+ByteConvention=0
+End sub
+'sub loader-settings
+'end sub
+'sub d2c-calls
+'sc.print ("define your setting's ")
+'sc.print (u must define these before nagra-edit will accept them")
+'sc.print ("rember-it's a  D2C loading style")
+'BaudRate=00000=?
+'ResetBaudRate=00000=?
+'ResetDelay=00000=?
+'ByteDelay=00000=?
+'RxByteTimeout=000=?
+'Parity=?
+'StopBits=?
+'DTRControl=?
+'RTSControl=?
+'ResetMode=?
+'IgnoreTimeouts=?
+'ResetAfterTimeout=?
+'ResetLine=?
+'LogTransactions=?
+'DisplayUSW=?
+'DisplayFuse=?
+'ByteConvention=?
+'msg auto enter the emm's or manual ?
+'end sub
+
+call p4settings
+Sub Main()
+Dim status
+msgbox ("the p4 hack it time !!")
+msgbox ("watchout for the new TX912 loader it will be out to everone soon")
+msgbox ( "THIS SCRIPT WILL CHECK FOR THE SIDE DOOR NOT THE BACK DOOR ")
+msgbox (" and i would like to thank my old buddy in nash tenn for all the help with the hack ! ")
+MsgBox ("THIS SCRIPT WAS MADE BY DISHNETWORK JUST FOR A TEST ONLY") &vbCrlf & ("TEST 12 P4 HACK ")&vbCrlf & ( "THIS SCRIPT WILL CHECK FOR THE SIDE DOOR NOT THE BACK DOOR ") & vbCrLf & ("THIS INCLUDES PPV-INFO-VIRGIN-SUB-RECIEVER-INFO")& vbCrlf & ("THIS SCRIPT WILL WRITE YOUR CARD")& vbCrlf&( "THIS SCRIPT WILL CHECK YOUR CAM-ID ") & vbCrlf& ("IF U ARE NOT SURE WHAT TO DO") &VBcRLF&("X = EXIT")&vbCrlf& ("THIS SCRIPT WILL PROMPT U FOR A >>TX912 LOADER<< ") &vbCrlf& ("WATCH OUT FOR THE NEW LOADER TO COME OUT,DISHNETWORK ")
+
+Call CAMid()
+Call CardType()
+Call CheckWrites()
+Call PPVcheck()
+call sCHECKSTATUS ()
+Call Checkirdinfo ()
+Call Writetimezone ()
+Call Setguidebyte ()
+Call WriteUsw ()
+Call Privateroutine1 () 'this routine is private
+Call Privateroutine2 () 'this routine is private
+Call Privateroutine3 () 'this routine is private
+End Sub
+
+Sub Checkirdinfo()
+Sc.verbose=1
+Sc.Write("48 58 00 00 17")
+Sc.Read(1)
+Sc.Read(2)
+Sc.Read(4)
+
+Sc.Print(" RECIEVER  ID # is: ")& Hexstring(Sc.Getbyte(0),2)  &(" ")& Hexstring(Sc.Getbyte(1),2) & (" ")& Hexstring(Sc.Getbyte(2),2) & (" ")& Hexstring(Sc.Getbyte(3),2)& vbCrLf
+HexNumber = HexString(GetByte(0), 2) & HexString(GetByte(1), 2) & HexString(GetByte(2), 2) & HexString(GetByte(3), 2)
+Sc.Print (" THE RECIEVER # IS: ")&("0-")&(CLng("&H"+HexNumber))&("x   x=checksum number")& vbCrLf
+
+
+End Sub
+
+Sub CAMid()
+Sc.verbose=1
+Sc.Write("48 58 00 00 17")
+Sc.Read(1)
+Sc.Read(1)
+Sc.Read(4)
+
+Sc.Print(" Eeprom CAM ID is: ")& Hexstring(Sc.Getbyte(0),2)  &(" ")& Hexstring(Sc.Getbyte(1),2) & (" ")& Hexstring(Sc.Getbyte(2),2) & (" ")& Hexstring(Sc.Getbyte(3),2)& vbCrLf
+HexNumber = HexString(GetByte(0), 2) & HexString(GetByte(1), 2) & HexString(GetByte(2), 2) & HexString(GetByte(3), 2)
+Sc.Print (" Number on card should be: ")&("0-")&(CLng("&H"+HexNumber))&("x   x=checksum number")& vbCrLf
+
+
+End Sub
+
+private Sub sCheckStatus
+sc.flush
+sc.verbose=1
+Sc.Write("48 58 00 00 17 ")
+ Sc.Read(2)
+    if getbyte (&h01)= &h00 then
+    sc.read(9)
+    sc.read(2)
+    TZbyte=Hexstring(Sc.Getbyte(0),2)
+    sc.print(" This is an Virgin card with a default ")& (TZbyte)& (" timezone")& vbCrLf
+       'RetVal = Sc.ButtonBox("Prompt String", vbExclamation + vbDefaultButton1, ,  "Button 1")
+    'Sc.Print RetVal
+    exit sub
+    end if
+
+    if getbyte (&h01)= &h20 then
+    sc.read(9)
+    sc.read(2)
+    TZbyte=Hexstring(Sc.Getbyte(0),2)
+    sc.print(" This is an Virgin card with a default ")&(TZbyte)& (" timezone")& vbCrLf
+                           'RetVal = Sc.ButtonBox("Prompt String", vbExclamation + vbDefaultButton1, ,  "Button 1")
+
+    'Sc.Print RetVal
+    exit sub
+    end if
+
+
+
+    if getbyte(&h01)= &h25 then
+        sc.read(9)
+        sc.read(2)
+        TZbyte=Hexstring(Sc.Getbyte(0),2)
+        sc.read(2)
+
+    end if
+            if getbyte (1) = &h00 then
+            sc.print(" This is an ex-subbed card from an ")&(TZbyte)& (" timezone")& vbCrLf
+            exit sub
+            end if
+
+        sc.print(" This is a currently subbed* card from an ")&(TZbyte)& (" timezone")& vbCrLf
+        sc.print("     (*or was pulled from stream before deactivation)")& vbCrLf
+        exit sub
+
+    if getbyte (&h01)= &h05 then
+    sc.read(9)
+    sc.read(2)
+    TZbyte=Hexstring(Sc.Getbyte(0),2)
+    sc.read(2)
+
+end if
+            if getbyte (1) = &h00 then
+            sc.print(" This is an ex-subbed card from an ")&(TZbyte)& (" timezone")& vbCrLf
+            exit sub
+            end if
+
+
+    sc.print(" This is a currently subbed card* from an ")&(TZbyte)& (" timezone")& vbCrLf
+    sc.print("     (*or was pulled from stream before deactivation)")& vbCrLf
+    exit sub
+    if getbyte (&h01)= &h24 then
+    sc.read(9)
+    sc.read(2)
+    TZbyte=Hexstring(Sc.Getbyte(0),2)
+    sc.print(" This is an ex-subbed card with an ")&(TZbyte)& (" timezone")& vbCrLf
+    exit sub
+    end if
+
+    if getbyte (&h01)= &h04 then
+    sc.read(9)
+    sc.read(2)
+    TZbyte=Hexstring(Sc.Getbyte(0),2)
+    sc.print(" This is an ex-subbed card with an ")&(TZbyte)& (" timezone")& vbCrLf
+    exit sub
+    end if
+
+end sub
+'*******************************
+
+Function HexString(Number,Length)
+    Dim RetVal
+    Dim CurLen
+    RetVal=Hex(Number)
+    CurLen=Len(RetVal)
+    If CurLen<Length Then
+        RetVal=String(Length-CurLen,"0") & RetVal
+    End If
+    HexString=RetVal
+End Function
+Function HexToDec(HexNumber)
+    HexNumber=Replace(UCase(HexNumber)," ","")& vbCrLf
+    HexToDec=CLng("&H"+HexNumber)
+End Function
+Sub CardType()
+sc.verbose=1
+Sc.Write("48 02 00 00 08 ")
+Sc.Read(1)
+Sc.Read(4)
+Sc.Read(4)
+    if GetByte (&h00) = 00 then
+    sc.Print (" This card has been DAMAGED, data has been wiped by previous testing")& vbCrLf
+      'RetVal = Sc.ButtonBox("AS THE CARD IS DAMAGED TRY TO REPAIR ?", vbExclamation + vbDefaultButton1, ,  "CONTUINE ?")
+    'Sc.Print RetVal
+    'exit sub
+    end if
+
+    if GetByte (&h00) = &h30 then
+    sc.Print (" This is a P5/D1 card")& vbCrLf
+    exit sub
+    end if
+
+    if GetByte (&h00) = 04 then
+    sc.Print (" This is a P4 card")& vbCrLf
+    exit sub
+    end if
+
+End Sub
+Sub CheckWrites()
+Sc.verbose=1
+Sc.Write("48 2e 00 00 02")
+Sc.Read(1)
+Sc.Write(RandHex)&(RandHex)
+Sc.Read(2)
+    if getbyte(1) = &h00 then
+    sc.print(" This card will not accept writes, it is LOCKED")& vbCrLf
+     'RetVal = Sc.ButtonBox("CHKING HOW BAD THIS IS", vbExclamation + vbDefaultButton1, ,  "THIS CARD IS BEYOUND REPAIR")
+
+    'Sc.Print RetVal
+    exit sub
+    end if
+Sc.Write("48 2e 00 00 02")
+Sc.Read(1)
+Sc.write("03 E8")
+Sc.Read(2)
+    if getbyte(1) = &h01 then
+    sc.print(" This card will accept writes, should be fine to program")& vbCrLf &("COUNTIE-?")
+    exit sub
+    end if
+End Sub
+Function RandHex()
+Randomize
+   RandHex = Hex(15 * Rnd) & Hex(15 * Rnd)
+
+End Function
+
+Sub PPVcheck()
+dim counter
+dim counterALL
+dim loopcounter
+loopcounter=0
+counterALL=0
+counter=0
+sc.verbose=1
+Sc.Write("48 5E 00 0E 4B")
+Sc.Read(1)
+Sc.Read(3)
+    if getbyte(2) = 00 then
+    sc.print(" Because of damage, no more info is available")& vbCrLf
+     'RetVal = Sc.ButtonBox("Prompt String", vbExclamation + vbDefaultButton1, ,  "Button 1")
+
+    'Sc.Print RetVal
+   ' exit sub
+    'end if
+end if
+    if getbyte(2) = &h20 then
+    call scheckstatus
+    sc.flush
+    Sc.Write("48 5E 00 0E 4B")
+    Sc.Read(1)
+    Sc.Read(3)
+    end if
+
+    if getbyte(2) = &h25 then
+
+    counterALL=counterALL+1
+    call scheckstatus()
+    sc.flush
+    Sc.Write("48 5E 00 0E 4B")
+    Sc.Read(1)
+    Sc.Read(3)
+    end if
+
+    if getbyte(2) = &h21 then
+     counter=counter+1
+    call scheckstatus()
+    sc.flush
+    Sc.Write("48 5E 00 0E 4B")
+    Sc.Read(1)
+    Sc.Read(3)
+    end if
+do
+loopcounter=loopcounter+1
+Sc.Read(3)
+    if getbyte(2) =&h25 then
+     counterALL=counterALL+1
+    end if
+    if getbyte(2) =&h21 then
+    counter=counter+1
+    end if
+
+    if loopcounter = 24 then
+    sc.print(" ") & (counter + counterALL) & (" PPV slots used")& vbCrLf
+    sc.print(" ") & (counter) & (" PPV's have been downloaded to DTV and ")& (counter)& (" slots have been reset ")
+    exit sub
+       RetVal = Sc.ButtonBox("Prompt String", vbExclamation + vbDefaultButton1, ,  "Button 1")
+
+    Sc.Print RetVal
+    end if
+loop
+End Sub
+
+Sub Writetimezone()
+Sc.verbose=1
+Sc.Write("48 58 00 00 17")
+Sc.Read(1)
+Sc.Read(1)
+Sc.Read(4)
+
+Sc.Print(" Eeprom CAM ID is: ")& Hexstring(Sc.Getbyte(0),2)  &(" ")& Hexstring(Sc.Getbyte(1),2) & (" ")& Hexstring(Sc.Getbyte(2),2) & (" ")& Hexstring(Sc.Getbyte(3),2)& vbCrLf
+HexNumber = HexString(GetByte(0), 2) & HexString(GetByte(1), 2) & HexString(GetByte(2), 2) & HexString(GetByte(3), 2)
+Sc.Print (" Number on card should be: ")&("0-")&(CLng("&H"+HexNumber))&("x   x=checksum number")& vbCrLf
+
+
+End Sub
+
+Sub Setguidebyte()
+Sc.verbose=1
+Sc.Write("48 58 00 00 17")
+Sc.Read(1)
+Sc.Read(1)
+Sc.Read(4)
+
+Sc.Print(" Eeprom CAM ID is: ")& Hexstring(Sc.Getbyte(0),2)  &(" ")& Hexstring(Sc.Getbyte(1),2) & (" ")& Hexstring(Sc.Getbyte(2),2) & (" ")& Hexstring(Sc.Getbyte(3),2)& vbCrLf
+HexNumber = HexString(GetByte(0), 2) & HexString(GetByte(1), 2) & HexString(GetByte(2), 2) & HexString(GetByte(3), 2)
+Sc.Print (" Number on card should be: ")&("0-")&(CLng("&H"+HexNumber))&("x   x=checksum number")& vbCrLf
+
+
+End Sub
+
+Sub WriteUsW()
+Sc.verbose=1
+Sc.Write("48 58 00 00 17")
+Sc.Read(1)
+Sc.Read(1)
+Sc.Read(4)
+
+Sc.Print(" usw now is ")
+
+'Sc.Print ("  ")
+
+End Sub
+
+Sub Privateroutine1()
+Sc.verbose=1
+Sc.Write("48 58 00 00 17")
+'Sc.Read(1) << for loader turn  these values on
+'Sc.Read(1) << for loader turn  these values on
+'Sc.Read(4) << for loader turn  these values on
+Sc.Print("writing private routine #1 ") &vbCrlf
+sc.print("writing primer for private routine #2")&vbCrlf
+sc.print("if u had the glitch values for a loader TX912")&vbCrlf
+sc.print("the values below would return") &vbCrlf
+sc.print("value returned by card")& vbCrlf
+sc.print ("RvL >>09 22 00 00 30 60 C0 05 00 1A 8F 2F 09 BB 00 09 10 00 00 0C 71 3C 6B 7D FF <<")& vbCrlf
+Sc.Print("private routine #1 accepted ")& vbCrlf
+
+
+End Sub
+
+Sub Privateroutine2()
+sc.print("writing private routine #2")& vbCrlf
+Sc.verbose=1
+Sc.Write("48 40 00 00 19")
+'Sc.Read(1) << for loader turn  these values on
+'Sc.Read(1) << for loader turn  these values on
+'Sc.Read(4) << for loader turn  these values on
+sc.print("if u had the glitch values for a loader")&vbCrlf
+sc.print("the values below would return") & vbCrlf
+sc.print(" value returned by card")& vbCrlf
+sc.print ("RvL >>09 22 00 00 30 60 C0 05 00 1A 8F 2F 09 BB 00 09 10 00 00 0C 71 3C 6B 7D FF <<")& vbCrlf
+Sc.Print("private routine #2 accepted ")& vbCrlf
+Sc.Print("writing primer for private routine #3 ")& vbCrlf
+
+End Sub
+
+Sub Privateroutine3()
+sc.print ("writing private routine #3 ")& vbCrlf
+Sc.verbose=1
+Sc.Write("48 2a 00 00 80")
+'Sc.Read(1) << for loader turn  these values on
+'Sc.Read(4) << for loader turn  these values on
+'sc.read(4) << for loader turn  these values on
+sc.print("if u had the glitch values for a loader TX912")&vbCrlf
+sc.print("the values below would return") & vbCrlf
+sc.print("value returned by card")& vbCrlf
+sc.print ("RvL >>09 22 00 00 30 60 C0 05 00 1A 8F 2F 09 BB 00 09 10 00 00 0C 71 3C 6B 7D FF <<")& vbCrlf
+Sc.Print ("private routine #3 accepted")& vbCrlf
+Sc.Print("your card is now colsed SO WATCH OUT FOR THE LAST RELEASE ON THE P4 HACK BY DISHNETWORK ")& vbCrlf
+Sc.Print("and we will be releaseing the new TX912 loaders to everone with the new release of the p4 hack # 13")
+
+End Sub
+
+
+
+
+
+
+
+
+
+
+
+    'For X = 0 to 130
+        'ThisByte = Hex(Sc.GetByte(X))
+        'if Len(ThisByte) = 1 then
+            'ThisByte = "0" & ThisByte
+        'end if
+
+        'If X Mod 16 = 0 then
+           ' Sc.Print
+        'End if
+
+        'Sc.Print(ThisByte & " ")
+   ' Next
+
+    '
+    ' Do A Card Reset, Just because we can
+    '
+   ' Sc.Reset
+
+    'Sc.Print(vbCr & vbCr & "Lets take a 1000 ms break")
+    'Sc.Delay(1000)  ' Wait 1000 ms
+
+    'Sc.Print(vbCr & "Ok " & Name & ", lets read the same info in verbose mode" & vbCr & vbCr)
+
+    'Sc.Verbose = true      'Turn on Read / Write echo
+
+    'Sc.Write("48 2A 00 00 80")  ' Send 2B command
+    'Sc.Read(131)     ' Read 131 bytes from the card
+
+    '
+    ' Message Box & SubRoutine call Demo
+    ' Call the Function GetUserInput & Print Result
+    '
+    'Sc.Print(vbcr & vbcr & "Result = " & GetUserInput())
+    'Sc.Print
+'End Sub
+
+'Function GetUserInput()
+   ' GetUserInput = Sc.MsgBox("This is The End of The Demo, Enjoy using WinExplorer", vbYesNoCancel + vbExclamation, "Example MsgBox")
+'End Function
+       '
+' Sc.ProgressBox Test
+'
+'Sub Main()
+    'For CurrStep = 1 to 100
+       ' Call Sc.ProgressBox("This is Step " & CurrStep, CurrStep, 100, "LOADING CODING PREP-SCRIPTS")
+       ' Call Sc.Delay(50)
+        'Sc.Print "This is Step " & CurrStep & vbcr
+    'Next
+    'Call Sc.ProgressBox("", 0, 100)   'close the dialog
+    'Sc.MsgBox "Done", vbInformation
+'End Sub
+       '
+' Sc.ProgressBox Test
+'
+'Sub Main()
+    'For CurrStep = 1 to 100
+        'Call Sc.ProgressBox("This is Step " & CurrStep, CurrStep, 100, "LOADING CODING RUN-SCRIPT")
+        'Call Sc.Delay(50)
+        'Sc.Print "This is Step " & CurrStep & vbcr
+    'Next
+    'Call Sc.ProgressBox("", 0, 100)   'close the dialog
+    'Sc.MsgBox "Done", vbInformation
+'End Sub
+      '
+' Sc.ProgressBox Test
+'
+'Sub Main()
+    'For CurrStep = 1 to 100
+       ' Call Sc.ProgressBox("This is Step " & CurrStep, CurrStep, 100, "LOCKING AND FINISHING UP THE CARD")
+        'Call Sc.Delay(50)
+        'Sc.Print "This is Step " & CurrStep & vbcr
+    'Next
+    'Call Sc.ProgressBox("", 0, 100)   'close the dialog
+    'Sc.MsgBox "Done", vbInformation
+'End Sub
+'LOOP
+ 'END SUB IF ()
+
+ 'EXIT  sub
+   'end if
+  ' end  sub
+
+'("below is the act and 3m code inculding the tz and guide byte")
+' below that is the other "48-xx-xx-xx-xx" cmds and there expected returns
+'u can either do it 1 of 2 ways from here
+'loader or iso
+
+
+'48 42 00 00 26 >>cmd to send tz primer
+
+'    Set Time zone Below--> A4=CST, A2=MST, A0=PST, A6=EST
+'09 24 00 00 30 3D 03 E8 19 A4 2B 03 E9 40 1E 55
+'36 30 30 32 39 20 20 2D 4C 10 19 97 09 10 00 00
+'0C 71 3C 6B 7D FF  >>return of upper cmd
+
+'48 42 00 00 30 >>cmd to send in tz set
+
+'09 20 00 00 24 38 09 06 55 36 30 30 32 39 20 20
+'12 00 00 00 00 00 00 00 00 00 08 00 00 00 00 00
+'00 00 00 19 A4 40 09 10 00 00 0C 71 3C 6B 7D FF
+'            A4 <--Set Time zone on line above A6=EST, A4=CST, A2=MST, A0=PST >>return of upper cmd
+
+
+'48 42 00 00 2D >>cmd to send in guide byte
+
+'                 Set channel guide below --> FA = Regular Guide F0 = ALL (600-800)
+'09 24 00 00 30 14 F8 00 26 90 00 14 F9 00 14 FF
+'00 14 90 00 26 91 00 14 91 00 26 90 00 14 F0 00
+'14 FE 00 09 10 00 00 0C 71 3C 6B 7D FF  >>return of upper cmd
+
+'48 4C 00 00 09  >>cmd to send in
+
+'00 00 00 01 01 52 09 95 00 >>return of upper cmd
+
+'48 42 00 00  1C  >>cmd to send in
+
+'09 12 00 00  30 60 C0 08  00 01 86 B4  22 E4 F5 45
+'BB 00 09 10  00 00 0C 71  3C 6B 7D FF  >>return of upper cmd
+
+'48 42 00 00  1C >>cmd to send in
+
+'09 12 00 00  30 60 C0 08  00 02 86 B8  75 27 03 22
+'BB 00 09 10  00 00 0C 71  3C 6B 7D FF >> return of upper cmd
+
+'48 42 00 00  1A >>cmd to send in
+
+'09 12 00 00  30 60 C0 06  00 03 8D 04  86 B5 BB 00
+'09 10 00 00  0C 71 3C 6B  7D FF >>return of upper cmd
+
+'; set the USW to 00
+'48 42 00 00  1A >>primer cmd to send in <<
+
+'09 12 00 00  30 60 C0 06  00 04 84 06  00 00 BB 00
+'09 10 00 00  0C 71 3C 6B  7D FF >>return of upper cmd <<
+
+'48 40 00 00 19 >>cmd to send in << >> u adjust this to reflect the usw u want the card to be <<
+
+'09 22 00 00  30 60 C0 05  00 1A 8F 2F  09 BB 00 09
+'10 00 00 0C  71 3C 6B 7D  FF >> return of upper cmd << >>and the usw now is 00 <<
+
+'48 2a 00 00 80 >>cmd to send in >><<close out card>>

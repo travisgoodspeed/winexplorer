@@ -1,0 +1,282 @@
+'**************************************************
+'Use an ISO programmer 3.57 or 3.68 xtal(crystal)
+'Settings are automatic
+'**************************************************
+
+
+Call P4settings()
+
+Sub Main()
+Dim status
+MsgBox " Welcome to the P4/D1 Card Checker Script" & vbCrLf & (" Use an ISO programer, the script will do the settings") & vbCrLf & ("..........For Hobby Gang")
+
+Sc.Print (" Starting Check")& vbCrLf
+
+Call CAMid()
+
+Call CardType()
+
+Call CheckWrites()
+
+Call PPVcheck()
+
+End Sub
+
+Sub CAMid()
+Sc.verbose=0
+Sc.Write("48 58 00 00 17")
+Sc.Read(1)
+Sc.Read(1)
+Sc.Read(4)
+
+Sc.Print(" Eeprom CAM ID is: ")& Hexstring(Sc.Getbyte(0),2)  &(" ")& Hexstring(Sc.Getbyte(1),2) & (" ")& Hexstring(Sc.Getbyte(2),2) & (" ")& Hexstring(Sc.Getbyte(3),2)& vbCrLf
+HexNumber = HexString(GetByte(0), 2) & HexString(GetByte(1), 2) & HexString(GetByte(2), 2) & HexString(GetByte(3), 2)
+Sc.Print (" Number on card should be: ")&("0-")&(CLng("&H"+HexNumber))&("x   x=checksum number")& vbCrLf
+
+End Sub
+
+Function HexString(Number,Length)
+    ' This function takes 2 arguments, a number and a length.  It converts the decimal
+    ' number given by the first argument to a Hexidecimal string with its length
+    ' equal to the number of digits given by the second argument
+    Dim RetVal
+    Dim CurLen
+    RetVal=Hex(Number)
+    CurLen=Len(RetVal)
+    If CurLen<Length Then
+        RetVal=String(Length-CurLen,"0") & RetVal
+    End If
+    HexString=RetVal
+End Function
+
+Function HexToDec(HexNumber)
+    ' This function takes a string as input, assuming it to be a Hexidecimal string,
+    ' and converts it to a decimal number.
+    HexNumber=Replace(UCase(HexNumber)," ","")& vbCrLf
+    HexToDec=CLng("&H"+HexNumber)
+End Function
+
+Sub CardType()
+
+sc.verbose=0
+Sc.Write("48 02 00 00 08 ")
+Sc.Read(1)
+Sc.Read(4)
+Sc.Read(4)
+    if GetByte (&h00) = 00 then
+    sc.Print (" This card has been DAMAGED, data has been wiped by previous testing")& vbCrLf
+    exit sub
+    end if
+
+    if GetByte (&h00) = &h30 then
+    sc.Print (" This is a P5/D1 card")& vbCrLf
+    exit sub
+    end if
+
+    if GetByte (&h00) = 04 then
+    sc.Print (" This is a P4 card")& vbCrLf
+    exit sub
+    end if
+
+    if GetByte (&h00) = 03 then
+    sc.Print (" This is an HU card")& vbCrLf
+    exit sub
+    end if
+
+    if GetByte (&h00) = 02 then
+    sc.Print (" This is an H card")& vbCrLf
+    exit sub
+    end if
+
+Sc.Read(2)
+
+End Sub
+
+Sub CheckWrites()
+Sc.verbose=0
+Sc.Write("48 2e 00 00 02")
+Sc.Read(1)
+Sc.Write(RandHex)&(RandHex)
+Sc.Read(2)
+    if getbyte(1) = &h00 then
+    sc.print(" This card will not accept writes, it is LOCKED")& vbCrLf
+    exit sub
+    end if
+Sc.Write("48 2e 00 00 02")
+Sc.Read(1)
+Sc.write("03 E8")
+Sc.Read(2)
+    if getbyte(1) = &h01 then
+    sc.print(" This card will accept writes, should be fine to program")& vbCrLf
+    exit sub
+    end if
+End Sub
+
+Function RandHex()
+
+Randomize
+   RandHex = Hex(15 * Rnd) & Hex(15 * Rnd)
+
+End Function
+
+Sub PPVcheck()
+dim counter
+dim counterALL
+dim loopcounter
+loopcounter=0
+counterALL=0
+counter=0
+sc.verbose=0
+Sc.Write("48 5E 00 0E 4B")
+Sc.Read(1)
+Sc.Read(3)
+    if getbyte(2) = 00 then
+    sc.print(" Because of damage, no more info is available")& vbCrLf
+    exit sub
+    end if
+
+    if getbyte(2) = &h20 then
+    call checkstatus()
+    sc.flush
+    Sc.Write("48 5E 00 0E 4B")
+    Sc.Read(1)
+    Sc.Read(3)
+    end if
+
+    if getbyte(2) = &h25 then
+
+    counterALL=counterALL+1
+    call checkstatus()
+    sc.flush
+    Sc.Write("48 5E 00 0E 4B")
+    Sc.Read(1)
+    Sc.Read(3)
+    end if
+
+    if getbyte(2) = &h21 then
+     counter=counter+1
+    call checkstatus()
+    sc.flush
+    Sc.Write("48 5E 00 0E 4B")
+    Sc.Read(1)
+    Sc.Read(3)
+    end if
+do
+loopcounter=loopcounter+1
+Sc.Read(3)
+    if getbyte(2) =&h25 then
+     counterALL=counterALL+1
+    end if
+    if getbyte(2) =&h21 then
+    counter=counter+1
+    end if
+
+    if loopcounter = 24 then
+    sc.print(" ") & (counter + counterALL) & (" PPV slots used")& vbCrLf
+    sc.print(" ") & (counter) & (" PPV's have been downloaded to DTV and ")& (counter)& (" slots have been reset ")
+    exit sub
+    end if
+loop
+
+Sc.Read(2)
+End Sub
+
+
+sub checkstatus()
+sc.flush
+sc.verbose=0
+Sc.Write("48 58 00 00 17 ")
+Sc.Read(2)
+
+    if getbyte (&h01)= &h00 then
+    sc.read(9)
+    sc.read(2)
+    TZbyte=Hexstring(Sc.Getbyte(0),2)
+    sc.print(" This is an Virgin card with a default ")&(TZbyte)& (" timezone")& vbCrLf
+    exit sub
+    end if
+
+    if getbyte (&h01)= &h20 then
+    sc.read(9)
+    sc.read(2)
+    TZbyte=Hexstring(Sc.Getbyte(0),2)
+    sc.print(" This is an Virgin card with a default ")&(TZbyte)& (" timezone")& vbCrLf
+    exit sub
+    end if
+
+
+
+    if getbyte(&h01)= &h25 then
+        sc.read(9)
+        sc.read(2)
+        TZbyte=Hexstring(Sc.Getbyte(0),2)
+        sc.read(2)
+
+            if getbyte (1) = &h00 then
+            sc.print(" This is an ex-subbed card from an ")&(TZbyte)& (" timezone")& vbCrLf
+            exit sub
+            end if
+
+        sc.print(" This is a currently subbed* card from an ")&(TZbyte)& (" timezone")& vbCrLf
+        sc.print("     (*or was pulled from stream before deactivation)")& vbCrLf
+        exit sub
+    end if
+
+
+    if getbyte (&h01)= &h05 then
+    sc.read(9)
+    sc.read(2)
+    TZbyte=Hexstring(Sc.Getbyte(0),2)
+    sc.read(2)
+
+            if getbyte (1) = &h00 then
+            sc.print(" This is an ex-subbed card from an ")&(TZbyte)& (" timezone")& vbCrLf
+            exit sub
+            end if
+
+
+    sc.print(" This is a currently subbed card* from an ")&(TZbyte)& (" timezone")& vbCrLf
+    sc.print("     (*or was pulled from stream before deactivation)")& vbCrLf
+    exit sub
+    end if
+
+
+    if getbyte (&h01)= &h24 then
+    sc.read(9)
+    sc.read(2)
+    TZbyte=Hexstring(Sc.Getbyte(0),2)
+    sc.print(" This is an ex-subbed card with an ")&(TZbyte)& (" timezone")& vbCrLf
+    exit sub
+    end if
+
+    if getbyte (&h01)= &h04 then
+    sc.read(9)
+    sc.read(2)
+    TZbyte=Hexstring(Sc.Getbyte(0),2)
+    sc.print(" This is an ex-subbed card with an ")&(TZbyte)& (" timezone")& vbCrLf
+    exit sub
+    end if
+
+End Sub
+
+Sub P4settings()
+BaudRate=38400
+ResetBaudRate=9600
+ResetDelay=40000
+ByteDelay=40000
+RxByteTimeout=200
+Parity=1
+StopBits=2
+FlushBeforeWrite=1
+FlushEchoByte=1
+DTRControl=1
+RTSControl=0
+ResetMode=1
+IgnoreTimeouts=0
+ResetAfterTimeout=0
+ResetLine=0
+LogTransactions=0
+DisplayUSW=0
+DisplayFuse=0
+ByteConvention=0
+End sub

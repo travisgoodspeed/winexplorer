@@ -1,0 +1,144 @@
+'Andromeda.net  
+'located on ports 6665-6669 on servers:
+'irc.canucknet.com
+'irc.echostarnet.net
+'irc.purgatorynet.com
+'irc.hitecsat.com
+'irc.intmain.com
+'
+' This will Add 64-67 Updates to your card
+' thanks DiGi
+'
+
+
+Sub Main()
+    Dim ErrorString
+    Dim MenuPrompt
+    Dim Choice
+    Dim Value
+    Dim CurrentUSW
+    Dim ThisChar
+    Dim PromptString
+    Dim RetVal
+    Dim USW
+
+    If Sc.Version < 4.4 Then
+    ErrorString = "You need version 4.4 or greater of WinExplorer to run this script"
+    Sc.MsgBox ErrorString, vbCritical
+    Err.Raise 1050, , ErrorString
+    End If
+    Sc.ByteDelay = 60000
+    CurrentUSW = GetUSW()
+
+    If CurrentUSW < 63 Then
+        ErrorString = "The USW is at " & CurrentUSW & " (" & Hex(CurrentUSW) & "h)." & vbCrLf & vbCrLf
+        ErrorString = ErrorString & "This Script cannot apply updates 64-47 because you are not" & vbCrLf
+        ErrorString = ErrorString & "at 63 updates.  Exiting!!"
+        Sc.MsgBox ErrorString, vbCritical, "USW Check"
+                Sc.Log("USW Check performed.. USW unacceptable at " & CurrentUSW & ".. Exiting.")
+                Exit Sub
+        else
+        Sc.Log("USW Check performed.. USW acceptable at " & CurrentUSW & ".. Continuing.")
+    End if
+
+   Sc.Print(vbCrLf & "Opening The E3 Hole....")
+    call OpenE3_48()
+
+    Sc.Print(vbCrLf & "Applying updates 64-67...")
+                Call WriteE3(1, "87 5D", "24")
+                Call WriteE3(1, "87 6D", "35")
+                Call WriteE3(1, "87 02", "16")
+                Call WriteE3(1, "87 47", "16")
+                Call WriteE3(1, "88 62", "37")
+                Call WriteE3(8, "89 3C", "87 82 09 87 83 FE 81 6E")
+                Call WriteE3(4, "89 44", "DF FB F7 22")
+
+        Sc.Print(vbCrLf & "Setting USW to 67 (43h)....")
+        Call WriteE3(2, "84 06", "00 43")
+
+        Sc.Print(vbCrLf & "Closing the 'E3' hole....")
+        Call WriteE3(1, "85 91", "90")
+        Sc.Print(vbCrLf & "The 'E3' hole is now closed....")
+
+ End sub
+
+Function GetUSW()
+    Dim Oldstate
+
+    Sc.Reset
+
+    Oldstate = Sc.Verbose
+    Sc.Verbose = False
+
+    Sc.Write("48 2B 00 00 80")
+    Sc.Read(131)
+
+    GetUSW =(Sc.GetByte(29) * &H100) + Sc.GetByte(30)
+
+    Sc.Verbose = Oldstate
+End Function
+
+Sub OpenE3_48()
+    Dim CurrentUSW
+    Dim ErrorString
+
+    CurrentUSW = GetUSW()
+    Sc.Print(vbCrLf & "Opening E3 hole with 48 hole...." & vbCrLF)
+    Sc.Delay(500)
+    Sc.Write("48 42 00 00 15")
+    Sc.Read(1)
+    Sc.Write("09 22 00 00 30 60 C0 05 00 " & Hex(CurrentUSW + 1) & " " & "85 91 80 BB 00 0C 0C 00 20 90 80")
+    Sc.Read(2)
+    Sc.Write("48 42 00 00 1E")
+    Sc.Read(1)
+    Sc.Write("09 10 00 00 30 2E 43 6C 6F 61 6B 60 00 1F")
+    Sc.Write("02 80 48 30 45 57 6F 72 6B 73 0C 88 9F 19 F4 2F")
+    Sc.Read(2)
+
+    Sc.Print(vbCrLf & "Checking to see if E3 Hole opened....")
+    call WriteE3(1, "84 07", "1E")
+    CurrentUSW = GetUSW()
+    If CurrentUSW <> 30 then
+    ErrorString = "Write via E3 FAILED!"
+        Sc.MsgBox ErrorString, vbCritical
+        Err.Raise 1050, , ErrorString
+    End If
+
+End Sub
+
+Sub WriteE3(Bytes, AddrStr, DataStr)
+    Dim BytesStr
+    Dim Len1
+    Dim Len1Str
+    Dim Len2
+    Dim Len2Str
+    Dim ToWrite
+
+    If Bytes < &H10 Then
+        BytesStr = "0" & Hex(Bytes)
+    Else
+        BytesStr = Hex(Bytes)
+    End If
+
+    Len1 = &H0D + Bytes
+    If Len1 < &H10 Then
+        Len1Str = "0" & Hex(Len1)
+    Else
+        Len1Str = Hex(Len1)
+    End If
+
+    Len2 = &H04 + Bytes
+    If Len2 < &H10 Then
+        Len2Str = "0" & Hex(Len2)
+    Else
+        Len2Str = Hex(Len2)
+    End If
+
+    ' Write an update using the E3 hole
+    ToWrite = "48 40 00 00 " & Len1Str
+    Sc.Write(ToWrite)
+    Sc.Read(&H1)
+    ToWrite = "60 D5 02 85 8E E3 " & Len2Str & " " & BytesStr & " " & AddrStr & " " & DataStr & " 00 BB 00"
+    Sc.Write(ToWrite)
+    Sc.Read(&H2)
+End Sub

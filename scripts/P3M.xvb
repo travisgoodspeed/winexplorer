@@ -1,0 +1,503 @@
+' DssPrivateStealth3M.xvb V1.0 03/11/00
+' 1 Install Private 3m
+' 2 Remove Private 3m
+' 3 Change channel guide byte
+' 4 INSTALL STEALTH WITH NO WRITE BLOCKS
+' 5 REMOVE STEALTH
+
+' FOR EDUCATIONAL USE ONLY. Actually using this script on
+' a card is done completely at your own risk!!
+Sub Main()
+    Const DTZ = "A4" ' Default time zoneS - A0,A2,A4,A6,A8,20,22,24,26,28
+    Const DZC = "70821"'Default zip code - use any five digits for zip code
+    Const DGB = "49" 'Default guide byte - normal 0 - 7F, engineer 80 - FF
+    Const DFB = "24 DB"'Default fuse byte - 25 DA, 24 DB, 20 DF, 05 FA
+
+
+    Dim ErrorString
+    Dim PromptString
+    Dim Choice
+    Dim MenuPrompt
+
+'''CHECK THE VERSION OF WINEXPLORER BEING USED
+    If Sc.Version < 4.2 Then
+        ErrorString = "WinExplorer 4.2+ is required to run this script"
+        Sc.MsgBox ErrorString, vbCritical
+        Err.Raise 1050, , ErrorString
+    End If
+
+'''SET THE DELAY BYTES, IF NOT HIGH ENOUGH, SET TO THIS MINIMUM
+    If Sc.ByteDelay < 70000 Then
+        Sc.ByteDelay = 70000
+    End If
+
+'''*********************** Begin Main Menu Loop ************************'''
+    Do
+        MenuPrompt = MenuPrompt & "Please choose from the following menu choices:      " & vbCrLf & vbCrlf
+        MenuPrompt = MenuPrompt & "1: Install 3M via 2D" & vbCrLf & vbCrLf
+        MenuPrompt = MenuPrompt & "2: Remove 3M Via 2D" & vbCrLf & vbCrLf
+        MenuPrompt = MenuPrompt & "3: Change Guide Byte via 2D" & vbCrLf & vbCrLf
+        MenuPrompt = MenuPrompt & "4: Install Stealthing via 2D" & vbCrLf & vbCrLf
+        MenuPrompt = MenuPrompt & "5: Remove Stealthing via 2D" & vbCrLf & vbCrLf
+        MenuPrompt = MenuPrompt & "6: Exit" & vbCrlf  & vbCrlf
+        MenuPrompt = MenuPrompt & "Remember how to keep it Private!" & vbCrlf  & vbCrlf
+        MenuPrompt = MenuPrompt & "GIVE THIS FILE TO NO ONE!" & vbCrlf  & vbCrlf & vbCrlf
+    Choice = Sc.InputBox(MenuPrompt, "Private 3m -- Main Menu")
+
+    Select Case Choice
+
+        Case "1"
+            Sc.Log("Install 3M only via 2d!")
+            Call Install_DP3M(DTZ, DZC, DGB, DFB, P3M)
+            MenuPrompt = "Welcome Back from installing 3M Via 2d!" & vbCrLf
+        Case "2"
+            Sc.Log("Remove 3M only via 2d!")
+            Call Remove_DP3M(P3M)
+            MenuPrompt = "Welcome back from your Removing 3M via 2d!" & vbCrLf
+        Case "3"
+            Sc.Log("Change guide byte")
+            Call Change_GB(DGB)
+            MenuPrompt = "Welcome back from your Guide Byte via 2d!" & vbCrLf
+        Case "4"
+            Sc.Log("Install STEALTH via 2d!")
+            Call Install_Stealth()
+            MenuPrompt = "Welcome Back from installing Stealthing Via 2d!" & vbCrLf
+        Case "5"
+            Sc.Log("Removing Stealthing via 2d!")
+            Call Remove_Stealth()
+            MenuPrompt = "Welcome back from your Removing Stealthing via 2d!" & vbCrLf
+        Case "6", ""
+            Sc.Log("Exiting!")
+        Sc.Print(vbCrLf & "Exiting!")
+            Sc.MsgBox "You did it! Your Very own Private 3M Program!", VbOkOnly, "Private 3m -- Exiting"
+        Exit Sub
+
+        Case Else
+            MenuPrompt = "Invalid Input!" & vbCrLf
+    End Select
+    Loop While True = True
+
+END SUB
+
+
+'''*********************** Install Private 3m via 2d ************************'''
+Sub Install_DP3M(DTZ, DZC, DGB, DFB, P3M)
+
+    Dim writeinfo
+    Dim PromptString
+    Dim RetVal
+    Dim GotInput
+    Dim ThisChar
+
+    PromptString = "Would you like to set the Fuse byte, Time Zone, Channel Guide, & Zipcode?" & vbcrlf & vbcrlf
+    PromptString = PromptString & "Select NO if this is being installed an a subbed card." & vbcrlf & vbcrlf
+    PromptString = PromptString & "Or on a card that you want to keep all it's data." & vbcrlf & vbcrlf
+    PromptString = PromptString & "Select Yes if you are putting this 3m on a CLEANED card." & vbcrlf & vbcrlf
+        RetVal = Sc.MsgBox(PromptString, vbYesNo + vbExclamation + vbDefaultButton1, "Write other Info?")
+        If RetVal = vbYes Then
+           writeinfo = true
+        End If
+
+If writeinfo = true then
+    Dim TimeZone
+    Dim ZipCode
+    Dim HexZipCode
+    Dim GuideByte
+    Dim FuseByte
+
+   ''' Get time zone '''
+    GotInput = False
+    Do
+        PromptString = "Please enter your time zone using the following codes:" & vbCrLf & vbCrLf
+        PromptString = PromptString & "20/A0 for Pacific Time (PST/PDT)" & vbCrLf
+        PromptString = PromptString & "22/A2 for Mountain Time (MST/MDT)" & vbCrLf
+        PromptString = PromptString & "24/A4 for Central Time (CST/CDT)" & vbCrLf
+        PromptString = PromptString & "26/A6 for Eastern Time (EST/EDT)" & vbCrLf
+        PromptString = PromptString & "28/A8 for Atlantic Time (AST/ADT)" & vbCrLf
+        RetVal = Sc.InputBox(PromptString, "Enter Time Zone", DTZ)
+
+        Select Case UCase(RetVal)
+        Case "A0", "A2", "A4", "A6", "A8", "20", "22", "24", "26", "28"
+            GotInput = True
+            TimeZone = RetVal
+        Case ""
+            RetVal = Sc.MsgBox("Would you like to abort the script?" & vbCrLf & "(It is safe to do so at this point.)", vbYesNo + vbQuestion)
+            If RetVal = vbYes Then
+                Sc.Print("User aborted installation")
+                Exit Sub
+            End If
+        End Select
+    Loop Until GotInput = True
+
+    ''' Get zip code from user '''
+    GotInput = False
+    Do
+        RetVal = Sc.InputBox("Please enter your five-digit zip code.", "Enter Zip Code", DZC)
+
+        If IsNumeric(RetVal) And Len(RetVal) = 5 Then
+            ZipCode = RetVal
+            For ThisChar = 1 To 5
+                HexZipCode = HexZipCode & "3" & Mid(RetVal, ThisChar, 1) & " "
+            Next
+            GotInput = True
+        ElseIf RetVal = "" Then
+            RetVal = Sc.MsgBox("Would you like to abort the script?" & vbCrLf & "(It is safe to do so at this point.)", vbYesNo + vbQuestion)
+            If RetVal = vbYes Then
+                Sc.Print("User aborted installation")
+                Exit Sub
+            End If
+        End If
+    Loop Until GotInput = True
+
+    ''' Get Guide Byte '''
+
+              GotInput = False
+            Do
+            RetVal = Sc.InputBox("Please enter your Hex Guide Byte" &_
+            vbCrLf & "Enter any Guide Byte that you consider good." &_
+            vbCrLf & "Guide Bytes for Normal mode 1F, OB, 4B, 49, etc to 7F" &_
+            vbCrLf & "Guide Byte for Engineer mode 80 to FF" &_
+            vbCrLf & "(Valid hex digits are 0,1,2,3,4,5,6,7,8,9,A,B,C,D,E,F)" &_
+            vbCrLf & vbCrLf & "Example: Engineer would be FF", "Enter Guide Byte", DGB)
+
+               If IsHex(RetVal) And Len(RetVal) = 02 Then
+                    GuideByte = RetVal
+                    GotInput = True
+               ElseIf RetVal = "" Then
+                    RetVal = Sc.MsgBox("Would you like to abort the script?", vbYesNo + vbQuestion)
+                    If RetVal = vbYes Then
+                        Sc.Print("User aborted installation")
+                        Exit Sub
+                    End If
+                End If
+            Loop Until GotInput = True
+
+  ''' Get Return Fuse Byte'''
+
+       GotInput = False
+    Do
+        PromptString = "Please enter the fuse byte in hex" & vbCrLf
+        PromptString = PromptString & "you would like the card to have:" & vbCrLf & vbCrLf
+        PromptString = PromptString & "05 FA - not married & not activated" & vbCrLf
+        PromptString = PromptString & "20 DF - married & not activated" & vbCrLf
+        PromptString = PromptString & "24 DB - married & shut off" & vbCrLf
+        PromptString = PromptString & "25 DA - married & activated" & vbCrLf
+        RetVal = Sc.InputBox(PromptString, "Enter Fuse Byte", DFB)
+
+        Select Case UCase(RetVal)
+        Case "05 FA", "20 DF", "24 DB", "25 DA"
+            GotInput = True
+            FuseByte = RetVal
+        Case ""
+            RetVal = Sc.MsgBox("Would you like to abort the script?" & vbCrLf & "(It is safe to do so at this point.)", vbYesNo + vbQuestion)
+            If RetVal = vbYes Then
+                Sc.Print("User aborted installation")
+                Exit Sub
+            End If
+        End Select
+    Loop Until GotInput = True
+
+
+    ''' Last chance to bail out '''
+    PromptString = "Installation is ready to begin." & vbCrLf & vbCrLf
+    PromptString = PromptString & "Time zone = " & TimeZone & vbCrLf
+    PromptString = PromptString & "Zip code = " & ZipCode & vbCrLf
+    PromptString = PromptString & "Guide Byte = " & GuideByte & vbCrLf
+    PromptString = PromptString & "Fuse Byte = " & FuseByte & vbCrLf
+    PromptString = PromptString & "Are you sure you want to continue?"
+    RetVal = Sc.MsgBox(PromptString, vbYesNo + vbQuestion + vbDefaultButton1)
+    If RetVal = vbNo Then
+        Sc.Print("User aborted installation")
+        Exit Sub
+    End If
+
+    Sc.Print(vbCrLf & "Setting fuse bytes to " & FuseByte & " status via 2D" & vbCrLf)
+    Call Write2D(2, "80 20", FuseByte)
+
+    Sc.Print(vbCrLf & "Setting time zone to " & TimeZone & " via 2D" & vbCrLf)
+    Call Write2D(1, "84 15", TimeZone)
+
+    Sc.Print(vbCrLf & "Setting zip code to " & ZipCode & " via 2D" & vbCrLf)
+    Call Write2D(8, "83 C8", "55 " & HexZipCode & " 20 20")
+
+    Sc.Print(vbCrLf & "Setting channel guide to " & GuideByte & " via 2D" & vbCrLf)
+    Call Write2D(1, "84 5F", GuideByte)
+End IF
+
+
+    Sc.Print(vbCrLf & "Installing the 3m string starting at " & P3M & " via 2D" & vbCrLf)
+    Call Write2D(8, "8D 20", "E4 D2 38 F5 45 20 38 05")
+
+End sub
+
+
+'''*********************** Remove Private 3m via 2d ************************'''
+Sub Remove_DP3M(P3M)
+
+    Sc.Print(vbCrLf & "Remove 3M via 2D" & vbCrLf)
+    Call Write2D(8, "8D 20", "79 51 78 C4 E0 F7 F6 A3")
+
+
+End Sub
+
+
+'''*********************** Change Guide Byte via 2d ************************'''
+Sub Change_GB(DGB)
+
+Dim ErrorString
+Dim GotInput
+Dim RetVal
+Dim ChannelGuide
+
+    Sc.Verbose = true
+
+
+   ''' Ask about channel guide '''
+              GotInput = False
+            Do
+            RetVal = Sc.InputBox("Please enter your Hex Guide Byte" &_
+            vbCrLf & "Enter any channel guide byte that you consider good." &_
+            vbCrLf & "Guide Bytes for Normal mode 1F, 4F, OB, 4B, 49, to 7F" &_
+            vbCrLf & "Guide Byte for Engineer mode 80 to FF" &_
+            vbCrLf & "(Valid hex digits are 0,1,2,3,4,5,6,7,8,9,A,B,C,D,E,F)" &_
+            vbCrLf & vbCrLf & "Example: Engineer would be FF", "Enter Guide Byte", DGB)
+
+               If IsHex(RetVal) And Len(RetVal) = 02 Then
+                    ChannelGuide = RetVal
+                    GotInput = True
+               ElseIf RetVal = "" Then
+                    RetVal = Sc.MsgBox("Would you like to abort the script?", vbYesNo + vbQuestion)
+                    If RetVal = vbYes Then
+                        Sc.Print("User aborted installation")
+                        Exit Sub
+                    End If
+                End If
+            Loop Until GotInput = True
+
+  Sc.Print(vbCrLf & "Setting channel guide to " & ChannelGuide & " via 2D" & vbCrLf)
+  Call Write2D(1, "84 5F", ChannelGuide)
+
+End Sub
+
+'''**********************Stealth Routine in PPV area ***********************'''
+Sub Install_Stealth()
+
+'''WRITE STEALTH CODE
+    Sc.Print(vbCrLf & "Installing Stealth Code via 2D")
+'(20 73 2D)B7 OR B5 NANO? if B7 jump down 2Dh places to 02 8D 96
+'(C0 83 C0 82)save DPTR (DPH & DPL) to stack
+'(FF)register A holds value that B5 read - save it to register 7
+'(53 83 8F)logical & DPH with 8F hex to prevent wrap-around (AND with 8F)
+'           8Fh-10001111
+'           90h-10010000
+'   results 80h-10000000 , so we convert all 9Xhh to 8Xhh for B5 to check wrap around attack
+'(A8 83)copy DPH to register 0 (R0)
+'(B8 80 0A)see if B5 looking for 80XX if not move down 0Ah places TO AB 82
+
+    Call Write2D(17, "80 28", "20 73 2D C0 83 C0 82 FF 53 83 8F A8 83 B8 80 0A E5")
+
+'(E5 82)OK B5 is looking for 81?? - MOV DPL TO A
+'(C3)clear carry flag for safety
+'(94 28)A = A-28, because carry Flag was cleared before, carry will only be set if A is less than 28
+'(40 14) if carry flag set, address is less than 8028 but not less than 8000,
+'   jump down 16h to EF to the copy original read data value back from R7 to A and restore original DPTR.
+'(E4)OK we get here because B5 is checking between 8028 and 80FF inclusive, so clear A to 00
+'(80 12)Sjmp down 12h places to D0 82, to the restore DPTR and hash the value in A (00)
+
+'''----This is the start of the code for the cloak table above----
+'(AB 82)We come here if the B5 is checking anything except 8000 - 80FF, Save DPL in R3
+'(90 80 5F) Set DPTR to start of cloak table 805F
+'(81)**Read byte from cloak table and increment DPTR by 1, the byte this reads will be compared with DPL stored
+'   above in R0. The cloak table below consists of 3 byte entries, each 3 byte entry consists of the following
+'   Address (2 bytes) then Data (1 byte). So this MOVX below will always be reading the first address
+'   byte.
+    Call Write2D(17, "80 39", "82 C3 94 28 40 14 E4 80 12 AB 82 90 80 5F 81 60 09")
+
+'(60 09)If the first address byte equals 00 then we have reached the end of the table,
+'   jump down 09h places to EF, there restore the value the B5 originally read
+'   that we saved above in R7 then send it to hash
+'(B5 00 0E)Compare the first address byte(?? XX) in the table with the first address byte(DPH)
+'   that we saved in R0 above. The 00 in B5 00 0E is the direct memory address for register 0 (R0).
+'   If not equal then jump down 0Eh places to A3 and increment the DPTR twice
+'(81)We are here because the first address byte matched, now read the second address byte
+'   and increment DPTR by 1 to check the next table entry (second address byte).
+'(B5 03 0B)Compare the second address byte(XX ??)in the table with the second address byte(DPL)
+'   that we saved in R3 above. The 03 in B5 03 0B is the direct memory address for R3.
+'   If not equal then jump down 0Bh place to A3 and increment the DPTR by 1 to check the next Address entry.
+'(81)we are here because both address bytes matched, read the 3rd byte(data) from table
+'   for the 1st & 2nd Byte(address) so we can send to the hash.
+'(FF) Register A now holds the Data from the table that we want to send to the hash.
+'   We are going to copy that data to R7 because the original value the B5 read was saved in R7.
+'(EF)Now move the value in R7 to register A, this could be the value from our table
+'   or the original value that the B5 read, it depends on how we get to this line
+'(D0 82)Restore the original DPTR (DPL) from the B5 that we saved on the stack above, by poping the stack direct.
+'(DO 83)Restore the original DPTR (DPH) from the B5 that we saved on the stack above, by poping the stack direct.
+    Call Write2D(17, "80 4A", "B5 00 0E 81 B5 03 0B 81 FF EF D0 82 D0 83 02 8D 96")
+
+'(02 8D 96)exit by, Jump to the hash routine at 8D96
+'(A3)INC DPTR, if jumped here from above increment DPTR twice
+'(A3)INC DPTR, if jumped here from above increment DPTR once
+'(80 E8)Jump back or up E8h spaces and start over, 81 **Read byte from cloak table....
+'(85 F6 8D) FIRST BYTES OF CLOAK TABLE.... ADDRESS AND BYTE AT THE ADDRESS 8D
+    Call Write2D(17, "80 5B", "A3 A3 80 E8 85 F6 8D 85 F7 96 8D 20 79 8D 21 51 8D")
+                   '  80  -    5B 5C 5D 5E 5F 60 61 62 63 64 65 66 67 68 69 6A 6B
+
+    Call Write2D(17, "80 6C", "22 78 8D 23 C4 8D 24 E0 8D 25 F7 8D 26 F6 8D 27 A3")
+
+
+
+    Sc.Print("Install B5 intercept jump point")
+    Call Write2D(2, "85 F6", "80 28")
+
+End Sub
+
+
+'''***********************Remove Stealth Via 2d***********************************
+
+Sub Remove_Stealth()
+Sc.Print("Install B5 intercept jump point")
+    Call Write2D(2, "85 F6", "8D 96")
+   Call Write2D(17, "80 28", "00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00")
+   Call Write2D(17, "80 39", "00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00")
+   Call Write2D(17, "80 4A", "00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00")
+   Call Write2D(17, "80 5B", "00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00")
+   Call Write2D(17, "80 6C", "00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00")
+
+End Sub
+
+
+'''*********************** DssDumbie Write with Back Door sub routine ************************'''
+Sub WriteBD(Key, Bytes, AddrStr, DataStr)
+
+    Dim BytesStr
+    Dim Len1
+    Dim Len1Str
+    Dim Len2
+    Dim Len2Str
+    Dim ToWrite
+
+    If Bytes < &H10 Then
+        BytesStr = "0" & Hex(Bytes)
+    Else
+        BytesStr = Hex(Bytes)
+    End If
+
+    Len1 = &H0E + Bytes
+    If Len1 < &H10 Then
+        Len1Str = "0" & Hex(Len1)
+    Else
+        Len1Str = Hex(Len1)
+    End If
+
+    Len2 = &H08 + Bytes
+    If Len2 < &H10 Then
+        Len2Str = "0" & Hex(Len2)
+    Else
+        Len2Str = Hex(Len2)
+    End If
+
+'Writes using the BD nano back door
+    ToWrite = "48 40 00 00 " & Len1Str
+    Sc.Write(ToWrite)
+    Sc.Read(&H1)
+    ToWrite = "30 60 BD " & Len2Str & " " & Key & " " & BytesStr & " "  & AddrStr & " " & DataStr & " 00 BB 00"
+    Sc.Write(ToWrite)
+    Sc.Read(&H2)
+End Sub
+
+
+'''*********************** DssDumbie Write with E3 sub routine ************************'''
+Sub WriteE3(Bytes, AddrStr, DataStr)
+
+    Dim BytesStr
+    Dim Len1
+    Dim Len1Str
+    Dim Len2
+    Dim Len2Str
+    Dim ToWrite
+
+    If Bytes < &H10 Then
+        BytesStr = "0" & Hex(Bytes)
+    Else
+        BytesStr = Hex(Bytes)
+    End If
+
+    Len1 = &H0D + Bytes
+    If Len1 < &H10 Then
+        Len1Str = "0" & Hex(Len1)
+    Else
+        Len1Str = Hex(Len1)
+    End If
+
+    Len2 = &H04 + Bytes
+    If Len2 < &H10 Then
+        Len2Str = "0" & Hex(Len2)
+    Else
+        Len2Str = Hex(Len2)
+    End If
+
+' Write using the E3 hole
+    ToWrite = "48 40 00 00 " & Len1Str
+    Sc.Write(ToWrite)
+    Sc.Read(&H1)
+    ToWrite = "60 D5 02 85 8E E3 " & Len2Str & " " & BytesStr & " " & AddrStr & " " & DataStr & " 00 BB 00"
+    Sc.Write(ToWrite)
+    Sc.Read(&H2)
+End Sub
+
+
+'''*********************** DssDumbie Write with 2D (CF)Nano sub routine ************************'''
+Sub Write2D(Bytes, AddrStr, DataStr)'Thanks to Paramedic and Anonymus
+
+    Dim TotalPacketLen
+    Dim TotalPacketLenStr
+    Dim DataLenStr
+    Dim ToWrite
+    Dim bWriteSucceeded
+    Dim ErrorString
+
+    Sc.Reset()
+
+    If Bytes < &H10 Then
+        DataLenStr = "0" & Hex(Bytes)
+    Else
+        DataLenStr = Hex(Bytes)
+    End If
+
+    TotalPacketLen = 81 + Bytes + 1
+
+    If TotalPacketLen < &H10 Then
+        TotalPacketLenStr = "0" & Hex(TotalPacketLen)
+    Else
+        TotalPacketLenStr = Hex(TotalPacketLen)
+    End If
+
+'Write using 2D Hole and code at 8E54 and 1150
+    ToWrite = "48 40 00 00 " & TotalPacketLenStr
+    Sc.Write(ToWrite)
+    Sc.Read(&H1)
+    ToWrite =        "09 11 00 00 30 60 00 06 39 00 04 F4 22 33 CF 03 "
+    ToWrite = ToWrite & "0E 1B 00 CF 03 0E 1B 00 CF 03 0E 1B 00 CF 03 0E "
+    ToWrite = ToWrite & "1B 00 CF 03 0E 1B 00 BB 00 12 00 00 00 00 00 00 "
+    ToWrite = ToWrite & "00 00 35 08 80 " & DataLenStr & " 50 11 " & AddrStr
+    ToWrite = ToWrite & "54 8E 12 54 8E 00 56 8E 00 00 54 8E 46 13 8A 1C "
+    ToWrite = ToWrite & "00 00 00 00 00 60 BB " & DataLenStr & " " & DataStr
+
+    Sc.Write(ToWrite)
+    Sc.Read(&H2)
+
+    bWriteSucceeded = false
+
+    If Sc.GetByte(0) = &H90 Then
+        if Sc.GetByte(1) = &H80 Then
+            bWriteSucceeded = true
+        End if
+    End If
+
+    If (bWriteSucceeded = false) Then
+        ErrorString = "Write via 2D FAILED!"
+        Sc.MsgBox ErrorString, vbCritical
+        Err.Raise 1050, , ErrorString
+    End If
+
+End Sub

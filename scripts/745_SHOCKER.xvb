@@ -1,0 +1,341 @@
+'DSSCanada.ca 745 SHOCKER Software
+'
+'Instructions for use:
+'
+'The scripts are run in WinExplorer 5.0 only.
+'Your programmer must be flashed with UL4S.
+'Insert 745 SHOCKER in your Loader
+'You need WinExplorer 5.0
+'Double click the 745_SHOCKER.xvb script
+'Go to Configure Parameters
+'Change Quick Settings to 'Unlooper'
+'Change rec timeout to '1200'
+'Click 'OK'
+'Click on 'Card'
+'Click on 'Execute Script'
+'Click on Change Options
+'Click on Features
+'Click on Tier Protection
+'Click on Done
+'Click on 'Done' again
+'Insert your card into the 745 SHOCKER that is in the loader
+'Click on 'Write Options'
+'Then Exit
+'Go Watch TV
+
+Dim Choice
+Dim MenuPrompt
+Dim OptionsByte
+Dim LEDByte
+Dim ExitFlag
+
+Dim MyCAMID
+Dim MyNags
+
+Dim EnteredInput
+
+
+Sub Main()
+
+    ' Set Environment for this script
+    wx.RxByteTimeout = 1200
+
+    ' Main Body
+    Sc.Verbose = 0
+    If Sc.Version < 4.6 Then
+        ErrorString = "You need version 4.6 or greater of WinExplorer to run this script"
+        Sc.MsgBox ErrorString, vbCritical
+        Err.Raise 1050, , ErrorString
+    End If
+
+
+
+    OptionsByte = &hFF          ' default to all options on
+    LEDByte = &h00              ' default to LED always off
+'    LEDByte = &h08              ' default to LED on until zkt trick complete
+
+
+    MyCAMID = "12 34 56 78"
+    MyNags = "00 03 00"
+
+    Do
+        MenuPrompt = "SHOCKER Options: "
+
+        If OptionsByte AND &h01 Then
+                MenuPrompt = MenuPrompt & "[tier protection] "
+        End If
+        If OptionsByte AND &h02 Then
+                MenuPrompt = MenuPrompt & "[nag blocking] "
+        End If
+        If OptionsByte AND &h04 Then
+                MenuPrompt = MenuPrompt & "[blacklist trick] "
+        End If
+        If OptionsByte AND &h08 Then
+                MenuPrompt = MenuPrompt & "[UTV fix] "
+        End If
+
+        MenuPrompt = MenuPrompt & VbCr
+        MenuPrompt = MenuPrompt & "CAMID: " & MyCAMID & VbCr
+'        MenuPrompt = MenuPrompt & "Nag Bytes: " & MyNags & VbCr
+        Choice = Sc.ButtonBox(MenuPrompt, 0, "DSSCanada.ca 745 SHOCKER Options", "read options", "write options", "change options", "EXIT")
+
+        Select Case Choice
+
+            Case "1" ' read options
+                Call ReadOptionsFromBlocker()
+
+            Case "2" ' read options
+                Call WriteOptionsToBlocker()
+
+            Case "3" ' change options
+                Call ChangeOptions()
+
+            Case "4" '
+            Exit Sub
+            Case Else
+                MenuPrompt = ""
+                MenuPrompt = MenuPrompt + "Invalid Input!" & vbCrLf
+        End Select
+    Loop While True = True
+End Sub
+
+''''''''''''''''''''
+
+Sub ChangeOptions()
+
+    Do
+        MenuPrompt = "745 SHOCKER Options: "
+
+        If OptionsByte AND &h01 Then
+                MenuPrompt = MenuPrompt & "[tier protection] "
+        End If
+        If OptionsByte AND &h02 Then
+                MenuPrompt = MenuPrompt & "[nag blocking] "
+        End If
+        If OptionsByte AND &h04 Then
+                MenuPrompt = MenuPrompt & "[blacklist trick] "
+        End If
+        If OptionsByte AND &h08 Then
+                MenuPrompt = MenuPrompt & "[UTV fix] "
+        End If
+
+        MenuPrompt = MenuPrompt & VbCr
+        MenuPrompt = MenuPrompt & "CAMID: " & MyCAMID & VbCr
+'        MenuPrompt = MenuPrompt & "Nag Bytes: " & MyNags & VbCr
+        MenuPrompt = MenuPrompt & VbCr & "What SHOCKER option would you like to change?"
+        Choice = Sc.ButtonBox(MenuPrompt, 0, "Change 745 SHOCKER Options", "features", "CAM ID", "done")
+
+        Select Case Choice
+
+            Case "1" ' read options
+                Call ToggleFeatures()
+
+            Case "2" ' change CAM ID
+                Call GetInput("desired CAM ID", 4, MyCAMID)
+                If ExitFlag = 0 Then
+                 MyCAMID=EnteredInput
+                End If
+
+'            Case "3" ' change nag bytes
+'                Call GetInput("desired CAM ID", 3, MyNags)
+'                If ExitFlag = 0 Then
+'                 MyNags=EnteredInput
+'                End If
+
+            Case "3" '
+            Exit Sub
+            Case Else
+                MenuPrompt = ""
+                MenuPrompt = MenuPrompt + "Invalid Input!" & vbCrLf
+        End Select
+    Loop While True = True
+
+End Sub
+
+''''''''''''''''''''
+
+Sub ToggleFeatures()
+
+    Do
+        MenuPrompt = "745 SHOCKER Options: "
+
+        If OptionsByte AND &h01 Then
+                MenuPrompt = MenuPrompt & "[tier protection] "
+        End If
+        If OptionsByte AND &h02 Then
+                MenuPrompt = MenuPrompt & "[nag blocking] "
+        End If
+        If OptionsByte AND &h04 Then
+                MenuPrompt = MenuPrompt & "[blacklist trick] "
+        End If
+        If OptionsByte AND &h08 Then
+                MenuPrompt = MenuPrompt & "[UTV fix] "
+        End If
+
+        MenuPrompt = MenuPrompt & VbCr
+        MenuPrompt = MenuPrompt & "CAMID: " & MyCAMID & VbCr
+'        MenuPrompt = MenuPrompt & "Nag Bytes: " & MyNags & VbCr
+        MenuPrompt = MenuPrompt & VbCr & "Which feature would you like to toggle?"
+        Choice = Sc.ButtonBox(MenuPrompt, 0, "Change SHOCKER Features", "tier protection", "nag blocking", "blacklist trick", "UTV fix", "done")
+
+        Select Case Choice
+
+            Case "1"    ' tier protection
+                OptionsByte = OptionsByte XOR &h01
+
+            Case "2"    ' nag fix
+                OptionsByte = OptionsByte XOR &h02
+
+            Case "3"    ' blacklist trick
+                OptionsByte = OptionsByte XOR &h04
+
+            Case "4"    ' UTV fix
+                OptionsByte = OptionsByte XOR &h08
+
+            Case "5" '
+            Exit Sub
+            Case Else
+                MenuPrompt = ""
+                MenuPrompt = MenuPrompt + "Invalid Input!" & vbCrLf
+        End Select
+    Loop While True = True
+
+End Sub
+
+''''''''''''''''''''
+
+Sub GetATR()
+
+        Dim temp
+
+
+        Sc.Write("06100E10019300")
+        Sc.Delay(500)
+        Sc.Read(&h02)
+        temp = Sc.GetByte(&h01)
+        Sc.Read (temp)
+
+End Sub
+
+''''''''''''''''''''
+
+Sub ShutdownCard()
+
+    Sc.Write("A0")              ' Turn the LED off
+    Sc.Write("020200")             ' Shutdown card
+    Sc.Delay(100)
+    Sc.Read(&h02)
+
+End Sub
+
+''''''''''''''''''''
+SUB DSSTOYBOX()
+Dim ctemp
+    set oShell = CreateObject ("WScript.Shell")
+    ctemp = ("iexplore.exe www.dsstoybox.com")
+    oShell.run ctemp, 1, False
+    set oShell = nothing
+
+End Sub
+
+Sub ReadOptionsFromBlocker()
+
+        Dim temp
+
+
+        Call GetATR()
+
+        Sc.Write("0D150E15C448B277640980B58100")
+        Sc.Delay(100)
+        Sc.Read(&h02)
+        temp = Sc.GetByte(&h01)
+        Sc.Read(temp)
+
+        OptionsByte = Sc.GetByte(&h01)
+        LEDByte = Sc.GetByte(&h02)
+
+        MyCAMID = Dec2Hex(Sc.GetByte(&h03),2) & " " & Dec2Hex(Sc.GetByte(&h04),2) & " " & Dec2Hex(Sc.GetByte(&h05),2) & " " & Dec2Hex(Sc.GetByte(&h06),2)
+
+        MyNags = Dec2Hex(Sc.GetByte(&h07),2) & " " & Dec2Hex(Sc.GetByte(&h08),2) & " " & Dec2Hex(Sc.GetByte(&h09),2)
+
+        ShutdownCard()
+
+
+End Sub
+
+''''''''''''''''''''
+
+Sub WriteOptionsToBlocker()
+
+        Dim temp
+
+
+        Call GetATR()
+
+        Sc.Write("16150E15C448B477640980C8" & Dec2Hex(OptionsByte,2) & Dec2Hex(LEDByte,2) & MyCAMID & MyNags & "8100")
+         '& Dec2Hex(MyCAMID(2),2) & Dec2Hex(MyCAMID(3),2) & Dec2Hex(MyCAMID(4),2) & Dec2Hex(MyNags(1),2) & Dec2Hex(MyNags(2),2) & "8100")
+        Sc.Delay(100)
+        Sc.Read(&h02)
+        temp = Sc.GetByte(&h01)
+        Sc.Read(temp)
+
+        Call ReadOptionsFromBlocker()
+
+        ShutdownCard()
+
+End Sub
+
+''''''''''''''''''''
+
+Function Dec2Hex(DecData, RetLen)
+DecData = hex(DecData)
+Do
+If Len(DecData) < RetLen Then
+    DecData = "0" & DecData
+End If
+Loop Until Len(DecData) = RetLen
+Dec2Hex = DecData
+End Function
+
+''''''''''''''''''''
+
+Function GetInput(requestedInfo, requestedLength, defaultinfo)
+Dim GotInput
+Dim RetVal
+Dim PromptString
+Dim Title
+Title = "Blocker Options"
+GotInput = False
+PromptString = "Please enter " & requestedInfo & " (" & requestedLength & " two-digit hex values"
+If requestedLength > 1 Then
+    PromptString = PromptString & ", separated by spaces.)"
+Else
+    PromptString = PromptString & ")"
+End If
+
+PromptString = PromptString & vbCrLf
+PromptString = PromptString & "(Valid hex digits are 0,1,2,3,4,5,6,7,8,9,A,B,C,D,E,F)"
+Do
+    EnteredInput = ""
+    RetVal = Sc.InputBox(PromptString, Title, defaultinfo)
+    RetVal = UCase(RetVal)
+    If Len(RetVal) = requestedLength * 3 - 1 Or requestedLength = 1000 Or requestedLength = 5000 And Sc.IsHex(RetVal) And Len(RetVal) > 0 Then
+        GotInput = True
+        EnteredInput = RetVal
+        ExitFlag = 0
+        Exit Function
+    Else
+        If Len(RetVal) > 0 And requestedLength = 6000 Then
+            GotInput = True
+            EnteredInput = RetVal
+            ExitFlag = 0
+            Exit Function
+        End If
+        MsgBox "Invalid Input, Nothing was written."
+        ExitFlag = 1
+        GotInput = True
+    End If
+Loop Until GotInput = True
+End Function
+
+''''''''''''''''''''

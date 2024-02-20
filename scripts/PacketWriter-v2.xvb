@@ -1,0 +1,2779 @@
+' Results, comments, ideas, critisism, suggestions, theories, facts, All Welcome
+
+' PacketWriter now transforms ISO packets into UL4S packets on it's own.
+' NOTE: The INI file has several changes!!!
+'       The OLD INI that came with v1 is NOT COMPATIBLE with v2!!!!
+
+' This script attempts to help teach how a card normally operates.
+' You get out of this script... what you put in.... LITERALLY!!!
+' It doesn't wipe ppv's... or unmarry cards... or give tv...
+' This is a tool to be wisely used and learned from.
+
+' I think a big part of the key to writing to card is the order of events
+' HU Sandbox made the pc simulate a card.
+' PacketWriter is made to simulate an IRD (works with any smartcard really).
+' Study stream logs of a card/ird and attempt to figure out how flags get used.
+' Not all packets come from the sky, some get inserted to the stream by the IRD.
+
+' This script is made for all types of people, guru's and newbies alike.
+' The heart of this is the "CheckPacket" Feature which checks packets for integrity.
+' Start with "Beginner" SkillLevel until you understand everything that's going on.
+' Intermediate and better gets rid of popup if the packet checks out OK.
+' Advanced SkilLevel gives ability to override script's "CheckPacket Feature".
+' Expert SkillLevel is like Advanced but also gets rid of all text message prints.
+
+' Multiple INI files makes it easy to save different ways to run.
+' Like for example... One INI per card/ird combo (with packets made for it).
+' There's no limit to number of INI files you can create, just name each different.
+
+' This is open source so people can learn from it.
+' Learn about writing XVB script files...
+' Learn about ISO packet structure...
+' Learn about card answers...
+' Learn about flags and triggers...
+' Learn about difference between True ISO Structure vs UL4S Phoenix Packets.
+' Compare and find similarities between P3 Instructions vs P4 Instructions.
+' Attempt to extract keys from your card that might be useful for other purposes.
+' Learn SOMETHING... ANYTHING... Good Luck in your adventure...
+' .... Then come back and help teach me, lol.
+
+' Without naming 100 guru's for snippets of knowledge (but thinking of you all),
+' I'd like to thank Stars for StarGlitch (I learned a lot of XVB tricks)
+' Also a thanks to the old P2 "Teaser Scripts" from 1998!!!!
+' Also a thanks to the author of P4PacketTest.xvb which gives UL4S P4 abilities.
+' And last but DEFINATELY not the least... A HUGE THANKS To all you loggers!!!!
+' KMAC Logger is probably one of the most useful programs ever created
+' If you've never logged, well there's no better time than the present to start
+
+' Ohh, and yes, the use of an INI file will probably set off your Antivirus.
+' It may give a "malicious script warning" because it's calling your .INI file".
+' It's NOT storing stuff in registry or calling out any ports... whathaveyou...
+' If you don't like it, then don't use an INI file, no big deal.
+' Just modify the script's user settings as desired instead.
+
+' ##############################################################################
+' ##############################################################################
+' ##   P2-ATR : 3F 78 12 25 01 40 B0 03 4A 50 20 48 55                        ##
+' ##   P3-ATR : 3F 7F 13 25 03 38 B0 04 FF FF 4A 50 00 00 29 48 55 55 00 00   ##
+' ##   P4-ATR : 3F 78 13 25 03 40 B0 20 FF FF 4A 50 00                        ##
+' ##                                                                          ##
+' ##        Overriding Timeouts is highly discouraged for this script         ##
+' ##       Timeouts usually mean improper setup and/or needs resetting        ##
+' ##                                                                          ##
+' ##                  Packet Writer Script Is Beginning Now                   ##
+' ##############################################################################
+' ##############################################################################
+
+Option Explicit
+  Const IniFilter = "PacketWriter Profile (*.ini)|*.ini"
+  Dim Prompt_Ini, UL4S, SkillLevel, ErrorPacket, ErrorInput, ErrorString, MenuPrompt, Choice, CChoice, CCChoice, CCC, CCCC
+  Dim MiscHead1, MiscData1, MiscHead2, MiscData2, MiscHead3, MiscData3, MiscHead4, MiscData4, MiscHead5, MiscData5, RetVal2
+  Dim MiscHead6, MiscData6, MiscHead7, MiscData7, MiscHead8, MiscData8, MiscHead9, MiscData9, MiscHead10, MiscData10, RetVal
+  Dim MiscHead11, MiscData11, MiscHead12, MiscData12, MiscHead13, MiscData13, MiscHead14, MiscData14, MiscHead15, MiscData15
+  Dim MiscHead16, MiscData16, MiscHead17, MiscData17, MiscHead18, MiscData18, MiscHead19, MiscData19, MiscHead20, MiscData20
+  Dim MiscHead21, MiscData21, MiscHead22, MiscData22, MiscHead23, MiscData23, MiscHead24, MiscData24, MiscHead25, MiscData25
+  Dim MiscHead26, MiscData26, MiscHead27, MiscData27, MiscHead28, MiscData28, MiscHead29, MiscData29, MiscHead30, MiscData30
+  Dim MiscHead31, MiscData31, MiscHead32, MiscData32, MiscHead33, MiscData33, MiscHead34, MiscData34, MiscHead35, MiscData35
+  Dim MiscHead36, MiscData36, MiscHead37, MiscData37, MiscHead38, MiscData38, MiscHead39, MiscData39, MiscHead40, MiscData40
+  Dim DefaultATRstring, DefaultATRdelay, DefaultInsDelay, DefaultBaudWatch, DefaultClockDelay, DefaultMaxAttempts, ATRcounter
+  Dim DefaultRating, DefaultSpending, DefaultPassword, DefaultBOXKEY_1, DefaultBOXKEY_2, DefaultBOXKEY_3, DefaultBOXKEY_4
+  Dim DefaultHeader, DefaultData, DefaultIns46Slot, DefaultIns46Flag, DefaultIns46Data, Ins46Slot, Ins46Flag, Ins46Data
+  Dim BOXKEY, ATRstring, ATRdelay, InsDelay, BaudWatch, ClockDelay, MaxAttempts, InsHeader, InsData, Spending, Rating, Password
+  Dim Data_A, Data_B, Data_C, Data_D, Data_E, Response, GotInput, GotData, GotATR, ATRtype, Counter1, Counter2, InsFail
+  ErrorInput = VbCr & "Invalid Input!  Please Try Again" & VbCr
+
+
+' ##############################################################################
+' ##############################################################################
+' ##        Either Edit & Save Settings in your .INI file if Prompt_Ini = 1   ##
+' ##  Or modify internal script settings below on the fly if Prompt_INI = 0   ##
+' ##   Temporary changes don't have to be saved if using internal settings    ##
+' ##############################################################################
+' ##############################################################################
+
+
+Prompt_Ini = 1   ' 0 = Use internal settings below   1 = Popup Box for .INI file
+
+
+
+If Prompt_Ini = 1 Then
+  Call Setup_INI()
+End If
+If Prompt_Ini = 0 Then
+
+' ######################################################################################
+' ######################################################################################
+' ####                           Start User INI Settings                            ####
+' ####                      Modify This Whole Area as Desired                       ####
+' ######################################################################################
+' ######################################################################################
+
+'***************************************************************************************
+'                        0A = # Of Bytes To Follow in this Packet  (0A hex = 10 decimal)
+'This is just a             10 = xx Baud Rate          (10=9600)  (15=19200)  (1A=38400)
+'breakdown of the UL4S         0E = Watch Dog Timeout Timer       (if used must be 0Eww)
+'string used to get P4 ATR's      10 = ww      (ww is Time Before Instruction Times Out)
+'(our DefaultATRstring below)        01 = Reset Card                       (Get the ATR)
+'                                       03 = Pull i/o to low        (Try 04 if troubles)
+'Leave out 20yyzz to deactivate CCD        20 = Clock Cycle Delay    (if used is 20yyzz)
+'                                             02 83 = yy zz  (yyzz is 2 byte delay time)
+'If I find a P3, I modify 8C to 93 for you          8C = Read xx minus 80h plus 1   (13)
+'Here's 4 examples: Pick one by switching apostrophe   00 = Go/Execute    (must be here)
+'***************************************************************************************
+'DefaultATRstring     =  "0A 10 0E 10 01 03 20 02 83 93 00"   'String Used to Get P3 ATR
+DefaultATRstring     =  "0A 10 0E 10 01 03 20 02 83 8C 00"   'String Used to Get P4 ATR
+'DefaultATRstring     =  "07 10 0E 10 01 03          8C 00"   'An Alternate for P4
+'DefaultATRstring     =  "07 10 0E 10 01 04          8C 00"   'Last Resort for P4
+
+SkillLevel           =  "0"        '0=Beginner   1=Intermediate   2=Advanced   3=Expert
+DefaultATRdelay      =  "96"       'ATR Delay Time in Hex              (80-FA Hex Value)
+DefaultInsDelay      =  "FA"       'Packet Delay Time in Hex           (80-FA Hex Value)
+DefaultBaudWatch     =  "150E10"   '15 is baud  and  0E10 is watchdog   (Hex)(see above)
+DefaultClockDelay    =  ""         '20yyzz - (Off by default)           (Hex)(see above)
+DefaultMaxAttempts   =  "10"       'Number of tries to send Ins w/ UL4S before aborting
+
+DefaultRating        =  "0d"       'Rating Limit in Hex
+DefaultSpending      =  "03e8"     'Spending Limit Per Purchase in Hex
+DefaultPassword      =  "0000"     'Parental Password in Hex from 0000-270F
+DefaultBOXKEY_1      =  "00 00 00 00 00 00 00 00 00"
+DefaultBOXKEY_2      =  "00 00 00 00 00 00 00 00 00"
+DefaultBOXKEY_3      =  "00 00 00 00 11 0E 02 08 00"  '   (xxxxxxxx110E0208zz = RCA 420)
+DefaultBOXKEY_4      =  "00 00 00 01 11 0E 02 08 00"  '   (xxxxxxxx110E0208zz = RCA 420)
+    ' 9 Byte BOXKEY is IRD# this card is really married to:  xx xx xx xx yy yy yy yy zz
+    ' xxxxxxxx is 4 byte IRD Serial # in Hex
+    ' yyyyyyyy is 4 byte IRD Mfg/Model # in Hex
+    ' zz is a flag (usually 00)
+    '(use a datalogger in IRD to get the Ins4c you need for that box)
+    '(This can MARRY... NOT UNMARRY... Leave zero's if unsure)
+
+DefaultHeader        =  "48 5e 11 0b 11"      'Default Header displayed for #99
+DefaultData          =  ""        'Default Data displayed for #99
+DefaultIns46Slot     =  "20"      'Default PPV Slot to toy with (NOT RECOMMENDED for P4)
+DefaultIns46Flag     =  "01"      'Default PPV Flag Byte (always starts as 01)
+DefaultIns46Data     =  "90 1f 80 03 01 94 0b 4d a5 02 04 06 8b 28 94 0f 01 8f 00 01 26 01 8f 67 08 26 cf a0 8c 42 15 c4 f4"
+    '(Ins46 Data is the CMD90 data for the PPV event your playing with)
+    '(This WRITES PPV's... It does NOT WIPE them... Experiment with P3)
+
+' Below is where you can define your own favorite packets for the Custom Menu
+' The packets listed are just examples of how to use the 40 sets of MiscHead & MiscData
+' I encourage you to change these to your own and play!!!
+' Either packets from the stream or your own imagination!!!
+' As you can see, there ARE many other types of packets that are seen in the stream
+' A lot can be learned by studying the stream and a subscription.....
+
+' NOTE..... You don't need to format packets into UL4S Packets!!!
+' The script now does this for you automatically if using UL4S!!!
+' (Unless you already have the packet structured, then it won't modify it)
+
+MiscHead1  = "48 82 7d 56 0d"
+MiscData1  = ""
+MiscHead2  = "48 82 88 95 19"
+MiscData2  = ""
+MiscHead3  = "48 88 54 7a 04"
+MiscData3  = ""
+MiscHead4  = "48 a2 de c0 1a"
+MiscData4  = ""
+MiscHead5  = "48 b0 e5 da 0c"
+MiscData5  = ""
+MiscHead6  = "48 b0 1e d2 16"
+MiscData6  = ""
+MiscHead7  = "48 ba c3 7a 07"
+MiscData7  = ""
+MiscHead8  = "48 c0 58 b2 15"
+MiscData8  = ""
+MiscHead9  = "48 c0 89 da 04"
+MiscData9  = ""
+MiscHead10 = "48 d0 b7 32 0a"
+MiscData10 = ""
+MiscHead11 = "48 d0 10 85 1c"
+MiscData11 = ""
+MiscHead12 = "48 d0 d0 96 1f"
+MiscData12 = ""
+MiscHead13 = "48 e0 3c 3b 07"
+MiscData13 = ""
+MiscHead14 = "48 f0 af bf 02 "
+MiscData14 = ""
+MiscHead15 = "48 86 7c 29 02"
+MiscData15 = "94 34"
+MiscHead16 = "48 86 dd 40 0c"
+MiscData16 = "00 00 00 00 00 00 00 00 00 00 00 00"
+MiscHead17 = "48 8e 0c 90 1c"
+MiscData17 = "00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00"
+MiscHead18 = "48 ae 75 67 1f"
+MiscData18 = "00 64 00 14 c4 00 3e 27 94 09 01 33 1d e7 74 bf 35 1e 2d 09 30 10 00 01 94 0c 42 14 02 81 e6"
+MiscHead19 = "48 ae 19 fb 1c"
+MiscData19 = "27 94 09 01 33 1d e7 74 bf 35 1e 2d 09 30 10 00 01 94 0c 42 14 02 81 e6 05 02 42 00"
+MiscHead20 = "48 c4 aa be 08"
+MiscData20 = "00 00 00 00 00 00 00 00"
+MiscHead21 = "48 cc 34 87 18"
+MiscData21 = "00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00"
+MiscHead22 = "48 bc 11 e0 01"
+MiscData22 = "05"
+MiscHead23 = "48 bc bb aa 01"
+MiscData23 = "47"
+MiscHead24 = "48 de d5 f7 0b"
+MiscData24 = "00 00 00 00 00 00 00 00 00 00 00"
+MiscHead25 = ""
+MiscData25 = ""
+MiscHead26 = ""
+MiscData26 = ""
+MiscHead27 = ""
+MiscData27 = ""
+MiscHead28 = ""
+MiscData28 = ""
+MiscHead29 = ""
+MiscData29 = ""
+MiscHead30 = ""
+MiscData30 = ""
+MiscHead31 = ""
+MiscData31 = ""
+MiscHead32 = ""
+MiscData32 = ""
+MiscHead33 = ""
+MiscData33 = ""
+MiscHead34 = ""
+MiscData34 = ""
+MiscHead35 = ""
+MiscData35 = ""
+MiscHead36 = ""
+MiscData36 = ""
+MiscHead37 = ""
+MiscData37 = ""
+MiscHead38 = ""
+MiscData38 = ""
+MiscHead39 = ""
+MiscData39 = ""
+MiscHead40 = ""
+MiscData40 = ""
+
+' ######################################################################################
+' ######################################################################################
+' ####                            End User INI Settings                             ####
+' ####       DON'T Modify below here unless your experienced or want to learn       ####
+' ######################################################################################
+' ######################################################################################
+
+
+' ###############################################################################
+' ******************  Start Device & WinExplorer Setup Menu  ********************
+' ###############################################################################
+
+  PW_Print("Using Internal INI settings from this script (instead of seperate file)" & VbCr & VbCr)
+End If ' leave this here, it ends the "If Prompt_Ini" way up above
+
+MenuPrompt="What type of Hardware Device are you using??"
+Choice = Sc.ButtonBox(MenuPrompt, VbInformation, "PacketWriter : Select Hardware Device", "ISO Device", "UL4S Device", "EXIT")
+Select Case Choice
+Case "1"
+  Do
+    GotInput = True
+    MenuPrompt=VbTab & VbTab & "What type of Card should we prepare WinExplorer for??"
+    CChoice = Sc.ButtonBox(MenuPrompt, VbInformation + VbDefaultButton2, "PacketWriter : Select WinExplorer Settings", "P2", "P3/P4/D1", "38,400 no flush", "Don't Change", "EXIT")
+    Select Case CChoice
+    Case "1"
+      UL4S = 0
+      Call Setup_P2ISO()
+    Case "2"
+      UL4S = 0
+      Call Setup_P3P4ISO()
+    Case "3"
+      MenuPrompt="Are you POSITIVE you want to Disable Flushing Buffers Before All Writes??" & VbCr & VbTab &_
+          "...because it's NOT RECOMMENDED for this script!!!"
+      CCChoice = Sc.ButtonBox(MenuPrompt, VbExclamation + VbDefaultButton2, "PacketWriter : Select WinExplorer Settings", "Yes", "No", "EXIT")
+      Select Case CCChoice
+      Case "1"
+        UL4S = 0
+        Call Setup_AltISO()
+      Case "2"
+        GotInput = False
+      Case Else
+        UL4S = ""
+      End Select
+    Case "4"
+      UL4S = 0
+      PW_Print("ISO Device Chosen, but Not Changing Your WinExplorer Settings" & VbCr)
+    Case Else
+      UL4S = ""
+    End Select
+  Loop Until GotInput = True
+Case "2"
+  MenuPrompt="Can I setup WinExplorer to Loader Mode for you??"
+  CChoice = Sc.ButtonBox(MenuPrompt, VbInformation, "PacketWriter : Select WinExplorer Settings", "Yes", "No", "EXIT")
+  Select Case CChoice
+  Case "1"
+    UL4S = 1
+    Call Setup_UL4S()
+  Case "2"
+    UL4S = 1
+    PW_Print("UL4S Device Chosen, but Not Changing Your WinExplorer Settings" & VbCr)
+  Case Else
+    UL4S = ""
+  End Select
+Case Else
+  UL4S = ""
+End Select
+
+' ###############################################################################
+' *******************  End Device & WinExplorer Setup Menu  *********************
+
+' *******************    Finally Begin the "Sub Main()"     *********************
+' ###############################################################################
+
+Sub Main()
+  If UL4S = "" Then
+    EXIT Sub
+  End If
+  If Sc.Version < 4.5 Then
+    ErrorString = "You need version 4.5 or greater of WinExplorer to run this script" & VbCr
+    Call Sc.MsgBox(ErrorString, vbCritical + vbOKOnly, "Newer version of WinExplorer needed")
+    Exit Sub
+  End If
+  GotATR = True
+  Sc.Verbose = True
+  Sc.Reset
+  If UL4S = 1 Then
+    Sc.Verbose = False
+    If ChipVer <> 1 then
+      ErrorString="Flash your Atmel Chip with the UL4S Code" & VbCr & VbCr &_
+          "If it is already, then reset it's power" & VbCr &_
+          "Maybe the last packets you sent confused it" & VbCr
+      Call Sc.MsgBox(ErrorString, vbCritical + vbOKOnly, "Loader is Not Responding")
+      Exit Sub
+    End If
+    If DefaultMaxAttempts > 0 Then
+      MaxAttempts = DefaultMaxAttempts
+    Else
+      MaxAttempts = 10
+    End If
+    ATRstring = DefaultATRstring
+    ATRcounter = 0
+    Counter1 = 0
+    Counter2 = 0
+    Call Card_Reset()
+    Call GetATR()
+  End If
+  Do
+    Call ClearMem()
+    MenuPrompt="Main List" & VbTab & VbTab & "Main List of Common Ins Packets" & VbTab & VbTab & VbTab & "---- MOSTLY LOW RISK ----" & vbCr
+    MenuPrompt=MenuPrompt & "Custom List" & VbTab & VbTab & "Custom List of Miscellaneous Ins Packets" & VbTab & VbTab & "---- EXTREMELY RISKY ----" & vbCr
+    MenuPrompt=MenuPrompt & "Simulate IRD" & VbTab & VbTab & "Simulates the Starting Sequence of an IRD" & VbTab & "---- SAFE EXCEPT FOR INS 4C ----" & vbCr
+    MenuPrompt=MenuPrompt & "Send Freeview" & VbTab & VbTab & "Sends Freeview Ins 42/40/54 Packets" & VbTab & VbTab & "---- VERY SAFE ----"
+    Choice = Sc.ButtonBox(MenuPrompt, VbInformation, "PacketWriter : Select Operation    or    Click X to Exit ----->>>", "Main List", "Custom List", "Simulate IRD", "Send Freeview", "EXIT")
+    Select Case Choice
+    Case "1"
+      Call MainMenu()
+    Case "2"
+      Call MiscMenu()
+    Case "3"
+      Call SimulateIRDstartup()
+    Case "4"
+      Call SendFreeview()
+    Case Else
+      Call ShutdownCard()
+      Exit Sub
+    End Select
+  Loop While True = True
+End Sub
+
+' ###############################################################################
+' *******************   End of "Sub Main()" (ends script)  **********************
+
+' *******************     Open INI file if neccessary      **********************
+' ###############################################################################
+
+Sub Setup_INI()
+Dim FileName, fso, ts, x, regEx, buf
+  FileName = ""
+  FileName = Fs.FileOpEndialog(IniFilter, "Please Load Your Settings File", "PacketWriter.ini")
+  If FileName = "" Then
+    Prompt_INI = 0
+    EXIT Sub
+  End If
+  Set fso = CreateObject("Scripting.FileSystemObject")
+  Set ts = fso.OpenTextFile(FileName)
+  Do While Not ts.AtEndOfStream
+    buf = buf + ts.ReadLine + VbCr
+  loop
+  ts.Close
+  ExecuteGlobal buf
+  PW_Print("Using External INI settings from:  " & FileName & VbCr & VbCr)
+End Sub
+
+' ###############################################################################
+' *******************     Close INI file if neccessary     **********************
+
+' *******************   Start Device Setup if neccessary   **********************
+' ###############################################################################
+
+Sub Setup_P2ISO()
+    PW_Print("Changing WinExplorer to P2 ISO Mode (19200 Baud & Flush Buffer Before Writes)" & VbCr)
+    Wx.BaudRate          = 19200    ' Baud Rate After ATR
+    Wx.ResetBaudRate     = 9600     ' Baud Rate to Get ATR
+    Wx.Parity            = 1        ' 0 = None, 1 = Odd, 2 = Even, 3 = Mark, 4 = Space
+    Wx.RxByteTimeout     = 200      ' In milliseconds
+    Sc.ByteDelay         = 70000    ' In milliseconds
+    Wx.ResetDelay        = 40000    ' In milliseconds
+    Wx.StopBits          = 2        ' 0 = 1 stop bit, 1 = 1.5 stop bits, 2 = 2 stop bits
+    Wx.ByteConvention    = 0        ' 0 = Inverse, 1 = Direct
+    Wx.FlushEchoByte     = 1        ' 0 = no flush, 1 = flush - A Phoenix interface will echo each byte transmitted.
+    Wx.FlushBeforeWrite  = 1        ' 0 = no flush, 1 = flush - Flush the receive buffer before each write to strip off Null bytes.
+    Wx.ResetMode         = 1        ' 0 = No Resets, 1 = ISO Reset (Expect a ATR), 2 = Device Reset (No ATR)
+    Wx.IgnoreTimeouts    = 0        ' 0 = Abort script on a receive timeout, 1 = Ignore all receive timeouts
+    Wx.ResetAfterTimeout = 1        ' 0 = Don't reset after a timeout, 1 = do a reset after a timeout  - Not used if "IgnoreTimeouts=0"
+    Wx.DTRControl        = 1        ' Initial state of DTR  0 = off, 1 = on
+    Wx.RTSControl        = 0        ' Initial state of RTS  0 = off, 1 = on
+    Wx.ResetLine         = 0        ' 0 = Toggle RTS for Reset, 1 = Toggle DTR for Reset
+    Wx.LogTransactions   = 0        ' 0 = Don't log transactions, 1 = log transactions
+    Wx.DisplayFuse       = 0        ' Display Fuse after script complete 0 = no, 1 = yes
+    Wx.DisplayUSW        = 0        ' Display USW after script complete 0 = no, 1 = yes
+End Sub
+
+
+Sub Setup_P3P4ISO()
+    PW_Print("Changing WinExplorer to P3/P4/D1 ISO Mode (38400 Baud & Flush Buffer Before Writes)" & VbCr)
+    Wx.BaudRate          = 38400    ' Baud Rate After ATR
+    Wx.ResetBaudRate     = 9600     ' Baud Rate to Get ATR
+    Wx.Parity            = 1        ' 0 = None, 1 = Odd, 2 = Even, 3 = Mark, 4 = Space
+    Wx.RxByteTimeout     = 200      ' In milliseconds
+    Sc.ByteDelay         = 40000    ' In milliseconds
+    Wx.ResetDelay        = 40000    ' In milliseconds
+    Wx.StopBits          = 2        ' 0 = 1 stop bit, 1 = 1.5 stop bits, 2 = 2 stop bits
+    Wx.ByteConvention    = 0        ' 0 = Inverse, 1 = Direct
+    Wx.FlushEchoByte     = 1        ' 0 = no flush, 1 = flush - A Phoenix interface will echo each byte transmitted.
+    Wx.FlushBeforeWrite  = 1        ' 0 = no flush, 1 = flush - Flush the receive buffer before each write to strip off Null bytes.
+    Wx.ResetMode         = 1        ' 0 = No Resets, 1 = ISO Reset (Expect a ATR), 2 = Device Reset (No ATR)
+    Wx.IgnoreTimeouts    = 0        ' 0 = Abort script on a receive timeout, 1 = Ignore all receive timeouts
+    Wx.ResetAfterTimeout = 1        ' 0 = Don't reset after a timeout, 1 = do a reset after a timeout  - Not used if "IgnoreTimeouts=0"
+    Wx.DTRControl        = 1        ' Initial state of DTR  0 = off, 1 = on
+    Wx.RTSControl        = 0        ' Initial state of RTS  0 = off, 1 = on
+    Wx.ResetLine         = 0        ' 0 = Toggle RTS for Reset, 1 = Toggle DTR for Reset
+    Wx.LogTransactions   = 0        ' 0 = Don't log transactions, 1 = log transactions
+    Wx.DisplayFuse       = 0        ' Display Fuse after script complete 0 = no, 1 = yes
+    Wx.DisplayUSW        = 0        ' Display USW after script complete 0 = no, 1 = yes
+End Sub
+
+
+Sub Setup_AltISO()
+    PW_Print("Changing WinExplorer to Alternate ISO Mode (38400 Baud & Don't Flush Buffer Before Writes)" & VbCr)
+    Wx.BaudRate          = 38400    ' Baud Rate After ATR
+    Wx.ResetBaudRate     = 9600     ' Baud Rate to Get ATR
+    Wx.Parity            = 1        ' 0 = None, 1 = Odd, 2 = Even, 3 = Mark, 4 = Space
+    Wx.RxByteTimeout     = 200      ' In milliseconds
+    Sc.ByteDelay         = 70000    ' In milliseconds
+    Wx.ResetDelay        = 40000    ' In milliseconds
+    Wx.StopBits          = 2        ' 0 = 1 stop bit, 1 = 1.5 stop bits, 2 = 2 stop bits
+    Wx.ByteConvention    = 0        ' 0 = Inverse, 1 = Direct
+    Wx.FlushEchoByte     = 1        ' 0 = no flush, 1 = flush - A Phoenix interface will echo each byte transmitted.
+    Wx.FlushBeforeWrite  = 0        ' 0 = no flush, 1 = flush - Flush the receive buffer before each write to strip off Null bytes.
+    Wx.ResetMode         = 1        ' 0 = No Resets, 1 = ISO Reset (Expect a ATR), 2 = Device Reset (No ATR)
+    Wx.IgnoreTimeouts    = 0        ' 0 = Abort script on a receive timeout, 1 = Ignore all receive timeouts
+    Wx.ResetAfterTimeout = 1        ' 0 = Don't reset after a timeout, 1 = do a reset after a timeout  - Not used if "IgnoreTimeouts=0"
+    Wx.DTRControl        = 1        ' Initial state of DTR  0 = off, 1 = on
+    Wx.RTSControl        = 0        ' Initial state of RTS  0 = off, 1 = on
+    Wx.ResetLine         = 0        ' 0 = Toggle RTS for Reset, 1 = Toggle DTR for Reset
+    Wx.LogTransactions   = 0        ' 0 = Don't log transactions, 1 = log transactions
+    Wx.DisplayFuse       = 0        ' Display Fuse after script complete 0 = no, 1 = yes
+    Wx.DisplayUSW        = 0        ' Display USW after script complete 0 = no, 1 = yes
+End Sub
+
+
+Sub Setup_UL4S()
+    PW_Print("Changing WinExplorer to P3/P4/D1 UL4S Mode" & VbCr)
+    Wx.BaudRate          = 115200   ' Baud Rate After ATR
+    Wx.ResetBaudRate     = 115200   ' Baud Rate to Get ATR
+    Wx.Parity            = 0        ' 0 = None, 1 = Odd, 2 = Even, 3 = Mark, 4 = Space
+    Wx.RxByteTimeout     = 200      ' In milliseconds
+    Sc.ByteDelay         = 0        ' In microseconds
+    Wx.ResetDelay        = 0        ' In microseconds
+    Wx.StopBits          = 0        ' 0 = 1 stop bit, 1 = 1.5 stop bits, 2 = 2 stop bits
+    Wx.ByteConvention    = 1        ' 0 = Inverse, 1 = Direct
+    Wx.FlushEchoByte     = 0        ' 0 = no flush, 1 = flush - A Phoenix interface will echo each byte transmitted.
+    Wx.FlushBeforeWrite  = 0        ' 0 = no flush, 1 = flush - Flush the receive buffer before each write to strip off Null bytes.
+    Wx.ResetMode         = 2        ' 0 = No Resets, 1 = ISO Reset (Expect a ATR), 2 = Device Reset (No ATR)
+    Wx.IgnoreTimeouts    = 1        ' 0 = Abort script on a receive timeout, 1 = Ignore all receive timeouts
+    Wx.ResetAfterTimeout = 0        ' 0 = Don't reset after a timeout, 1 = do a reset after a timeout  - Not used if "IgnoreTimeouts=0"
+    Wx.DTRControl        = 0        ' Initial state of DTR  0 = off, 1 = on
+    Wx.RTSControl        = 1        ' Initial state of RTS  0 = off, 1 = on
+    Wx.ResetLine         = 1        ' 0 = Toggle RTS for Reset, 1 = Toggle DTR for Reset
+    Wx.LogTransactions   = 0        ' 0 = Don't log transactions, 1 = log transactions
+    Wx.DisplayFuse       = 0        ' Display Fuse after script complete 0 = no, 1 = yes
+    Wx.DisplayUSW        = 0        ' Display USW after script complete 0 = no, 1 = yes
+End Sub
+
+' ###############################################################################
+' *******************    End Device Setup if neccessary    **********************
+
+' *******************    Start of Main List Packet Menu    **********************
+' ###############################################################################
+
+Sub MainMenu()
+Dim RetVal
+Do
+  Call ClearMem()
+  MenuPrompt="Enter" & VbTab & "Function" & VbTab & "Description" & VbTab & VbTab & VbTab & VbTab &"Warning" & VbCr & VbCr
+  MenuPrompt=MenuPrompt & "02:" & VbTab & "Send Ins 02" & VbTab & "Read 8 Byte Card Version" & VbCr
+  MenuPrompt=MenuPrompt & "06:" & VbTab & "Send Ins 06" & VbTab & "Read Byte @ 2016 (for P3)" & VbCr
+  MenuPrompt=MenuPrompt & "12:" & VbTab & "Send Ins 12" & VbTab & "Read 1st 8 Bytes of EEprom" & VbCr
+  MenuPrompt=MenuPrompt & "26:" & VbTab & "Send Ins 26" & VbTab & "Either a Decoy Ins or RAM Clearing Packet" & VbCr
+  MenuPrompt=MenuPrompt & "28:" & VbTab & "Send Ins 28" & VbTab & "Returns 0080 for P3 or 0001 for P4" & VbCr
+  MenuPrompt=MenuPrompt & "2A:" & VbTab & "Send Ins 2A" & VbTab & "Read Card Info" & VbTab & VbTab & VbTab & VbTab &"(Not Available For P4)" & VbCr
+  MenuPrompt=MenuPrompt & "2C:" & VbTab & "Ins 2C Menu" & VbTab & "Read Spending Limit  OR  Rating Limit" & VbCr
+  MenuPrompt=MenuPrompt & "2E:" & VbTab & "Ins 2E Menu" & VbTab & "Write Spending Limit  OR  Rating Limit" & VbCr
+  MenuPrompt=MenuPrompt & "36:" & VbTab & "Send Ins 36" & VbTab & "Read Phone Home Data" & VbTab & VbTab & VbTab & "(Not Recommended For P4)" & VbCr
+  MenuPrompt=MenuPrompt & "38:" & VbTab & "Send Ins 38" & VbTab & "Enable Card Swap" & VbTab & VbTab & VbTab &"(Only Works If Card Is Prepared)" & VbCr
+  MenuPrompt=MenuPrompt & "46:" & VbTab & "Ins 46 Menu" & VbTab & "Send PPV BUY Ins 46 And Ins 30" & VbTab & "(This Does NOT WIPE PPV... It WRITES)" & VbCr
+  MenuPrompt=MenuPrompt & "48:" & VbTab & "Send Ins 48" & VbTab & "Write Password" & VbCr
+  MenuPrompt=MenuPrompt & "4C:" & VbTab & "Send Ins 4C" & VbTab & "Send 9 Byte IRD Box Key" & VbTab & VbTab & "(DANGEROUS  -  But Highly Useful)" & VbCr
+  MenuPrompt=MenuPrompt & "52:" & VbTab & "Send Ins 52" & VbTab & "Read Password" & VbCr
+  MenuPrompt=MenuPrompt & "54:" & VbTab & "Send Ins 54" & VbTab & "Read Video Seed Answer" & VbCr
+  MenuPrompt=MenuPrompt & "56:" & VbTab & "Send Ins 56" & VbTab & "Read Info From Swapper Card" & VbTab & VbTab & "(Automatically Calls Ins 38 First)" & VbCr
+  MenuPrompt=MenuPrompt & "58:" & VbTab & "Send Ins 58" & VbTab & "Read Card Information" & VbCr
+  MenuPrompt=MenuPrompt & "5A:" & VbTab & "Ins 5A Menu" & VbTab & "Read Random ZKT Calculations" & VbTab & VbTab & "(Ins 4A Is Also Inside This Menu)" & VbCr
+  MenuPrompt=MenuPrompt & "5C:" & VbTab & "Ins 5C Menu" & VbTab & "Read Status Bytes" & VbCr
+  MenuPrompt=MenuPrompt & "5E:" & VbTab & "Ins 5E Menu" & VbTab & "An Intriguing Ins With Many Functions" & VbCr & VbCr
+  If UL4S = 1 Then
+    MenuPrompt=MenuPrompt & "95:  Change Default UL4S Ins Delay" & VbCr
+    MenuPrompt=MenuPrompt & "96:  Change Default UL4S Baud and Watchdog" & VbCr
+    MenuPrompt=MenuPrompt & "97:  Change Default UL4S Clock Cycle Delay" & VbCr & VbCr
+  End If
+  MenuPrompt=MenuPrompt & "98:  Menu to Let You Type in ANY OTHER Packet" & VbCr
+  MenuPrompt=MenuPrompt & "99:  Send a Card Reset (Resets the ATR)" & VbCr & VbCr
+  MenuPrompt=MenuPrompt & "  :  Leave Blank or Cancel to Go Back"
+  CChoice = Sc.InputBox(MenuPrompt, "Main Packet Headers List")
+  Select Case CChoice
+  Case "02"
+    Call Ins02()
+  Case "06"
+    Call Ins06()
+  Case "12"
+    Call Ins12()
+  Case "26"
+    Call Ins26()
+  Case "28"
+    Call Ins28()
+  Case "2A", "2a"
+    Call Ins2A()
+  Case "2C", "2c"
+    Do
+      CCC = False
+      MenuPrompt=VbTab & "48 2C 00 00 02  =  Read Spending Limit" & VbCr &_
+                 VbTab & "48 2C 80 00 02  =  Read Rating Limit"
+      CCChoice = Sc.ButtonBox(MenuPrompt, , "Read Ins 2C Options", "Spending", "Rating", "Go Back")
+      Select Case CCChoice
+      Case "1"
+        Call Ins2C00()
+      Case "2"
+        Call Ins2C80()
+      Case "0", "3"
+        CCC = True
+      Case Else
+      End Select
+    Loop While CCC = False
+  Case "2E", "2e"
+    Do
+      CCC = False
+      MenuPrompt=VbTab & "48 2E 00 00 02  =  Write Spending Limit" & VbCr &_
+                 VbTab & "48 2E 80 00 02  =  Write Rating Limit"
+      CCChoice = Sc.ButtonBox(MenuPrompt, , "Write Ins 2E Options", "Spending", "Rating", "Go Back")
+      Select Case CCChoice
+      Case "1"
+        RetVal = EnterSpending()
+        Call Ins2E00(RetVal)
+      Case "2"
+        RetVal = EnterRating()
+        Call Ins2E80(RetVal)
+      Case "0", "3"
+        CCC = True
+      Case Else
+      End Select
+    Loop While CCC = False
+  Case "36"
+    Call Ins36()
+  Case "38"
+    Call Ins38()
+  Case "46"
+    Call Ins46()
+  Case "48"
+    RetVal = EnterPassword()
+    Call Ins48(RetVal)
+  Case "4C", "4c"
+    RetVal = EnterBOXKEY()
+    Call Ins4C(RetVal)
+  Case "52"
+    Call Ins52()
+  Case "54"
+    Call Ins54()
+  Case "56"
+    Call Ins56()
+  Case "58"
+    Call Ins58()
+  Case "5A", "5a"
+    Do
+      CCC = False
+      MenuPrompt="48 4A 10 01 01  =  Generate a New Random Number  R " & VbTab & "Step 1" & VbCr &_
+                 "48 5A 10 01 08  =  Read Current Value of  R^2 mod N" & VbTab & "Step 2" & VbCr &_
+                 "48 5A 10 02 40  =  Read Current Value of  R        " & VbTab & VbTab & "---------\" & VbCr &_
+                 "48 5A 11 02 40  =  Read Current Value of  R*S mod N" & VbTab & "---------/ Do only 1 of these 2 third!!!"
+      CCChoice = Sc.ButtonBox(MenuPrompt, , "Read Random ZKT Info Options", "Generate R", "R^2 mod N", "R", "R*S mod N", "Go Back")
+      Select Case CCChoice
+      Case "1"
+        MenuPrompt="Generate a New Random Number  R  based on the Primary or Secondary ZKT Table??" & VbCr &_
+                   "(Ins 4A is actually a Send Data Packet... It sends one byte of 01 or 02)"
+        CCCC = Sc.ButtonBox(MenuPrompt, , "Generate R Options", "Primary", "Secondary", "Go Back")
+        Select Case CCCC
+        Case "1"
+          Call Ins4A("01")
+        Case "2"
+          Call Ins4A("02")
+        Case "0", "3"
+        Case Else
+        End Select
+      Case "2"
+        Call Ins5A1001()
+      Case "3"
+        Call Ins5A1002()
+      Case "4"
+        Call Ins5A1102()
+      Case "0", "5"
+        CCC = True
+      Case Else
+      End Select
+    Loop While CCC = False
+  Case "5C", "5c"
+    RetVal = Enter5Cparam1()
+    Call Ins5C(RetVal)
+  Case "5E", "5e"
+    RetVal = Enter5Eparam3()
+    Call Ins5E(RetVal)
+  Case "95"
+    DefaultInsDelay = EnterInsDelay()
+  Case "96"
+    DefaultBaudWatch = EnterBaudWatch()
+  Case "97"
+    DefaultClockDelay = EnterClockDelay()
+  Case "98"
+    Do
+      Call ClearMem()
+      InsHeader=EnterInsHeader()
+      If Not InsHeader = "" Then
+        InsData=EnterInsData()
+        Call InsAny(InsHeader,InsData)
+      End If
+    Loop Until InsHeader = ""
+  Case "99"
+    Call GetATR()
+  Case "X", "x"
+    EXIT Sub
+  Case ""
+    EXIT Sub
+  Case Else
+    Call Sc.MsgBox(ErrorInput)
+  End Select
+Loop While True = True
+End Sub
+
+' ###############################################################################
+' *******************     End of Main List Packet Menu     **********************
+
+' *******************  Start of Miscellaneous Packet Menu  **********************
+' ###############################################################################
+
+Sub MiscMenu()
+Do
+  Call ClearMem()
+  MenuPrompt=" 1: Send    " & MiscHead1 & VbTab & VbTab & "21: Send    " & MiscHead21 & VbCr
+  MenuPrompt=MenuPrompt & " 2: Send    " & MiscHead2 & VbTab & VbTab & "22: Send    " & MiscHead22 & VbCr
+  MenuPrompt=MenuPrompt & " 3: Send    " & MiscHead3 & VbTab & VbTab & "23: Send    " & MiscHead23 & VbCr
+  MenuPrompt=MenuPrompt & " 4: Send    " & MiscHead4 & VbTab & VbTab & "24: Send    " & MiscHead24 & VbCr
+  MenuPrompt=MenuPrompt & " 5: Send    " & MiscHead5 & VbTab & VbTab & "25: Send    " & MiscHead25 & VbCr
+  MenuPrompt=MenuPrompt & " 6: Send    " & MiscHead6 & VbTab & VbTab & "26: Send    " & MiscHead26 & VbCr
+  MenuPrompt=MenuPrompt & " 7: Send    " & MiscHead7 & VbTab & VbTab & "27: Send    " & MiscHead27 & VbCr
+  MenuPrompt=MenuPrompt & " 8: Send    " & MiscHead8 & VbTab & VbTab & "28: Send    " & MiscHead28 & VbCr
+  MenuPrompt=MenuPrompt & " 9: Send    " & MiscHead9 & VbTab & VbTab & "29: Send    " & MiscHead29 & VbCr
+  MenuPrompt=MenuPrompt & "10: Send    " & MiscHead10 & VbTab & VbTab & "30: Send    " & MiscHead30 & VbCr
+  MenuPrompt=MenuPrompt & "11: Send    " & MiscHead11 & VbTab & VbTab & "31: Send    " & MiscHead31 & VbCr
+  MenuPrompt=MenuPrompt & "12: Send    " & MiscHead12 & VbTab & VbTab & "32: Send    " & MiscHead32 & VbCr
+  MenuPrompt=MenuPrompt & "13: Send    " & MiscHead13 & VbTab & VbTab & "33: Send    " & MiscHead33 & VbCr
+  MenuPrompt=MenuPrompt & "14: Send    " & MiscHead14 & VbTab & VbTab & "34: Send    " & MiscHead34 & VbCr
+  MenuPrompt=MenuPrompt & "15: Send    " & MiscHead15 & VbTab & VbTab & "35: Send    " & MiscHead35 & VbCr
+  MenuPrompt=MenuPrompt & "16: Send    " & MiscHead16 & VbTab & VbTab & "36: Send    " & MiscHead36 & VbCr
+  MenuPrompt=MenuPrompt & "17: Send    " & MiscHead17 & VbTab & VbTab & "37: Send    " & MiscHead37 & VbCr
+  MenuPrompt=MenuPrompt & "18: Send    " & MiscHead18 & VbTab & VbTab & "38: Send    " & MiscHead38 & VbCr
+  MenuPrompt=MenuPrompt & "19: Send    " & MiscHead19 & VbTab & VbTab & "39: Send    " & MiscHead39 & VbCr
+  MenuPrompt=MenuPrompt & "20: Send    " & MiscHead20 & VbTab & VbTab & "40: Send    " & MiscHead40 & VbCr & VbCr
+  If UL4S = 1 Then
+    MenuPrompt=MenuPrompt & "95:  Change Default UL4S Ins Delay" & VbCr
+    MenuPrompt=MenuPrompt & "96:  Change Default UL4S Baud and Watchdog" & VbCr
+    MenuPrompt=MenuPrompt & "97:  Change Default UL4S Clock Cycle Delay" & VbCr & VbCr
+  End If
+  MenuPrompt=MenuPrompt & "98:  Menu to Let You Type in ANY OTHER Packet" & VbCr
+  MenuPrompt=MenuPrompt & "99:  Send a Card Reset (Resets the ATR)" & VbCr & VbCr
+  MenuPrompt=MenuPrompt & "  :  Leave Blank or Cancel to Go Back"
+  CChoice = Sc.InputBox(MenuPrompt, "Miscellaneous Custom Headers List")
+  Select Case CChoice
+  Case "1"
+    Call InsAny(MiscHead1,MiscData1)
+  Case "2"
+    Call InsAny(MiscHead2,MiscData2)
+  Case "3"
+    Call InsAny(MiscHead3,MiscData3)
+  Case "4"
+    Call InsAny(MiscHead4,MiscData4)
+  Case "5"
+    Call InsAny(MiscHead5,MiscData5)
+  Case "6"
+    Call InsAny(MiscHead6,MiscData6)
+  Case "7"
+    Call InsAny(MiscHead7,MiscData7)
+  Case "8"
+    Call InsAny(MiscHead8,MiscData8)
+  Case "9"
+    Call InsAny(MiscHead9,MiscData9)
+  Case "10"
+    Call InsAny(MiscHead10,MiscData10)
+  Case "11"
+    Call InsAny(MiscHead11,MiscData11)
+  Case "12"
+    Call InsAny(MiscHead12,MiscData12)
+  Case "13"
+    Call InsAny(MiscHead13,MiscData13)
+  Case "14"
+    Call InsAny(MiscHead14,MiscData14)
+  Case "15"
+    Call InsAny(MiscHead15,MiscData15)
+  Case "16"
+    Call InsAny(MiscHead16,MiscData16)
+  Case "17"
+    Call InsAny(MiscHead17,MiscData17)
+  Case "18"
+    Call InsAny(MiscHead18,MiscData18)
+  Case "19"
+    Call InsAny(MiscHead19,MiscData19)
+  Case "20"
+    Call InsAny(MiscHead20,MiscData20)
+  Case "21"
+    Call InsAny(MiscHead21,MiscData21)
+  Case "22"
+    Call InsAny(MiscHead22,MiscData22)
+  Case "23"
+    Call InsAny(MiscHead23,MiscData23)
+  Case "24"
+    Call InsAny(MiscHead24,MiscData24)
+  Case "25"
+    Call InsAny(MiscHead25,MiscData25)
+  Case "26"
+    Call InsAny(MiscHead26,MiscData26)
+  Case "27"
+    Call InsAny(MiscHead27,MiscData27)
+  Case "28"
+    Call InsAny(MiscHead28,MiscData28)
+  Case "29"
+    Call InsAny(MiscHead29,MiscData29)
+  Case "30"
+    Call InsAny(MiscHead30,MiscData30)
+  Case "31"
+    Call InsAny(MiscHead31,MiscData31)
+  Case "32"
+    Call InsAny(MiscHead32,MiscData32)
+  Case "33"
+    Call InsAny(MiscHead33,MiscData33)
+  Case "34"
+    Call InsAny(MiscHead34,MiscData34)
+  Case "35"
+    Call InsAny(MiscHead35,MiscData35)
+  Case "36"
+    Call InsAny(MiscHead36,MiscData36)
+  Case "37"
+    Call InsAny(MiscHead37,MiscData37)
+  Case "38"
+    Call InsAny(MiscHead38,MiscData38)
+  Case "39"
+    Call InsAny(MiscHead39,MiscData39)
+  Case "40"
+    Call InsAny(MiscHead40,MiscData40)
+  Case "95"
+    DefaultInsDelay = EnterInsDelay()
+  Case "96"
+    DefaultBaudWatch = EnterBaudWatch()
+  Case "97"
+    DefaultClockDelay = EnterClockDelay()
+  Case "98"
+    Do
+      Call ClearMem()
+      InsHeader=EnterInsHeader()
+      If Not InsHeader = "" Then
+        InsData=EnterInsData()
+        Call InsAny(InsHeader,InsData)
+      End If
+    Loop Until InsHeader = ""
+  Case "99"
+    Call GetATR()
+  Case "X", "x"
+    EXIT Sub
+  Case ""
+    EXIT Sub
+  Case Else
+    Call Sc.MsgBox(ErrorInput)
+  End Select
+Loop While True = True
+End Sub
+
+' ###############################################################################
+' *******************   End of Miscellaneous Packet Menu   **********************
+
+' *******************      Start Simulate IRD Startup      **********************
+' ###############################################################################
+
+Sub SimulateIRDstartup()
+Dim RetVal, RetVal2
+
+  RetVal = Ins58()         ' Check first to see if card is responding or EXIT
+  If Len(RetVal) > 6 Then
+    If Not Left(RetVal,2) = "58" or Not Mid(RetVal,Len(RetVal)-3,1) = "9" Then
+      Call Sc.MsgBox("Improper Packet Response Found... Aborting Simulate Startup")
+      EXIT Sub
+    End If
+  Else
+    Call Sc.MsgBox("Improper Packet Response Found... Aborting Simulate Startup")
+    EXIT Sub
+  End If
+
+  BOXKEY = EnterBOXKEY()
+  RetVal = Ins4C(BOXKEY)
+  If RetVal = "4C9020" Then
+    Call Ins58()
+  End If
+  Call Ins52()
+  Call Ins5E("08 0E 4B")
+  Call Ins26()
+  Call Ins5C("05")
+  Rating = EnterRating()
+  RetVal = Ins2E80(Rating)
+  Spending = EnterSpending()
+  RetVal2 = Ins2E00(Spending)
+  If Len(RetVal) = 6 And Len(RetVal2) = 6 Then
+    If Right(RetVal,1) = "1" or Right(RetVal2,1) = "1" Then
+      Call Ins2E80(Rating)
+      Call Ins2E00(Spending)
+    End If
+  End If
+  Call Ins26()
+
+  RetVal = Ins5C("05")         ' Check first to see if card is responding or EXIT
+  If Len(RetVal) = 14 Then
+    If Not Mid(RetVal,Len(RetVal)-3,1) = "9" Then
+      Call Sc.MsgBox("Improper Packet Response Found... Aborting Simulate Startup")
+      EXIT Sub
+    End If
+  Else
+    Call Sc.MsgBox("Improper Packet Response Found... Aborting Simulate Startup")
+    EXIT Sub
+  End If
+
+  Call Ins4A("01")
+  Call Ins5A1001()
+  Call Ins5A1002()
+  Call SendFreeview()
+End Sub
+
+' ###############################################################################
+' *******************      End Simulate IRD Startup        **********************
+
+' *******************        Start Freeview Packets        **********************
+' ###############################################################################
+
+Sub SendFreeview()
+Dim Header1, Header2, Header3, Header4, Header5, Header6, Header7, Header8
+Dim Data1, Data2, Data3, Data4, Data5, Data6, Data7, Data8, RetVal
+  Header1 = "48 42 00 00 54"
+  Data1   = "90 52 40 03 75 a0 67 a9 df b7 8d 01 20 7c e1 5f 4f 49 f8 b8 4b 7f 8b 47 21 8f e9 f1 9b dc 9e d9 19 74 89 7f e7 a8 d2 00 c1 79 42 ba a5 71 5b 04 08 8e 79 fd 77 b3 1a a9 56 49 78 d8 c5 48 94 9b 0b f4 97 0b b2 7b d9 62 fc ec dc 08 39 b1 54 de 39 b3 b4 83"
+  Header2 = "48 42 00 00 5a"
+  Data2   = "90 58 40 04 52 62 38 4f b9 00 a1 15 77 10 50 d7 d8 02 e3 cc 23 af 96 94 76 b8 bd ad b2 18 2f 06 09 53 84 cf 71 31 86 39 7e 18 80 58 7a d0 a0 45 fd 26 ad 30 ee 7d ee f8 4c 06 4d 0e 3f 72 5b 11 60 76 40 7e 59 a9 19 7a db 0b 58 49 cd 76 10 77 94 90 78 ac 05 1c 00 98 51 70"
+  Header3 = "48 40 20 00 27"
+  Data3   = "94 09 01 45 2e d3 32 0e db ff 66 09 30 10 00 01 94 0c 41 fd 02 81 e6 05 02 42 00 00 cd 67 08 28 00 c0 40 28 00 c0 40"
+  Header4 = "48 42 00 00 64"
+  Data4   = "90 62 40 03 75 ae 83 03 f1 2c 98 30 21 cf 40 64 b6 7c 54 8e 21 16 a6 a1 58 c9 0f a0 c0 eb 8b 0f ac 7a 54 d4 f8 7f 99 8d 5a c7 b7 df d0 9c bf 37 18 5b e5 ee 96 65 82 68 b4 e5 f5 e7 ae 91 38 f5 10 46 51 db 06 32 ef cd 96 ec f0 76 58 24 86 a8 95 10 a4 c6 c0 d0 0f 3e e3 1a 3f 08 fa 4e 4f 78 a0 a0 d0 06"
+  Header5 = "48 42 00 00 54"
+  Data5   = "90 52 40 03 75 82 03 13 b6 86 5f ea 1f a5 06 ad de 0e 97 9f 27 bc c1 1b b5 b0 a0 87 3a 31 98 22 ea 22 2c 1e 4d c2 e6 57 46 05 1b d6 20 83 52 7c d1 f6 ed 6d 8d 80 93 44 46 d6 2b ea f7 cc 85 fe 90 fd c2 7c 42 5e 49 af cc ed 49 08 d2 3e ce ee 7b 71 82 99"
+  Header6 = "48 42 00 00 5a"
+  Data6   = "90 58 40 03 75 91 24 c1 51 69 38 c2 75 87 00 45 0d 93 36 ef 05 6c 9a 98 3a d8 40 ac 5a 45 f0 64 5c 96 19 fd a9 13 8f eb fc 6f 7b 5b ea 02 83 b5 be fc 10 bd 18 37 70 57 e1 34 94 f5 f9 c1 f8 ed 1f b5 fb 00 29 64 3e 8e 64 71 cc df fe 4f 24 5c 51 08 d2 b3 6a 56 b4 f0 04 10"
+  Header7 = "48 42 00 00 5a"
+  Data7   = "90 58 40 04 91 94 f3 47 49 f6 58 ca e2 06 8a 89 14 ef 6a 0f b0 33 01 76 60 18 cf 1d cc d3 ac c1 37 ef a0 e5 83 8f 39 96 9f 89 c7 1b 2b fa 33 87 fe 50 5b 67 93 6a 72 6d 08 4e 0d f8 bf 3d fc fc ea bb b4 82 31 c4 6a 0f 1c e8 19 b5 71 01 8e ad 74 db 1c 03 35 3e 20 94 44 5c"
+  Header8 = "48 40 20 00 27"
+  Data8   = "94 09 01 b4 1d 26 56 68 6d bf 0c 09 30 10 00 01 94 0c 42 03 02 81 e6 05 02 42 00 00 cd 67 08 28 00 c0 40 28 00 c0 40"
+
+  RetVal = Ins5C("05")         ' Check first to see if card is responding or EXIT
+  If Len(RetVal) = 14 Then
+    If Not Mid(RetVal,Len(RetVal)-3,1) = "9" Then
+      Call Sc.MsgBox("Improper Packet Response Found... Aborting Freeview")
+      EXIT Sub
+    End If
+  Else
+    Call Sc.MsgBox("Improper Packet Response Found... Aborting Freeview")
+    EXIT Sub
+  End If
+
+  PW_Print(VbCr & "Sending Freeview Packet Set #1")
+  Call InsAny(Header1,Data1)
+  Call InsAny(Header2,Data2)
+  Call InsAny(Header3,Data3)
+  Call Ins54()
+
+  RetVal = Ins5C("05")         ' Check first to see if card is responding or EXIT
+  If Len(RetVal) = 14 Then
+    If Not Mid(RetVal,Len(RetVal)-3,1) = "9" Then
+      Call Sc.MsgBox("Improper Packet Response Found... Aborting Freeview")
+      EXIT Sub
+    End If
+  Else
+    Call Sc.MsgBox("Improper Packet Response Found... Aborting Freeview")
+    EXIT Sub
+  End If
+
+  PW_Print(VbCr & "Sending Freeview Packet Set #2")
+  Call InsAny(Header4,Data4)
+  Call InsAny(Header5,Data5)
+  Call InsAny(Header6,Data6)
+  Call InsAny(Header7,Data7)
+  Call InsAny(Header8,Data8)
+  Call Ins54()
+  Call Ins5C("05")
+End Sub
+
+' ###############################################################################
+' *******************        End of Freeview Packets       **********************
+
+' *******************  Start of Main List's Parsed Packets **********************
+' ###############################################################################
+
+Sub ClearMem()
+  Call Sc.ProgressBox("", 0, 0, "")
+  InsFail         = 0
+  Data_A          = ""
+  Data_B          = ""
+  Data_C          = ""
+  Data_D          = ""
+  Data_E          = ""
+End Sub
+
+
+Function InsAny(Header,Data)
+  InsHeader = Header
+  InsData = Data
+  Response = SendPacket(InsHeader,InsData)
+  If IsHex(Response) And Len(Response) > 6 Then
+    PW_Print(VbCr & "Data Received       : " & Mid(Response,3,Len(Response)-6))
+  End If
+  Call CardAnswer(Response)
+  InsAny = Response
+End Function
+
+
+Function Ins02()
+  Response = SendPacket("48 02 00 00 08","")
+  If IsHex(Response) And Len(Response) > 6 Then
+    PW_Print(VbCr & "8 Byte Card Version : " & Mid(Response,3,Len(Response)-6))
+  End If
+  Call CardAnswer(Response)
+  Ins02 = Response
+End Function
+
+
+Function Ins06()
+  Response = SendPacket("48 06 00 00 01","")
+  If IsHex(Response) And Len(Response) > 6 Then
+    PW_Print(VbCr & "Byte @ 2016 (for P3) : " & Mid(Response,3,Len(Response)-6))
+  End If
+  Call CardAnswer(Response)
+  Ins06 = Response
+End Function
+
+
+Function Ins12()
+  Response = SendPacket("48 12 00 00 08","")
+  If IsHex(Response) And Len(Response) > 6 Then
+    PW_Print(VbCr & "1st 8 Bytes of EEprom : " & Mid(Response,3,Len(Response)-6))
+  End If
+  Call CardAnswer(Response)
+  Ins12 = Response
+End Function
+
+
+Function Ins26()
+  Response = SendPacket("48 26 00 00 00","")
+  PW_Print(VbCr & "Clear Packet        : Not Supposed to Receive Data or Ack Byte")
+  Ins26 = Response
+  Call CardAnswer(Response)
+End Function
+
+
+Function Ins28()
+  Response = SendPacket("48 28 00 00 02","")
+  If IsHex(Response) And Len(Response) > 6 Then
+    PW_Print(VbCr & "Returns 0080 for P3 or 0001 for P4 : " & Mid(Response,3,Len(Response)-6))
+  End If
+  Ins28 = Response
+  Call CardAnswer(Response)
+End Function
+
+
+Function Ins2A()
+  If ATRtype = "P4" Then
+    ErrorString="Rumor is that P4 cards can be damaged by attempting INS 2A" & VbCr &_
+                "So I decided to not allow this Instruction for P4 cards" & VbCr
+    Call Sc.MsgBox(ErrorString, vbCritical + vbOKOnly, "Sorry... Try Another Instruction")
+    Exit Function
+  End If
+  Response = SendPacket("48 2A 00 00 80","")
+  If IsHex(Response) and Len(Response) = 262 Then
+    PW_Print(VbCr & "Fuse Byte                           : " & Mid(Response,3,2))
+    PW_Print(VbCr & "First 8 Bytes of EEprom             : " & Mid(Response,5,16))
+    PW_Print(VbCr & "(00)Used in Calculating ATR Byte #4 : " & Mid(Response,21,2))
+    PW_Print(VbCr & "Rating Limit                        : " & Mid(Response,23,2))
+    PW_Print(VbCr & "Spending Limit Per PPV Event        : " & Mid(Response,25,4))
+    PW_Print(" or decimal value : " & FormatCurrency(Hex2Dec(Mid(Response,25,4))/100))
+    PW_Print(VbCr & "Activation Date                     : " & Mid(Response,29,8))
+    PW_Print(VbCr & "ATR Bytes(6, 7, 8)                  : " & Mid(Response,37,6))
+    PW_Print(VbCr & "Card ID#                            : " & Mid(Response,43,8))
+    PW_Print(" or decimal value : " & Hex2Dec(Mid(Response,43,8)) & "x")
+    PW_Print(VbCr & "Card ID# XOR'd w/ IRD#              : " & Mid(Response,51,8))
+    PW_Print(" so IRD # must be : " & HexString(Hex2Dec(Mid(Response,51,8)) XOR Hex2Dec(Mid(Response,43,8)),8))
+    PW_Print(" or decimal value : " & (Hex2Dec(Mid(Response,51,8)) XOR Hex2Dec(Mid(Response,43,8))))
+    PW_Print(VbCr & "USW                                 : " & Mid(Response,59,4))
+    PW_Print(VbCr & "CMD81/CMD82 counter                 : " & Mid(Response,63,4))
+    PW_Print(VbCr & "DSW                                 : " & Mid(Response,67,4))
+    PW_Print(VbCr & "Data Used By CMD 0C                 : " & Mid(Response,71,4))
+    PW_Print(VbCr & "Tier and Expiry Date - slot 0       : " & Mid(Response,75,4) & " " & Mid(Response,79,4))
+    PW_Print(VbCr & "Tier and Expiry Date - slot 1       : " & Mid(Response,83,4) & " " & Mid(Response,87,4))
+    PW_Print(VbCr & "Tier and Expiry Date - slot 2       : " & Mid(Response,91,4) & " " & Mid(Response,95,4))
+    PW_Print(VbCr & "Tier and Expiry Date - slot 3       : " & Mid(Response,99,4) & " " & Mid(Response,103,4))
+    PW_Print(VbCr & "Tier and Expiry Date - slot 4       : " & Mid(Response,107,4) & " " & Mid(Response,111,4))
+    PW_Print(VbCr & "Tier and Expiry Date - slot 5       : " & Mid(Response,115,4) & " " & Mid(Response,119,4))
+    PW_Print(VbCr & "Tier and Expiry Date - slot 6       : " & Mid(Response,123,4) & " " & Mid(Response,127,4))
+    PW_Print(VbCr & "Tier and Expiry Date - slot 7       : " & Mid(Response,131,4) & " " & Mid(Response,135,4))
+    PW_Print(VbCr & "Tier and Expiry Date - slot 8       : " & Mid(Response,139,4) & " " & Mid(Response,143,4))
+    PW_Print(VbCr & "Tier and Expiry Date - slot 9       : " & Mid(Response,147,4) & " " & Mid(Response,151,4))
+    PW_Print(VbCr & "Tier and Expiry Date - slot 10      : " & Mid(Response,155,4) & " " & Mid(Response,159,4))
+    PW_Print(VbCr & "PPV Provider #0 Active or Inactive  : " & Mid(Response,163,4))
+    PW_Print(VbCr & "PPV Provider #0 Buy Option Byte     : " & Mid(Response,167,4))
+    PW_Print(VbCr & "PPV Provider #0 Amount Spent        : " & Mid(Response,171,4))
+    PW_Print(" or decimal value : " & FormatCurrency(Hex2Dec(Mid(Response,171,4))/100))
+    PW_Print(VbCr & "PPV Provider #0 Total $ Limit       : " & Mid(Response,175,4))
+    PW_Print(" or decimal value : " & FormatCurrency(Hex2Dec(Mid(Response,175,4))/100))
+    PW_Print(VbCr & "PPV Provider #0 Total $ Limit       : " & Mid(Response,179,4))
+    PW_Print(" or decimal value : " & FormatCurrency(Hex2Dec(Mid(Response,179,4))/100))
+    PW_Print(VbCr & "PPV Provider #0 Current Month/Day   : " & Mid(Response,183,4))
+    PW_Print(VbCr & "PPV Provider #1 breaks down like #0 : " & Mid(Response,187,24))
+    PW_Print(VbCr & "PPV Provider #2 breaks down like #0 : " & Mid(Response,211,24))
+    PW_Print(VbCr & "PPV Provider #3 breaks down like #0 : " & Mid(Response,235,24))
+  Else
+    If IsHex(Response) And Len(Response) > 6 Then
+      PW_Print(VbCr & "Data Received       : " & Mid(Response,3,Len(Response)-6))
+    End If
+  End If
+  Call CardAnswer(Response)
+  Ins2A = Response
+End Function
+
+
+Function Ins2C00()
+  Response = SendPacket("48 2C 00 00 02","")
+  If IsHex(Response) And Len(Response) = 10 Then
+    PW_Print(VbCr & "Spending Limit Per Event : " & Mid(Response,3,Len(Response)-6))
+    PW_Print(" or decimal value : " & FormatCurrency(Hex2Dec(Mid(Response,3,Len(Response)-6))/100))
+  Else
+    If IsHex(Response) And Len(Response) > 6 Then
+      PW_Print(VbCr & "Data Received       : " & Mid(Response,3,Len(Response)-6))
+    End If
+  End If
+  Call CardAnswer(Response)
+  Ins2C00 = Response
+End Function
+
+
+Function Ins2C80()
+  Response = SendPacket("48 2C 80 00 02","")
+  If IsHex(Response) And Len(Response) = 10 Then
+    PW_Print(VbCr & "Rating Limit        : " & Mid(Response,3,2))
+    PW_Print(VbCr & "Always 00           : " & Mid(Response,5,2))
+  Else
+    If IsHex(Response) And Len(Response) > 6 Then
+      PW_Print(VbCr & "Data Received       : " & Mid(Response,3,Len(Response)-6))
+    End If
+  End If
+  Call CardAnswer(Response)
+  Ins2C80 = Response
+End Function
+
+
+Function Ins2E00(Spending)
+  Spending = Replace(UCase(Spending), " ", "")
+  If IsHex(Spending) And Len(Spending) = 4 Then
+    Response = SendPacket("48 2E 00 00 02",Spending)
+    Call CardAnswer(Response)
+    Ins2E00 = Response
+  End If
+End Function
+
+
+Function Ins2E80(Rating)
+  Rating = Replace(UCase(Rating), " ", "")
+  If IsHex(Rating) And Len(Rating) = 4 Then
+    Response = SendPacket("48 2E 80 00 02",Rating)
+    Call CardAnswer(Response)
+    Ins2E80 = Response
+  End If
+End Function
+
+
+Function Ins30(Param2)
+  Param2 = Replace(UCase(Param2), " ", "")
+  If IsHex(Param2) And Len(Param2) = 4 Then
+    Response = SendPacket("48 30 " & Param2 & " 0C","")
+    If IsHex(Response) and Len(Response) = 30 Then
+      PW_Print(VbCr & "Flag ??80=Available/30=Purchased/36=Canceled/00=Not Available??  : " & Mid(Response,3,2))
+      PW_Print(VbCr & "?? Unknown ??       : " & Mid(Response,5,4))
+      PW_Print(VbCr & "Rating of PPV Event : " & Mid(Response,9,2))
+      PW_Print(VbCr & "$$$ Amount of PPV   : " & Mid(Response,11,4))
+      PW_Print(" or decimal value : " & FormatCurrency(Hex2Dec(Mid(Response,11,4))/100))
+      PW_Print(VbCr & "$$$ Amount of PPV   : " & Mid(Response,15,4))
+      PW_Print(" or decimal value : " & FormatCurrency(Hex2Dec(Mid(Response,15,4))/100))
+      PW_Print(VbCr & "?? Unknown ??       : " & Mid(Response,19,8))
+    Else
+      If IsHex(Response) And Len(Response) > 6 Then
+        PW_Print(VbCr & "Data Received       : " & Mid(Response,3,Len(Response)-6))
+      End If
+    End If
+    Call CardAnswer(Response)
+    Ins30 = Response
+  End If
+End Function
+
+
+Function Ins36()
+Dim RetVal
+  If ATRtype = "P4" Then
+    ErrorString="Rumor is that P4 cards can be damaged by attempting INS 36" & VbCr &_
+                "So I disable this Instruction for P4 cards by default" & VbCr
+    RetVal=Sc.ButtonBox(ErrorString, vbCritical, "Ins 36 not recommended for P4", "Abort", "Continue")
+    Select Case RetVal
+    Case "2"
+    Case Else
+      EXIT Function
+    End Select
+  End If
+  Response = SendPacket("48 36 00 00 FF","")
+  If IsHex(Response) And Len(Response) = 516 Then
+    PW_Print(VbCr & "Sorry if this one doesn't parse right... It's impossible to do so.")
+    PW_Print(VbCr & "Ins 36 only returns the parts of this that are set on the card.")
+    PW_Print(VbCr & "                4 bytes = ????????                            : " & Mid(Response,3,8))
+    PW_Print(VbCr & "                4 bytes = Card ID#                            : " & Mid(Response,11,8))
+    PW_Print(" or decimal value : " & Hex2Dec(Mid(Response,11,8)) & "x")
+    PW_Print(VbCr & "                2 bytes = INS36 Data Bytes                    : " & Mid(Response,19,4))
+    PW_Print(VbCr & "                5 bytes = ??????????                          : " & Mid(Response,23,10))
+    PW_Print(VbCr & "Data after FD = 1 byte  = # of bytes in this part             : " & Mid(Response,33,4))
+    PW_Print(VbCr & "                1 byte  = PPV Provider #?? (?? is 00-03)      : " & Mid(Response,37,2))
+    PW_Print(VbCr & "                2 bytes = PPV Provider #?? Active or Inactive : " & Mid(Response,39,4))
+    PW_Print(VbCr & "                2 bytes = PPV Provider #?? Buy Option Byte    : " & Mid(Response,43,4))
+    PW_Print(VbCr & "                2 bytes = PPV Provider #?? Amount Spent       : " & Mid(Response,47,4))
+    PW_Print(" or decimal value : " & FormatCurrency(Hex2Dec(Mid(Response,47,4))/100))
+    PW_Print(VbCr & "                2 bytes = PPV Provider #?? Total $ Limit      : " & Mid(Response,51,4))
+    PW_Print(" or decimal value : " & FormatCurrency(Hex2Dec(Mid(Response,51,4))/100))
+    PW_Print(VbCr & "                2 bytes = PPV Provider #?? Total $ Limit      : " & Mid(Response,55,4))
+    PW_Print(" or decimal value : " & FormatCurrency(Hex2Dec(Mid(Response,55,4))/100))
+    PW_Print(VbCr & "                2 bytes = PPV Provider #?? Current Month/Day  : " & Mid(Response,59,4))
+    PW_Print(VbCr & "                1 bytes = Do RAM 00F3h                        : " & Mid(Response,63,2))
+    PW_Print(VbCr & "                4 bytes = Married to IRD #                    : " & Mid(Response,65,8))
+    PW_Print(" or decimal value : " & Hex2Dec(Mid(Response,65,8)))
+    PW_Print(VbCr & "                1 byte  = Do RAM 00DEh                        : " & Mid(Response,73,2))
+    PW_Print(VbCr & "                2 bytes = CMD 0C Data                         : " & Mid(Response,75,4))
+    PW_Print(VbCr & "                2 bytes = CMD 2B Unswap Month/Day             : " & Mid(Response,79,4))
+    PW_Print(VbCr & "                2 byte  = USW Counter                         : " & Mid(Response,83,4))
+    PW_Print(VbCr & "                2 byte  = CMD 81 Counter                      : " & Mid(Response,87,4))
+    PW_Print(VbCr & "                2 byte  = DSW Counter                         : " & Mid(Response,91,4))
+    PW_Print(VbCr & "                1 bytes = Do RAM 00DFh                        : " & Mid(Response,95,2))
+    PW_Print(VbCr & "                2 bytes = Activation Month/Day                : " & Mid(Response,97,4))
+    PW_Print(VbCr & "                1 bytes = Do RAM 00D3h                        : Decipher It Yourself")
+    PW_Print(VbCr & "Data after F8 = 1 byte  = # of bytes in this part             : Decipher It Yourself")
+    PW_Print(VbCr & "                1 byte  = PPV Slot #                          : Decipher It Yourself")
+    PW_Print(VbCr & "                9 bytes = PPV Slot Data                       : Decipher It Yourself")
+    PW_Print(VbCr & "                2 bytes = ????                                : Decipher It Yourself")
+    PW_Print(VbCr & "Data after F6 = 1 byte  = # of bytes in this part             : Decipher It Yourself")
+    PW_Print(VbCr & "                2 bytes = ????                                : Decipher It Yourself")
+    PW_Print(VbCr & "Data after 67 = 1 byte  = # of bytes in this part             : Decipher It Yourself")
+    PW_Print(VbCr & "                8 bytes = Ins 36 Packet Signature             : Decipher It Yourself")
+  Else
+    If IsHex(Response) And Len(Response) > 6 Then
+      PW_Print(VbCr & "Phone Home Data     : " & Mid(Response,3,Len(Response)-6))
+    End If
+  End If
+  Call CardAnswer(Response)
+  Ins36 = Response
+End Function
+
+
+Function Ins38()
+  Response = SendPacket("48 38 00 00 02","")
+  If IsHex(Response) And Len(Response) > 6 Then
+    PW_Print(VbCr & "Param #2 and Length Byte for Ins 56 : " & Mid(Response,3,Len(Response)-6) & "(P3: 0035 or P4: 00EC means card isn't swap ready)")
+  End If
+  Call CardAnswer(Response)
+  Ins38 = Response
+End Function
+
+
+Function Ins46()
+Dim RetVal
+  If ATRtype = "P4" Then
+    ErrorString="I see you have a P4 card" & VbCr & "This attempts to WRITE a PPV... NOT WIPE" & VbCr & VbCr &_
+                "Are You POSITIVE You Want To Continue This Operation?"
+    RetVal=Sc.ButtonBox(ErrorString, vbQuestion, "Attempt a PPV Write Packet", "Abort", "Continue")
+    Select Case RetVal
+    Case "2"
+    Case Else
+      EXIT Function
+    End Select
+  End If
+  Ins46Slot=EnterIns46Slot()
+  If Ins46Slot="" Then
+    EXIT Function
+  End If
+  Ins46Flag=EnterIns46Flag()
+  If Ins46Flag="" Then
+    EXIT Function
+  End If
+  Ins46Data=EnterIns46Data()
+  If Ins46Data="" Then
+    EXIT Function
+  End If
+  Response = SendPacket("48 46 " & Ins46Slot & Ins46Flag & HexString(Len(Ins46Data)\2,2),Ins46Data)
+  Call CardAnswer(Response)
+  Ins46 = Response
+  If IsHex(Response) And Len(Response) = 6 Then
+    Ins46 = Ins46 & Ins30(Ins46Slot & Ins46Flag)
+    If Ins46Flag = 02 Then
+      RetVal = Ins5C("00")
+      If IsHex(RetVal) and Len(RetVal) = 14 and Not Mid(RetVal,3,8) = "00000000" Then
+        Ins46 = Ins46 & Ins5E(Mid(RetVal,3,4) & Mid(RetVal,9,2))
+        Call Ins26()
+        Call Ins5C("05")
+      End If
+    End If
+    If Ins46Flag = 20 or Ins46Flag = 10 Then
+      RetVal = Ins5C("03")
+      If IsHex(RetVal) and Len(RetVal) = 14 and Not Mid(RetVal,3,8) = "00000000" Then
+        Ins46 = Ins46 & Ins5E(Mid(RetVal,3,4) & Mid(RetVal,9,2))
+        Call Ins26()
+        Call Ins5C("05")
+      End If
+    End If
+  End If
+End Function
+
+
+Function Ins48(Password)
+  Password = Replace(UCase(Password), " ", "")
+  If IsHex(Password) And Len(Password) = 8 Then
+    Response = SendPacket("48 48 00 00 04",Password)
+    Call CardAnswer(Response)
+    Ins48 = Response
+  End If
+End Function
+
+
+Function Ins4A(ZKT)
+  ZKT = Replace(UCase(ZKT), " ", "")
+  If IsHex(ZKT) And Len(ZKT) = 2 Then
+    Response = SendPacket("48 4A 10 01 01",ZKT)
+    If IsHex(Response) And Len(Response) = 6 Then
+      If ZKT = "01" Then
+        PW_Print(VbCr & "A new  R  value was generated based on the Primary ZKT Table")
+      Else
+        If ZKT = "02" Then
+          PW_Print(VbCr & "A new  R  value was generated based on the Secondary ZKT Table")
+        End If
+      End If
+    End If
+    Call CardAnswer(Response)
+    Ins4A = Response
+  End If
+End Function
+
+
+Function Ins4C(BOXKEY)
+  BOXKEY = Replace(UCase(BOXKEY), " ", "")
+  If IsHex(BOXKEY) And Len(BOXKEY) = 18 Then
+    Response = SendPacket("48 4C 00 00 09",BOXKEY)
+    Call CardAnswer(Response)
+    Ins4C = Response
+  End If
+End Function
+
+
+Function Ins52()
+  Response = SendPacket("48 52 00 00 04","")
+  If IsHex(Response) And Len(Response) > 6 Then
+    PW_Print(VbCr & "Password            : " & Mid(Response,3,Len(Response)-6))
+    PW_Print(" or decimal value : " & Hex2Dec(Mid(Response,3,Len(Response)-6)))
+  End If
+  Call CardAnswer(Response)
+  Ins52 = Response
+End Function
+
+
+Function Ins54()
+  Response = SendPacket("48 54 00 00 0D","")
+  If IsHex(Response) And Len(Response) > 6 Then
+    PW_Print(VbCr & "Video Seed Answer   : " & Mid(Response,3,Len(Response)-6))
+  End If
+  Call CardAnswer(Response)
+  Ins54 = Response
+End Function
+
+
+Function Ins56()
+Dim RetVal, RetVal2
+  If ATRtype = "P4" Then
+    ErrorString="I see you have a P4 card so BE CAREFUL!!!" & VbCr &_
+                "If this Ins is Successful, it will change your Fuse to 2D (swapped out and DEACTIVATED!!)" & VbCr & VbCr &_
+                "Are You POSITIVE You Want To Continue This Operation?" & VbCr
+    RetVal=Sc.ButtonBox(ErrorString, vbQuestion, "Attempt To Read Card Swap Info", "Abort", "Continue")
+    Select Case RetVal
+    Case "2"
+    Case Else
+      EXIT Function
+    End Select
+  End If
+  RetVal = Ins38()
+  RetVal2 = 0
+  Ins56 = ""
+  If IsHex(RetVal) And Len(RetVal) = 10 Then
+    Do
+      Response = SendPacket("48 56 " & HexString(RetVal2,2) & Mid(RetVal,3,4),"")
+      If IsHex(Response) And Len(Response) > 6 Then
+        PW_Print(VbCr & "Info From First of 2 Swap Cards : " & Mid(Response,3,Len(Response)-6))
+      End If
+      Call CardAnswer(Response)
+      Ins56 = Ins56 & Response
+      RetVal2 = RetVal2 + 1
+    Loop While (RetVal2 < Hex2Dec(Mid(RetVal,3,2)) And InsFail = 0 And GotATR = True)
+    If IsHex(Ins56) And Len(Ins56) = 3024 Then
+      PW_Print(VbCr & "Here's the breakdown of those 27 different Ins 56 Packets")
+      PW_Print(VbCr & "All the 40's before signatures are left out because they are null values")
+      PW_Print(VbCr & "Blackout Bit Set #1  : " & Mid(Ins56,3,2) & " " & Mid(Ins56,5,32))
+      PW_Print(VbCr & "Blackout Bit Set #1  :    " & Mid(Ins56,37,32))
+      PW_Print(" Local = " & Mid(Ins56,39,2) & " Guide = " & Mid(Ins56,67,2))
+      PW_Print(VbCr & "Zip Code String      : " & Mid(Ins56,69,2) & " " & Mid(Ins56,71,16))
+      PW_Print(" or actual zipcode : " & Mid(Ins56,74,1) & Mid(Ins56,76,1) & Mid(Ins56,78,1) & Mid(Ins56,80,1) & Mid(Ins56,82,1))
+      PW_Print(VbCr & "Spending Per Event   : " & Mid(Ins56,87,2) & " " & Mid(Ins56,89,4))
+      PW_Print(" or decimal value : " & FormatCurrency(Hex2Dec(Mid(Ins56,89,4))/100))
+      PW_Print(VbCr & "Packet #00 Signature : " & Mid(Ins56,93,16) & VbCr)
+      PW_Print(VbCr & "Blackout Bit Set #2  : " & Mid(Ins56,115,2) & " " & Mid(Ins56,117,32))
+      PW_Print(VbCr & "Blackout Bit Set #2  :    " & Mid(Ins56,149,32))
+      PW_Print(VbCr & "Activation Date      : " & Mid(Ins56,181,2) & " " & Mid(Ins56,183,8))
+      PW_Print(VbCr & "??                   : " & Mid(Ins56,191,2) & " " & Mid(Ins56,193,2))
+      PW_Print(VbCr & "Packet #01 Signature : " & Mid(Ins56,205,16) & VbCr)
+      PW_Print(VbCr & "PPV Dialout Phone #0 : " & Mid(Ins56,227,2) & " " & Mid(Ins56,229,16))
+      PW_Print(VbCr & "PPV Dialout Phone #1 :    " & Mid(Ins56,245,16))
+      PW_Print(VbCr & "PPV Dialout Phone #2 :    " & Mid(Ins56,261,16))
+      PW_Print(VbCr & "PPV Dialout Phone #3 :    " & Mid(Ins56,277,16))
+      PW_Print(VbCr & "Card Replacing CAM # : " & Mid(Ins56,293,2) & " " & Mid(Ins56,295,8))
+      PW_Print(" or decimal value : " & Hex2Dec(Mid(Ins56,295,8)) & "x")
+      PW_Print(VbCr & "Timezone             : " & Mid(Ins56,303,2) & " " & Mid(Ins56,305,2))
+      PW_Print(VbCr & "IRD #                : " & Mid(Ins56,307,2) & " " & Mid(Ins56,309,8))
+      PW_Print(" or decimal value : " & Hex2Dec(Mid(Ins56,309,8)))
+      PW_Print(VbCr & "Packet #02 Signature : " & Mid(Ins56,317,16) & VbCr)
+      PW_Print(VbCr & "Rating Limit         : " & Mid(Ins56,339,2) & " " & Mid(Ins56,341,2))
+      PW_Print(VbCr & "Password             : " & Mid(Ins56,343,2) & " " & Mid(Ins56,345,8))
+      PW_Print(" or decimal value : " & Hex2Dec(Mid(Ins56,345,8)))
+      PW_Print(VbCr & "Tier 0 & Exp Date    : " & Mid(Ins56,353,2) & " " & Mid(Ins56,355,4) & " " & Mid(Ins56,359,4))
+      PW_Print(VbCr & "Packet #03 Signature : " & Mid(Ins56,429,16) & VbCr)
+      PW_Print(VbCr & "Tier 1 & Exp Date    : " & Mid(Ins56,451,2) & " " & Mid(Ins56,453,4) & " " & Mid(Ins56,457,4))
+      PW_Print(VbCr & "Tier 2 & Exp Date    : " & Mid(Ins56,461,2) & " " & Mid(Ins56,463,4) & " " & Mid(Ins56,467,4))
+      PW_Print(VbCr & "Tier 3 & Exp Date    : " & Mid(Ins56,471,2) & " " & Mid(Ins56,473,4) & " " & Mid(Ins56,477,4))
+      PW_Print(VbCr & "Tier 4 & Exp Date    : " & Mid(Ins56,481,2) & " " & Mid(Ins56,483,4) & " " & Mid(Ins56,487,4))
+      PW_Print(VbCr & "Tier 5 & Exp Date    : " & Mid(Ins56,491,2) & " " & Mid(Ins56,493,4) & " " & Mid(Ins56,497,4))
+      PW_Print(VbCr & "Tier 6 & Exp Date    : " & Mid(Ins56,501,2) & " " & Mid(Ins56,503,4) & " " & Mid(Ins56,507,4))
+      PW_Print(VbCr & "Tier 7 & Exp Date    : " & Mid(Ins56,511,2) & " " & Mid(Ins56,513,4) & " " & Mid(Ins56,517,4))
+      PW_Print(VbCr & "Tier 8 & Exp Date    : " & Mid(Ins56,521,2) & " " & Mid(Ins56,523,4) & " " & Mid(Ins56,527,4))
+      PW_Print(VbCr & "Tier 9 & Exp Date    : " & Mid(Ins56,531,2) & " " & Mid(Ins56,533,4) & " " & Mid(Ins56,537,4))
+      PW_Print(VbCr & "Packet #04 Signature : " & Mid(Ins56,541,16) & VbCr)
+      PW_Print(VbCr & "Tier 10 & Exp Date   : " & Mid(Ins56,563,2) & " " & Mid(Ins56,565,4) & " " & Mid(Ins56,569,4))
+      PW_Print(VbCr & "Tier 11 & Exp Date   : " & Mid(Ins56,573,2) & " " & Mid(Ins56,575,4) & " " & Mid(Ins56,579,4))
+      PW_Print(VbCr & "Tier 12 & Exp Date   : " & Mid(Ins56,583,2) & " " & Mid(Ins56,585,4) & " " & Mid(Ins56,589,4))
+      PW_Print(VbCr & "Tier 13 & Exp Date   : " & Mid(Ins56,593,2) & " " & Mid(Ins56,595,4) & " " & Mid(Ins56,599,4))
+      PW_Print(VbCr & "Tier 14 & Exp Date   : " & Mid(Ins56,603,2) & " " & Mid(Ins56,605,4) & " " & Mid(Ins56,609,4))
+      PW_Print(VbCr & "Tier 15 & Exp Date   : " & Mid(Ins56,613,2) & " " & Mid(Ins56,615,4) & " " & Mid(Ins56,619,4))
+      PW_Print(VbCr & "Tier 16 & Exp Date   : " & Mid(Ins56,623,2) & " " & Mid(Ins56,625,4) & " " & Mid(Ins56,629,4))
+      PW_Print(VbCr & "Tier 17 & Exp Date   : " & Mid(Ins56,633,2) & " " & Mid(Ins56,635,4) & " " & Mid(Ins56,639,4))
+      PW_Print(VbCr & "Tier 18 & Exp Date   : " & Mid(Ins56,643,2) & " " & Mid(Ins56,645,4) & " " & Mid(Ins56,649,4))
+      PW_Print(VbCr & "Packet #05 Signature : " & Mid(Ins56,653,16) & VbCr)
+      PW_Print(VbCr & "Tier 19 & Exp Date   : " & Mid(Ins56,675,2) & " " & Mid(Ins56,677,4) & " " & Mid(Ins56,681,4))
+      PW_Print(VbCr & "Tier 20 & Exp Date   : " & Mid(Ins56,685,2) & " " & Mid(Ins56,687,4) & " " & Mid(Ins56,691,4))
+      PW_Print(VbCr & "Tier 21 & Exp Date   : " & Mid(Ins56,695,2) & " " & Mid(Ins56,697,4) & " " & Mid(Ins56,701,4))
+      PW_Print(VbCr & "Tier 22 & Exp Date   : " & Mid(Ins56,705,2) & " " & Mid(Ins56,707,4) & " " & Mid(Ins56,711,4))
+      PW_Print(VbCr & "Tier 23 & Exp Date   : " & Mid(Ins56,715,2) & " " & Mid(Ins56,717,4) & " " & Mid(Ins56,721,4))
+      PW_Print(VbCr & "Tier 24 & Exp Date   : " & Mid(Ins56,725,2) & " " & Mid(Ins56,727,4) & " " & Mid(Ins56,731,4))
+      PW_Print(VbCr & "Tier 25 & Exp Date   : " & Mid(Ins56,735,2) & " " & Mid(Ins56,737,4) & " " & Mid(Ins56,741,4))
+      PW_Print(VbCr & "Tier 26 & Exp Date   : " & Mid(Ins56,745,2) & " " & Mid(Ins56,747,4) & " " & Mid(Ins56,751,4))
+      PW_Print(VbCr & "Tier 27 & Exp Date   : " & Mid(Ins56,755,2) & " " & Mid(Ins56,757,4) & " " & Mid(Ins56,761,4))
+      PW_Print(VbCr & "Packet #06 Signature : " & Mid(Ins56,765,16) & VbCr)
+      PW_Print(VbCr & "Tier 28 & Exp Date   : " & Mid(Ins56,787,2) & " " & Mid(Ins56,789,4) & " " & Mid(Ins56,793,4))
+      PW_Print(VbCr & "Tier 29 & Exp Date   : " & Mid(Ins56,797,2) & " " & Mid(Ins56,799,4) & " " & Mid(Ins56,803,4))
+      PW_Print(VbCr & "Tier 30 & Exp Date   : " & Mid(Ins56,807,2) & " " & Mid(Ins56,809,4) & " " & Mid(Ins56,813,4))
+      PW_Print(VbCr & "Tier 31 & Exp Date   : " & Mid(Ins56,817,2) & " " & Mid(Ins56,819,4) & " " & Mid(Ins56,823,4))
+      PW_Print(VbCr & "Tier 32 & Exp Date   : " & Mid(Ins56,827,2) & " " & Mid(Ins56,829,4) & " " & Mid(Ins56,833,4))
+      PW_Print(VbCr & "Tier 33 & Exp Date   : " & Mid(Ins56,837,2) & " " & Mid(Ins56,839,4) & " " & Mid(Ins56,843,4))
+      PW_Print(VbCr & "Tier 34 & Exp Date   : " & Mid(Ins56,847,2) & " " & Mid(Ins56,849,4) & " " & Mid(Ins56,853,4))
+      PW_Print(VbCr & "Tier 35 & Exp Date   : " & Mid(Ins56,857,2) & " " & Mid(Ins56,859,4) & " " & Mid(Ins56,863,4))
+      PW_Print(VbCr & "Tier 36 & Exp Date   : " & Mid(Ins56,867,2) & " " & Mid(Ins56,869,4) & " " & Mid(Ins56,873,4))
+      PW_Print(VbCr & "Packet #07 Signature : " & Mid(Ins56,877,16) & VbCr)
+      PW_Print(VbCr & "Tier 37 & Exp Date   : " & Mid(Ins56,899,2) & " " & Mid(Ins56,901,4) & " " & Mid(Ins56,905,4))
+      PW_Print(VbCr & "Tier 38 & Exp Date   : " & Mid(Ins56,909,2) & " " & Mid(Ins56,911,4) & " " & Mid(Ins56,915,4))
+      PW_Print(VbCr & "Tier 39 & Exp Date   : " & Mid(Ins56,919,2) & " " & Mid(Ins56,921,4) & " " & Mid(Ins56,925,4))
+      PW_Print(VbCr & "Tier 40 & Exp Date   : " & Mid(Ins56,929,2) & " " & Mid(Ins56,931,4) & " " & Mid(Ins56,935,4))
+      PW_Print(VbCr & "Tier 41 & Exp Date   : " & Mid(Ins56,939,2) & " " & Mid(Ins56,941,4) & " " & Mid(Ins56,945,4))
+      PW_Print(VbCr & "Tier 42 & Exp Date   : " & Mid(Ins56,949,2) & " " & Mid(Ins56,951,4) & " " & Mid(Ins56,955,4))
+      PW_Print(VbCr & "Tier 43 & Exp Date   : " & Mid(Ins56,959,2) & " " & Mid(Ins56,961,4) & " " & Mid(Ins56,965,4))
+      PW_Print(VbCr & "Tier 44 & Exp Date   : " & Mid(Ins56,969,2) & " " & Mid(Ins56,971,4) & " " & Mid(Ins56,975,4))
+      PW_Print(VbCr & "Tier 45 & Exp Date   : " & Mid(Ins56,979,2) & " " & Mid(Ins56,981,4) & " " & Mid(Ins56,985,4))
+      PW_Print(VbCr & "Packet #08 Signature : " & Mid(Ins56,989,16) & VbCr)
+      PW_Print(VbCr & "Tier 46 & Exp Date   : " & Mid(Ins56,1011,2) & " " & Mid(Ins56,1013,4) & " " & Mid(Ins56,1017,4))
+      PW_Print(VbCr & "Tier 47 & Exp Date   : " & Mid(Ins56,1021,2) & " " & Mid(Ins56,1023,4) & " " & Mid(Ins56,1027,4))
+      PW_Print(VbCr & "Tier 48 & Exp Date   : " & Mid(Ins56,1031,2) & " " & Mid(Ins56,1033,4) & " " & Mid(Ins56,1037,4))
+      PW_Print(VbCr & "Tier 49 & Exp Date   : " & Mid(Ins56,1041,2) & " " & Mid(Ins56,1043,4) & " " & Mid(Ins56,1047,4))
+      PW_Print(VbCr & "Tier 50 & Exp Date   : " & Mid(Ins56,1051,2) & " " & Mid(Ins56,1053,4) & " " & Mid(Ins56,1057,4))
+      PW_Print(VbCr & "Tier 51 & Exp Date   : " & Mid(Ins56,1061,2) & " " & Mid(Ins56,1063,4) & " " & Mid(Ins56,1067,4))
+      PW_Print(VbCr & "Tier 52 & Exp Date   : " & Mid(Ins56,1071,2) & " " & Mid(Ins56,1073,4) & " " & Mid(Ins56,1077,4))
+      PW_Print(VbCr & "Tier 53 & Exp Date   : " & Mid(Ins56,1081,2) & " " & Mid(Ins56,1083,4) & " " & Mid(Ins56,1087,4))
+      PW_Print(VbCr & "Tier 54 & Exp Date   : " & Mid(Ins56,1091,2) & " " & Mid(Ins56,1093,4) & " " & Mid(Ins56,1097,4))
+      PW_Print(VbCr & "Packet #09 Signature : " & Mid(Ins56,1101,16) & VbCr)
+      PW_Print(VbCr & "Tier 55 & Exp Date   : " & Mid(Ins56,1123,2) & " " & Mid(Ins56,1125,4) & " " & Mid(Ins56,1129,4))
+      PW_Print(VbCr & "Tier 56 & Exp Date   : " & Mid(Ins56,1133,2) & " " & Mid(Ins56,1135,4) & " " & Mid(Ins56,1139,4))
+      PW_Print(VbCr & "Tier 57 & Exp Date   : " & Mid(Ins56,1143,2) & " " & Mid(Ins56,1145,4) & " " & Mid(Ins56,1149,4))
+      PW_Print(VbCr & "Tier 58 & Exp Date   : " & Mid(Ins56,1153,2) & " " & Mid(Ins56,1155,4) & " " & Mid(Ins56,1159,4))
+      PW_Print(VbCr & "Tier 59 & Exp Date   : " & Mid(Ins56,1163,2) & " " & Mid(Ins56,1165,4) & " " & Mid(Ins56,1169,4))
+      PW_Print(VbCr & "Tier 60 & Exp Date   : " & Mid(Ins56,1173,2) & " " & Mid(Ins56,1175,4) & " " & Mid(Ins56,1179,4))
+      PW_Print(VbCr & "Tier 61 & Exp Date   : " & Mid(Ins56,1183,2) & " " & Mid(Ins56,1185,4) & " " & Mid(Ins56,1189,4))
+      PW_Print(VbCr & "Tier 62 & Exp Date   : " & Mid(Ins56,1193,2) & " " & Mid(Ins56,1195,4) & " " & Mid(Ins56,1199,4))
+      PW_Print(VbCr & "Tier 63 & Exp Date   : " & Mid(Ins56,1203,2) & " " & Mid(Ins56,1205,4) & " " & Mid(Ins56,1209,4))
+      PW_Print(VbCr & "Packet #0A Signature : " & Mid(Ins56,1213,16) & VbCr)
+      PW_Print(VbCr & "Tier 64 & Exp Date   : " & Mid(Ins56,1235,2) & " " & Mid(Ins56,1237,4) & " " & Mid(Ins56,1241,4))
+      PW_Print(VbCr & "Tier 65 & Exp Date   : " & Mid(Ins56,1245,2) & " " & Mid(Ins56,1247,4) & " " & Mid(Ins56,1251,4))
+      PW_Print(VbCr & "Tier 66 & Exp Date   : " & Mid(Ins56,1255,2) & " " & Mid(Ins56,1257,4) & " " & Mid(Ins56,1261,4))
+      PW_Print(VbCr & "Tier 67 & Exp Date   : " & Mid(Ins56,1265,2) & " " & Mid(Ins56,1267,4) & " " & Mid(Ins56,1271,4))
+      PW_Print(VbCr & "Tier 68 & Exp Date   : " & Mid(Ins56,1275,2) & " " & Mid(Ins56,1277,4) & " " & Mid(Ins56,1281,4))
+      PW_Print(VbCr & "Tier 69 & Exp Date   : " & Mid(Ins56,1285,2) & " " & Mid(Ins56,1287,4) & " " & Mid(Ins56,1291,4))
+      PW_Print(VbCr & "Tier 70 & Exp Date   : " & Mid(Ins56,1295,2) & " " & Mid(Ins56,1297,4) & " " & Mid(Ins56,1301,4))
+      PW_Print(VbCr & "Tier 71 & Exp Date   : " & Mid(Ins56,1305,2) & " " & Mid(Ins56,1307,4) & " " & Mid(Ins56,1311,4))
+      PW_Print(VbCr & "Tier 72 & Exp Date   : " & Mid(Ins56,1315,2) & " " & Mid(Ins56,1317,4) & " " & Mid(Ins56,1321,4))
+      PW_Print(VbCr & "Packet #0B Signature : " & Mid(Ins56,1325,16) & VbCr)
+      PW_Print(VbCr & "Tier 73 & Exp Date   : " & Mid(Ins56,1347,2) & " " & Mid(Ins56,1349,4) & " " & Mid(Ins56,1353,4))
+      PW_Print(VbCr & "Tier 74 & Exp Date   : " & Mid(Ins56,1357,2) & " " & Mid(Ins56,1359,4) & " " & Mid(Ins56,1363,4))
+      PW_Print(VbCr & "Tier 75 & Exp Date   : " & Mid(Ins56,1367,2) & " " & Mid(Ins56,1369,4) & " " & Mid(Ins56,1373,4))
+      PW_Print(VbCr & "Tier 76 & Exp Date   : " & Mid(Ins56,1377,2) & " " & Mid(Ins56,1379,4) & " " & Mid(Ins56,1383,4))
+      PW_Print(VbCr & "Tier 77 & Exp Date   : " & Mid(Ins56,1387,2) & " " & Mid(Ins56,1389,4) & " " & Mid(Ins56,1393,4))
+      PW_Print(VbCr & "Tier 78 & Exp Date   : " & Mid(Ins56,1397,2) & " " & Mid(Ins56,1399,4) & " " & Mid(Ins56,1403,4))
+      PW_Print(VbCr & "Tier 79 & Exp Date   : " & Mid(Ins56,1407,2) & " " & Mid(Ins56,1409,4) & " " & Mid(Ins56,1413,4))
+      PW_Print(VbCr & "Tier 80 & Exp Date   : " & Mid(Ins56,1417,2) & " " & Mid(Ins56,1419,4) & " " & Mid(Ins56,1423,4))
+      PW_Print(VbCr & "Tier 81 & Exp Date   : " & Mid(Ins56,1427,2) & " " & Mid(Ins56,1429,4) & " " & Mid(Ins56,1433,4))
+      PW_Print(VbCr & "Packet #0C Signature : " & Mid(Ins56,1437,16) & VbCr)
+      PW_Print(VbCr & "Blackout Bit Set #1  : " & Mid(Ins56,1459,2) & " " & Mid(Ins56,1461,32))
+      PW_Print(VbCr & "Blackout Bit Set #1  :    " & Mid(Ins56,1493,32))
+      PW_Print(" Local = " & Mid(Ins56,1495,2) & " Guide = " & Mid(Ins56,1523,2))
+      PW_Print(VbCr & "Zip Code String      : " & Mid(Ins56,1525,2) & " " & Mid(Ins56,1527,16))
+      PW_Print(" or actual zipcode : " & Mid(Ins56,1530,1) & Mid(Ins56,1532,1) & Mid(Ins56,1534,1) & Mid(Ins56,1536,1) & Mid(Ins56,1538,1))
+      PW_Print(VbCr & "Spending Per Event   : " & Mid(Ins56,1543,2) & " " & Mid(Ins56,1545,4))
+      PW_Print(" or decimal value : " & FormatCurrency(Hex2Dec(Mid(Ins56,1545,4))/100))
+      PW_Print(VbCr & "Packet #0D Signature : " & Mid(Ins56,1549,16) & VbCr)
+      PW_Print(VbCr & "Blackout Bit Set #1  : " & Mid(Ins56,1571,2) & " " & Mid(Ins56,1573,32))
+      PW_Print(VbCr & "Blackout Bit Set #1  :    " & Mid(Ins56,1605,32))
+      PW_Print(" Local = " & Mid(Ins56,1607,2) & " Guide = " & Mid(Ins56,1635,2))
+      PW_Print(VbCr & "Zip Code String      : " & Mid(Ins56,1637,2) & " " & Mid(Ins56,1639,16))
+      PW_Print(" or actual zipcode : " & Mid(Ins56,1642,1) & Mid(Ins56,1644,1) & Mid(Ins56,1646,1) & Mid(Ins56,1648,1) & Mid(Ins56,1650,1))
+      PW_Print(VbCr & "Spending Per Event   : " & Mid(Ins56,1655,2) & " " & Mid(Ins56,1657,4))
+      PW_Print(" or decimal value : " & FormatCurrency(Hex2Dec(Mid(Ins56,1657,4))/100))
+      PW_Print(VbCr & "Packet #0E Signature : " & Mid(Ins56,1661,16) & VbCr)
+      PW_Print(VbCr & "Blackout Bit Set #1  : " & Mid(Ins56,1683,2) & " " & Mid(Ins56,1685,32))
+      PW_Print(VbCr & "Blackout Bit Set #1  :    " & Mid(Ins56,1717,32))
+      PW_Print(" Local = " & Mid(Ins56,1719,2) & " Guide = " & Mid(Ins56,1747,2))
+      PW_Print(VbCr & "Zip Code String      : " & Mid(Ins56,1749,2) & " " & Mid(Ins56,1751,16))
+      PW_Print(" or actual zipcode : " & Mid(Ins56,1754,1) & Mid(Ins56,1756,1) & Mid(Ins56,1758,1) & Mid(Ins56,1760,1) & Mid(Ins56,1762,1))
+      PW_Print(VbCr & "Spending Per Event   : " & Mid(Ins56,1767,2) & " " & Mid(Ins56,1769,4))
+      PW_Print(" or decimal value : " & FormatCurrency(Hex2Dec(Mid(Ins56,1769,4))/100))
+      PW_Print(VbCr & "Packet #0F Signature : " & Mid(Ins56,1773,16) & VbCr)
+      PW_Print(VbCr & "Blackout Bit Set #1  : " & Mid(Ins56,1795,2) & " " & Mid(Ins56,1797,32))
+      PW_Print(VbCr & "Blackout Bit Set #1  :    " & Mid(Ins56,1829,32))
+      PW_Print(" Local = " & Mid(Ins56,1831,2) & " Guide = " & Mid(Ins56,1859,2))
+      PW_Print(VbCr & "Zip Code String      : " & Mid(Ins56,1861,2) & " " & Mid(Ins56,1863,16))
+      PW_Print(" or actual zipcode : " & Mid(Ins56,1866,1) & Mid(Ins56,1868,1) & Mid(Ins56,1870,1) & Mid(Ins56,1872,1) & Mid(Ins56,1874,1))
+      PW_Print(VbCr & "Spending Per Event   : " & Mid(Ins56,1879,2) & " " & Mid(Ins56,1881,4))
+      PW_Print(" or decimal value : " & FormatCurrency(Hex2Dec(Mid(Ins56,1881,4))/100))
+      PW_Print(VbCr & "Packet #10 Signature : " & Mid(Ins56,1885,16) & VbCr)
+      PW_Print(VbCr & "Blackout Bit Set #1  : " & Mid(Ins56,1907,2) & " " & Mid(Ins56,1909,32))
+      PW_Print(VbCr & "Blackout Bit Set #1  :    " & Mid(Ins56,1941,32))
+      PW_Print(" Local = " & Mid(Ins56,1943,2) & " Guide = " & Mid(Ins56,1971,2))
+      PW_Print(VbCr & "Zip Code String      : " & Mid(Ins56,1973,2) & " " & Mid(Ins56,1975,16))
+      PW_Print(" or actual zipcode : " & Mid(Ins56,1978,1) & Mid(Ins56,1980,1) & Mid(Ins56,1982,1) & Mid(Ins56,1984,1) & Mid(Ins56,1986,1))
+      PW_Print(VbCr & "Spending Per Event   : " & Mid(Ins56,1991,2) & " " & Mid(Ins56,1993,4))
+      PW_Print(" or decimal value : " & FormatCurrency(Hex2Dec(Mid(Ins56,1993,4))/100))
+      PW_Print(VbCr & "Packet #11 Signature : " & Mid(Ins56,1997,16) & VbCr)
+      PW_Print(VbCr & "PPV Credit Area      : " & Mid(Ins56,2019,2) & " " & Mid(Ins56,2021,56))
+      PW_Print(VbCr & "PPV Slot #0          : " & Mid(Ins56,2077,2) & " " & Mid(Ins56,2079,18))
+      PW_Print(VbCr & "Packet #12 Signature : " & Mid(Ins56,2109,16) & VbCr)
+      PW_Print(VbCr & "PPV Slot #1          : " & Mid(Ins56,2131,2) & " " & Mid(Ins56,2133,18))
+      PW_Print(VbCr & "PPV Slot #2          : " & Mid(Ins56,2151,2) & " " & Mid(Ins56,2153,18))
+      PW_Print(VbCr & "PPV Slot #3          : " & Mid(Ins56,2171,2) & " " & Mid(Ins56,2173,18))
+      PW_Print(VbCr & "PPV Slot #4          : " & Mid(Ins56,2191,2) & " " & Mid(Ins56,2193,18))
+      PW_Print(VbCr & "Packet #13 Signature : " & Mid(Ins56,2221,16) & VbCr)
+      PW_Print(VbCr & "PPV Slot #5          : " & Mid(Ins56,2243,2) & " " & Mid(Ins56,2245,18))
+      PW_Print(VbCr & "PPV Slot #6          : " & Mid(Ins56,2263,2) & " " & Mid(Ins56,2265,18))
+      PW_Print(VbCr & "PPV Slot #7          : " & Mid(Ins56,2283,2) & " " & Mid(Ins56,2285,18))
+      PW_Print(VbCr & "PPV Slot #8          : " & Mid(Ins56,2303,2) & " " & Mid(Ins56,2305,18))
+      PW_Print(VbCr & "Packet #14 Signature : " & Mid(Ins56,2333,16) & VbCr)
+      PW_Print(VbCr & "PPV Slot #9          : " & Mid(Ins56,2355,2) & " " & Mid(Ins56,2357,18))
+      PW_Print(VbCr & "PPV Slot #10         : " & Mid(Ins56,2375,2) & " " & Mid(Ins56,2377,18))
+      PW_Print(VbCr & "PPV Slot #11         : " & Mid(Ins56,2395,2) & " " & Mid(Ins56,2397,18))
+      PW_Print(VbCr & "PPV Slot #12         : " & Mid(Ins56,2415,2) & " " & Mid(Ins56,2417,18))
+      PW_Print(VbCr & "Packet #15 Signature : " & Mid(Ins56,2445,16) & VbCr)
+      PW_Print(VbCr & "PPV Slot #13         : " & Mid(Ins56,2467,2) & " " & Mid(Ins56,2469,18))
+      PW_Print(VbCr & "PPV Slot #14         : " & Mid(Ins56,2487,2) & " " & Mid(Ins56,2489,18))
+      PW_Print(VbCr & "PPV Slot #15         : " & Mid(Ins56,2507,2) & " " & Mid(Ins56,2509,18))
+      PW_Print(VbCr & "PPV Slot #16         : " & Mid(Ins56,2527,2) & " " & Mid(Ins56,2529,18))
+      PW_Print(VbCr & "Packet #16 Signature : " & Mid(Ins56,2557,16) & VbCr)
+      PW_Print(VbCr & "PPV Slot #17         : " & Mid(Ins56,2579,2) & " " & Mid(Ins56,2581,18))
+      PW_Print(VbCr & "PPV Slot #18         : " & Mid(Ins56,2599,2) & " " & Mid(Ins56,2601,18))
+      PW_Print(VbCr & "PPV Slot #19         : " & Mid(Ins56,2619,2) & " " & Mid(Ins56,2621,18))
+      PW_Print(VbCr & "PPV Slot #20         : " & Mid(Ins56,2639,2) & " " & Mid(Ins56,2641,18))
+      PW_Print(VbCr & "Packet #17 Signature : " & Mid(Ins56,2669,16) & VbCr)
+      PW_Print(VbCr & "PPV Slot #21         : " & Mid(Ins56,2691,2) & " " & Mid(Ins56,2693,18))
+      PW_Print(VbCr & "PPV Slot #22         : " & Mid(Ins56,2711,2) & " " & Mid(Ins56,2713,18))
+      PW_Print(VbCr & "PPV Slot #23         : " & Mid(Ins56,2731,2) & " " & Mid(Ins56,2733,18))
+      PW_Print(VbCr & "PPV Slot #24         : " & Mid(Ins56,2751,2) & " " & Mid(Ins56,2753,18))
+      PW_Print(VbCr & "Packet #18 Signature : " & Mid(Ins56,2781,16) & VbCr)
+      PW_Print(VbCr & "PPV Provider #0 Data : " & Mid(Ins56,2803,2) & " " & Mid(Ins56,2805,26))
+      PW_Print(VbCr & "PPV Provider #1 Data : " & Mid(Ins56,2831,2) & " " & Mid(Ins56,2833,26))
+      PW_Print(VbCr & "PPV Provider #2 Data : " & Mid(Ins56,2859,2) & " " & Mid(Ins56,2861,26))
+      PW_Print(VbCr & "Packet #19 Signature : " & Mid(Ins56,2781,16) & VbCr)
+      PW_Print(VbCr & "PPV Provider #3 Data : " & Mid(Ins56,2915,2) & " " & Mid(Ins56,2917,26))
+      PW_Print(VbCr & "?? 44 ??             : " & Mid(Ins56,2943,2) & " " & Mid(Ins56,2945,24))
+      PW_Print(VbCr & "Packet #1A Signature : " & Mid(Ins56,3005,16))
+    Else
+      If IsHex(Ins56) And Len(Ins56) > 6 Then
+        PW_Print(VbCr & "Card Swap Data      : " & Mid(Ins56,3,Len(Ins56)-6))
+      End If
+    End If
+  End If
+End Function
+
+
+Function Ins58()
+  Response = SendPacket("48 58 00 00 17","")
+  If IsHex(Response) And Len(Response) = 52 Then
+    PW_Print(VbCr & "Fuse Byte                      : " & Mid(Response,3,2))
+    PW_Print(VbCr & "Card ID#                       : " & Mid(Response,5,8))
+    PW_Print(" or decimal value : " & Hex2Dec(Mid(Response,5,8)) & "x")
+    PW_Print(VbCr & "(P3 used to call CEEF)         : " & Mid(Response,13,2))
+    PW_Print(VbCr & "Changes Often ??               : " & Mid(Response,15,8))
+    PW_Print(VbCr & "Time Zone                      : " & Mid(Response,23,2))
+    PW_Print(VbCr & "Byte at Ram 0000               : " & Mid(Response,25,2))
+    PW_Print(VbCr & "Guide Byte                     : " & Mid(Response,27,2))
+    PW_Print(VbCr & "Future Replacement CAM ID#     : " & Mid(Response,29,8))
+    PW_Print(" or decimal value : " & Hex2Dec(Mid(Response,29,8)) & "x")
+    PW_Print(VbCr & "Old CAM ID# This Card Replaced : " & Mid(Response,37,8))
+    PW_Print(" or decimal value : " & Hex2Dec(Mid(Response,37,8)) & "x")
+    PW_Print(VbCr & "Unknown ??                     : " & Mid(Response,45,4))
+  Else
+    If IsHex(Response) And Len(Response) > 6 Then
+      PW_Print(VbCr & "Card Swap Data      : " & Mid(Response,3,Len(Response)-6))
+    End If
+  End If
+  Call CardAnswer(Response)
+  Ins58 = Response
+End Function
+
+
+Function Ins5A1001()
+  Response = SendPacket("48 5A 10 01 08","")
+  If IsHex(Response) And Len(Response) > 6 Then
+    PW_Print(VbCr & "Current Value of  R^2 mod N (hashed) : " & Mid(Response,3,Len(Response)-6))
+  End If
+  Call CardAnswer(Response)
+  Ins5A1001 = Response
+End Function
+
+
+Function Ins5A1002()
+  Response = SendPacket("48 5A 10 02 40","")
+  If IsHex(Response) And Len(Response) > 6 Then
+    PW_Print(VbCr & "Current Value of  R : " & Mid(Response,3,Len(Response)-6))
+  End If
+  Call CardAnswer(Response)
+  Ins5A1002 = Response
+End Function
+
+
+Function Ins5A1102()
+  Response = SendPacket("48 5A 11 02 40","")
+  If IsHex(Response) And Len(Response) > 6 Then
+    PW_Print(VbCr & "Current Value of  R*S mod N : " & Mid(Response,3,Len(Response)-6))
+  End If
+  Call CardAnswer(Response)
+  Ins5A1102 = Response
+End Function
+
+
+Function Ins5C(Param1)
+  Param1 = Replace(UCase(Param1), " ", "")
+  If IsHex(Param1) And Len(Param1) = 2 Then
+    Response = SendPacket("48 5C " & Param1 & " 00 04","")
+    If IsHex(Response) And Len(Response) > 6 Then
+      PW_Print(VbCr & "Status Bytes " & Param1 & "     : " & Mid(Response,3,Len(Response)-6))
+    End If
+    Call CardAnswer(Response)
+    Ins5C = Response
+  End If
+End Function
+
+
+Function Ins5E(Param3)
+  Param3 = Replace(UCase(Param3), " ", "")
+  If IsHex(Param3) And Len(Param3) = 6 Then
+    Response = SendPacket("48 5E " & Param3,"")
+    If IsHex(Response) And Len(Response) > 6 Then
+      If Mid(Param3,3,4) = "0B11" And Len(Response) = 40 Then
+        PW_Print(VbCr & "Always 00              : " & Mid(Response,3,2))
+        PW_Print(VbCr & "PPV Provider 0 Phone # : " & Mid(Response,5,16))
+        PW_Print(VbCr & "PPV Provider 1 Phone # : " & Mid(Response,21,16))
+      Else
+        If Mid(Param3,3,4) = "0E4B" And Len(Response) = 156 Then
+          PW_Print(VbCr & "Tier in PPV Slot 0  & Status Flag  : " & Mid(Response,3,4) & " " & Mid(Response,7,2))
+          PW_Print(VbCr & "Tier in PPV Slot 1  & Status Flag  : " & Mid(Response,9,4) & " " & Mid(Response,13,2))
+          PW_Print(VbCr & "Tier in PPV Slot 2  & Status Flag  : " & Mid(Response,15,4) & " " & Mid(Response,19,2))
+          PW_Print(VbCr & "Tier in PPV Slot 3  & Status Flag  : " & Mid(Response,21,4) & " " & Mid(Response,25,2))
+          PW_Print(VbCr & "Tier in PPV Slot 4  & Status Flag  : " & Mid(Response,27,4) & " " & Mid(Response,31,2))
+          PW_Print(VbCr & "Tier in PPV Slot 5  & Status Flag  : " & Mid(Response,33,4) & " " & Mid(Response,37,2))
+          PW_Print(VbCr & "Tier in PPV Slot 6  & Status Flag  : " & Mid(Response,39,4) & " " & Mid(Response,43,2))
+          PW_Print(VbCr & "Tier in PPV Slot 7  & Status Flag  : " & Mid(Response,45,4) & " " & Mid(Response,49,2))
+          PW_Print(VbCr & "Tier in PPV Slot 8  & Status Flag  : " & Mid(Response,51,4) & " " & Mid(Response,55,2))
+          PW_Print(VbCr & "Tier in PPV Slot 9  & Status Flag  : " & Mid(Response,57,4) & " " & Mid(Response,61,2))
+          PW_Print(VbCr & "Tier in PPV Slot 10 & Status Flag  : " & Mid(Response,63,4) & " " & Mid(Response,67,2))
+          PW_Print(VbCr & "Tier in PPV Slot 11 & Status Flag  : " & Mid(Response,69,4) & " " & Mid(Response,73,2))
+          PW_Print(VbCr & "Tier in PPV Slot 12 & Status Flag  : " & Mid(Response,75,4) & " " & Mid(Response,79,2))
+          PW_Print(VbCr & "Tier in PPV Slot 13 & Status Flag  : " & Mid(Response,81,4) & " " & Mid(Response,85,2))
+          PW_Print(VbCr & "Tier in PPV Slot 14 & Status Flag  : " & Mid(Response,87,4) & " " & Mid(Response,91,2))
+          PW_Print(VbCr & "Tier in PPV Slot 15 & Status Flag  : " & Mid(Response,93,4) & " " & Mid(Response,97,2))
+          PW_Print(VbCr & "Tier in PPV Slot 16 & Status Flag  : " & Mid(Response,99,4) & " " & Mid(Response,103,2))
+          PW_Print(VbCr & "Tier in PPV Slot 17 & Status Flag  : " & Mid(Response,105,4) & " " & Mid(Response,109,2))
+          PW_Print(VbCr & "Tier in PPV Slot 18 & Status Flag  : " & Mid(Response,111,4) & " " & Mid(Response,115,2))
+          PW_Print(VbCr & "Tier in PPV Slot 19 & Status Flag  : " & Mid(Response,117,4) & " " & Mid(Response,121,2))
+          PW_Print(VbCr & "Tier in PPV Slot 20 & Status Flag  : " & Mid(Response,123,4) & " " & Mid(Response,127,2))
+          PW_Print(VbCr & "Tier in PPV Slot 21 & Status Flag  : " & Mid(Response,129,4) & " " & Mid(Response,133,2))
+          PW_Print(VbCr & "Tier in PPV Slot 22 & Status Flag  : " & Mid(Response,135,4) & " " & Mid(Response,139,2))
+          PW_Print(VbCr & "Tier in PPV Slot 23 & Status Flag  : " & Mid(Response,141,4) & " " & Mid(Response,145,2))
+          PW_Print(VbCr & "Tier in PPV Slot 24 & Status Flag  : " & Mid(Response,147,4) & " " & Mid(Response,151,2))
+        Else
+          If Param3 = "280406" And Len(Response) = 18 Then
+            PW_Print(VbCr & "Flag ??             : " & Mid(Response,3,2))
+            PW_Print(VbCr & "Tier ??             : " & Mid(Response,5,4))
+            PW_Print(VbCr & "Date ??             : " & Mid(Response,9,4))
+            PW_Print(VbCr & "Flag ??             : " & Mid(Response,13,2))
+          Else
+            PW_Print(VbCr & "Data Received is    : " & Mid(Response,3,Len(Response)-6))
+          End If
+        End If
+      End If
+    End If
+    Call CardAnswer(Response)
+    Ins5E = Response
+  End If
+End Function
+
+' ###############################################################################
+' *******************  End of Main List's Parsed Packets   **********************
+
+' *******************   Start of Special Value Handlers    **********************
+' ###############################################################################
+
+Function EnterSpending()
+Dim GotInput, RetVal
+  Do
+    GotInput = False
+    MenuPrompt="Enter a 2 HEX Byte Max Spending PER PPV Event" & VbCr &_
+        "Anything from  0000  to  FFFF  -  Example:" & VbCr & VbCr & VbTab & VbTab &_
+        "0000  =  $0.00" & VbCr & VbTab & VbTab &_
+        "03E8  =  $10.00" & VbCr & VbTab & VbTab &_
+        "1388  =  $50.00" & VbCr & VbTab & VbTab &_
+        "4E20  =  $200.00"
+    RetVal=Sc.InputBox(MenuPrompt, "Input Spending Limit", DefaultSpending)
+    RetVal=Replace(UCase(RetVal), " ", "")
+    If IsHex(RetVal) And Len(RetVal) = 4 Or Len(RetVal) = 0 Then
+      GotInput = True
+    Else
+      Call Sc.MsgBox(ErrorInput)
+    End If
+  Loop Until GotInput = True
+  EnterSpending = RetVal
+End Function
+
+
+Function EnterRating()
+Dim GotInput, RetVal
+  Do
+    GotInput = False
+    MenuPrompt="Enter One of These HEX Byte Rating Limits" & VbCr & VbCr & VbTab & VbTab &_
+        "00  =  All Locked" & VbCr & VbTab & VbTab &_
+        "01  =  NR" & VbCr & VbTab & VbTab &_
+        "02  =  G" & VbCr & VbTab & VbTab &_
+        "04  =  PG" & VbCr & VbTab & VbTab &_
+        "06  =  PG-13" & VbCr & VbTab & VbTab &_
+        "07  =  NR-Content" & VbTab & VbTab & VbCr & VbTab & VbTab &_
+        "09  =  R" & VbCr & VbTab & VbTab &_
+        "0B  =  NR-Mature" & VbCr & VbTab & VbTab &_
+        "0D  =  NC-17"
+    RetVal=Sc.InputBox(MenuPrompt, "Input Rating Limit", DefaultRating)
+    Select Case RetVal
+    Case ""
+      EnterRating = ""
+      GotInput = True
+    Case "00", "01", "02", "04", "06", "07", "09", "0b", "0B", "0d", "0D"
+      EnterRating = RetVal & "00"           'NOTE: Rating is 2 bytes, not 1... This adds the trailing 00
+      GotInput = True
+    Case Else
+      Call Sc.MsgBox(ErrorInput)
+    End Select
+  Loop Until GotInput = True
+End Function
+
+
+Function EnterPassword()
+Dim GotInput, RetVal
+  Do
+    GotInput = False
+    MenuPrompt="Enter a 2 HEX Byte Parental Password" & VbCr &_
+        "Anything from 0000-270F - Example:" & VbCr & VbCr & VbTab &_
+        "07D0  =  2000 decimal" & VbCr & VbTab &_
+        "03E8  =  1000 decimal" & VbCr & VbTab &_
+        "04D2  =  1234 decimal" & VbCr & VbTab &_
+        "270F  =  9999 decimal"
+    RetVal=Sc.InputBox(MenuPrompt, "Input Password", DefaultPassword)
+    RetVal=Replace(UCase(RetVal), " ", "")
+    If Len(RetVal) = 0 Then
+      EnterPassword = ""
+      GotInput = True
+    Else
+      If IsHex(RetVal) And Len(RetVal) = 4 And Hex2Dec(RetVal) =< 9999 And Hex2Dec(RetVal) >= 0 Then
+        EnterPassword = "0000" & RetVal     'NOTE: Password is 4 bytes, not 2... This adds the front 0000
+        GotInput = True
+      Else
+        Call Sc.MsgBox(ErrorInput)
+      End If
+    End If
+  Loop Until GotInput = True
+End Function
+
+
+Function EnterBOXKEY()
+Dim GotInput, RetVal
+  Do
+    GotInput = False
+    MenuPrompt="Enter the Full 9 Byte HEXIDECIMAL IRD# (BOXKEY) for which this card is married to" & VbCr &_
+        "The First 4 Bytes are the IRD #, the Next 4 Bytes are Make/Model, the 9th Byte is a Flag" & VbCr &_
+        "Sending correct BOXKEY to Card will set the Status Word to 90 20 (or S/W Card Answer)" & VbCr &_
+        "Getting this S/W flag to set may help you if your trying to develope a way into your card" & VbCr & VbCr &_
+        "THIS IS ONLY FOR PEOPLE WHO KNOW THEIR IRD BOXKEY" & VbCr &_
+        "THIS IS ONLY FOR PREVIOUSLY MARRIED CARDS" & VbCr & VbCr &_
+        "DO NOT BLAME ME WHEN YOUR CARD MARRIES SOME WEIRD NUMBER" & VbCr &_
+        "BECAUSE I'M WARNING YOU NOW THAT IT WILL IF CARD IS VIRGIN" & VbCr & VbCr &_
+        "USE A P3 WITH A LOGGER TO FIND OUT YOUR IRD'S INS 4C BOXKEY" & VbCr &_
+        "THE INS 4C PACKET IS THE FIRST OR SECOND PACKET AT STARTUP" & VbCr & VbCr &_
+        "An interesting experiment for newbies is to program a P3 card to Unmarried" & VbCr &_
+        "Then run the Simulate IRD Startup, Write a BOXKEY, and Watch the Ins 54 Responses" & VbCr &_
+        "Now do that again (including reprogramming P3 to unmarried) and write different BOXKEY" & VbCr &_
+        "Then Watch Carefully how the Ins 54 responses for freeview packets change!!!" & VbCr & VbCr & VbTab &_
+        "#########################################" & VbCr & VbTab &_
+        "###    CLICK CANCEL AND ASK IF YOUR UNSURE    ###" & VbCr & VbTab &_
+        "#########################################" & VbCr & VbTab & VbTab &_
+        "Set These in your INI file or in Script Settings" & VbCr & VbTab &_
+        "Your Default BOXKEY 1  =  " & DefaultBOXKEY_1 & VbCr & VbTab &_
+        "Your Default BOXKEY 2  =  " & DefaultBOXKEY_2 & VbCr & VbTab &_
+        "Your Default BOXKEY 3  =  " & DefaultBOXKEY_3 & VbCr & VbTab &_
+        "Your Default BOXKEY 4  =  " & DefaultBOXKEY_4 & VbCr & VbCr &_
+        "ENTER 1, 2, 3, OR 4 FOR ONE OF THE DEFAULTS    OR    TYPE IN A NEW ONE"
+    RetVal=Sc.InputBox(MenuPrompt,"Input IRD Box Key","1")
+    If RetVal = "1" Then RetVal = DefaultBOXKEY_1 End If
+    If RetVal = "2" Then RetVal = DefaultBOXKEY_2 End If
+    If RetVal = "3" Then RetVal = DefaultBOXKEY_3 End If
+    If RetVal = "4" Then RetVal = DefaultBOXKEY_4 End If
+    RetVal=Replace(UCase(RetVal), " ", "")
+    If IsHex(RetVal) And Len(RetVal) = 18 Or RetVal = "" Then
+      GotInput = True
+    Else
+      Call Sc.MsgBox(ErrorInput)
+    End If
+  Loop Until GotInput = True
+  EnterBOXKEY = RetVal
+End Function
+
+
+Function EnterIns46Slot()
+Dim GotInput, RetVal
+  Do
+    GotInput = False
+    MenuPrompt="Type in your 3rd header byte for Ins 46" & VbCr &_
+        "Value Must Be Hexidecimal from 20 to ??"
+    RetVal = sc.inputbox(MenuPrompt,"Input PPV Slot",DefaultIns46Slot)
+    RetVal = Replace(UCase(RetVal), " ", "")
+    If IsHex(RetVal) And Len(RetVal) = 2 Or Len(RetVal) = 0 Then
+      GotInput = True
+    Else
+      Call Sc.MsgBox(ErrorInput)
+    End If
+  Loop Until GotInput = True
+  EnterIns46Slot = RetVal
+End Function
+
+
+Function EnterIns46Flag()
+Dim GotInput, RetVal
+  Do
+    GotInput = False
+    MenuPrompt="Type in your 4th header byte for Ins 46" & VbCr &_
+        "Values Seen So Far... And Speculation" & VbCr & VbCr & VbTab &_
+        "01  =  Checking" & VbCr & VbTab &_
+        "02  =  Purchasing" & VbCr & VbTab &_
+        "10  =  ?? Update Tier ??" & VbCr & VbTab &_
+        "20  =  Cancelling"
+    RetVal = sc.inputbox(MenuPrompt,"Input PPV Flag",DefaultIns46Flag)
+    RetVal = Replace(UCase(RetVal), " ", "")
+    If IsHex(RetVal) And Len(RetVal) = 2 Or Len(RetVal) = 0 Then
+      GotInput = True
+    Else
+      Call Sc.MsgBox(ErrorInput)
+    End If
+  Loop Until GotInput = True
+  EnterIns46Flag = RetVal
+End Function
+
+
+Function EnterIns46Data()
+Dim GotInput, RetVal
+  Do
+    GotInput = False
+    MenuPrompt=VbTab & VbTab &VbTab & "Type in your Ins 46 Packet Data  -  " &_
+        "Value Must Be Hexidecimal" & VbTab & VbTab & VbTab
+    RetVal = sc.inputbox(MenuPrompt,"Input PPV Data",DefaultIns46Data)
+    RetVal = Replace(UCase(RetVal), " ", "")
+    If IsHex(RetVal) Or Len(RetVal) = 0 Then
+      GotInput = True
+    Else
+      Call Sc.MsgBox(ErrorInput)
+    End If
+  Loop Until GotInput = True
+  EnterIns46Data = RetVal
+End Function
+
+
+Function Enter5Cparam1()
+Dim GotInput, RetVal
+  Do
+    GotInput = False
+    MenuPrompt="Type in your 3rd header byte for Ins 5C" & VbCr &_
+        "IRD creates these at various times based on flags it sees" & VbCr & VbCr &_
+        "The IRD then uses the result to build another Ins Packet (like Ins 5E)" & VbCr &_
+        "For Example........" & VbCr & VbCr &_
+        "Ins 46/30 involkes the 00 when Buying a PPV" & VbCr &_
+        "Ins 46/30 involkes the 03 when Cancelling a PPV Event" & VbCr &_
+        "Ins 42 Tier Updates also involke the 03" & VbCr &_
+        "The 05 is used to clear some bytes in RAM (or maybe a delay request)" & VbCr & VbCr &_
+        "Please Enter Your 1 Hex Byte" & VbCr & VbCr &_
+        "00  :  48 5C 00 00 04  =  Read Status Bytes 00" & VbCr &_
+        "01  :  48 5C 01 00 04  =  Read Status Bytes 01" & VbCr &_
+        "02  :  48 5C 02 00 04  =  Read Status Bytes 02" & VbCr &_
+        "03  :  48 5C 03 00 04  =  Read Status Bytes 03" & VbCr &_
+        "04  :  48 5C 04 00 04  =  Read Status Bytes 04" & VbCr &_
+        "05  :  48 5C 05 00 04  =  Read Status Bytes 05" & VbCr & VbCr &_
+        "??  :  48 5C ?? 00 04  =  Read Status Bytes (one byte from 00-FF)"
+    RetVal = Sc.InputBox(MenuPrompt,"Input Status Bytes Options","")
+    RetVal = Replace(UCase(RetVal), " ", "")
+    If IsHex(RetVal) And Len(RetVal) = 2 Or Len(RetVal) = 0 Then
+      GotInput = True
+    Else
+      Call Sc.MsgBox(ErrorInput)
+    End If
+  Loop Until GotInput = True
+  Enter5Cparam1 = RetVal
+End Function
+
+
+Function Enter5Eparam3()
+Dim GotInput, RetVal
+  Do
+    GotInput = False
+    MenuPrompt="Type in your 3rd, 4th, and 5th header bytes for Ins 5E" & VbCr &_
+        "IRD creates these at various times based on flags it sees" & VbCr & VbCr &_
+        "000A02  :  48 5E 00 0A 02  =  ????" & VbCr &_
+        "000B11  :  48 5E 00 0B 11  =  Read PPV Provider Phone #0 and #1 from P2 or P3 card" & VbCr &_
+        "110B11  :  48 5E 11 0B 11  =  Read PPV Provider Phone #0 and #1 from P4 card" & VbCr &_
+        "000E4B  :  48 5E 00 0E 4B  =  Read PPV Tiers and Status from P2 or P3 card" & VbCr &_
+        "080E4B  :  48 5E 08 0E 4B  =  Read PPV Tiers and Status from P4 card" & VbCr &_
+        "280406  :  48 5E 28 04 06  =  EEprom 2804 of P3 calls The Tier Update Routine" & VbCr & VbCr &_
+        "??????  :  48 5E ?? ?? ??  = You can input your own 3 hex bytes"
+    RetVal = Sc.InputBox(MenuPrompt,"Input Ins 5E Options","")
+    RetVal = Replace(UCase(RetVal), " ", "")
+    If IsHex(RetVal) And Len(RetVal) = 6 Or Len(RetVal) = 0 Then
+      GotInput = True
+    Else
+      Call Sc.MsgBox(ErrorInput)
+    End If
+  Loop Until GotInput = True
+  Enter5Eparam3 = RetVal
+End Function
+
+
+Function EnterInsHeader()
+Dim GotInput, RetVal
+  Do
+    GotInput = False
+    MenuPrompt="Type in your 5 Byte (or whatever) Packet Header" & VbCr &_
+        "Value Must Be Hexidecimal" & VbCr & VbCr &_
+        "THIS IS MORE THAN EXTREMELY DANGEROUS" & VbCr &_
+        "I HOPE YOU KNOW WHAT YOUR DOING!!!!"
+    RetVal = sc.inputbox(MenuPrompt,"Input Packet Header",DefaultHeader)
+    RetVal = Replace(UCase(RetVal), " ", "")
+    If IsHex(RetVal) Or Len(RetVal) = 0 Then
+      GotInput = True
+    Else
+      Call Sc.MsgBox(ErrorInput)
+    End If
+  Loop Until GotInput = True
+  EnterInsHeader = RetVal
+End Function
+
+
+Function EnterInsData()
+Dim GotInput, RetVal
+  Do
+    GotInput = False
+    MenuPrompt=VbTab & VbTab &VbTab & "Cut n Paste or Type in your Packet Data  -  " &_
+        "Value Must Be Hexidecimal" & VbTab & VbTab & VbTab
+    RetVal = sc.inputbox(MenuPrompt,"Input Packet Data",DefaultData)
+    RetVal = Replace(UCase(RetVal), " ", "")
+    If IsHex(RetVal) Or Len(RetVal) = 0 Then
+      GotInput = True
+    Else
+      Call Sc.MsgBox(ErrorInput)
+    End If
+  Loop Until GotInput = True
+  EnterInsData = RetVal
+End Function
+
+
+Function EnterInsDelay()
+Dim GotInput, RetVal
+  Do
+    GotInput = False
+    MenuPrompt="What B0xx UL4S Ins Delay Would You Like To Use??" & VbCr &_
+        "This is Optional And If Used It Must Be Hexidecimal" & VbCr &_
+        "If Used, It Gets Sent Once Before Start Of Header" & VbCr & VbCr &_
+        "Do NOT Enter the   B0   That Signifies Use Of This" & VbCr &_
+        "Just Enter 1 Hex Byte Delay Value From:    80 to FA" & VbCr & VbCr &_
+        "Your Current Default Ins Delay is: " & DefaultInsDelay & VbCr &_
+        "Click OK To Make This Default or Cancel To Turn It OFF"
+    RetVal = sc.inputbox(MenuPrompt,"Input UL4S Packet Delay",DefaultInsDelay)
+    RetVal = Replace(UCase(RetVal), " ", "")
+    IF RetVal = "" Then
+      GotInput = True
+    Else
+      If IsHex(RetVal) Then
+        If Hex2Dec(RetVal) > 127 And Hex2Dec(RetVal) < 251 Then
+          GotInput = True
+        End If
+      End If
+    End If
+    If GotInput = False Then
+      Call Sc.MsgBox(ErrorInput)
+    End IF
+  Loop Until GotInput = True
+  EnterInsDelay = RetVal
+End Function
+
+
+Function EnterBaudWatch()
+Dim GotInput, RetVal
+  Do
+    GotInput = False
+    MenuPrompt="What UL4S Baud Rate and Watchdog Would You Like To Use??" & VbCr &_
+        "This is Optional And If Used It Must Be Hexidecimal" & VbCr &_
+        "If Used, It Prefaces All Packet Headers and Split Packets" & VbCr & VbCr &_
+        "Enter Baud Rate    xx     (10=9600 or 15=19200 or 1A=38400)" & VbCr &_
+        "Enter Watchdog    0E ww    As Next 2 Bytes (0E + 1 byte value)" & VbCr & VbCr &_
+        "Your Current Default BaudWatch is: " & DefaultBaudWatch & VbCr &_
+        "Click OK To Make This Default or Cancel To Turn It OFF"
+    RetVal = sc.inputbox(MenuPrompt,"Input Baud Rate and Watchdog Timeout Timer",DefaultBaudWatch)
+    RetVal = Replace(UCase(RetVal), " ", "")
+    If IsHex(RetVal) Or Len(RetVal) = 0 Then
+      GotInput = True
+    Else
+      Call Sc.MsgBox(ErrorInput)
+    End If
+  Loop Until GotInput = True
+  EnterBaudWatch = RetVal
+End Function
+
+
+Function EnterClockDelay()
+Dim GotInput, RetVal
+  Do
+    GotInput = False
+    MenuPrompt="What UL4S Clock Cycle Delay Would You Like To Use??" & VbCr &_
+        "This is Optional And If Used It Must Be Hexidecimal" & VbCr &_
+        "If Used, It Comes After All Packet Headers and Split Packets" & VbCr & VbCr &_
+        "Enter Clock Delay    20 yy zz    As 3 Bytes (20 + 2 byte value)" & VbCr & VbCr &_
+        "If You Need A Variety, I Think You Can Turn Off This Default..." & VbCr &_
+        "And Create Custom Packets That Include This In The Header" & VbCr & VbCr &_
+        "Your Current Default Clock Delay is: " & DefaultClockDelay & VbCr &_
+        "Click OK To Make This Default or Cancel To Turn It OFF"
+    RetVal = sc.inputbox(MenuPrompt,"Input UL4S Clock Cycle Delay",DefaultClockDelay)
+    RetVal = Replace(UCase(RetVal), " ", "")
+    If IsHex(RetVal) Or Len(RetVal) = 0 Then
+      GotInput = True
+    Else
+      Call Sc.MsgBox(ErrorInput)
+    End If
+  Loop Until GotInput = True
+  EnterClockDelay = RetVal
+End Function
+
+' ###############################################################################
+' *******************    End of Special Value Handlers     **********************
+
+' *******************      Start of Packet Decisions       **********************
+' ###############################################################################
+
+Function SendPacket(Header,Data)
+Dim RetVal, Length
+  Call ClearMem()
+  If Header = "" Then EXIT Function End If
+  Header=Replace(UCase(Header), " ", "")
+  Data=Replace(UCase(Data), " ", "")
+  InsDelay = Replace(UCase(DefaultInsDelay), " ", "")
+  GotData = CheckPacket(Header,Data)
+  If GotData >= 90 Then
+    ErrorString = ErrorPacket & VbCr & VbCr & "Aborting Packet Send"
+    Call Sc.MsgBox(ErrorString, VbCritical, "Packet Code #" & GotData)
+    EXIT Function
+  End If
+  If GotData >= 10 And GotData <= 19 Then
+    If UL4S = 1 Then
+      ErrorString = ErrorPacket & VbCr & VbCr & "Aborting Packet Send Because UL4S Headers Don't Start With 48"
+      Call Sc.MsgBox(ErrorString, VbCritical, "Packet Code #" & GotData)
+      EXIT Function
+    End If
+    If SkillLevel < 2 Then
+      ErrorString = ErrorPacket & VbCr & VbCr & "Aborting Packet Send"
+      Call Sc.MsgBox(ErrorString, VbCritical, "Packet Code #" & GotData)
+      EXIT Function
+    Else
+      ErrorString = ErrorPacket & VbCr & VbCr & "Should We Abort or Continue This Operation?"
+      RetVal=Sc.ButtonBox(ErrorString, VbCritical, "Packet Code #" & GotData, "Abort", "Continue")
+      Select Case RetVal
+      Case "2"
+      Case Else
+        EXIT Function
+      End Select
+    End If
+  End If
+  If GotData >= 20 And GotData <= 23 Then
+    Call AddEnds(Header)
+    Call AddEnds(Data)
+    Data_E = Data
+  End If
+  If GotData = 3 Then
+    Data_E = Data
+  End If
+  If GotData >= 1 And GotData <= 2 And UL4S = 1 Then
+    Call BuildPacket(Header,Data)
+  End If
+  If UL4S = 1 Then
+    SendPacket = SendInsUL4S(InsDelay,Header,Data_A,Data_B,Data_C,Data_D,Data_E)
+  Else
+    SendPacket = SendInsISO(Header,Data)
+  End If
+End Function
+
+' ###############################################################################
+' *******************       End of Packet Decisions        **********************
+
+' *******************   Start of Packet Checking Function  **********************
+' ###############################################################################
+
+Function CheckPacket(Header,Data)
+' This Function checks several things about the packet's structure and returns a code # with message string.
+' Design your script so it checks this errorlevel before it goes to write to the card
+' You need to input at least a Header like this...   CheckPacket(HEX Header String)
+' OR BOTH a Header and Data like this.............   CheckPacket(HEX Header String, HEX Data String)
+' ..... Your input variables can be variables and/or have spaces in them, no big thing!!!
+' ..... But note the key is the seperation by a comma!!!
+' ..... It returns an error code number as a number from 1 to 10 (99 if you confuse it)
+' ..... It also makes a text message variable:  ErrorPacket
+' ..... If designing your own script, you have to Dim ErrorPacket a global variable at the top (like this script did)
+' PacketWriter is designed so a CheckPacket return greater than 90 cannot be run (others can be overridden)
+' Here's the error codes CheckPacket can return:
+'  1  = "ISO READ -- Format Is Correct And No Data"
+'  2  = "ISO WRITE -- Format Is Correct And Good Data"
+'  3  = "UL4S READ -- Format Is Correct And No Data"
+'  4  = "UL4S WRITE -- Format Is Correct And Good Data"
+'  10 = "1st ISO Header Byte Not 48 -- Should be 48 for DTV ISO"
+'  11 = "5th ISO Header Byte Mismatch -- Should Be # Of Data Bytes To Send To Card"
+'  12 = "ISO Header Is Not 5 Bytes or UL4S Header Starting With 48 Isn't Equal or Greater Than 5 Bytes"
+'  20 = "1st UL4S Header Byte Is Not The # Of Bytes That Follow It"
+'  21 = "Last UL4S Header Byte Is Not 00 (Go/Execute)"
+'  22 = "1st UL4S Data Byte Is Not The # Of Bytes That Follow It"
+'  23 = "Last UL4S Data Byte Is Not 00 (Go/Execute)"
+'  94 = "Too Much Data -- Max Data Bytes Per Packet Is FF (255 Bytes)"
+'  95 = "Odd # of Characters in Data -- Every 1 Byte Needs 2 Hexidecimal Digits"
+'  96 = "Odd # of Characters in Header -- Every 1 Byte Needs 2 Hexidecimal Digits"
+'  97 = "Invalid Hex In Data"
+'  98 = "Invalid Hex In Header"
+'  99 = "Empty Header"
+
+  Header = Replace(UCase(Header), " ", "")
+  Data = Replace(UCase(Data), " ", "")
+  CheckPacket = 1
+  ErrorPacket = "ISO WRITE -- Format Appears Correct And Good Data"
+  If Len(Data) = 0 Then
+    CheckPacket = 2
+    ErrorPacket = "ISO READ -- Format Appears Correct And No Data"
+  End If
+  If Left(Header,2) <> "48" Then
+    CheckPacket = 10
+    ErrorPacket = "1st ISO Header Byte Not 48 -- Should be 48 for DTV ISO"
+  End If
+  If Len(Data) > 0 And Len(Data) <> Hex2Dec(Mid(Header,9,2))*2 Then
+    CheckPacket = 11
+    ErrorPacket = "5th ISO Header Byte Mismatch -- Should Be # Of Data Bytes To Send To Card"
+  End If
+  If (Len(Header) <> 10 And UL4S = 0) Or (Len(Header) < 10 And UL4S = 1) Then
+    CheckPacket = 12
+    ErrorPacket = "ISO Header Is Not 5 Bytes (ISO-7816 Spec)"
+  End If
+  If UL4S = 1 And Left(Header,2) <> "48" Then
+    CheckPacket = 3
+    ErrorPacket = "UL4S WRITE -- Format Appears Correct And Good Data"
+    If Len(Data) = 0 Then
+      CheckPacket = 4
+      ErrorPacket = "UL4S READ -- Format Appears Correct And No Data"
+    End If
+    If Left(Header,2) <> HexString(Len(Header)\2-1,2) Then
+      CheckPacket = 20
+      ErrorPacket = "1st UL4S Header Byte Is Not The # Of Bytes That Follow It"
+    End If
+    If Right(Header,2) <> "00" Then
+      CheckPacket = 21
+      ErrorPacket = "Last UL4S Header Byte Is Not 00 (Go/Execute)"
+    End If
+    If Len(Data) > 0 And Left(Data,2) <> HexString(Len(Data)\2-1,2) Then
+      CheckPacket = 22
+      ErrorPacket = "1st UL4S Data Byte Is Not The # Of Bytes That Follow It"
+    End If
+    If Len(Data) > 0 And Right(Data,2) <> "00" Then
+      CheckPacket = 23
+      ErrorPacket = "Last UL4S Data Byte Is Not 00 (Go/Execute)"
+    End If
+  End If
+  If Len(Data) > 255*2 Then
+    CheckPacket = 94
+    ErrorPacket = "Too Much Data -- Max Data Bytes Per Packet Is FF (255 Bytes)"
+  End If
+  If Len(Data)/2 <> Len(Data)\2 Then
+    CheckPacket = 95
+    ErrorPacket = "Odd # of Characters in Data -- Every 1 Byte Needs 2 Hexidecimal Digits"
+  End If
+  If Len(Header)/2 <> Len(Header)\2 Then
+    CheckPacket = 96
+    ErrorPacket = "Odd # of Characters in Header -- Every 1 Byte Needs 2 Hexidecimal Digits"
+  End If
+  If IsHex(Data) = 0 And Len(Data) > 0 Then
+    CheckPacket = 97
+    ErrorPacket = "Invalid Hex In Data"
+  End If
+  If IsHex(Header) = 0 Then
+    CheckPacket = 98
+    ErrorPacket = "Invalid Hex In Header"
+  End If
+  If Len(Header) = 0 Then
+    CheckPacket = 99
+    ErrorPacket = "Empty Header"
+  End If
+'  Sc.Print(VbCr & "Next Packet Code: " & CheckPacket & " - " & ErrorPacket)
+End Function
+
+' ###############################################################################
+' *******************    End of Packet Checking Function   **********************
+
+' *******************     Start of UL4S Packet Builder     **********************
+' ###############################################################################
+
+Sub BuildPacket(Header,Data)
+Dim LengthByte, BaudWatch, ClockDelay
+  Call ClearMem()
+  If Header = "" Then EXIT Sub End If
+  Header=Replace(UCase(Header), " ", "")
+  Data=Replace(UCase(Data), " ", "")
+  BaudWatch = Replace(UCase(DefaultBaudWatch), " ", "")
+  ClockDelay = Replace(UCase(DefaultClockDelay), " ", "")
+  LengthByte = Hex2Dec(Mid(Header,9,2))
+  If Len(Data) > 0 And Len(Data) < 511 Then
+'    If Len(Data) > 0 And Len(Data) < 123 Then
+'      Header = BaudWatch & "C4" & Header & ClockDelay & "80"
+'      Data_E = BaudWatch & HexString(Len(Data)\2-1+&hC0,2) & Mid(Data,1,Len(Data)) & ClockDelay & "81"
+'    End If
+'    If Len(Data) > 123 And Len(Data) < 129 Then       ' The above way sends less partial packets
+    If Len(Data) > 0 And Len(Data) < 129 Then          ' This way forces 3 parts to every packet
+      Header = BaudWatch & "C4" & Header & ClockDelay & "80"
+      Data_D = BaudWatch & HexString(Len(Data)\2-1+&hC0,2) & Mid(Data,1,Len(Data)) & ClockDelay
+      Data_E = BaudWatch & ClockDelay & "81"
+    End If
+    If Len(Data) > 129 And Len(Data) < 257 Then
+      Header = BaudWatch & "C4" & Header & ClockDelay & "80"
+      Data_C = BaudWatch & "FF" & Mid(Data,1,128) & ClockDelay
+      Data_D = BaudWatch & HexString(Len(Data)\2-65+&hC0,2) & Mid(Data,129,Len(Data)-128) & ClockDelay
+      Data_E = BaudWatch & ClockDelay & "81"
+    End If
+    If Len(Data) > 257 And Len(Data) < 385 Then
+      Header = BaudWatch & "C4" & Header & ClockDelay & "80"
+      Data_B = BaudWatch & "FF" & Mid(Data,1,128) & ClockDelay
+      Data_C = BaudWatch & "FF" & Mid(Data,129,128) & ClockDelay
+      Data_D = BaudWatch & HexString(Len(Data)\2-129+&hC0,2) & Mid(Data,257,Len(Data)-256) & ClockDelay
+      Data_E = BaudWatch & ClockDelay & "81"
+    End If
+    If Len(Data) > 385 And Len(Data) < 511 Then
+      Header = BaudWatch & "C4" & Header & ClockDelay & "80"
+      Data_A = BaudWatch & "FF" & Mid(Data,1,128) & ClockDelay
+      Data_B = BaudWatch & "FF" & Mid(Data,129,128) & ClockDelay
+      Data_C = BaudWatch & "FF" & Mid(Data,257,128) & ClockDelay
+      Data_D = BaudWatch & HexString(Len(Data)\2-193+&hC0,2) & Mid(Data,385,Len(Data)-384) & ClockDelay
+      Data_E = BaudWatch & ClockDelay & "81"
+    End If
+  Else
+    If LengthByte = 0 Then
+      Header = BaudWatch & "C4" & Header & ClockDelay & "81"
+    End If
+'    If LengthByte > 0 And LengthByte <= 61 Then
+'      Header = BaudWatch & "C4" & Header & ClockDelay & HexString(LengthByte+&h80+2,2)
+'    End If
+'    If LengthByte > 61 And LengthByte <= 64 Then        ' The above way sends less partial packets
+    If LengthByte > 0 And LengthByte <= 64 Then          ' This way forces 3 parts to every packet
+      Header = BaudWatch & "C4" & Header & ClockDelay & "80"
+      Data_D = BaudWatch & ClockDelay & HexString(LengthByte+&h80-1,2)
+      Data_E = BaudWatch & ClockDelay & "81"
+    End If
+    If LengthByte > 64 And LengthByte <= 128 Then
+      Header = BaudWatch & "C4" & Header & ClockDelay & "80"
+      Data_C = BaudWatch & ClockDelay & "BF"
+      Data_D = BaudWatch & ClockDelay & HexString(LengthByte+&h80-65,2)
+      Data_E = BaudWatch & ClockDelay & "81"
+    End If
+    If LengthByte > 128 And LengthByte <= 192 Then
+      Header = BaudWatch & "C4" & Header & ClockDelay & "80"
+      Data_B = BaudWatch & ClockDelay & "BF"
+      Data_C = BaudWatch & ClockDelay & "BF"
+      Data_D = BaudWatch & ClockDelay & HexString(LengthByte+&h80-129,2)
+      Data_E = BaudWatch & ClockDelay & "81"
+    End If
+    If LengthByte > 192 And LengthByte <= 255 Then
+      Header = BaudWatch & "C4" & Header & ClockDelay & "80"
+      Data_A = BaudWatch & ClockDelay & "BF"
+      Data_B = BaudWatch & ClockDelay & "BF"
+      Data_C = BaudWatch & ClockDelay & "BF"
+      Data_D = BaudWatch & ClockDelay & HexString(LengthByte+&h80-193,2)
+      Data_E = BaudWatch & ClockDelay & "81"
+    End If
+  End If
+  Call AddEnds(Header)
+  Call AddEnds(Data_A)
+  Call AddEnds(Data_B)
+  Call AddEnds(Data_C)
+  Call AddEnds(Data_D)
+  Call AddEnds(Data_E)
+End Sub
+
+
+Sub AddEnds(Packet)
+  ' This helps turn ISO packets into UL4S packets
+  ' If either the 1st byte isn't # of bytes to follow or last byte isn't 00 are missing, it adds both.
+  Packet=Replace(UCase(Packet), " ", "")
+  If IsHex(Packet) Then
+    If Left(Packet,2) <> HexString(Len(Packet)\2-1,2) Or Right(Packet,2) <> "00" Then
+      Packet = HexString(Len(Packet)\2+1,2) & Packet & "00"
+    End If
+  End If
+End Sub
+
+' ###############################################################################
+' *******************      End of UL4S Packet Builder      **********************
+
+' *******************       Start of UL4S Functions        **********************
+' ###############################################################################
+
+Sub ShutdownCard()
+Dim RetVal
+  If UL4S = 1 Then
+    PW_Print(VbCr & "<<<<<<<<   Shutting Down Card and Loader   >>>>>>>>>>")
+    Sc.Write("A0")      ' Turn the LED off if it is on
+    Sc.Write("020200")  ' Power down the card
+    Sc.Delay(100)       ' Wait about 1 second
+    Sc.Read(&h02)
+    RetVal=Sc.Flush()   ' Flush the receive buffer
+  End If
+End Sub
+
+
+Sub Card_Reset()
+Dim RetVal
+  If UL4S = 1 Then
+    Sc.Write("A0")      ' Turn the LED off if it is on
+    Sc.Write("020200")  ' Power down the card
+    Sc.Delay(300)       ' Wait about 1 second
+  End If
+  Call Sc.Reset()     ' Power up the card
+  RetVal=Sc.Flush()   ' Flush the receive buffer
+End Sub
+
+
+Function ChipVer()
+Dim I, RetVal
+  If UL4S = 1 Then
+    ChipVer = 1
+    sc.write("90")
+    sc.delay(80)
+    if sc.read(4) <> 4 then
+      ChipVer = 0
+      Exit Function
+    End if
+    If getbyte(0) <> &h55 then ChipVer = 0
+    if getbyte(1) <> &h4c then ChipVer = 0
+    if getbyte(2) <> &h34 then ChipVer = 0
+    if getbyte(3) <> &h53 then ChipVer = 0
+    RetVal=""
+    For I = 0 to 3
+      RetVal = RetVal & Chr(Sc.GetByte(I))
+    Next
+    PW_Print(VbCr & "<<<<<<<<   Atmel Code: " & RetVal & "   >>>>>>>>>>")
+  End If
+End Function
+
+
+Sub IsCardPresent()
+Dim GotInput, RetVal
+  If UL4S = 1 Then
+    Do
+      GotInput = False
+      Sc.Write("A0")      ' Turn the LED off if it is on
+      Sc.Write("80")      ' Is card present?
+      Sc.Delay(100)
+      If Sc.BytesInBuffer > 0 Then
+        Sc.Read(&h01)
+        RetVal = Sc.GetByte(0)
+      End If
+      If Not RetVal = &h0 Then
+        If RetVal = &hFF Then
+          sc.write("A1")
+          sc.flush
+          PW_Print(VbCr & "<<<<<<<<   Card Present       >>>>>>>>>>")
+          Call Sc.ProgressBox("Found Card" & VbCr & VbCr, 20, 99, "PacketWriter")
+          GotInput = True
+        Else
+          If RetVal <> &h0 or RetVal <> &hFF Then
+            Sc.Write("A0")                ' turn the LED off
+            Sc.Write("020200")            ' Shutdown card
+            Sc.Delay(100)
+            If Sc.BytesInBuffer > 1 Then
+              Sc.Read(&h02)
+            End If
+          End If
+        End If
+      End If
+      If GotInput = False Then
+        Call Sc.ProgressBox("No Card Detected!" & VbCr & "Please insert your card.....", 20, 99, "PacketWriter")
+      End If
+    Loop Until GotInput = True
+  End If
+End Sub
+
+
+Sub GetATR()
+Dim I, RetVal, RetVal2
+  If UL4S = 0 Then
+    Sc.Reset
+    Sc.Print(VbCr & "Card ATR Was Reset By User")
+    EXIT Sub
+  End If
+  Do
+    GotATR = False
+    Counter2 = Counter2 + 1
+    If Counter2 >= Counter1 + MaxAttempts  Then
+      ErrorString=MaxAttempts & " Failed ATR Attempts in a Row" & VbCr & VbCr & "Should We Abort or Continue??"
+      RetVal=Sc.ButtonBox(ErrorString, vbQuestion, "Max ATR Attempts Achieved", "Abort", "Continue")
+      Select Case RetVal
+      Case "2"
+        Counter2 = Counter1
+      Case Else
+        Call ShutdownCard()
+        EXIT Sub
+      End Select
+    End If
+    Call Sc.ProgressBox("Preparing for ATR" & VbCr & VbCr, 10, 99, "PacketWriter")
+    Sc.Verbose = False
+    sc.delay(80)
+    Sc.Write("D0")
+    sc.delay(80)
+    sc.read(02)
+    Sc.Write("E0")
+    do
+      sc.delay(80)
+      sc.read(sc.bytesinbuffer)
+    loop until sc.bytesinbuffer = 0
+    Call IsCardPresent()
+    Call ChipVer()
+    Sc.Verbose = True
+    ATRcounter = ATRcounter + 1
+    Call Sc.ProgressBox("Attempting ATR" & VbCr & VbCr, 30, 99, "PacketWriter")
+    PW_Print(VbCr & "<<<<<<<<   ATR Attempt #" & ATRcounter & "     >>>>>>>>>>")
+    If Len(ATRdelay) = 2 And Hex2Dec(DefaultATRdelay) > 127  And Hex2Dec(DefaultATRdelay) < 251 Then
+      ATRdelay = HexString(INT(RND * &h03)+Hex2Dec(DefaultATRdelay),2)   ' typical range is 80 - A0 hex
+    Else
+      ATRdelay = HexString(INT(RND * &h03)+150,2)                        ' typical range is 128 - 160 decimal
+    End If
+    sc.write("B0 " & ATRdelay)
+    PW_Print("    : Using ATR Delay : " & ATRdelay & " (or " & Hex2Dec(ATRdelay) & " decimal)")
+    Sc.Write(ATRstring)
+    Sc.Delay(500)
+    If Sc.BytesInBuffer > 1 Then
+      Sc.Read(&h02)
+      PW_Print("    : UL4S Ack Byte is: " & HexString(Sc.GetByte(00),2))
+      PW_Print(" and Incoming Bytes is: " & Sc.GetByte(01))
+      RetVal2 = Sc.BytesInBuffer
+      Sc.Read(RetVal2)
+      If RetVal2 >= 13 Then
+        RetVal2 = RetVal2 - 1
+        Retval = ""
+        For I = 0 to RetVal2
+          RetVal = RetVal & HexString(Sc.GetByte(I),2)
+        NEXT
+        RetVal = Replace(UCase(RetVal), " ", "")
+        If Mid(RetVal, 1, 2) = "3F" And Mid(RetVal, 7, 2) = "25" And Mid(RetVal, 13, 2) = "B0" Then
+          If Mid(RetVal, 3, 4) = "7812" And Mid(RetVal, 9, 4) = "0140" And Mid(RetVal, 15, 12) = "034A50204855" Then
+            Call ShutdownCard()
+            Call Sc.MsgBox("Sorry... PacketWriter UL4S can't currently handle a P2 card", vbCritical + vbOKOnly)
+            EXIT Sub
+            ATRtype = "P2"
+            GotATR = True
+          End if
+          If Mid(RetVal, 3, 4) = "7F13" And Mid(RetVal, 9, 4) = "0338" And Mid(RetVal, 15, 12) = "04FFFF4A5000" Then
+            If Right(UCase(ATRstring),4) = "8C00" or Right(UCase(ATRstring),5) = "8C 00" Then
+              PW_Print("  - P3 ATR Found but asked for wrong length ... Switching ATRstring")
+              ATRstring  = "0A100E1001032002839300"       ' Most reliable string to get P3 ATR with UL4S
+            Else
+              PW_Print("  - P3 ATR Found... Continuing")
+              ATRtype = "P3"
+              GotATR = True
+            End If
+          End if
+          If Mid(RetVal, 3, 4) = "7813" And Mid(RetVal, 9, 4) = "0340" And Mid(RetVal, 15, 12) = "20FFFF4A5000" Then
+            If Right(ATRstring,4) = "9300" or Right(ATRstring,5) = "93 00" Then
+              PW_Print("  - P4 ATR Found but asked for wrong length ... Switching ATRstring")
+              ATRstring  = "0A100E1001032002838C00"       ' Most reliable string to get P4 ATR with UL4S
+            Else
+              PW_Print("  - P4/P5/D1 ATR Found... Continuing")
+              ATRtype = "P4"
+              GotATR = True
+            End If
+          End if
+        End if
+      End if
+    End if
+  Loop Until GotATR = True
+  Call Sc.ProgressBox("Found the ATR" & VbCr & VbCr, 40, 99, "PacketWriter")
+  sc.delay(00)
+End Sub
+
+' ###############################################################################
+' *******************        End of UL4S Functions         **********************
+
+' *******************       Start of UL4S Packet Send      **********************
+' ###############################################################################
+
+Function SendInsUL4S(InsDelay,Header,Data_A,Data_B,Data_C,Data_D,Data_E)
+Dim RetVal, RetVal2, I, BufferBytes, BuildAnswer, Packet, PacketCounter
+  GotData = CheckPacket(Header,Data_E)
+  If UL4S = 0 or GotData > 4 Then
+    EXIT Function
+  End If
+  If SkillLevel = 0 Then
+    ErrorString=ErrorPacket & VbCr & VbCr & "Header is: " & Header & VbCr & "Data_A is: " & Data_A &_
+        VbCr & "Data_B is: " & Data_B & VbCr & "Data_C is: " & Data_C & VbCr & "Data_D is: " & Data_D &_
+        VbCr & "Data_E is: " & Data_E & VbCr & VbCr & "Should We Abort or Continue This Operation?"
+    RetVal=Sc.ButtonBox(ErrorString, vbQuestion, "Packet Code #" & GotData, "Continue", "Abort")
+    Select Case RetVal
+    Case "1"
+    Case Else
+      EXIT Function
+    End Select
+  End If
+  If GotATR = False Then
+    Call GetATR()
+  End If
+  BuildAnswer = ""
+  PacketCounter = 0
+  Counter1 = Counter1 + 1
+  Counter2 = Counter1
+  PW_Print(VbCr & "Next Packet is Attempt #  " & Counter1)
+  Do                                                ' 1st Looong Loop is for Finishing
+    RetVal=Sc.Flush()                               ' Flush buffer
+    RetVal=0                                        ' Set 3rd Loop Counter to 0 Ahead of Time
+    RetVal2=20000                                   ' Used Later To Slow Down Fast Computers a Little
+    Do                                              ' 2nd Loop Sets Which Part of Packet to Run
+      Packet = ""
+      PacketCounter = PacketCounter + 1
+      If PacketCounter = 1 Then Packet = Header End If
+      If PacketCounter = 2 Then Packet = Data_A End If
+      If PacketCounter = 3 Then Packet = Data_B End If
+      If PacketCounter = 4 Then Packet = Data_C End If
+      If PacketCounter = 5 Then Packet = Data_D End If
+      If PacketCounter = 6 Then Packet = Data_E End If
+    Call Sc.ProgressBox("Attempting Packet Send Part #" & PacketCounter & VbCr & VbCr, (PacketCounter+3)*10, 99, "PacketWriter")
+    Loop While (Packet = "" And PacketCounter < 6)  ' Escape 2nd Loop When it Finds Data or All Done
+    If Packet = "" Then                             ' Quit If All Done
+      sc.delay(00)
+      SendInsUL4S = BuildAnswer                     ' Return Function As Correct Answer
+      If Len(SendInsUL4S) > 1 Then
+        PW_Print(VbCr & "Ins Ack Byte is     : " & Left(SendInsUL4S,2))
+      End If
+      EXIT Function
+    End If
+    If GotATR = False or Counter2 >= Counter1 + MaxAttempts Then  ' Quit If Max Attempts Achieved
+      sc.delay(00)
+      SendInsUL4S = False                           ' Return Function As Failed Answer
+      EXIT Function
+    End If
+    If PacketCounter = 1 And Len(InsDelay) = 2 And Hex2Dec(InsDelay) > 127 And Hex2Dec(InsDelay) < 251 Then
+      sc.write("B0 " & InsDelay)                    ' Skip Using "B0xx" InsDelay If Not In Range (80h - FAh)
+      PW_Print("    : Using Ins Delay : " & InsDelay & " (or " & Hex2Dec(InsDelay) & " decimal)")
+    End If
+    Sc.Write(Packet)                                ' Write Current String
+    Do                                              ' 3rd Loop Creates a Slight Delay for Fast PC's
+      RetVal=RetVal+1
+      BufferBytes=Sc.BytesInBuffer
+    Loop While (BufferBytes=0 And RetVal<RetVal2)   ' End 3rd Loop When 20000 Instant Loops or 1 Byte Comes In
+    Do                                              ' 4th Loop Creates a Delay for Card Processing
+      Sc.Delay(500)
+      RetVal = BufferBytes
+      BufferBytes = Sc.BytesInBuffer
+    Loop Until RetVal = BufferBytes                 ' End 4th Loop When # of Bytes Doesn't Change Anymore
+    If BufferBytes < 3 Then
+      Sc.Read(BufferBytes)                          ' Read Buffer
+      If Packet = Header or Packet = Data_E Then
+        PW_Print("    : Response Failed... Not Enough Bytes in Buffer... Resetting ATR")
+        BuildAnswer = ""
+        Packet = ""
+        PacketCounter = 0
+        InsFail = 1
+        Call GetATR()
+      Else
+        If BufferBytes < 2 Then
+          PW_Print("       : Response Failed... Not Enough Bytes in Buffer... Retrying Last Part")
+          PacketCounter = PacketCounter - 1
+        Else
+          PW_Print("    : UL4S Ack Byte is: " & HexString(Sc.GetByte(00),2))
+          PW_Print(" and # of Incoming Bytes is: " & Sc.GetByte(01))
+        End If
+      End If
+    End If
+    If BufferBytes > 2 Then
+      Sc.Read(2)
+      PW_Print("    : UL4S Ack Byte is: " & HexString(Sc.GetByte(00),2))
+      PW_Print(" and # of Incoming Bytes is: " & Sc.GetByte(01))
+      BufferBytes = Sc.Read(Sc.BytesInBuffer)
+      For I = 0 to BufferBytes - 1
+        BuildAnswer = BuildAnswer & HexString(Sc.GetByte(I),2)
+      NEXT
+    End If
+    sc.delay(00)
+    SendInsUL4S = BuildAnswer
+  Loop Until PacketCounter >= 6
+  Call Sc.ProgressBox("" , 0, 0, "")
+  If Len(SendInsUL4S) > 1 Then
+    PW_Print(VbCr & "Ins Ack Byte is     : " & Left(SendInsUL4S,2))
+  End If
+End Function
+
+' ###############################################################################
+' *******************        End of UL4S Packet Send       **********************
+
+' *******************       Start of ISO Packet Send       **********************
+' ###############################################################################
+
+Function SendInsISO(Header,Data)
+Dim RetVal, RetVal2, I, BufferBytes, BuildAnswer
+  GotData = CheckPacket(Header,Data)
+  If UL4S = 1 or GotData >= 90 Then
+    EXIT Function
+  End If
+  If SkillLevel = 0 Then
+    ErrorString=ErrorPacket & VbCr & VbCr & "Should We Abort or Continue This Operation?"
+    RetVal=Sc.ButtonBox(ErrorString, vbQuestion, "Packet Code #" & GotData, "Continue", "Abort")
+    Select Case RetVal
+    Case "1"
+    Case Else
+      EXIT Function
+    End Select
+  End If
+  RetVal=Sc.Flush()                               ' Flush buffer
+  RetVal=0                                        ' Set 1st Loop Counter to 0 Ahead of Time
+  RetVal2=20000                                   ' Used Later To Slow Down Fast Computers a Little
+  Counter1 = Counter1 + 1
+  PW_Print(VbCr & "Next Packet is Attempt #  " & Counter1)
+  Sc.Write(Header)                                ' Write Header
+  Do                                              ' 1st Loop Creates a Slight Delay for Fast PC's
+    RetVal=RetVal+1
+    BufferBytes=Sc.BytesInBuffer
+  Loop While (BufferBytes=0 And RetVal<RetVal2)   ' End 1st Loop When 20000 Instant Loops or 1 Byte Comes In
+  Do                                              ' 2nd Loop Creates a Delay for Card Processing
+    Sc.Delay(500)
+    RetVal = BufferBytes
+    BufferBytes = Sc.BytesInBuffer
+  Loop Until RetVal = BufferBytes                 ' End 2nd Loop When # of Bytes Doesn't Change Anymore
+  Sc.Read(BufferBytes)                            ' Read Buffer
+  For I = 0 to BufferBytes - 1
+    BuildAnswer = BuildAnswer & HexString(Sc.GetByte(I),2)
+  NEXT
+  If Not Data = "" Then
+    RetVal=0                                        ' Set 3rd Loop Counter to 0 Ahead of Time
+    Sc.Write(Data)                                  ' Write Data
+    Do                                              ' 3rd Loop Creates a Slight Delay for Fast PC's
+      RetVal=RetVal+1
+      BufferBytes=Sc.BytesInBuffer
+    Loop While (BufferBytes=0 And RetVal<RetVal2)   ' End 3rd Loop When 20000 Instant Loops or 1 Byte Comes In
+    Do                                              ' 4th Loop Creates a Delay for Card Processing
+      Sc.Delay(500)
+      RetVal = BufferBytes
+      BufferBytes = Sc.BytesInBuffer
+    Loop Until RetVal = BufferBytes                 ' End 4th Loop When # of Bytes Doesn't Change Anymore
+    Sc.Read(BufferBytes)                            ' Read Buffer
+    For I = 0 to BufferBytes - 1
+      BuildAnswer = BuildAnswer & HexString(Sc.GetByte(I),2)
+    NEXT
+  End If
+  SendInsISO = BuildAnswer
+  If Len(SendInsISO) > 1 Then
+    PW_Print(VbCr & "Ins Ack Byte is     : " & Left(SendInsISO,2))
+  End If
+End Function
+
+' ###############################################################################
+' *******************        End of ISO Packet Send        **********************
+
+' *******************   Start of Card Answer Interpreter   **********************
+' ###############################################################################
+
+Function CardAnswer(Response)
+Dim CardMessage
+  ' This function inspects the last 4 characters (two bytes) of a Card Response String.
+  ' It also assigns a message to help you interpret how the card answered your packet.
+  ' Note this requires Hex Responses (Remember that GetByte turns hex bytes to decimal)
+  Response = Replace(UCase(Response), " ", "")
+  If Len(Response) < 4 Then
+    EXIT Function
+  End If
+  CardAnswer = Right(Response,4)
+  Select Case CardAnswer
+  Case "9000"
+    CardMessage = "IRD Not Matched & No Flag Bits Set Before OR During This Instruction"  ' 90 00 = 144 0 decimal
+  Case "9001"
+    CardMessage = "IRD Not Matched & Final Flag Set!!!"                          ' 90 01 = 144 1 decimal
+  Case "9020"
+    CardMessage = "IRD Match"                                                    ' 90 20 = 144 32 decimal
+  Case "9021"
+    CardMessage = "IRD Match & Final Flag Set!!!"                                ' 90 21 = 144 33 decimal
+  Case "9080"
+    CardMessage = "Filters Open & IRD Not Matched"                               ' 90 80 = 144 128 decimal
+  Case "9081"
+    CardMessage = "Filters Open & IRD Not Matched & Final Flag Set!!!"           ' 90 81 = 144 129 decimal
+  Case "90A0"
+    CardMessage = "Filters Open & IRD Match"                                     ' 90 A0 = 144 160 decimal
+  Case "90A1"
+    CardMessage = "Filters Open & IRD Match & Final Flag Set!!!"                 ' 90 A1 = 144 161 decimal
+  Case "9100"
+    CardMessage = "First Flag & IRD Not Matched"                                 ' 91 00 = 145 0 decimal
+  Case "9101"
+    CardMessage = "First Flag & IRD Not Matched & Final Flag Set!!!"             ' 91 01 = 145 1 decimal
+  Case "9120"
+    CardMessage = "First Flag & IRD Match"                                       ' 91 20 = 145 32 decimal
+  Case "9121"
+    CardMessage = "First Flag & IRD Match & Final Flag Set!!!"                   ' 91 21 = 145 33 decimal
+  Case "9180"
+    CardMessage = "First Flag & Filters Open & IRD Not Matched"                  ' 91 80 = 145 128 decimal
+  Case "9181"
+    CardMessage = "First Flag & Filters Open & IRD Not Matched & Final Flag Set!!!"  ' 91 81 = 145 129 decimal
+  Case "91A0"
+    CardMessage = "First Flag & Filters Open & IRD Match"                        ' 91 A0 = 145 160 decimal
+  Case "91A1"
+    CardMessage = "First Flag & Filters Open & IRD Match & Final Flag Set!!!"    ' 91 A1 = 145 161 decimal
+  Case Else
+    PW_Print(VbCr & "This Card Answer is not a Valid Responce!!!!")
+    PW_Print(VbCr & "Check Your Hardware and Software Settings!!!")
+  End Select
+  PW_Print(VbCr & "Card Answer is      : " & CardAnswer & " - " & CardMessage & VbCr)
+End Function
+
+' ###############################################################################
+' *******************    End of Card Answer Interpreter    **********************
+
+' *******************    Start of Other Script Handlers    **********************
+' ###############################################################################
+
+Function HexString(Number,Length)
+Dim RetValue, CurLen
+  ' This function takes 2 arguments, a number and a length.  It converts the decimal
+  ' number given by the first argument to a Hexidecimal string with its length
+  ' equal to the number of digits given by the second argument
+  RetValue = Hex(Number)
+  CurLen = Len(RetValue)
+  If CurLen < Length Then
+    RetValue = String(Length-CurLen,"0") & RetValue
+  End If
+  HexString = RetValue
+End Function
+
+
+Function Hex2Dec(HexNumber)
+Dim DecimalValue, DigitCount, Digit, HexDigit
+  ' This function takes 1 argument, a string containing a hex value of any digit length
+  ' and returns the decimal equivalent
+  HexNumber = Replace(UCase(HexNumber), " ", "")
+  DigitCount = Len(HexNumber)
+  For Digit = 1 To DigitCount
+    HexDigit = Mid(HexNumber, Digit, 1)
+    If Asc(HexDigit) < 58 Then
+      DecimalValue = HexDigit * 16 ^ (DigitCount - Digit)
+    Else
+      DecimalValue = (Asc(HexDigit) - 55) * 16 ^ (DigitCount - Digit)
+    End If
+    Hex2Dec = Hex2Dec + DecimalValue
+  Next
+End Function
+
+
+Function PW_Print(Message)
+  ' This function allows user to turn turn on/off all the PW_Print Functions.
+  ' Just Search and Replace "Sc.Print" to "PW_Print" (like this script does)
+  ' Then add a Global Variable of  SkillLevel=0  to enable seeing all the print.
+  If SkillLevel < 3 Then
+    Sc.Print(Message)
+  End If
+End Function
+
+' ###############################################################################
+' *******************     End of Other Script Handlers     **********************

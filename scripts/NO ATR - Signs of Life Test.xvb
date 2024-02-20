@@ -1,0 +1,355 @@
+'TST ATR Glitch V1
+'Notes:
+'This script tests a NO ATR card for Signs of Life.
+'
+'You can select whether the values of VCC, Delay and Glitch type
+'are tested sequentially or randomly between the start and limit values
+'by enabling randomizer for each variable.
+'To enable randomness set its trigger to true in the script.
+'Default is randomness enabled. Eg.
+'
+'    RandVCC = True      'if True Random value used between VCCStart and VCCLimit
+'    RandDelay = True    'if True Random value used between DelayStart and DelayLimit
+'    RandGlitch = True   'if True Random Glitchtype used between 4 and 9
+'
+'To turn randomizer off, just set the trigger value to False. Eg.
+'RandDelay = False will have the script try one delay value after
+'another from DelayStart to DelayLimit
+
+OPTION EXPLICIT
+
+Dim FileName
+Dim Dump
+Dim OutFile
+
+CALL setupunlocker()
+Sub Main()
+    Dim BootStrapCmd17
+    Dim BSCLen
+    Dim BSCRSP
+    Dim BSACK
+    Dim CmdToGlitch
+    Dim CTGLen
+    Dim CTGRSP
+    Dim CS
+    Dim Bytes
+    Dim BytesRead
+    Dim Bytes1
+    Dim Bytes2
+    Dim DelayStart
+    Dim DelayLimit
+    Dim VCCStart
+    Dim VCCLimit
+    Dim GlitchType
+    Dim GlitchMin
+    Dim Delay
+    Dim VCC
+    Dim Dot
+    Dim ATRrsp
+    Dim loopctr
+    Dim AddrHiStart
+    Dim AddrHiEnd
+    Dim RomAddr
+    Dim PageSet
+    Dim RandVCC
+    Dim RandDelay
+    Dim RandGlitch
+
+    clearoutputwindow
+    Sc.Verbose = false
+    loopctr = 0
+
+
+    DelayStart = &h1
+    DelayLimit =  &h1000
+    VCCStart = &h25
+    VCCLimit = &h10
+    GlitchType = 9
+    GlitchMin = 9
+
+
+    RandVCC = false      'if True Random value used between VCCStart and VCCLimit
+    RandDelay = false    'if True Random value used between DelayStart and DelayLimit
+    RandGlitch = false   'if True Random Glitchtype used between 4 and 9
+'--------------------------------------------------------------------------------------
+    BSCRSP = 8      'Expected Response = 12 00 04 84 00 90 00 02
+                    'Length = 8 bytes
+    BSACK = &H80    'Boot Strap running Acknowledge byte
+'**************************************************************************
+    BSCLen = GetPacketLen(BootStrapCmd17)
+
+    if (BSCLen AND 1) = 1 then
+        Sc.MsgBox("Bad BootStrapCmd17 packet")
+        sc.print BSCLen
+        Exit Sub
+     End if
+
+    BSCLen = BSCLen / 2
+    BSCLen = BSCLen + 1                     'add Checksum byte to packet length
+
+    CTGLen = GetPacketLen(CmdToGlitch)
+
+    if (CTGLen AND 1) = 1 then
+        Sc.MsgBox("Bad CmdToGlitch packet")
+        Exit Sub
+     End if
+
+    CTGLen = CTGLen / 2
+    CTGLen = CTGLen + 1                     'add Checksum byte to packet length
+
+    CS=DoCheckSum (BootStrapCmd17)          'Calculates BootStrapCmd17 Checksum
+    BootStrapCmd17 = BootStrapCmd17 + CS    'add checksum to packet
+
+    CS=DoCheckSum (CmdToGlitch)             'Calculates packet Checksum
+    CmdToGlitch = CmdToGlitch + CS          'add checksum to packet
+
+    Delay = DelayStart
+    VCC = VCCStart
+    Sc.Print "Searching...." & VbCr
+    Dot = 0                                 'Dot progress counter if Sc.Verbose = False
+
+    Do
+
+
+        'loader glitch packet
+
+        Sc.Print "VCC = "& HexString(VCC, 2) & "  (~" & ((5/255) * VCC) &" vdc)" & VbCr
+        Sc.Print "Glitch Delay = "& HexString(Delay, 4) & VbCr
+        Sc.Print "Glitch type " & HexString(GlitchType, 2) & VbCr
+        Sc.Print "===========================================" & VbCr
+        Sc.Write("0e 0e 03 10 01 " &  "20" & HexString(Delay, 4)  & HexString(GlitchType, 2) & " 03 20 01 80 80 00")
+
+        Sc.Read(2)
+        BytesRead = Sc.Getbyte(1)
+        if BytesRead > 0 then
+            sc.verbose = true
+            Bytes = Sc.Read(BytesRead)
+            sc.verbose = true
+            Bytes1 = Sc.getbyte(&h0)
+                                        Sc.Print HEX(Bytes1)&"-----------" &VBCRLF
+
+            if Bytes1 > 0 then '
+                        sc.verbose = true
+
+                        Sc.Write("A1")
+                        Sc.Print VbCr
+                        Sc.Print "===========================================" & VbCr
+                        Sc.Print "Glitch Success!!" & VbCr
+                        Sc.Print "This Card shows Signs of Life!!" & VbCr
+                        Sc.Print "VCC = "& HexString(VCC, 2) & "  (~" & ((5/255) * VCC) &" vdc)" & VbCr
+                        Sc.Print "Glitch Delay = "& HexString(Delay, 4) & VbCr
+                        Sc.Print "Glitch type " & HexString(GlitchType, 2) & VbCr
+                        Sc.Print "===========================================" & VbCr
+                        Exit Sub
+            end if
+            else
+                print VbCr & "No bytes received....continuing...." & VbCr
+                            Sc.Print HEX(Bytes1)&"-----------" &VBCRLF
+        End if 'if bytes >0
+
+            VCC = VCC - 1
+            if VCC = VCCLimit then
+                VCC = VCCStart
+                Delay = Delay + .1
+            end if
+            if Delay > DelayLimit then
+                    Delay = DelayStart
+                    'GlitchType = GlitchType -1
+            end if
+            if GlitchType < GlitchMin then
+                     GlitchType = GlitchType - 1
+                     VCC = VCCStart
+                     Delay = DelayStart
+            end if
+
+
+    loopctr = loopctr +1
+    if loopctr = 100 then
+        clearoutputwindow
+        loopctr = 0
+    end if
+
+
+    loop
+
+End Sub
+
+Function GetPacketLen (Packet)
+ Dim Length
+ Dim Temp
+ Dim PK
+ Dim i
+
+ PK = ""
+
+ Length = Len(Packet)                   'get packet length with spaces
+
+ for i = 1 to Length
+    Temp = Mid(Packet, i, 1)
+    if Temp <> " " then                 'remove all spaces in packet
+        PK = PK + Temp
+    End if
+ next
+
+ GetPacketLen = Len(PK)                 'return packet length without spaces
+
+End Function
+
+
+Function DoCheckSum (Packet)
+ Dim Temp
+ Dim Length
+ Dim PK
+ Dim CheckSum
+ Dim i
+
+ PK=""
+
+ Length = Len(Packet)           'get packet length with spaces
+
+ for i = 1 to Length
+    Temp = Mid(Packet, i, 1)
+    if Temp <> " " then         'remove all spaces in packet
+        PK = PK + Temp
+    End if
+ next
+
+ Length = Len(PK)               'get packet length without spaces
+
+ CheckSum = 0
+
+ for i = 0 to Length
+     i=i+1                      'Simulate Step 2 in VB scripting
+     Temp = Mid(PK, i, 2)
+     CheckSum = CheckSum XOR Hex2Dec(Temp)  'Calc Checksum
+ next
+
+ DoCheckSum = HexString(CheckSum, 2) 'convert checksum to a hex strimg and return it to caller
+
+End Function
+
+Function Hex2Dec(HexNumber)
+    ' This function takes 1 argument, a string containing a hex value of any digit length
+    ' and returns the decimal equivalent
+    Dim DecimalValue
+    Dim DigitCount
+    Dim Digit
+    Dim HexDigit
+
+    HexNumber = Replace(UCase(HexNumber), " ", "")
+    DigitCount = Len(HexNumber)
+
+    For Digit = 1 To DigitCount
+
+        HexDigit = Mid(HexNumber, Digit, 1)
+        If Asc(HexDigit) < 58 Then
+            DecimalValue = HexDigit * 16 ^ (DigitCount - Digit)
+        Else
+            DecimalValue = (Asc(HexDigit) - 55) * 16 ^ (DigitCount - Digit)
+        End If
+        Hex2Dec = Hex2Dec + DecimalValue
+    Next
+
+End Function
+
+Function HexString(Number,Length)
+    ' This function takes 2 arguments, a number and a length.  It converts the decimal
+    ' number given by the first argument to a Hexidecimal string with its length
+    ' equal to the number of digits given by the second argument
+    Dim RetVal
+    Dim CurLen
+    RetVal=Hex(Number)
+    CurLen=Len(RetVal)
+    If CurLen<Length Then
+        RetVal=String(Length-CurLen,"0") & RetVal
+    End If
+    HexString=RetVal
+End Function
+
+Function CheckChipVer()
+
+    CheckChipVer = 1
+
+    sc.write("90")
+    delay(80)
+
+    if sc.read(4) <> 4 then
+        CheckChipVer = 0
+        Exit Function
+     End if
+
+    if getbyte(0) <> &H0 then CheckChipVer = 0
+    if getbyte(1) <> &H0 then CheckChipVer = 0
+    if getbyte(2) <> &H0 then CheckChipVer = 0
+    if getbyte(3) <> &H0 then CheckChipVer = 0
+
+End Function
+Function setupunlocker()
+sc.print "________________Setting up WinExplorer_________________" & VbCr
+Wx.BaudRate = 115200
+Wx.ResetBaudRate = 115200
+Wx.Parity = 0 ' 0 = None, 1 = Odd, 2 = Even, 3 = Mark, 4 = Space
+Wx.StopBits = 0 ' 0 = 1 stop bit, 1 = 1.5 stop bits, 2 = 2 stop bits
+Wx.DTRControl = 0 ' Initial state of DTR 0 = off, 1 = on
+Wx.RTSControl = 1 ' Initial state of RTS 0 = off, 1 = on
+Wx.ResetDelay = 100 ' In microseconds
+Wx.ByteDelay = 10 ' In microseconds
+Wx.RxByteTimeout = 500 ' In milliseconds
+Wx.ResetMode = 2 ' 0 = No Resets, 1 = ISO Reset (Expect a ATR), 2 = Device Reset (No ATR)
+Wx.ResetLine = 1 ' 0 = Toggle RTS for Reset, 1 = Toggle DTR for Reset
+Wx.ByteConvention = 1 ' 0 = Inverse, 1 = Direct
+Wx.FlushEchoByte = 0 ' 0 = no flush, 1 = flush - A Phoenix interface will echo each byte transmitted.
+Wx.FlushBeforeWrite = 1 ' 0 = no flush, 1 = flush - Flush the receive buffer before each write to strip off Null bytes.
+Wx.IgnoreTimeouts = 1 ' 0 = Abort script on a receive timeout, 1 = Ignore all receive timeouts
+Wx.ResetAfterTimeout = 0 ' 0 = Don't reset after a timeout, 1 = do a reset after a timeout - Not used if "IgnoreTimeouts=0"
+Wx.LogTransactions = 0 ' 0 = Don't log transactions, 1 = log transactions
+Wx.DisplayUSW = 0 ' Display USW after script complete 0 = no, 1 = yes
+Wx.DisplayFuse = 0 ' Display Fuse after script complete 0 = no, 1 = yes
+End function
+
+Sub SaveEEprom()
+
+
+    Dim ThisByte
+    Dim Address
+    Dim RetValue
+    Dim ByteCnt
+    Dim totalcount
+    Dim insidecount
+    Dim RcvdBytes
+
+totalcount = 0          'need to read in 4 groups of 0x20 to get all from current run
+sc.verbose = true
+
+Sc.Write("06 0E 50 0F" & HexString(Dump, 4) & "00")  '** use No1's new RCV routine
+Sc.Delay(Dump/4)
+Sc.Read(Dump)
+Do
+
+    RcvdBytes = Sc.Getbyte(totalcount)
+    call Fs.FilePutc(OutFile, RcvdBytes)
+    Call Sc.ProgressBox ("Dumping ROM102 EEPROM", totalcount, Dump, "FINISHED!!")
+
+     totalcount = totalcount +1
+loop until totalcount = Dump'-1      'SAVE ROM102 32K EEPROM!
+
+Fs.FileClose(OutFile)
+end sub
+
+Sub GetFileName()
+    FileName = Fs.FileSaveDialog("", "Please select a name for the new bin file", "Default.bin")
+    If FileName <> "" Then
+        OutFile = Fs.FileCreate(FileName)
+    end if
+end sub
+
+Sub FlashLED(LEDCommand)
+' This subroutine flashes the LED until the script is aborted
+    Do
+        Sc.Verbose = TRUE   ' Turn off verbose mode
+        Sc.Write(LEDCommand) ' Turn on the LED
+        Sc.Delay(500)  ' Wait 500ms
+        Sc.Write("A0") ' Turn off the LED
+        Sc.Delay(500)  ' Wait 500ms
+    Loop               ' Loop until the script is stopped
+End Sub 'FlashLED()__________________

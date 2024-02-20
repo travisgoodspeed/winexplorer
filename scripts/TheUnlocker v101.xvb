@@ -1,0 +1,3446 @@
+'The Unlocker v101 - By Chucky!
+'TheForum.cx
+'
+'This code is for locked rom3 cards ONLY upto rev382. If your card is stream-locked at rev383,
+'then don't use this code. This code is also for rom10 cards upto revA21.
+'
+'freeware routines by beavholio,penga,atlas and countless others - Huge props to my boys!
+'if you modify and redistribute leave the second line intact
+
+const retry_constant = 2
+const retry_delay  = 150
+const initdelay=2000
+Dim VResponse
+Dim VBackdoor
+
+Sub Main()
+MenuPrompt = "Dishnet interface:" & vbCrLf
+    RWChoice = Sc.ButtonBox(MenuPrompt, VbInformation, "click X to exit", "Unlocker", "Updater", "HELP")
+Select Case RWChoice
+
+    Case "0"
+    Exit Sub
+
+    Case "1"
+
+    Call UnlockMenu()
+    Exit Sub
+
+    Case "2"
+
+        Call UpdateMenu()
+    Exit Sub
+
+    Case "3"
+
+MenuPrompt = "Please select forum help site:"  & vbCrLf &  vbCrLf &"TheForum-good testers forum,plenty of help,minimul coding" & vbcr &"CardCoders-good coding site,free tvr's need not apply" & vbcr &"Interesting devices-extensive discussion,well knowns" & vbcr
+
+    UMChoice = Sc.ButtonBox(MenuPrompt, VbInformation, "click X to exit"& vbcr  , "TheForum", "CardCoders","I.D", "Exit")
+Select Case UMChoice
+
+    Case "0"
+    Exit Sub
+
+
+    Case "1"
+    Call help()
+        Exit Sub
+
+    Case "2"
+    Call help1()
+        Exit Sub
+
+    Case "3"
+    Call help2()
+        Exit Sub
+
+
+    Case "4"
+        Exit Sub
+
+
+End Select
+End Select
+
+
+End Sub 'Main()
+
+
+Sub UnlockMenu()
+MenuPrompt = "bringing up user options"   & vbcr
+
+    UMChoice = Sc.ButtonBox(MenuPrompt, VbInformation, "click X to exit"& vbcr  , "Unlock Card", "rom3 bugBust", "rom10 bugBust")
+Select Case UMChoice
+
+Case "0"
+    Exit Sub
+
+Case "1"
+
+    Call DishUnlock()
+    Exit Sub
+
+    Case "2"
+    call rom3bust()
+    Exit Sub
+
+    Case "3"
+    rom10bust()
+    Exit Sub
+End Select
+End Sub
+
+
+Sub DishUnlock()
+MenuPrompt = "Please select Dish Rom revision to unlock:"  & vbCrLf
+    BUChoice = Sc.ButtonBox(MenuPrompt, VbInformation, "click X to exit", "Rev 381", "Rev 382", "Rev A21", "Exit")
+Select Case BUChoice
+
+Case "0"
+    Exit Sub
+
+
+Case "1"
+
+
+    MenuPrompt = "Note: This will unlock Dish Rom 3 Rev 381. Continue?" & vbCrLf
+        UpdateChoice = Sc.ButtonBox(MenuPrompt, VbInformation, "Continue?", "Yes", "NO!")
+        Select Case UpdateChoice
+            Case "0"
+                Exit Sub
+
+        Case "1"
+            Call DishRev381Unlock()
+            Exit Sub
+
+            Case "2"
+                Exit Sub
+        End Select
+
+' If Rev 382 is selected:
+Case "2"
+
+
+    MenuPrompt = "Note: This will unlock Dish Rom 3 Rev 382. Continue?" & vbCrLf
+        UpdateChoice = Sc.ButtonBox(MenuPrompt, VbInformation, "Continue?", "Yes", "NO!")
+        Select Case UpdateChoice
+            Case "0"
+                Exit Sub
+
+        Case "1"
+            Call DishRev382Unlock()
+            Exit Sub
+
+            Case "2"
+                Exit Sub
+        End Select
+
+
+Case "3"
+
+
+    MenuPrompt = "Note: This will unlock Dish Rom 10 Rev A21. Continue?" & vbCrLf
+        UpdateChoice = Sc.ButtonBox(MenuPrompt, VbInformation, "Continue?", "Yes", "NO!")
+        Select Case UpdateChoice
+            Case "0"
+                Exit Sub
+
+        Case "1"
+            Call DishRevA21Unlock()
+            Exit Sub
+
+            Case "2"
+                Exit Sub
+        End Select
+
+
+' If Exit is selected,
+Case "4"
+    Exit Sub
+
+End Select
+End Sub
+
+
+Sub UpdateMenu()
+MenuPrompt = "what card type do you wish to update:"  & vbCrLf
+    UpdChoice = Sc.ButtonBox(MenuPrompt, VbInformation, "Update Card Revision", "Dish Rom 3", "Dish Rom 10", "Exit")
+Select Case UpdChoice
+
+    Case "0"
+    Exit Sub
+
+
+
+    Case "1"
+
+    Call DishRom3Menu()
+    Exit Sub
+
+
+    Case "2"
+
+     Call DishRom10Menu()
+    Exit Sub
+
+
+    Case "3"
+    Exit Sub
+
+
+   End Select
+
+End Sub
+
+
+
+Sub DishRom3Menu()
+MenuPrompt = "select which updates to apply:"  & vbCrLf
+UpdChoice = Sc.ButtonBox(MenuPrompt, VbInformation, "Update Card Revision", "372-382", "Individual")
+Select Case UpdChoice
+
+    Case "0"
+    Exit Sub
+
+
+
+            Case "1"
+            Call DishRev372Update()
+            Call DishRev375Update()
+            Call DishRev378Update()
+            Call DishRev380Update()
+            Call DishRev381Update()
+            Exit Sub
+
+
+
+            Case "2"
+MenuPrompt = "Please select update to apply:"  & vbCrLf
+
+    UMChoice = Sc.ButtonBox(MenuPrompt, VbInformation, "Update Card Revision", "372-375", "375-378", "378-380", "380-381", "381-382")
+Select Case UMChoice
+
+    Case "0"
+    Exit Sub
+
+
+            Case "1"
+            Call DishRev372Unlock()
+            Exit Sub
+
+            Case "2"
+            Call DishRev375Update()
+            Exit Sub
+
+            Case "3"
+            Call DishRev378Update()
+            Exit Sub
+
+            Case "4"
+            Call DishRev380Update()
+            Exit Sub
+
+            Case "5"
+            Call DishRev381Update()
+            Exit Sub
+
+
+            End Select
+            End Select
+            End Sub
+
+Sub DishRom10Menu()
+MenuPrompt = "Please select the appropriate revision to be updated:"  & vbCrLf
+UpdChoice = Sc.ButtonBox(MenuPrompt, VbInformation, "Update Card Revision", "Rev A20", "Rev A1D", "Rev A1C", "Rev A1B", "More...")
+Select Case UpdChoice
+
+    Case "0"
+    Exit Sub
+
+
+    Case "1"
+
+
+    MenuPrompt = "Note: This will update Dish Rev A20 to Rev A21. Continue?" & vbCrLf
+        UpdateChoice = Sc.ButtonBox(MenuPrompt, VbInformation, "Continue?", "Yes", "NO!")
+        Select Case UpdateChoice
+            Case "0"
+                  Exit Sub
+
+        Case "1"
+            Call DishRevA20Update()
+            Exit Sub
+
+            Case "2"
+            Exit Sub
+        End Select
+
+    'Rev A1D
+    Case "2"
+
+        'Verify choice:
+    MenuPrompt = "Note: This will update Dish Rev A1D to Rev A20. Continue?" & vbCrLf
+        UpdateChoice = Sc.ButtonBox(MenuPrompt, VbInformation, "Continue?", "Yes", "NO!")
+        Select Case UpdateChoice
+            Case "0"
+                  Exit Sub
+
+        Case "1"
+            Call DishRevA1DUpdate()
+            Exit Sub
+
+            Case "2"
+            Exit Sub
+        End Select
+
+    'Rev A1C
+    Case "3"
+
+        'Verify choice:
+    MenuPrompt = "Note: This will update Dish Rev A1C to Rev A1D. Continue?" & vbCrLf
+        UpdateChoice = Sc.ButtonBox(MenuPrompt, VbInformation, "Continue?", "Yes", "NO!")
+        Select Case UpdateChoice
+            Case "0"
+                  Exit Sub
+
+        Case "1"
+            Call DishRevA1CUpdate()
+            Exit Sub
+
+            Case "2"
+            Exit Sub
+        End Select
+
+    'Rev A1B
+    Case "4"
+
+        'Verify choice:
+    MenuPrompt = "Note: This will update Dish Rev A1B to Rev A1C. Continue?" & vbCrLf
+        UpdateChoice = Sc.ButtonBox(MenuPrompt, VbInformation, "Continue?", "Yes", "NO!")
+        Select Case UpdateChoice
+            Case "0"
+                  Exit Sub
+
+        Case "1"
+            Call DishRevA1BUpdate()
+            Exit Sub
+
+            Case "2"
+            Exit Sub
+        End Select
+
+    'More
+    Case "5"
+    Call DishRom10Menu2()
+    Exit Sub
+
+End Select
+End Sub 'DishRom10Menu()
+
+
+Sub DishRom10Menu2()
+MenuPrompt = "Please select the appropriate revision to be updated:"  & vbCrLf
+Upd2Choice = Sc.ButtonBox(MenuPrompt, VbInformation, "Update Card Revision", "Rev A1A", "Rev A19", "Rev A16", "Rev A21 (!)", "Back to first")
+Select Case Upd2Choice
+    'If X is clicked:
+    Case "0"
+    Exit Sub
+
+    'Rev A1A
+    Case "1"
+
+    'Verify choice:
+    MenuPrompt = "Note: This will update Dish Rev A1A to Rev A1B. Continue?" & vbCrLf
+        UpdateChoice = Sc.ButtonBox(MenuPrompt, VbInformation, "Continue?", "Yes", "NO!")
+        Select Case UpdateChoice
+            Case "0"
+                  Exit Sub
+
+        Case "1"
+            Call DishRevA1AUpdate()
+            Exit Sub
+
+            Case "2"
+            Exit Sub
+        End Select
+
+    'Rev A19
+    Case "2"
+
+    'Verify choice:
+    MenuPrompt = "Note: This will update Dish Rev A19 to Rev A1A. Continue?" & vbCrLf
+        UpdateChoice = Sc.ButtonBox(MenuPrompt, VbInformation, "Continue?", "Yes", "NO!")
+        Select Case UpdateChoice
+            Case "0"
+                  Exit Sub
+
+        Case "1"
+            Call DishRevA19Update()
+            Exit Sub
+
+            Case "2"
+            Exit Sub
+        End Select
+
+    'Rev A16
+    Case "3"
+
+    'Verify choice:
+    MenuPrompt = "Note: This will update Dish Rev A16 to Rev A19. Continue?" & vbCrLf
+        UpdateChoice = Sc.ButtonBox(MenuPrompt, VbInformation, "Continue?", "Yes", "NO!")
+        Select Case UpdateChoice
+            Case "0"
+                  Exit Sub
+
+        Case "1"
+            Call DishRevA16Update()
+            Exit Sub
+
+            Case "2"
+            Exit Sub
+        End Select
+
+
+    'Rev A21
+    Case "4"
+
+        'Verify choice:
+    MenuPrompt = MenuPrompt & "Note: This will update Dish Rev A21 to Rev A23!! Continue?" & vbCrLf
+        UpdateChoice = Sc.ButtonBox(MenuPrompt, VbInformation, "Continue?", "Yes", "NO!")
+        Select Case UpdateChoice
+            Case "0"
+                Exit Sub
+
+        Case "1"
+            MenuPrompt = MenuPrompt & "NOTE: THIS WILL UPDATE DISH REV A21 TO REV A23!! CONTINUE?" & vbCrLf
+                UpdateChoice = Sc.ButtonBox(MenuPrompt, VbInformation, "Continue?", "Yes", "NO!")
+                Select Case UpdateChoice
+                    Case "0"
+                        Exit Sub
+
+                Case "1"
+                    Call DishRevA21Update()
+                    Exit Sub
+
+                    Case "2"
+                        Exit Sub
+                End Select
+
+            Case "2"
+                Exit Sub
+        End Select
+
+
+    'Back to first
+    Case "5"
+    Call DishRom10Menu()
+    Exit Sub
+
+End Select
+End Sub
+
+
+    Sub DishRev381Unlock()
+    sc.verbose = false
+    ClearOutputWindow
+
+While VBackdoor = 0
+    VResponse = 0
+    I = 0
+    While VResponse = 0
+    I = I+1
+    sc.print "Sending keychange packet, attempt number: " & cstr(i) & vbcr & "=================" & vbcr
+    sc.write("210053A0CA00004D004B0001621C88E4173260F208FDDF1879A3963D197F505E8B69601C7CF7FCAA4AFAAE7FF57F0093083C1387A30EC8DA2B9625D1CE24E5A7FF4091DB78B96AF93109716A80AEF7A26062B901010515")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    Call read_answer()
+    sc.print
+    sc.delay(initdelay)
+    wx.closeport
+    wx.openport
+    Wend
+
+    For retries = 1 to retry_constant
+        VResponse = 0
+    While VResponse = 0
+            sc.print
+            sc.print "Sending overflow packet, attempt number: " & cstr(retries) & vbcr & "================="
+            sc.print
+            sc.write("21405DA0CA00003703350101106D15BAADBADDDEADDEADF900C40016C82592ADD6BFDEA16EC7BC2A84BC0296E445D1ADE779964E8246D4E64DC7F058CCC2DAE64DC7F058CCC2DAE64DC7F058CCC2DAE64DC7F058CCC2DA2EACC54D9D179C0405A5")
+            sc.print "Response from card: " & vbcr
+            sc.delay(80)
+            Call read_answer()
+            sc.print
+            sc.delay(retry_delay)
+            wx.closeport
+            wx.openport
+    Wend
+    Next
+
+    Sc.Print "Checking to see if backdoor is open.." & vbcr
+    Sc.Write("210025A0200000208FABC264449AFE701DE762FAB14C310600112233445566778899AABBCCDDEEFFDE")
+    Sc.Delay(80)
+    VResponse = 0
+    While VResponse = 0
+    Call backdoor_check()
+    Wend
+    Sc.Delay(initdelay)
+Wend
+
+    sc.print
+    sc.print "Card should now be unlocked! Open Nagraedit and try One Step Backup. Enjoy!" & vbcr
+    sc.print
+    sc.print "Note: If you still get Backdoor Reported Disable then run script again. Repeat as necessary." & vbcr
+    sc.print
+    End Sub
+
+
+' Code for unlocking Dish Rom 3 Rev 382:
+    Sub DishRev382Unlock()
+    sc.verbose = false
+    ClearOutputWindow
+
+
+While VBackdoor = 0
+  For retries = 1 to retry_constant
+    VResponse = 0
+    I = 0
+    While VResponse = 0
+    I = I+1
+    sc.print "Sending keychange packet, attempt number: " & cstr(i) & vbcr & "=================" & vbcr
+    sc.write("210053A0CA00004D004B0001621C88E4173260F208FDDF1879A3963D197F505E8B69601C7CF7FCAA4AFAAE7FF57F0093083C1387A30EC8DA2B9625D1CE24E5A7FF4091DB78B96AF93109716A80AEF7A26062B901010515")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    Call read_answer()
+    sc.print
+    sc.delay(initdelay)
+    wx.closeport
+    wx.openport
+    Wend
+  Next
+
+For retries = 1 to retry_constant
+    VResponse = 0
+    While VResponse = 0
+            sc.print
+            sc.print "Sending overflow packet part 1, attempt number: " & cstr(retries) & vbcr & "================="
+            sc.print
+            sc.write("21405DA0CA00003703350101106D15BAADBADDDEADDEADF900C40016C82592ADD6BFDEA16EC7BC2A84BC0296E445D1ADE779964E8246D4E64DC7F058CCC2DAE64DC7F058CCC2DAE64DC7F058CCC2DAE64DC7F058CCC2DA2EACC54D9D179C0405A5")
+            sc.print "Response from card: " & vbcr
+            sc.delay(80)
+            Call read_answer()
+        sc.delay(2000)
+    Wend
+Next
+
+For retries = 1 to retry_constant
+    VResponse = 0
+    While VResponse = 0
+            sc.print
+            sc.print "Sending overflow packet part 2, attempt number: " & cstr(retries) & vbcr & "================="
+            sc.print
+            sc.write("21000DA0CA00000003000100100A15004B")
+            sc.print "Response from card: " & vbcr
+            sc.delay(80)
+            Call read_answer()
+            sc.print
+            sc.delay(2000)
+       Wend
+Next
+
+    wx.closeport
+    wx.openport
+
+    Sc.Print "Checking to see if backdoor is open.." & vbcr
+    Sc.Write("210025A0200000208FABC264449AFE701DE762FAB14C310600112233445566778899AABBCCDDEEFFDE")
+    Sc.Delay(80)
+    VResponse = 0
+    While VResponse = 0
+    Call backdoor_check()
+    Wend
+    Sc.Delay(initdelay)
+Wend
+
+    sc.print
+    sc.print "Card should now be unlocked! Open Nagraedit and try One Step Backup. Enjoy!" & vbcr
+    sc.print
+    sc.print "Note: If you still get Backdoor Reported Disable then run script again. Repeat as necessary." & vbcr
+    sc.print
+    End Sub
+
+
+' Code for unlocking Dish Rom 10 Rev A21
+     Sub DishRevA21Unlock()
+     sc.verbose = false
+     ClearOutputWindow
+
+While VBackdoor = 0
+
+     VResponse = 0
+     I = 0
+     While VResponse = 0
+     I = I+1
+     sc.print "Sending packet 1 of 7, attempt number: " & cstr(i) & vbcr & "=================" & vbcr
+     sc.write("21C101A041")
+     sc.print "Response from card: " & vbcr
+     sc.delay(80)
+     Call read_answer()
+     sc.print
+     sc.delay(initdelay)
+     Wend
+
+     VResponse = 0
+     I = 0
+     While VResponse = 0
+     I = I+1
+     sc.print "Sending packet 2 of 7, attempt number: " & cstr(i) & vbcr & "=================" & vbcr
+     sc.write("210008A0CA000002C0000687")
+     sc.print "Response from card: " & vbcr
+     sc.delay(80)
+     Call read_answer()
+     sc.print
+     sc.delay(initdelay)
+     Wend
+
+     VResponse = 0
+     I = 0
+     While VResponse = 0
+     I = I+1
+     sc.print "Sending packet 3 of 7, attempt number: " & cstr(i) & vbcr & "=================" & vbcr
+     sc.write("21000DA0CA000000030000001010150050")
+     sc.print "Response from card: " & vbcr
+     sc.delay(80)
+     Call read_answer()
+     sc.print
+     sc.delay(initdelay)
+     Wend
+
+     VResponse = 0
+     I = 0
+     While VResponse = 0
+     I = I+1
+     sc.print "Sending packet 4 of 7, attempt number: " & cstr(i) & vbcr & "=================" & vbcr
+     sc.write("21000DA0CA000000030000001010150050")
+     sc.print "Response from card: " & vbcr
+     sc.delay(80)
+     Call read_answer()
+     sc.print
+     sc.delay(initdelay)
+     Wend
+
+     VResponse = 0
+     I = 0
+     While VResponse = 0
+     I = I+1
+     sc.print "Sending packet 5 of 7, attempt number: " & cstr(i) & vbcr & "=================" & vbcr
+     sc.write("210064A0CA00004D034B0038206F150CCD320C5AEA2D2D0CCD320C5AEA2D2D0CCD320C5AEA2D2D0CCD320C5AEA2D2D0CCD320C5AEA2D2D462DF670F1966715902789FF42D38BB50B00BFDC9852BBB70CCD320C5AEA2D2D0CCD320C5AEA2D2D0CCD320C5AEA2D2D70")
+     sc.print "Response from card: " & vbcr
+     sc.delay(80)
+     Call read_answer()
+     sc.print
+     sc.delay(initdelay)
+     Wend
+
+     VResponse = 0
+     I = 0
+     While VResponse = 0
+     I = I+1
+     sc.print "Sending packet 6 of 7, attempt number: " & cstr(i) & vbcr & "=================" & vbcr
+     sc.write("210008A0CA000002C0000687")
+     sc.print "Response from card: " & vbcr
+     sc.delay(80)
+     Call read_answer()
+     sc.print
+     sc.delay(initdelay)
+     Wend
+
+     VResponse = 0
+     I = 0
+     While VResponse = 0
+     I = I+1
+     sc.print "Sending packet 7 of 7, attempt number: " & cstr(i) & vbcr & "=================" & vbcr
+     sc.write("219200B3")
+     sc.print "Response from card: " & vbcr
+     sc.delay(80)
+     Call read_answer()
+     sc.print
+     sc.delay(initdelay)
+     Wend
+
+     wx.closeport
+     sc.delay(initdelay)
+     wx.openport
+
+    Sc.Print "Checking to see if backdoor is open.." & vbcr
+    Sc.Write("210025A0200000208FABC264449AFE701DE762FAB14C310600112233445566778899AABBCCDDEEFFDE")
+    Sc.Delay(80)
+    VResponse = 0
+    While VResponse = 0
+    Call backdoor_check()
+    Wend
+    Sc.Delay(initdelay)
+Wend
+
+    sc.print
+    sc.print "Card should now be unlocked! Open Nagraedit and try One Step Backup. Enjoy!" & vbcr
+    sc.print
+    sc.print "Note: If you still get Backdoor Reported Disable then run script again. Repeat as necessary." & vbcr
+    sc.print
+    End Sub
+
+
+'update cards
+
+
+
+' Rev 307 to Rev 309
+    Sub DishRev307Update()
+    sc.verbose = false
+    ClearOutputWindow
+
+    VResponse = 0
+    I=0
+    While VResponse = 0
+    I=I+1
+    sc.print "Sending EMM update packet 1 of 4, attempt number: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("210053A0CA00004D004B000102892613A8ED688C53F7A3AF318636DD2EE35560E78649224038368B4B1FC00A6E5942FC101E83FBB7B7F7438E393AA82FE743FFCC640D078CC1A387E92301E2FEAA261E187C79E852056B")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    Call read_answer()
+    sc.print
+    sc.delay(initdelay)
+    Wend
+
+    VResponse = 0
+    I=0
+    While VResponse = 0
+    I=I+1
+    sc.print "Sending EMM update packet 2 of 4, attempt number: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("210053A0CA00004D004B00014223D1D750D4D35056694BF48ED683611EEA73077B7E619A438C2EDB318B70D5729B1009ABB914E185CBAEF673B726705BB5580E407C71CA7207C2316E608434F971DF6DB239D3BA2A057D")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    Call read_answer()
+    sc.print
+    sc.delay(initdelay)
+    Wend
+
+    VResponse = 0
+    I=0
+    While VResponse = 0
+    I=I+1
+    sc.print "Sending EMM update packet 3 of 4, attempt number: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("210053A0CA00004D004B00014207DB22A72568F7ECB3DA88A75FBAECC148B31CFA5EBA2FE6C2123B4C64DC52231E7A9F4BE90E61FF90E23992D2060615B3EF967DE482BC399AF0E061E890988CBEE96F09E16CFA7105B4")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    Call read_answer()
+    sc.print
+    sc.delay(initdelay)
+    Wend
+
+    VResponse = 0
+    I=0
+    While VResponse = 0
+    I=I+1
+    sc.print "Sending EMM update packet 4 of 4, attempt number: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("210053A0CA00004D004B0001424167E723F492525DFBA541C2C02828BB29E91D46EF945CC2A56F2379CC9DE3ECA80ECE9ED865C282E0B355EDEC56A149B4DBAB98C9564FB5322A6E1B378DCC57973DE7247F7222240560")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    Call read_answer()
+    sc.print
+    sc.delay(initdelay)
+    Wend
+
+    wx.closeport
+    wx.openport
+
+    sc.print
+    sc.print "Card should now be updated to Rev 309. Open Nagraedit and try Reset ATR to verify." & vbcr
+    sc.print
+    sc.print "Note: If card is still not updated, run script again. Repeat as necessary." & vbcr
+    sc.print
+    End Sub
+
+
+' Rev 309 to Rev 313
+    Sub DishRev309Update()
+    sc.verbose = false
+    ClearOutputWindow
+
+    VResponse = 0
+    I=0
+    While VResponse = 0
+    I=I+1
+    sc.print "Sending EMM update packet 1 of 2, attempt number: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("210053A0CA00004D004B000182AF91D847548A907C5CDEBD9894D6BACDD5E2F0C8DA10B64E58890E753EE101FD983C0FCD34289C73FA7CCB06C68CCE62EF412D9EF259F274464D4EEECB524BC26869F75910D8F90F050F")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    Call read_answer()
+    sc.print
+    sc.delay(initdelay)
+    Wend
+
+    VResponse = 0
+    I=0
+    While VResponse = 0
+    I=I+1
+    sc.print "Sending EMM update packet 2 of 2, attempt number: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("210053A0CA00004D004B000102A0B917E36DFFACC3D999F5CC948892ECE74C9DC973E54B5D90B4616F52347A18A841425E4181005C5AB471AED8D4CEFC1B337E81034092B4C610FA25500E7F4D8F4665E13D6A9C410534")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    Call read_answer()
+    sc.print
+    sc.delay(initdelay)
+    Wend
+
+    wx.closeport
+    wx.openport
+
+    sc.print
+    sc.print "Card should now be updated to Rev 313. Open Nagraedit and try Reset ATR to verify." & vbcr
+    sc.print
+    sc.print "Note: If card is still not updated, run script again. Repeat as necessary." & vbcr
+    sc.print
+    End Sub
+
+
+' Rev 313 to Rev 365
+    Sub DishRev313Update()
+    sc.verbose = false
+    ClearOutputWindow
+
+    VResponse = 0
+    I=0
+    While VResponse = 0
+    I=I+1
+    sc.print "Sending EMM update packet 1 of 3, attempt number: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("210053A0CA00004D004B0001024C2CD94182C5EAF1D4206A9B8B5BE20C900C64B192E1939E3B77C2AA262DF65210331B6A4DB42343D75C64C38215CC91DDDCB94BB6C57863934F4C1A90D373EAD342DA2B05D3EE7805FD")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    Call read_answer()
+    sc.print
+    sc.delay(initdelay)
+    Wend
+
+    VResponse = 0
+    I=0
+    While VResponse = 0
+    I=I+1
+    sc.print "Sending EMM update packet 2 of 3, attempt number: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("210053A0CA00004D004B000102549C1BEA4C01ED8CA75FD0ACB13290F2E927CAB7749AB8015C40B83D4A000CDC478BEB29E1ADA1B61836923F8E6FDB1101268C5EFB35E92AFC0228AFE274DB4E9EB4A5F00117F0780511")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    Call read_answer()
+    sc.print
+    sc.delay(initdelay)
+    Wend
+
+    VResponse = 0
+    I=0
+    While VResponse = 0
+    I=I+1
+    sc.print "Sending EMM update packet 3 of 3, attempt number: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("210053A0CA00004D004B000102ADE912F5DEBB0AE7521A74ACBD783C822919D5E6717A4AEEB4CDB95B7459FF62B4C4B6ED29FFCB1DCEA1D3CC0B509C1410F632F8A5218AF9DF644DE48FE7BB70E61CA034CB8559B40570")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    Call read_answer()
+    sc.print
+    sc.delay(initdelay)
+    Wend
+
+    wx.closeport
+    wx.openport
+
+    sc.print
+    sc.print "Card should now be updated to Rev 365. Open Nagraedit and try Reset ATR to verify." & vbcr
+    sc.print
+    sc.print "Note: If card is still not updated, run script again. Repeat as necessary." & vbcr
+    sc.print
+    End Sub
+
+
+' Rev 365 to Rev 366
+    Sub DishRev365Update()
+    sc.verbose = false
+    ClearOutputWindow
+
+    VResponse = 0
+    I=0
+    While VResponse = 0
+    I=I+1
+    sc.print "Sending EMM update packet 1 of 2, attempt number: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("210053A0CA00004D004B00014202C581BBE8839AF2FBE846EBD727B6EC68F329FA5A2A4A9F34D2C4FAABC1B0BBD55443D6FDED80446419E5081DAEF0E562FF8561925B31AA6F9FA4AF3ACE05E99C347983B379E3220581")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    Call read_answer()
+    sc.print
+    sc.delay(initdelay)
+    Wend
+
+    VResponse = 0
+    I=0
+    While VResponse = 0
+    I=I+1
+    sc.print "Sending EMM update packet 2 of 2, attempt number: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("210053A0CA00004D004B000182D072010906C1A85CB29337E493FA10718F747F5E53E7DFFC2667C538ACDC3558C11CE4D5B23A3A8D45D58E930AFE7A146B7540D8E8B3CD2B5199E1FA64B1D94E6C8CFF302FA1D581058C")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    Call read_answer()
+    sc.print
+    sc.delay(initdelay)
+    Wend
+
+    wx.closeport
+    wx.openport
+
+    sc.print
+    sc.print "Card should now be updated to Rev 366. Open Nagraedit and try Reset ATR to verify." & vbcr
+    sc.print
+    sc.print "Note: If card is still not updated, run script again. Repeat as necessary." & vbcr
+    sc.print
+    End Sub
+
+' Rev 366 to Rev 367
+    Sub DishRev366Update()
+    sc.verbose = false
+    ClearOutputWindow
+
+    VResponse = 0
+    I=0
+    While VResponse = 0
+    I=I+1
+    sc.print "Sending EMM update packet 1 of 4, attempt number: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("210053A0CA00004D004B0001023F37F185873135758057A3C32C2BF052B9FE3849447DBA7985C30CA5CF088F0552B56D561A447112CBC6CDB35ADC1B70245F712E16DE7D2DA3E80F348AFA435DD6265E86CB9A241D0573")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    Call read_answer()
+    sc.print
+    sc.delay(initdelay)
+    Wend
+
+    VResponse = 0
+    I=0
+    While VResponse = 0
+    I=I+1
+    sc.print "Sending EMM update packet 2 of 4, attempt number: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("210053A0CA00004D004B000102E527233651A9B350BACF2DC61B113D157469CA03471DA43E3A57A4EB680B02C0142797922C94E87CBFB4B5A4CA4ACDFCC6E1998DD31D7DD10165CB6C12DFCB39CDD2026FFA65F091056F")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    Call read_answer()
+    sc.print
+    sc.delay(initdelay)
+    Wend
+
+    VResponse = 0
+    I=0
+    While VResponse = 0
+    I=I+1
+    sc.print "Sending EMM update packet 3 of 4, attempt number: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("210053A0CA00004D004B0001820AB7FDD993DA07F3B37665733925AF0F58D81DF6D954A069BBB826DD3F65B17E68AD51BE5F37C5F08F43ED627E2BF52717463D424056D2D76CB7107B338225CB3BA899D216D6C8AB058B")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    Call read_answer()
+    sc.print
+    sc.delay(initdelay)
+    Wend
+
+    VResponse = 0
+    I=0
+    While VResponse = 0
+    I=I+1
+    sc.print "Sending EMM update packet 4 of 4, attempt number: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("210053A0CA00004D004B000102335C9BF0BA74D8C4511C32DA9FC6AA05AC1A0119FD0CC0611A03625B866CE056FDD8E70CF0F86D1E15E2ACF6342CE8F961CCDF57BC14129DAAE698961F34717EC36E9C0A560EFEB60541")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    Call read_answer()
+    sc.print
+    sc.delay(initdelay)
+    Wend
+
+    wx.closeport
+    wx.openport
+
+    sc.print
+    sc.print "Card should now be updated to Rev 367. Open Nagraedit and try Reset ATR to verify." & vbcr
+    sc.print
+    sc.print "Note: If card is still not updated, run script again. Repeat as necessary." & vbcr
+    sc.print
+    End Sub
+
+
+' Rev 367 to Rev 368
+    Sub DishRev367Update()
+    sc.verbose = false
+    ClearOutputWindow
+
+    VResponse = 0
+    I=0
+    While VResponse = 0
+    I=I+1
+    sc.print "Sending EMM update packet 1 of 1, attempt number: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("210053A0CA00004D004B000182C307882DA3117A0FE6D8AE40AEC415E0E89E2DC06BE68067C11C2345A6D4831F669750521A59AC4508DEFC50A88A87E0D8B025B89ABD5E38A04C8792F2D7F953AA724C90ACFBBD7305EC")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    Call read_answer()
+    sc.print
+    sc.delay(initdelay)
+    Wend
+
+    wx.closeport
+    wx.openport
+
+    sc.print
+    sc.print "Card should now be updated to Rev 368. Open Nagraedit and try Reset ATR to verify." & vbcr
+    sc.print
+    sc.print "Note: If card is still not updated, run script again. Repeat as necessary." & vbcr
+    sc.print
+    End Sub
+
+' Rev 368 to Rev 369
+    Sub DishRev368Update()
+    sc.verbose = false
+    ClearOutputWindow
+
+    VResponse = 0
+    I=0
+    While VResponse = 0
+    I=I+1
+    sc.print "Sending EMM update packet 1 of 2, attempt number: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("210053A0CA00004D004B000142F4D8C3BF812ACDAB7C8E44F2EC31FE9A0916E42BE0E3AC45C57293899C678CA69CB11FDC0DCAAC4348618F6978BB77707AC335B89DD98B918D60A1127BB49F4F3215BDA6149C696F052A")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    Call read_answer()
+    sc.print
+    sc.delay(initdelay)
+    Wend
+
+    VResponse = 0
+    I=0
+    While VResponse = 0
+    I=I+1
+    sc.print "Sending EMM update packet 2 of 2, attempt number: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("210053A0CA00004D004B0001420E9CE2031202A38B26D24BC0C977CBCBE101A83437411CE07233E16F1DD8826CC4CF62DBCBB0C7DA9D54D7A992A6B3EA1AFF6D5318B1CA3E98A8F061ACE1BE93A2C5C8E2DA7EEF00058F")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    Call read_answer()
+    sc.print
+    sc.delay(initdelay)
+    Wend
+
+    wx.closeport
+    wx.openport
+
+    sc.print
+    sc.print "Card should now be updated to Rev 369. Open Nagraedit and try Reset ATR to verify." & vbcr
+    sc.print
+    sc.print "Note: If card is still not updated, run script again. Repeat as necessary." & vbcr
+    sc.print
+    End Sub
+
+' Rev 369 to Rev 370
+    Sub DishRev369Update()
+    sc.verbose = false
+    ClearOutputWindow
+
+    VResponse = 0
+    I=0
+    While VResponse = 0
+    I=I+1
+    sc.print "Sending EMM update packet 1 of 2, attempt number: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("210053A0CA00004D004B000142507ECCBCF3EA6B00F8A5CE0F3DD02B85D6456D2EA51508A7BAF17AE27FD40EBCE7A77390773F8FED841DD8A1B6D58CE641A898E163BB7DB0497A3F55CA625B7F302DFFC3A67D1C290551")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    Call read_answer()
+    sc.print
+    sc.delay(initdelay)
+    Wend
+
+    VResponse = 0
+    I=0
+    While VResponse = 0
+    I=I+1
+    sc.print "Sending EMM update packet 2 of 2, attempt number: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("210053A0CA00004D004B00014266458EFC7FAB3D36AC7419B06A0A3646531B252A08932225C16092BB8ACBE4068FB39FEF7B3A0DBEAE7EAECB068B1A33A62AEB3B90CD7606573595F0197DFE0FF02049F364C1E2A00586")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    Call read_answer()
+    sc.print
+    sc.delay(initdelay)
+    Wend
+
+    wx.closeport
+    wx.openport
+
+    sc.print
+    sc.print "Card should now be updated to Rev 370. Open Nagraedit and try Reset ATR to verify." & vbcr
+    sc.print
+    sc.print "Note: If card is still not updated, run script again. Repeat as necessary." & vbcr
+    sc.print
+    End Sub
+
+
+' Rev 370 to Rev 371
+    Sub DishRev370Update()
+    sc.verbose = false
+    ClearOutputWindow
+
+    VResponse = 0
+    I=0
+    While VResponse = 0
+    I=I+1
+    sc.print "Sending EMM update packet 1 of 5, attempt number: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("210053A0CA00004D004B000182AE622BF205157711C13D445D33EF28B6C296D4B34D1253FB68E25430FB103008A4BA1D66CEB8FC42451A3F1F454A29360D9164AA00B0DC9E0DD0AE65AAC050A50050E123FEB3351F05BB")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    Call read_answer()
+    sc.print
+    sc.delay(initdelay)
+    Wend
+
+    VResponse = 0
+    I=0
+    While VResponse = 0
+    I=I+1
+    sc.print "Sending EMM update packet 2 of 5, attempt number: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("210053A0CA00004D004B000182F3CEB71E96D7FADD1AEE500DDBB6067FDC4CF024E63D47872A3CFF7C48E6E19E9BA46FB311FB2C8C2DA8AA4E33F57721033E51D7FB9EB2561105C2FB4D814E498172D888EEA38479055B")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    Call read_answer()
+    sc.print
+    sc.delay(initdelay)
+    Wend
+
+    VResponse = 0
+    I=0
+    While VResponse = 0
+    I=I+1
+    sc.print "Sending EMM update packet 3 of 5, attempt number: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("210053A0CA00004D004B00010282ADA08B07E26B3CA23D49EC2A6064810556E1C05DCE53B5604F4740CEBAF68747CE25509C8EF8887AFFAFF1B9161C69364C4262B81C197C5B28781FA8004993626A83C68D51F9230538")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    Call read_answer()
+    sc.print
+    sc.delay(initdelay)
+    Wend
+
+    VResponse = 0
+    I=0
+    While VResponse = 0
+    I=I+1
+    sc.print "Sending EMM update packet 4 of 5, attempt number: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("210053A0CA00004D004B0001022A22A570B9B787D3BEDCC35FD3C9D1E1A62D030382DB515A18AD9236F9259692FCEF1B4CF95B320C55AC5445F5D6F9E0D7E0BA1E49AE1A28710EEA8CDA45169FE0067FBE10A6764205BD")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    Call read_answer()
+    sc.print
+    sc.delay(initdelay)
+    Wend
+
+    VResponse = 0
+    I=0
+    While VResponse = 0
+    I=I+1
+    sc.print "Sending EMM update packet 5 of 5, attempt number: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("210053A0CA00004D004B0001828DA391E28CBC5D527BA598B08B9062E780B03983FAE3B99820BFB5C25BA03C09A020C5169D75B8732CE0DB141D42D67ED91F5F36487BC10EF0011CEE2C41254D20B739C6D1C07A0105D5")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    Call read_answer()
+    sc.print
+    sc.delay(initdelay)
+    Wend
+
+    wx.closeport
+    wx.openport
+
+    sc.print
+    sc.print "Card should now be updated to Rev 371. Open Nagraedit and try Reset ATR to verify." & vbcr
+    sc.print
+    sc.print "Note: If card is still not updated, run script again. Repeat as necessary." & vbcr
+    sc.print
+    End Sub
+
+
+' Rev 371 to Rev 372
+    Sub DishRev371Update()
+    sc.verbose = false
+    ClearOutputWindow
+
+    VResponse = 0
+    I=0
+    While VResponse = 0
+    I=I+1
+    sc.print "Sending EMM update packet 1 of 3, attempt number: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("210053A0CA00004D004B00014271018A8A10CDA9547A4B4D277E75975795EAEA405971F87097FE8B9849B7029059A3F2C4C1073390C21295A7372A91D67C1BBFD4A16AA77D806ED00797BF7BF3FD8F7F083829069E05E2")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    Call read_answer()
+    sc.print
+    sc.delay(initdelay)
+    Wend
+
+    VResponse = 0
+    I=0
+    While VResponse = 0
+    I=I+1
+    sc.print "Sending EMM update packet 2 of 3, attempt number: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("210053A0CA00004D004B0001427031C0EB231BE4706AA74D750DF83799A6533C1C84C315882D9A32A33DB6E144F8322C7DFEEE0B44029F6F0D659BA106C6DB45BD6CB91D98FA7107C9E26C2BB62F23F3E06D1CE753056C")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    Call read_answer()
+    sc.print
+    sc.delay(initdelay)
+    Wend
+
+    VResponse = 0
+    I=0
+    While VResponse = 0
+    I=I+1
+    sc.print "Sending EMM update packet 3 of 3, attempt number: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("210053A0CA00004D004B0001423D91F83DC636C614DEB09829807B71AD1AF530E0238039E840967BA3104CD3412C13E6E4526C19A6D918DAA81D0A568C9FB288881F59532B93A2D774C1F89E5D5EC484BC5690A6590544")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    Call read_answer()
+    sc.print
+    sc.delay(initdelay)
+    Wend
+
+    wx.closeport
+    wx.openport
+
+    sc.print
+    sc.print "Card should now be updated to Rev 372. Open Nagraedit and try Reset ATR to verify." & vbcr
+    sc.print
+    sc.print "Note: If card is still not updated, run script again. Repeat as necessary." & vbcr
+    sc.print
+    End Sub
+
+' Rev 372 to Rev 375
+    Sub DishRev372Update()
+    sc.verbose = false
+    ClearOutputWindow
+
+    VResponse = 0
+    I=0
+    While VResponse = 0
+    I=I+1
+    sc.print "Sending EMM update packet 1 of 14, attempt number: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("210053A0CA00004D004B00014206B05EF2E617DA72BC23E3E8DBF86061F9B31F065D31167FE1021516595BB8A3D3F2DD77DFDBFC9A982617772AD96BD3051446A3D0E130F3CB917F9B6C4FAEE113464B8F124D060E056C")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    Call read_answer()
+    sc.print
+    sc.delay(initdelay)
+    Wend
+
+    VResponse = 0
+    I=0
+    While VResponse = 0
+    I=I+1
+    sc.print "Sending EMM update packet 2 of 14, attempt number: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("210053A0CA00004D004B00010232E6AB38A15FE54E4C5FE7EA6177AC08F86D9D0AB37C0D2791FAA7C2F07F031FBE8796C6A8239F5112723A15421C44D1A674146CC6EC222F1DE0228C4B5623641D8DE4D8FB799464052E")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    Call read_answer()
+    sc.print
+    sc.delay(initdelay)
+    Wend
+
+    VResponse = 0
+    I=0
+    While VResponse = 0
+    I=I+1
+    sc.print "Sending EMM update packet 3 of 14, attempt number: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("210053A0CA00004D004B000142508E040CC9EBE79AEC189FDFF24B882D178A518084EBDCDD52D5C42E16A98122DC00E1FF9095F52481A950DD662E5C55DF433F866B5F70F76A86BE74DEDCB3E5EEB62F3CEFEF49A80596")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    Call read_answer()
+    sc.print
+    sc.delay(initdelay)
+    Wend
+
+    VResponse = 0
+    I=0
+    While VResponse = 0
+    I=I+1
+    sc.print "Sending EMM update packet 4 of 14, attempt number: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("210053A0CA00004D004B000102A08D911B798C2DFD6266CADD6BE473C948D8BFD21F39793AF3C057052D37365290DB8B953B542F743AE6B5B1B599D95E9A638232ADAC769615DB9E9DD97908ED1D450D8614B3CE28059B")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    Call read_answer()
+    sc.print
+    sc.delay(initdelay)
+    Wend
+
+    VResponse = 0
+    I=0
+    While VResponse = 0
+    I=I+1
+    sc.print "Sending EMM update packet 5 of 14, attempt number: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("210053A0CA00004D004B000182C4622066EC92A330D710B83AB1BAEF8EB02ED1848D9734C0466F6025B8DB578E286F2A93AE32BEE828D8C6D3580A49B79CC0D7F74B37FFA15692F1DD883A9AECA8C8AB6A7F0D930E0508")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    Call read_answer()
+    sc.print
+    sc.delay(initdelay)
+    Wend
+
+    VResponse = 0
+    I=0
+    While VResponse = 0
+    I=I+1
+    sc.print "Sending EMM update packet 6 of 14, attempt number: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("210053A0CA00004D004B00010230D41A5507BB667D45BEE900EA00F49C880A722214BE70DC440EDD192B9FFB55BDD54A8D3A9F378B50527530BE49D446C969314DFC6EB723750BAD236A281AC465C0F6731023321305D4")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    Call read_answer()
+    sc.print
+    sc.delay(initdelay)
+    Wend
+
+    VResponse = 0
+    I=0
+    While VResponse = 0
+    I=I+1
+    sc.print "Sending EMM update packet 7 of 14, attempt number: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("210053A0CA00004D004B000142A81DEBD537D2AA920F167E6D0EE95B7875F510F7C11AC86CC02F7929231B990685122DA90557B727B7E99CC869E36BE780418807A7B36554890DFD0329E38D2155DA55D6EDC0E94B05E9")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    Call read_answer()
+    sc.print
+    sc.delay(initdelay)
+    Wend
+
+    VResponse = 0
+    I=0
+    While VResponse = 0
+    I=I+1
+    sc.print "Sending EMM update packet 8 of 14, attempt number: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("210053A0CA00004D004B00014226380FC90A8D9C925A48A9ECCF491F60808A6600BB135C99FB1831A2958DEB47BC6385BBDC6405498081F5AAB25140E9604A21BB0D044CB1A3CEC0FCF22AA5F9BBD0A17AF310ED5E0512")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    Call read_answer()
+    sc.print
+    sc.delay(initdelay)
+    Wend
+
+    VResponse = 0
+    I=0
+    While VResponse = 0
+    I=I+1
+    sc.print "Sending EMM update packet 9 of 14, attempt number: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("210053A0CA00004D004B0001029F8DD950B365B01E58E99885FC3AED664757323C7BE639A9A5BEBDD36A231F3F1D85773E7356D67EB108D6F854A40BD9BF859FEC8BF3C3CDD06B1D9D5303F5D0C1BCB383A38D0F1605F7")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    Call read_answer()
+    sc.print
+    sc.delay(initdelay)
+    Wend
+
+    VResponse = 0
+    I=0
+    While VResponse = 0
+    I=I+1
+    sc.print "Sending EMM update packet 10 of 14, attempt number: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("210053A0CA00004D004B000102DC8E4A07FB7F1FE1069302DB75D8DCE08D2AEF4BEC2C3EF07982497C629D75C140AF347CBDE71BBD1B9845EB5D35C4DD157CBB944A10D2C45BD75B6458C39F17C32A1FEF102EEE06054A")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    Call read_answer()
+    sc.print
+    sc.delay(initdelay)
+    Wend
+
+    VResponse = 0
+    I=0
+    While VResponse = 0
+    I=I+1
+    sc.print "Sending EMM update packet 11 of 14, attempt number: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("210053A0CA00004D004B0001024B0F422C0DD5F0DE4454DD6FAA9E05E722047FA52B16AA76DC3FE208720F6D5C9CC3DFA7DABFF7B2613DAE1C5DD83C291F4F6099A954B9A4AA666662CA31715B1BBA07CF83AF10C30557")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    Call read_answer()
+    sc.print
+    sc.delay(initdelay)
+    Wend
+
+    VResponse = 0
+    I=0
+    While VResponse = 0
+    I=I+1
+    sc.print "Sending EMM update packet 12 of 14, attempt number: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("210053A0CA00004D004B0001421B7395075095B54F8DCA7D2190F2D0BE3E93CB6D858BD14047A1BE78968D763E397A430EBC86C22667506BC57CBCD47692189031E998F8EEC37D4A26741AC288CDD4B476A0A827B205BA")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    Call read_answer()
+    sc.print
+    sc.delay(initdelay)
+    Wend
+
+    VResponse = 0
+    I=0
+    While VResponse = 0
+    I=I+1
+    sc.print "Sending EMM update packet 13 of 14, attempt number: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("210053A0CA00004D004B00014203D38AA404945C2DBBB0024A2FB1BA698687EB7870975FD67362F9FF67DEF2D41EC8E1A5864743950F91774361931919B42E6F517EFC08A526FD6085811FED35465AC294D1F3BFAB056F")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    Call read_answer()
+    sc.print
+    sc.delay(initdelay)
+    Wend
+
+    VResponse = 0
+    I=0
+    While VResponse = 0
+    I=I+1
+    sc.print "Sending EMM update packet 14 of 14, attempt number: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("210053A0CA00004D004B0001426A89F84371750F2456228A2CC0C20E5AC0423CA5151344035B6F720BD0A9DC6331F39ED1ED4BB9E8B2EEDD6182F5928634542502E54FBC599B86A6012B05078259AA0109FF7AA639057B")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    Call read_answer()
+    sc.print
+    sc.delay(initdelay)
+    Wend
+
+    wx.closeport
+    wx.openport
+
+    sc.print
+    sc.print "Card should now be updated to Rev 375. Open Nagraedit and try Reset ATR to verify." & vbcr
+    sc.print
+    sc.print "Note: If card is still not updated, run script again. Repeat as necessary." & vbcr
+    sc.print
+    End Sub
+
+
+' Rev 375 to Rev 378
+    Sub DishRev375Update()
+    sc.verbose = false
+    ClearOutputWindow
+
+    VResponse = 0
+    I=0
+    While VResponse = 0
+    I=I+1
+    sc.print "Sending EMM update packet 1 of 4, attempt number: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("210053A0CA00004D004B0001020D733C2B8BB22518EBCC600C5FD10C36A50B6DA26889932607AB7E41BE41C86B17F1AABAEE76CBA5D1139007E1DC0BC17CDD8C2F51C32551FFDFB56A84C49E7806DEA44A09B0B7320565")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    Call read_answer()
+    sc.print
+    sc.delay(initdelay)
+    Wend
+
+    VResponse = 0
+    I=0
+    While VResponse = 0
+    I=I+1
+    sc.print "Sending EMM update packet 2 of 4, attempt number: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("210053A0CA00004D004B000102DB062399E00537DCB743B7A0288F7707A0C6A18BFB279DCE8B882B5898ADA3F3742C6714BB9122EEC399FEFDDED8ED6DA13CBF790175FA17986A4A27E056DC771F8F65D28E06A91B05DC")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    Call read_answer()
+    sc.print
+    sc.delay(initdelay)
+    Wend
+
+    VResponse = 0
+    I=0
+    While VResponse = 0
+    I=I+1
+    sc.print "Sending EMM update packet 3 of 4, attempt number: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("210053A0CA00004D004B0001420794601298567B930EAFFD370224EBBF6F86B19C9DAC59D4804BF7528A4D39FD84E8100CDB934033AA4548F312772C81410D6A3B124D57369BEEDBE897B1F39E8BB9A32B07767BB5056F")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    Call read_answer()
+    sc.print
+    sc.delay(initdelay)
+    Wend
+
+    VResponse = 0
+    I=0
+    While VResponse = 0
+    I=I+1
+    sc.print "Sending EMM update packet 4 of 4, attempt number: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("210053A0CA00004D004B0001029E97BA01262CBFD59E962B63EFCC34731BD2EB78AED53C7FA8B5735205A50F595F78BFC68F64398B602286177BE0DAFE936D95D83B2AE8AE3C38B055FF9FD4CD63A8A1B2E4710415050D")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    Call read_answer()
+    sc.print
+    sc.delay(initdelay)
+    Wend
+
+    wx.closeport
+    wx.openport
+
+    sc.print
+    sc.print "Card should now be updated to Rev 378. Open Nagraedit and try Reset ATR to verify." & vbcr
+    sc.print
+    sc.print "Note: If card is still not updated, run script again. Repeat as necessary." & vbcr
+    sc.print
+    End Sub
+
+' Rev 378 to Rev 380
+    Sub DishRev378Update()
+    sc.verbose = false
+    ClearOutputWindow
+
+    VResponse = 0
+    I=0
+    While VResponse = 0
+    I=I+1
+    sc.print "Sending EMM update packet 1 of 3, attempt number: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("210053A0CA00004D004B0001021391227B2CF9940493B1C7230537F2050056854D8681BB21EF3D1B78561E1F479D14842B9936424816EC3ECE875E273C9CEEBA88CDAFEFAE2306221F234F3C9B3C0BEBAB11928D8E052B")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    Call read_answer()
+    sc.print
+    sc.delay(initdelay)
+    Wend
+
+    VResponse = 0
+    I=0
+    While VResponse = 0
+    I=I+1
+    sc.print "Sending EMM update packet 2 of 3, attempt number: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("210053A0CA00004D004B000182D621B6C2219610A46A5F65E780FE437F0498230DDE6572DC9184569F651E12E2D00AEAF25A04FAD49E781257A8C29452ABB21775C3837A844DFAAF791707EC223B9DCF80EF78EA8105CF")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    Call read_answer()
+    sc.print
+    sc.delay(initdelay)
+    Wend
+
+    VResponse = 0
+    I=0
+    While VResponse = 0
+    I=I+1
+    sc.print "Sending EMM update packet 3 of 3, attempt number: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("210053A0CA00004D004B00010257B67D023D08432429179FD358ABD68D625BBB906F750D3256007801F56B4B6D3F91CF0C56DCF46B84DDA2103BBF4B8DEC35FBB142AD189CF264173ABB3E37491F8CA6B813A4524B05E4")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    Call read_answer()
+    sc.print
+    sc.delay(initdelay)
+    Wend
+
+    wx.closeport
+    wx.openport
+
+    sc.print
+    sc.print "Card should now be updated to Rev 380. Open Nagraedit and try Reset ATR to verify." & vbcr
+    sc.print
+    sc.print "Note: If card is still not updated, run script again. Repeat as necessary." & vbcr
+    sc.print
+    End Sub
+
+
+' Rev 380 to Rev 381
+    Sub DishRev380Update()
+    sc.verbose = false
+    ClearOutputWindow
+
+    VResponse = 0
+    I=0
+    While VResponse = 0
+    I=I+1
+    sc.print "Sending EMM update packet 1 of 2, attempt number: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("210053A0CA00004D004B0001824989CA79B4BFDE25DF2E1128760AB95F57ED864D0E4DF6546097ED7E3A58E5A2054A4BC960D7676DA3AE14D5C6ABD6210196EB7773C185DB66A45F06F0406D90B4962A9F70065F8305B2")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    Call read_answer()
+    sc.print
+    sc.delay(initdelay)
+    Wend
+
+    VResponse = 0
+    I=0
+    While VResponse = 0
+    I=I+1
+    sc.print "Sending EMM update packet 2 of 2, attempt number: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("210053A0CA00004D004B000102BA23C1A841B481B82195B4A174DF9CD091FB75963028675BF4D31F57CB8852EF1CED31E36E51B70DDA0CEB66363D734F557901F66F88F0E6DDD53D64365A4B298EAC21EBE83AC87D056E")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    Call read_answer()
+    sc.print
+    sc.delay(initdelay)
+    Wend
+
+    wx.closeport
+    wx.openport
+
+    sc.print
+    sc.print "Card should now be updated to Rev 381. Open Nagraedit and try Reset ATR to verify." & vbcr
+    sc.print
+    sc.print "Note: If card is still not updated, run script again. Repeat as necessary." & vbcr
+    sc.print
+    End Sub
+
+
+' Rev 381 to Rev 382
+    Sub DishRev381Update()
+    sc.verbose = false
+    ClearOutputWindow
+
+    VResponse = 0
+    I=0
+    While VResponse = 0
+    I=I+1
+    sc.print "Sending EMM update packet 1 of 2, attempt number: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("210053A0CA00004D004B000122A459DB42048EB51D664688E60BC04CBA86FA09532BC28A600A936F24A6BBA57E4C74EC76DFCD5D9ABA9367661982DEF64EC52CBE5AF7412F218FE86F372C29D47CFA2D73F904DE65055B")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    Call read_answer()
+    sc.print
+    sc.delay(initdelay)
+    Wend
+
+    VResponse = 0
+    I=0
+    While VResponse = 0
+    I=I+1
+    sc.print "Sending EMM update packet 2 of 2, attempt number: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B0001626145014DF3539EDEB384689C26B2ACB873602F8208CE678A693844A87D721E35F03FB1B646F4227B98310AFC3D9FDA2D08B89B6535F94350CC316893773203A1385F7AC9998AD94D05F5")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    Call read_answer()
+    sc.print
+    sc.delay(initdelay)
+    Wend
+
+    wx.closeport
+    wx.openport
+
+    sc.print
+    sc.print "Card should now be updated to Rev 382! Open Nagraedit and try Reset ATR to verify." & vbcr
+    sc.print
+    sc.print "Note: If card is still not updated, run script again. Repeat as necessary." & vbcr
+    sc.print
+    End Sub
+
+
+'Rom 10
+
+
+
+' Rev A16 to Rev A19
+    Sub DishRevA16Update()
+    sc.verbose = false
+    ClearOutputWindow
+
+    VResponse = 0
+    I=0
+    While VResponse = 0
+    I=I+1
+    sc.print "Sending EMM update packet 1 of 7, attempt number: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("210053A0CA00004D004B00014243501F3C8691B0B7465943291DB745B1C1238D1A89B6303D4C85194269B304339DD8E7B7F7101A460AF992C0FEA2AEEAEFCF364DE05008B77D7D7396137AABBC5D4018B14F34338205CD")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    Call read_answer()
+    sc.print
+    sc.delay(initdelay)
+    Wend
+
+    VResponse = 0
+    I=0
+    While VResponse = 0
+    I=I+1
+    sc.print "Sending EMM update packet 2 of 7, attempt number: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("210053A0CA00004D004B0001029DC00612C3E91600E52CA3188FB7A851D52FE0EC63F7284A004B15A65D2F9A83677FA7A87787869EA19C67D235DCF5C2A24060A0BE65D0A4A73C3075C08DE6DD19B5A8AED83239BE0506")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    Call read_answer()
+    sc.print
+    sc.delay(initdelay)
+    Wend
+
+    VResponse = 0
+    I=0
+    While VResponse = 0
+    I=I+1
+    sc.print "Sending EMM update packet 3 of 7, attempt number: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("210053A0CA00004D004B000142E259943F35D353F0B3A3424BFBD2A6892D34E066174F925D6FDFE853D6CA20842C63866780B07E57E13A6E8EAF6C19301013D9B5C210E9CD9597FD2501ED02BE8C35CE6F5CB5C73D05D7")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    Call read_answer()
+    sc.print
+    sc.delay(initdelay)
+    Wend
+
+    VResponse = 0
+    I=0
+    While VResponse = 0
+    I=I+1
+    sc.print "Sending EMM update packet 4 of 7, attempt number: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("210053A0CA00004D004B0001029B0CD7FC55EEBDAA22190FCBD310ECA7FAEDDEF07F724A20331D0389593926F32DAA969D264DC10E27098E720B04F603C74CCB63A2491056314DA21DD5AFEB44629E7A2D72689710059E")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    Call read_answer()
+    sc.print
+    sc.delay(initdelay)
+    Wend
+
+    VResponse = 0
+    I=0
+    While VResponse = 0
+    I=I+1
+    sc.print "Sending EMM update packet 5 of 7, attempt number: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("210053A0CA00004D004B0001426C75309F09CCE2F7EC97B882A65721FF569A2BDD9F3312812EC4FF8FAC1953F97843276D54F03BE10B7E09821B6EA930AA4500DA7D2F166CB29959CC9C4A79860EB6E7730FCD1B5705E5")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    Call read_answer()
+    sc.print
+    sc.delay(initdelay)
+    Wend
+
+    VResponse = 0
+    I=0
+    While VResponse = 0
+    I=I+1
+    sc.print "Sending EMM update packet 6 of 7, attempt number: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("210053A0CA00004D004B000182DC0CE92B8CC4A445CCF769F5E6826742F5369642D7078AAD7DBB5E3496360560F9A87D22122EA05404F9683E109B6B3637CABF214D353686D9B4154F75C6BBA22A26DE1BE450E7120549")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    Call read_answer()
+    sc.print
+    sc.delay(initdelay)
+    Wend
+
+    VResponse = 0
+    I=0
+    While VResponse = 0
+    I=I+1
+    sc.print "Sending EMM update packet 7 of 7, attempt number: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("210053A0CA00004D004B0001827F58680AB58BACA9D5548AB4F191249E8BAB9D031E16CC9B9174303A2384C2DFAE1C14DCE36E3585E3891BBC94E08464A4048A03822B23843CDA12143192348AD50B2E6B6BEA9D030577")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    Call read_answer()
+    sc.print
+    sc.delay(initdelay)
+    Wend
+
+    wx.closeport
+    wx.openport
+
+    sc.print
+    sc.print "Card should now be updated to Rev A19. Open Nagraedit and try Reset ATR to verify." & vbcr
+    sc.print
+    sc.print "Note: If card is still not updated, run script again. Repeat as necessary." & vbcr
+    sc.print
+    End Sub
+
+
+' Rev A19 to Rev A1A
+    Sub DishRevA19Update()
+    sc.verbose = false
+    ClearOutputWindow
+
+    VResponse = 0
+    I=0
+    While VResponse = 0
+    I=I+1
+    sc.print "Sending EMM update packet 1 of 1, attempt number: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("210053A0CA00004D004B000102F7CB9870D1C1504E1655FEC5FD00A54CBD366C1B4AD796232F22105EE3C580494943CC62AC96839807F89E5B9D669338664F85102C9DBCD86AD96270EB33667E9FB64EB7A86BF21605C6")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    Call read_answer()
+    sc.print
+    sc.delay(initdelay)
+    Wend
+
+    wx.closeport
+    wx.openport
+
+    sc.print
+    sc.print "Card should now be updated to Rev A1A. Open Nagraedit and try Reset ATR to verify." & vbcr
+    sc.print
+    sc.print "Note: If card is still not updated, run script again. Repeat as necessary." & vbcr
+    sc.print
+    End Sub
+
+
+' Rev A1A to Rev A1B
+    Sub DishRevA1AUpdate()
+    sc.verbose = false
+    ClearOutputWindow
+
+    VResponse = 0
+    I=0
+    While VResponse = 0
+    I=I+1
+    sc.print "Sending EMM update packet 1 of 2, attempt number: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("210053A0CA00004D004B000182C06FBC6E803EE997DDF1605B842A7157A46BE2DC8A574A5BDC6156B08F6287C5F763E35C2F5D09EA81D8419CA14F5C3533BF8F1B48A151D511BFD3084CDFD906727519CC24E3B76F054B")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    Call read_answer()
+    sc.print
+    sc.delay(initdelay)
+    Wend
+
+    VResponse = 0
+    I=0
+    While VResponse = 0
+    I=I+1
+    sc.print "Sending EMM update packet 2 of 2, attempt number: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("210053A0CA00004D004B000182EEB35CB9A39A0BB308293531D209B9D42F78F485F15A9E00BD890FF1C61A64AFCD387E82D0B546084D0B36F886B226CC0961C75B1876D0BDEA807C946C1B1521ABB63E895181694205EF")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    Call read_answer()
+    sc.print
+    sc.delay(initdelay)
+    Wend
+
+    wx.closeport
+    wx.openport
+
+    sc.print
+    sc.print "Card should now be updated to Rev A1B. Open Nagraedit and try Reset ATR to verify." & vbcr
+    sc.print
+    sc.print "Note: If card is still not updated, run script again. Repeat as necessary." & vbcr
+    sc.print
+    End Sub
+
+
+' Rev A1B to Rev A1C
+    Sub DishRevA1BUpdate()
+    sc.verbose = false
+    ClearOutputWindow
+
+    VResponse = 0
+    I=0
+    While VResponse = 0
+    I=I+1
+    sc.print "Sending EMM update packet 1 of 6, attempt number: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("210053A0CA00004D004B00010A3EFF68D3EFFE9790ED5C460E399E08031AF8529DE2EAACF7D0E0C6921DB2BD400CE588E26C3FC8A96B6AE8F7B29955058022633B7D3E780B492CF88241CB82A42733B8213E32C1D6055A")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    Call read_answer()
+    sc.print
+    sc.delay(initdelay)
+    Wend
+
+    VResponse = 0
+    I=0
+    While VResponse = 0
+    I=I+1
+    sc.print "Sending EMM update packet 2 of 6, attempt number: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("210053A0CA00004D004B00018A429441A245032AD14947FC601F05022B5BF94BDEBCDDA856854A6A016B085DC09EBF89DC5409ED7FA590F7529F6F5CE9DBB495B861D14BA5E0D7AAA9DF92218F76313488ECF22F500574")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    Call read_answer()
+    sc.print
+    sc.delay(initdelay)
+    Wend
+
+    VResponse = 0
+    I=0
+    While VResponse = 0
+    I=I+1
+    sc.print "Sending EMM update packet 3 of 6, attempt number: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("210053A0CA00004D004B00014A6BAA8D49F9397DBD9CA696BC715050610D97A523512D17E80D379ED139FAB64744C4B8B80CE222B04F064FF431317E2B5640906902D213B5F1A7E332019F4E9875699C46324DB185050D")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    Call read_answer()
+    sc.print
+    sc.delay(initdelay)
+    Wend
+
+    VResponse = 0
+    I=0
+    While VResponse = 0
+    I=I+1
+    sc.print "Sending EMM update packet 4 of 6, attempt number: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("210053A0CA00004D004B00010A70CDA22C5326763498B827E6BFC12A38A7C85684DDBA4CE7EA0DEC068ADD2106ACA8259AA8ED21F50F7B939D87E1DAA19C99F4544873C9F73A05E19DDF9DFEB1D8FC8789D620A0C80582")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    Call read_answer()
+    sc.print
+    sc.delay(initdelay)
+    Wend
+
+    VResponse = 0
+    I=0
+    While VResponse = 0
+    I=I+1
+    sc.print "Sending EMM update packet 5 of 6, attempt number: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("210053A0CA00004D004B00010A5877A1F5263ABE9913B56A9B727E5D42D1014A050BE6509CB80D924D19B1A73A8A47CC26749BECB8783BABC159AE1E547491630AB183B3D780C6AF929EE2B7939E71E55E4ECFC7360520")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    Call read_answer()
+    sc.print
+    sc.delay(initdelay)
+    Wend
+
+    VResponse = 0
+    I=0
+    While VResponse = 0
+    I=I+1
+    sc.print "Sending EMM update packet 6 of 6, attempt number: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("210053A0CA00004D004B00014AA5C5E6D95361BADC1833504EF50C3A1C62F4BE1EC38C12973D987229C89FC8F69BFFD916F8D99D38265247D6C18D01B78B53A80D27D835419FA6C041C0870F7D712160CA2315D7C7054D")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    Call read_answer()
+    sc.print
+    sc.delay(initdelay)
+    Wend
+
+    wx.closeport
+    wx.openport
+
+    sc.print
+    sc.print "Card should now be updated to Rev A1C. Open Nagraedit and try Reset ATR to verify." & vbcr
+    sc.print
+    sc.print "Note: If card is still not updated, run script again. Repeat as necessary." & vbcr
+    sc.print
+    End Sub
+
+
+' Rev A1C to Rev A1D
+    Sub DishRevA1CUpdate()
+    sc.verbose = false
+    ClearOutputWindow
+
+    VResponse = 0
+    I=0
+    While VResponse = 0
+    I=I+1
+    sc.print "Sending EMM update packet 1 of 3, attempt number: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("210053A0CA00004D004B00014A81AB2A2CD137DC61C921E46D7E6363C85F7A7204B063D68C033D00498F0B5553EF0E08652F6A01F1B1E1675F655E7ADF1845E2A2C353F925FC26A34373AF2F64BDCF57A4FB80C02905FF")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    Call read_answer()
+    sc.print
+    sc.delay(initdelay)
+    Wend
+
+    VResponse = 0
+    I=0
+    While VResponse = 0
+    I=I+1
+    sc.print "Sending EMM update packet 2 of 3, attempt number: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("210053A0CA00004D004B00010A719851A56D2F1AEA63DD0531CDC5282A9E13AA363652229F2B21E3EA65A98EC085F70E3CB5AB8423CB6A6B9AFDA0AADD95FABFB3F94DC82554244AB628ED2352D66AFB934D31D683050A")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    Call read_answer()
+    sc.print
+    sc.delay(initdelay)
+    Wend
+
+    VResponse = 0
+    I=0
+    While VResponse = 0
+    I=I+1
+    sc.print "Sending EMM update packet 3 of 3, attempt number: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("210053A0CA00004D004B00010AED1BE1E066339294DF3281E6DB2FB6932CA49A6D500018D751DA64610B95FF5DDEB3FE6CCCE4348F118C3FD1CB558539A6310AF82BD72851299D40899719CC1BBFF50391104F62220583")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    Call read_answer()
+    sc.print
+    sc.delay(initdelay)
+    Wend
+
+    wx.closeport
+    wx.openport
+
+    sc.print
+    sc.print "Card should now be updated to Rev A1D. Open Nagraedit and try Reset ATR to verify." & vbcr
+    sc.print
+    sc.print "Note: If card is still not updated, run script again. Repeat as necessary." & vbcr
+    sc.print
+    End Sub
+
+
+' Rev A1D to Rev A20
+    Sub DishRevA1DUpdate()
+    sc.verbose = false
+    ClearOutputWindow
+
+    VResponse = 0
+    I=0
+    While VResponse = 0
+    I=I+1
+    sc.print "Sending EMM update packet 1 of 2, attempt number: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("210053A0CA00004D004B00018A18313007EEB2BAB64B339D881A25F59A87F4E04D4CBF7EC8CE9228D64A09246886A6A1CD59DA71F0356D5F0EEE0FACC46A501AABFFA577E376294522368220967228BAED8EBB6B510566")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    Call read_answer()
+    sc.print
+    sc.delay(initdelay)
+    Wend
+
+    VResponse = 0
+    I=0
+    While VResponse = 0
+    I=I+1
+    sc.print "Sending EMM update packet 2 of 2, attempt number: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("210053A0CA00004D004B00014A1A5F0834214A9C31FED053AD6107BA5DB7468D6777DF7A97F0D4CA92D75F22EA4ED5C7FE49627C3FD53302DB0A900EA002156F93771281E38B425E4CC9500C9F78A7FDECCF84712D05F9")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    Call read_answer()
+    sc.print
+    sc.delay(initdelay)
+    Wend
+
+    wx.closeport
+    wx.openport
+
+    sc.print
+    sc.print "Card should now be updated to Rev A20. Open Nagraedit and try Reset ATR to verify." & vbcr
+    sc.print
+    sc.print "Note: If card is still not updated, run script again. Repeat as necessary." & vbcr
+    sc.print
+    End Sub
+
+
+' Rev A20 to Rev A21
+    Sub DishRevA20Update()
+    sc.verbose = false
+    ClearOutputWindow
+
+    VResponse = 0
+    I=0
+    While VResponse = 0
+    I=I+1
+    sc.print "Sending EMM update packet 1 of 10, attempt number: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("210053A0CA00004D004B00016A07D3B8D252DBD85C084B4B58170E9B0B735C1A01E90CFE0FA9764A108D6E8AB75F53941E8200AFCC7B57B7DA93B6C2BAE5E7AD2D81F5C60ED06670AD7B0DA62FBD392F047C62FD0605FA")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    Call read_answer()
+    sc.print
+    sc.delay(initdelay)
+    Wend
+
+    VResponse = 0
+    I=0
+    While VResponse = 0
+    I=I+1
+    sc.print "Sending EMM update packet 2 of 10, attempt number: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("210053A0CA00004D004B00012A09373EC2D2B0EA3DFCE965039FC31EB59453B767586166FDFA7FD867EBC272F683BB4A66411A9E3886506609E2D1845A375625BB549484F708DF19055A9140B00111ED610FE72CD5056D")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    Call read_answer()
+    sc.print
+    sc.delay(initdelay)
+    Wend
+
+    VResponse = 0
+    I=0
+    While VResponse = 0
+    I=I+1
+    sc.print "Sending EMM update packet 3 of 10, attempt number: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("210053A0CA00004D004B00012A71DD90500D01A6C11303A2F38B8F794B0A19C5AF797287062EB6EFFDF4DC0CC4D14043FCB15B82288B591AEFEE7BB4F0EA7A58015625673E18A03D37AABC645A5817E698C8F3967505D1")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    Call read_answer()
+    sc.print
+    sc.delay(initdelay)
+    Wend
+
+    VResponse = 0
+    I=0
+    While VResponse = 0
+    I=I+1
+    sc.print "Sending EMM update packet 4 of 10, attempt number: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("210053A0CA00004D004B0001AA9408D71A6ABEC7DFAAE8FCD1D508727D2C98D695A84C7C95D1F6C51859617D397E55D3B5809FC5C93B5319E9D70338F1758CF625D0338B6104465A239DCE0DF3AFD50E6C8118E83505DE")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    Call read_answer()
+    sc.print
+    sc.delay(initdelay)
+    Wend
+
+    VResponse = 0
+    I=0
+    While VResponse = 0
+    I=I+1
+    sc.print "Sending EMM update packet 5 of 10, attempt number: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("210053A0CA00004D004B00012A2891AEA9706A7BD0B98CCF8F582E3DCED2CA797CC61CA10958BAB356A4C66923287283259369E9A9F21B23EC7A5DBE43718DDA4B5423F4A9082BCFDE12EAC687CEADEE1C68E5F4460557")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    Call read_answer()
+    sc.print
+    sc.delay(initdelay)
+    Wend
+
+    VResponse = 0
+    I=0
+    While VResponse = 0
+    I=I+1
+    sc.print "Sending EMM update packet 6 of 10, attempt number: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("210053A0CA00004D004B00016ADEFB422655918477A87750BCFF788CEC4C03AF1577C5BF17F247502EF6FA87A76ECB31BD45ED326DB6442C4CC805F3A4C354721F6D37CCB58BD411D7E4EB774EE5BE0EA0DDEEEFD30580")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    Call read_answer()
+    sc.print
+    sc.delay(initdelay)
+    Wend
+
+    VResponse = 0
+    I=0
+    While VResponse = 0
+    I=I+1
+    sc.print "Sending EMM update packet 7 of 10, attempt number: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("210053A0CA00004D004B00016AF335649B2A9A35F88C0225E40FEFAA48B1781AF579E32FAE4166999411381937B2DD3C08DD23110F0B5924AEDFB6960D9F499B9192683209AF19F7DEE22F59E772FC0265FC4C66BD058B")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    Call read_answer()
+    sc.print
+    sc.delay(initdelay)
+    Wend
+
+    VResponse = 0
+    I=0
+    While VResponse = 0
+    I=I+1
+    sc.print "Sending EMM update packet 8 of 10, attempt number: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("210053A0CA00004D004B00012ADEAC13E1FA6BF5B6FB51893156FB9FE77ED0E9057C5A72769C3F1802854E1C01E1ADE6A64328F3BD62A2D0887F43099019FB0A13DD55EA8CB6255753A9E349E8EA454BA08E479CA30565")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    Call read_answer()
+    sc.print
+    sc.delay(initdelay)
+    Wend
+
+    VResponse = 0
+    I=0
+    While VResponse = 0
+    I=I+1
+    sc.print "Sending EMM update packet 9 of 10, attempt number: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("210053A0CA00004D004B00012AEB03CF6F5BF7BE736D37A72C56D3F0869AB8654B1C5550E33A1CF8117C1A4A2A5C8D07D6976BD08F10378C933D42C78759DCCF0108C271F0DF7EC64A9E6B0FC5CB29DCE15A22A50005B0")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    Call read_answer()
+    sc.print
+    sc.delay(initdelay)
+    Wend
+
+    VResponse = 0
+    I=0
+    While VResponse = 0
+    I=I+1
+    sc.print "Sending EMM update packet 10 of 10, attempt number: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("210053A0CA00004D004B0001AA9371636C5F029E250D363D4F956F5B4ABD046EC25030E0B45A68189D1D78FE4E4CC73A9ED974706597D9BFA0D63ED95C319B04036F629A6C490E172F2F8E261DDD2EB61D844D2F6E0592")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    Call read_answer()
+    sc.print
+    sc.delay(initdelay)
+    Wend
+
+    wx.closeport
+    wx.openport
+
+    sc.print
+    sc.print "Card should now be updated to Rev A21. Open Nagraedit and try Reset ATR to verify." & vbcr
+    sc.print
+    sc.print "Note: If card is still not updated, run script again. Repeat as necessary." & vbcr
+    sc.print
+    End Sub
+
+
+' Rev A21 to Rev A23
+    Sub DishRevA21Update()
+    sc.verbose = false
+    ClearOutputWindow
+
+    VResponse = 0
+    I=0
+    While VResponse = 0
+    I=I+1
+    sc.print "Sending EMM update packet 1 of 4, attempt number: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("210053A0CA00004D004B00012A461BF24577EC9721F7410E54592F95F931B93874A256FE0FBA91163207093FC73E0B52C9FA6DCBEEB947DD91A9DA897B964AA5590C6682F1BEE31AF10707F072546FC2006B4E62D10574")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    Call read_answer()
+    sc.print
+    sc.delay(initdelay)
+    Wend
+
+    VResponse = 0
+    I=0
+    While VResponse = 0
+    I=I+1
+    sc.print "Sending EMM update packet 2 of 4, attempt number: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B0001AAA7534155E6C3314F0B3E557A47B3E8048CD881927E58170CAE8472711ACFAD6B8493655674AF7ACDA5BE8C9FEFC5E0F1A92706FB3F3417EA1EBF7117D7C547D62BE64BCF0BB9839C0557")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    Call read_answer()
+    sc.print
+    sc.delay(initdelay)
+    Wend
+
+    VResponse = 0
+    I=0
+    While VResponse = 0
+    I=I+1
+    sc.print "Sending EMM update packet 3 of 4, attempt number: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("210053A0CA00004D004B00016AD87B45FE02D9B16AFDB316834E8AFE1172B0633932A95CC7918391ED7A360166184973FA7B312DFE5E1AF57A22D09468364B13CE19E2556606F29AD03D465BCCB1FFDAE72D30590B05C7")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    Call read_answer()
+    sc.print
+    sc.delay(initdelay)
+    Wend
+
+    VResponse = 0
+    I=0
+    While VResponse = 0
+    I=I+1
+    sc.print "Sending EMM update packet 4 of 4, attempt number: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("210053A0CA00004D004B00016A8BCC097FD4B3F5F056B7B336962DB5FAD49577EADE0BDDF8F70D3D69081762270537B978379858EDED494352C42121670C925E3649CE906606CB47FBE5EC52B46051AFF26B34C09D05E3")
+    sc.print "Response from card: " & vbcr
+    sc.delay(80)
+    Call read_answer()
+    sc.print
+    sc.delay(initdelay)
+    Wend
+
+    wx.closeport
+    wx.openport
+
+    sc.print
+    sc.print "Card should now be updated to Rev A23! Open Nagraedit and try Reset ATR to verify." & vbcr
+    sc.print
+    sc.print "Note: If card is still not updated, run script again. Repeat as necessary." & vbcr
+    sc.print
+    End Sub
+
+    sub rom3bust()
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    sc.print "Sending rom 3 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B080182BEE13B0BB7FFD87ABBC8B34F36826C56F18A373B4204BEB1DC37D3C3382C97A35BB594EAB14642125E6D89772383E9B72996091A6BCE1AF3C0B2C9CE18B74589D1E3942282ADC2A1008E")
+    sc.delay(40)
+    End Sub
+
+
+    sub rom10bust()
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    sc.print "Sending rom 10 bug buster packet: " & cstr(I) & vbcr & "=================" & vbcr
+    sc.write("214053A0CA00004D004B00010290BFA5177F36F43B429DC20F317628C1F10DC226667660EAAAF7E52C4BD84BD55AD21A8E79E760FDFBFA9FD49864145D22CB52C507E9A004F0FCB9F001E99A2F9E9FF1A83522D895052A")
+    sc.delay(40)
+    End Sub
+
+
+Sub read_answer()
+Length = Sc.BytesInBuffer
+Sc.Read(length)
+If length = 0 then
+    answer=""
+    Sc.Print("(No answer)")
+    VResponse = 0
+Else
+    For X = 0 To length - 1
+           ThisByte = Hex(Sc.GetByte(X))
+        If Len(ThisByte) = 1 Then ThisByte = "0" & ThisByte
+    Thisbyte = Thisbyte & " "
+        res = res & Thisbyte
+        Sc.Print(ThisByte)
+        Next
+
+    If length = 10 Then
+        If Sc.GetByte(7) = 103 and Sc.GetByte(8) = 0 Then
+        VResponse = 1
+        VBackdoor = 1
+        End If
+    End If
+
+    If length = 11 Then
+        If Sc.GetByte(8) = 144 and Sc.GetByte(9) = 0 Then
+            VResponse = 1
+        Else
+            VResponse = 0
+            sc.print
+            sc.print "Invalid response from CAM. Re-sending packet..."
+        End If
+    End If
+
+    If length = 12 Then
+        If Sc.GetByte(9) = 144 and Sc.GetByte(10) = 0 Then
+            VResponse = 1
+        Else
+            VResponse = 0
+            sc.print
+            sc.print "Invalid response from CAM. Re-sending packet..."
+        End If
+    End If
+
+    If length = 6 Then
+        If Sc.GetByte(3) = 111 and Sc.GetByte(4) = 0 Then VResponse = 1
+    End If
+
+    If length = 5 Then
+        'If first byte after 12 response is E1 in hex, then VResponse = 1
+        If Sc.GetByte(1) = 225 Then VResponse = 1
+    End If
+
+    If length = 4 Then
+        VResponse = 0
+        sc.print
+        sc.print "Invalid response from CAM. Re-sending packet..."
+    End If
+End If
+Sc.Print
+'read_answer = answer
+End Sub
+
+Sub backdoor_check()
+Length = Sc.BytesInBuffer
+Sc.Read(length)
+If length = 0 Then
+    answer=""
+    Sc.Print("(No answer)")
+Else
+    For X = 0 To length - 1
+        ThisByte = Hex(Sc.GetByte(X))
+    If Len(ThisByte) = 1 Then ThisByte = "0" & ThisByte
+            Thisbyte = Thisbyte & " "
+            res = res & Thisbyte
+            Sc.Print(ThisByte)
+    Next
+        If length = 6 Then
+                If Sc.GetByte(3) = 99 and Sc.GetByte(4) = 0 Then
+                VBackdoor = 1
+            VResponse = 1
+                Sc.Print
+                Sc.Print "Backdoor appears to be open. Continuing..." & VbCrLf
+                Sc.Delay(2000)
+                End If
+
+        ElseIf length = 4 Then
+        VResponse = 0
+        Sc.Print
+        Sc.Print "still closed. Re-checking backdoor..."
+        Sc.Delay(2000)
+    Else
+            VBackdoor = 0
+        VResponse = 1
+            sc.print
+            sc.print "Backdoor appears to be closed. Restarting unlock procedure."
+            Sc.Delay(2000)
+        End If
+End If
+Sc.Print
+End Sub
+
+
+
+
+    SUB help()'go to the forum page
+    Dim ctemp
+    set oShell = CreateObject ("WScript.Shell")
+    ctemp = ("iexplore.exe www.theforum.cx")
+    oShell.run ctemp, 1, False
+    set oShell = nothing
+    End Sub
+
+    SUB help1()'go to the forum page
+    Dim ctemp
+    set oShell = CreateObject ("WScript.Shell")
+    ctemp = ("iexplore.exe www.cardcoders.org/phpnuke/html/index.php")
+    oShell.run ctemp, 1, False
+    set oShell = nothing
+    End Sub
+
+
+
+    SUB help2()'go to the forum page
+    Dim ctemp
+    set oShell = CreateObject ("WScript.Shell")
+    ctemp = ("iexplore.exe www.id-discussions.com/index.php")
+    oShell.run ctemp, 1, False
+    set oShell = nothing
+    End Sub
+
+
+
+' Settings
+Wx.ResetDelay = 150
+Wx.ByteDelay = 0
+Wx.RxByteTimeout = 50
+Wx.CommPort = "com1:"   'change this for com port
+Wx.BaudRate = 115200
+Wx.ResetBaudRate = 9600
+Wx.Parity = 1
+Wx.StopBits = 2
+Wx.DTRControl = 1
+Wx.RTSControl = 0
+Wx.ResetMode = 1
+Wx.ResetLine = 0
+Wx.ByteConvention = 0
+Wx.FlushEchoByte = 1
+Wx.FlushBeforeWrite = 1
+Wx.IgnoreTimeouts = 0
+Wx.ResetAfterTimeout = 0
+Wx.LogTransactions = 0
+Wx.DisplayUSW = 0
+Wx.DisplayFuse = 0

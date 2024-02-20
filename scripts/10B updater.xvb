@@ -1,0 +1,117 @@
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+' N2 Wreckin Crew Release 4-21-07
+' Dish rom102 rev 109 to 10B update
+' Updates cam to 10B for better unlocking results
+' Make sure you use an iso with echostar settings
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+
+const retry_constant = 10
+const initdelay=2000
+
+
+Sub Main ()
+sc.verbose = false
+ClearOutputWindow
+
+sc.print "Sending IFS Packet.." & vbcr & "=================" & vbcr
+sc.write("=21C18061")
+sc.print "Response from card: " & vbcr
+sc.delay(200)
+answer = read_answer()
+sc.print
+sc.delay(initdelay)
+
+sc.print "Sending packet.1.." & vbcr & "=================" & vbcr
+sc.write("21406DA0CA0000670465000182001096AC023C067E3B788601D8F872AB8794F98DF567399F97DA38FEA5C6B552594E14D579DC8B4471CE45EFD48949D51C2DD6076C603AAEA2C1B611BA75403BF51A7943EEE699F689849525FB16A74C9354A25A403D0577A47DB8A6427A224C284C0240")
+sc.print "Response from card: " & vbcr
+sc.delay(200)
+answer = read_answer()
+sc.print
+sc.delay(initdelay)
+
+sc.print "Sending packet.2.." & vbcr & "=================" & vbcr
+sc.write("21006DA0CA00006704650001820010C96415727EAA0CCE2A0A711B12B759CD8536037952F0AFE8A1EE505E8D7FF9B9E3B51C3FE5DF3CEE35D2AE7D11620F29B300CD9003C4121A095C88E69944C16D6D7F03C7302817CB7C4B78D90A01E1F1D185D7833118B2212AD9F957D9398E5D0215")
+sc.print "Response from card: " & vbcr
+sc.delay(200)
+answer = read_answer()
+sc.print
+sc.delay(initdelay)
+
+sc.print "Sending packet.3.." & vbcr & "=================" & vbcr
+sc.write("21006DA0CA000067046500018200106C0A6289D9060E2E589F3E63CF4C5E1335E951A874B9500AB950D9A4369FCB60D4D9033BA04EC972B62B832598653B28CD2741EE00F31F4D9F8054FDC66D141894738612406C6C43EF47C37BB0376FE1290CBC2E2AD5640A9C6C586C5D9EB9170215")
+sc.print "Response from card: " & vbcr
+sc.delay(200)
+answer = read_answer()
+sc.print
+sc.delay(initdelay)
+
+
+
+sc.print "Sending packet.4.." & vbcr & "=================" & vbcr
+sc.write("21006DA0CA00006704650001820010EE4F4AAB721DDC9494C3867836B849159F74BD27DFF43641113D8C64AB7EEC59AE3680D450EBD96770ED239162698D428F8B0B783F649F8A0ABD6EA6703E5F071E9A0EE07B211829135B4A576CB98A9EFF8FF19F21A57A2E1CFECE19D4A4D7AC0233")
+sc.print "Response from card: " & vbcr
+sc.delay(200)
+answer = read_answer()
+sc.print
+sc.delay(initdelay)
+
+sc.print "Sending packet.5.." & vbcr & "=================" & vbcr
+sc.write("21006DA0CA00006704650001820010531425D02B65C1C3A6790D1382CD8C2B6C8098320F9E9C11E3ACFBB128B2D1D03DD98BF0C61F23742C39B948D4908031BDCC81705ABF9728844808DB2F8CCA5FD35147C228C3E01A37A6C19EEF6406D838877BD771FA15CDF7DFD91EAB9C1B4B0214")
+sc.print "Response from card: " & vbcr
+sc.delay(200)
+answer = read_answer()
+sc.print
+sc.delay(initdelay)
+
+    wx.closeport
+    sc.delay(initdelay)
+    wx.openport
+
+
+sc.print
+sc.print "Card should now be at Rev10B!" & vbcr
+sc.print
+sc.print "Note: If you still are rev 109 then run again." & vbcr
+sc.print
+End sub
+
+function read_answer()
+length = sc.bytesinbuffer
+sc.read(length)
+if length = 0 then
+    answer=""
+    sc.print("(No answer)")
+else
+    For X = 0 to length - 1
+        ThisByte = Hex(Sc.GetByte(X))
+        if Len(ThisByte) = 1 then ThisByte = "0" & ThisByte
+        Thisbyte = Thisbyte & " "
+        res = res & Thisbyte
+        Sc.Print(ThisByte)
+    Next
+end if
+Sc.Print
+read_answer = answer
+end function
+
+Wx.ResetDelay = 150
+Wx.ByteDelay = 0
+Wx.RxByteTimeout = 50
+Wx.CommPort = "com1:"
+Wx.BaudRate = 115200
+Wx.ResetBaudRate = 9600
+Wx.Parity = 1
+Wx.StopBits = 2
+Wx.DTRControl = 1
+Wx.RTSControl = 0
+Wx.ResetMode = 1
+Wx.ResetLine = 0
+Wx.ByteConvention = 0
+Wx.FlushEchoByte = 1
+Wx.FlushBeforeWrite = 1
+Wx.IgnoreTimeouts = 0
+Wx.ResetAfterTimeout = 0
+Wx.LogTransactions = 0
+Wx.DisplayUSW = 0
+Wx.DisplayFuse = 0

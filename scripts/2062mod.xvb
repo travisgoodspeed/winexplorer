@@ -1,0 +1,441 @@
+' Rom 206 26/27 method
+'
+'*************************************************
+
+Option Explicit
+Const FileFilter = "Binary File (*.bin)|*.bin;|BIN Files (*.bin)|*.bin"
+Dim StartDate
+Dim FileName
+Dim OutFile
+Dim MsgPrompt
+Dim MenuChoice
+Dim Bytes
+Dim Bytes1
+Dim Bytes2
+Dim ByteOut
+Dim InitDelay
+Dim EndDelay
+Dim InitVcc
+Dim LowVcc
+Dim GlitchType
+Dim Count
+Dim i
+Dim Dump
+dim Comando15
+dim boot1
+dim countx
+dim loc
+
+InitDelay = &H0280
+EndDelay = &H02A0
+GlitchType = &H9
+InitVcc = &H5A
+LowVcc = &H56
+
+
+Call SetupLoader()
+
+Sub Main()
+
+If CheckChipVer <> 1 then
+Sc.MsgBox("Flash your Loader with NewD13a.hex")
+Exit Sub
+End if
+
+sc.verbose = 1
+Sc.Write("A0")
+Clearoutputwindow
+
+Call GetFileName()
+StartDate = Now()
+Do
+MsgPrompt="Rom206 Reader"
+MenuChoice=Sc.ButtonBox(MsgPrompt,vbDefaultButton1 +vbQuestion," ROM206 Dumper" & " Versión: 1.0" & " - Menú : ","Eep:$3000","Eep:$8000","Eep:$A000","RAM","E xit" )
+
+Select Case MenuChoice
+Case 1: Eep30()
+Case 2: Eep80()
+Case 3: EepA0()
+Case 4: RAM()
+End Select
+Loop Until MenuChoice=5
+
+Exit Sub
+
+End Sub
+'E5
+Sub Eep30()
+loc = "eep30"
+Dump = &H3000
+boot1="21406DA0CA000067046500000000009D9D9D9D9D9D9 D9D9D9D718020274FB74BA630B74A92C64AAD203C4B26F73C4 A20F3B752A6F04A26FDB65281AD0C4AADF126FB20D99BA6552 0F2B7524FADE7AE0A431100ADDC20001000ADD698250411002 00410002000ADC9485A26F01000810213"
+Call Glitch
+End Sub
+
+Sub Eep80()
+loc = "Eep80"
+Dump = &H3000
+'ext clk ack, int clk dumper
+' boot1="21406DA0CA000067046500000000009D9D9D9D9DA65 5CD432D718020274FB74BA680B74A92C64AAD203C4B26F73C4 A20F3B752A6F04A26FDB652819D9D4AADF126FB20D99BA6552 0F2B7524FADE7AE0A431100ADDC20001000ADD698250411002 00410002000ADC9485A26F010008102CF"
+
+'int clk ack - dumper
+boot1="21406DA0CA000067046500000000009D9D9D9D9D9D9 D9D9D9D718020274FB74BA680B74A92C64AAD203C4B26F73C4 A20F3B752A6F04A26FDB65281AD0C4AADF126FB20D99BA6552 0F2B7524FADE7AE0A431100ADDC20001000ADD698250411020 0410002000ADC9485A26F010008102A3"
+Call Glitch
+End Sub
+
+
+Sub EepA0()
+loc = "EepA0"
+Dump = &H3000
+boot1="21406DA0CA000067046500000000009D9D9D9D9D9D9 D9D9D9D718020274FB74BA6A0B74A92C64AAD203C4B26F73C4 A20F3B752A6F04A26FDB65281AD0C4AADF126FB20D99BA6552 0F2B7524FADE7AE0A431100ADDC20001000ADD698250411002 00410002000ADC9485A26F01000810283"
+Call Glitch
+End Sub
+
+Sub RAM()
+loc = "ram"
+Dump = &H3000
+boot1="21406DA0CA000067046500000000009D9D9D9D9D9D9 D9D9D9D718020274FB74BA620B74A92C64AAD203C4B26F73C4 A20F3B752A6F04A26FDB65281AD0C4AADF126FB20D99BA6552 0F2B7524FADE7AE0A431100ADDC20001000ADD698250411002 00410002000ADC9485A26F01000810223"
+
+Call Glitch
+End Sub
+
+Sub rom04()
+loc = "rom04"
+Dump = &H3000
+boot1 ="21406DA0CA000067046500000000009D9D9D9D9D9D9D9 D9D 9D710020274FB74BA640B74A92C64AAD203C4B26F73C4A20F3 B752A6F04A26FDB65281AD0C4AADF126FB20D99BA65520F2B7 524FADE7AE0A431100ADDC20001000ADD69825041100200410 002000ADC9485A26F010008102E3"
+Call Glitch
+End Sub
+Sub rom06()
+loc = "rom06"
+Dump = &H3000
+boot1 ="21406DA0CA000067046500000000009D9D9D9D9D9D9D9 D9D 9D710020274FB74BA660B74A92C64AAD203C4B26F73C4A20F3 B752A6F04A26FDB65281AD0C4AADF126FB20D99BA65520F2B7 524FADE7AE0A431100ADDC20001000ADD69825041100200410 002000ADC9485A26F010008102c3"
+Call Glitch
+End Sub
+Sub rom08()
+loc = "rom08"
+Dump = &H3000
+boot1 ="21406DA0CA000067046500000000009D9D9D9D9D9D9D9 D9D 9D710020274FB74BA680B74A92C64AAD203C4B26F73C4A20F3 B752A6F04A26FDB65281AD0C4AADF126FB20D99BA65520F2B7 524FADE7AE0A431100ADDC20001000ADD69825041100200410 002000ADC9485A26F01000810223"
+Call Glitch
+End Sub
+Sub rom0B()
+loc = "rom0B"
+Dump = &H3000
+boot1 ="21406DA0CA000067046500000000009D9D9D9D9D9D9D9 D9D 9D710020274FB74BA6b0B74A92C64AAD203C4B26F73C4A20F3 B752A6F04A26FDB65281AD0C4AADF126FB20D99BA65520F2B7 524FADE7AE0A431100ADDC20001000ADD69825041100200410 002000ADC9485A26F01000810213"
+Call Glitch
+End Sub
+Sub rom0E()
+loc = "rom0E"
+Dump = &H3000
+boot1 ="21406DA0CA000067046500000000009D9D9D9D9D9D9D9 D9D 9D710020274FB74BA6e0B74A92C64AAD203C4B26F73C4A20F3 B752A6F04A26FDB65281AD0C4AADF126FB20D99BA65520F2B7 524FADE7AE0A431100ADDC20001000ADD69825041100200410 002000ADC9485A26F01000810243"
+Call Glitch
+End Sub
+Sub rom18()
+loc = "rom18"
+Dump = &H3000
+boot1 ="21406DA0CA000067046500000000009D9D9D9D9D9D9D9 D9D 9D710120274FB74BA680B74A92C64AAD203C4B26F73C4A20F3 B752A6F04A26FDB65281AD0C4AADF126FB20D99BA65520F2B7 524FADE7AE0A431100ADDC20001000ADD69825041100200410 002000ADC9485A26F01000810222"
+Call Glitch
+End Sub
+Sub rom1B()
+loc = "rom1B"
+Dump = &H3000
+boot1 ="21406DA0CA000067046500000000009D9D9D9D9D9D9D9 D9D 9D710120274FB74BA6b0B74A92C64AAD203C4B26F73C4A20F3 B752A6F04A26FDB65281AD0C4AADF126FB20D99BA65520F2B7 524FADE7AE0A431100ADDC20001000ADD69825041100200410 002000ADC9485A26F01000810212"
+Call Glitch
+End Sub
+Sub rom1E()
+loc = "rom1E"
+Dump = &H3000
+boot1 ="21406DA0CA000067046500000000009D9D9D9D9D9D9D9 D9D 9D710120274FB74BA6e0B74A92C64AAD203C4B26F73C4A20F3 B752A6F04A26FDB65281AD0C4AADF126FB20D99BA65520F2B7 524FADE7AE0A431100ADDC20001000ADD69825041100200410 002000ADC9485A26F01000810242"
+Call Glitch
+End Sub
+Sub rom28()
+loc = "rom28"
+Dump = &H3000
+boot1 ="21406DA0CA000067046500000000009D9D9D9D9D9D9D9 D9D 9D710220274FB74BA680B74A92C64AAD203C4B26F73C4A20F3 B752A6F04A26FDB65281AD0C4AADF126FB20D99BA65520F2B7 524FADE7AE0A431100ADDC20001000ADD69825041100200410 002000ADC9485A26F01000810221"
+Call Glitch
+End Sub
+Sub rom2B()
+loc = "rom2B"
+Dump = &H3000
+boot1 ="21406DA0CA000067046500000000009D9D9D9D9D9D9D9 D9D 9D710220274FB74BA6b0B74A92C64AAD203C4B26F73C4A20F3 B752A6F04A26FDB65281AD0C4AADF126FB20D99BA65520F2B7 524FADE7AE0A431100ADDC20001000ADD69825041100200410 002000ADC9485A26F01000810211"
+Call Glitch
+End Sub
+Sub rom2E()
+loc = "rom2E"
+Dump = &H3000
+boot1 ="21406DA0CA000067046500000000009D9D9D9D9D9D9D9 D9D 9D710220274FB74BA6e0B74A92C64AAD203C4B26F73C4A20F3 B752A6F04A26FDB65281AD0C4AADF126FB20D99BA65520F2B7 524FADE7AE0A431100ADDC20001000ADD69825041100200410 002000ADC9485A26F01000810241"
+Call Glitch
+End Sub
+
+Comando15="210008A0CA000002150086D2"
+
+
+
+
+
+
+
+Sub Glitch ()
+
+count = 0
+Print"Initial Parameters = Delay:" & HexString(InitDelay, 4) & " VCC:" & HexString(InitVcc, 2)& " Glitch Type:" & HexString(GlitchType, 2) & vbCr & vbCr
+Do
+Sc.Write("B0" & HexString(InitVcc, 2))
+
+
+Do
+
+Sc.Write("06100103501A00")'reset
+Sc.Read(2)
+Bytes = Sc.Getbyte(1)
+
+If Bytes > 25 then
+Sc.Read(Bytes)
+countx=0
+Exit Do
+Else
+Count = Count + 1
+End If
+
+
+If Count > 100 Then
+ok = MsgBox("Card Maybe Looped - NO ATR - ", vbOKOnly, "Rom 110 Rev ACx Reader")
+Exit Sub
+End If
+
+Loop
+
+
+Sc.verbose =0
+
+Sc.Write("02 15 00") 'set Tx/Rx to 32 cycles per bit
+Sc.Read(02)
+
+'Set Packet Size
+Sc.write("0A 6004 21C1018061 500400")
+Sc.Read(2)
+Bytes = Sc.Getbyte(1)
+Sc.Read(Bytes)
+
+'cmd $04 - Load dumper code at $0C98
+' sc.write("77156070 " + boot1 + "500700")
+' sc.write("76 6070 " + boot1 + "500700")
+' Sc.Read(2)
+'' Bytes = Sc.Getbyte(1)
+' if Bytes > 0 then
+' Bytes = Sc.Read(Bytes)
+' Bytes1 = Sc.Getbyte(0)
+' Bytes2 = Sc.Getbyte(5)
+'--------check response to make sure = 12 00 04 84 00 90 00 02--------
+' if Bytes1 = &h12 and Bytes2 = &h90 then
+' sc.verbose = false
+' else
+' print VbCr & "Bad CMD04 response...exiting sub..." & VbCr
+' exit sub
+' end if
+'' else
+' print VbCr & "Bad CMD04 response...exiting sub..." & VbCr
+' exit sub
+' End if
+
+'cmd $26 - for non-zero response set cmd $2A/2B flag $DA2 to $80
+' Sc.write("13 600B 21400DA0CA0000072605049866E10042C7 0e04 504700")
+'Sc.Read(2)
+' Bytes = Sc.Getbyte(1)
+' if Bytes > 0 then
+' Bytes = Sc.Read(Bytes)
+' Bytes1 = Sc.Getbyte(2)
+' Bytes2 = Sc.Getbyte(5)
+'--------check response to make sure len $44 non-zero 12 00 44 AA 40 XX XX XX --------
+' if Bytes1 = &h44 and Bytes2 <> &h00 then
+' sc.verbose = false
+' else
+' print VbCr & "Bad CMD2A response...exiting sub..." & VbCr
+' exit sub
+' end if
+'else
+' print VbCr & "Bad CMD2A response...exiting sub..." & VbCr
+' exit sub
+' End if
+
+
+'cmd $27 loader glitch packet
+' sc.write("7BFD4DFAACFFFF1D1B5D07075E1A666EE609852C EF 1B 08 60 CC 53 68 23 3F 68 7F 23 00 1B D4 E5 DB 0E DF 0F 42 29 0C 30 72 8A 4C DA 19 82 52 72 0F FC B8 B5 9E D6 B3 02 D7 82 CB B4 96 FC E0 EB E3 1A 2C 20 9E 41 DF 9E 78 FF BF 1E" + "0e03 500700")
+' sc.write("7BFD4DFAACFFFF1D1B5D07075E1A666EE60985 2C EF 1B 08 60 CC 53 68 23 3F 68 7F 23 00 1B D4 E5 DB 0E DF 0F 42 29 0C 30 72 8A 4C DA 19 82 52 72 0F FC B8 B5 9E D6 B3 02 D7 82 CB B4 96 FC E0 EB E3 1A 2C 20 9E 41 DF 9E 78 FF BF 1E FD 4D FA ACFFFF1D1B5D07075E1A666EE609852CEF1B080 CC 53 68 23 3F 68 7F 23 00 1B D4 E5 DB 0E DF 0F 42 29 0C 30 72 8A 4C DA 19 82 52 72 0F FC B8 B5 9E D6 B3 02 D7 82 CBB496FCE0EBE31A2C209E41DF9E78FFBF1E" + "0e02 20ffff 20ffff 20ffff 500700")
+' sc.write("7BFD4DFAACFFFF1D1B5D07075E1A666EE60985 2C EF 1B 08 60 CC 53 68 23 3F 68 7F 23 00 1B D4 E5 DB 0E DF 0F 42 29 0C 30 72 8A 4C DA 19 82 52 72 0F FC B8 B5 9E D6 B3 02 D7 82 CB B4 96 FC E0 EB E3 1A 2C 20 9E 41 DF 9E 78 FF BF 1E & " 20ffff 20ffff 20 "& hexstring(InitDelay,4)& "09 500000")
+
+' sc.read(2)
+' Bytes = Sc.Getbyte(1)
+' Sc.Read(Bytes)
+
+'CMD15 auto
+Sc.write("161F600B" + Comando15 + "20 "& hexstring(InitDelay,4) & hexstring(GlitchType,2)& "500000")
+sc.read(2)
+Bytes = Sc.Getbyte(1)
+Sc.Read(Bytes)
+
+Bytes2 =&h12
+byteout=&h12
+' byteout=&h00
+if bytes > 0 then
+byteout=Sc.getbyte(0)
+sc.print HexString(byteout,2)
+If byteout <> &h12 then
+bytes2 = byteout
+End if
+' If byteout = &hF0 then
+' bytes2 = &h55
+' End if
+' If byteout = &hF8 then
+' exit sub
+' End if
+' If byteout = &hFf then
+' exit sub
+' End if
+End if
+
+If Bytes2 = &H55 Then
+Sc.Write ("A1")
+Print " : ACK Received ....." & vbcr
+Print "***************************************" & vbcr
+Print " " & HexString(Bytes2, 2) & " Was Glitch at: Delay:" & HexString(InitDelay,4) & " VCC:" & HexString(InitVcc, 2) & " GlitchType:" & HexString(GlitchType, 2) & vbcr
+Print " Delay Range: " & HexString(InitDelay, 4) & " to " & HexString(EndDelay, 4)& vbcr
+Print " Elapsed: " & TimeDiff(StartDate, Now()) & vbcr
+Print "********************************" & vbcr
+Print "* REV 602 , Glitch Succes !! *" & vbcr
+Print "* *" & vbcr
+Print "* Dumping Cam.. *" & vbcr
+Print "********************************" & vbcr
+Call SaveEEprom
+Exit Sub
+End If
+
+If ByteOut <> &H55 Then
+Print "."
+InitVcc = InitVcc - .1
+If InitVcc < LowVcc Then
+InitVcc = &H5A
+InitDelay = InitDelay + 1
+Print " Delay:" & HexString(InitDelay, 4) & " VCCStart:" & HexString(InitVcc, 2) & " Glitch Type:" & HexString(GlitchType, 2)
+Print "Elapsed = " & TimeDiff(StartDate, Now()) & vbcr
+End If
+End If
+
+If InitDelay > EndDelay Then
+InitDelay = &H100
+GlitchType = GlitchType
+If GlitchType > &H9 Then
+GlitchType = &H9
+End If
+End If
+
+Loop
+End Sub
+
+Function HexString(Number,Length)
+' This function takes 2 arguments, a number and a length. It converts the decimal
+' number given by the first argument to a Hexidecimal string with its length
+' equal to the number of digits given by the second argument
+Dim RetVal
+Dim CurLen
+RetVal=Hex(Number)
+CurLen=Len(RetVal)
+If CurLen<Length Then
+RetVal=String(Length-CurLen,"0") & RetVal
+End If
+HexString=RetVal
+End Function
+
+Function CheckChipVer()
+
+CheckChipVer = 1
+
+sc.write("90")
+sc.delay(80)
+
+if sc.read(4) <> 4 then
+CheckChipVer = 0
+Exit Function
+End if
+
+if getbyte(0) <> &H4E then CheckChipVer = 0
+if getbyte(1) <> &H44 then CheckChipVer = 0
+if getbyte(2) <> &H31 then CheckChipVer = 0
+if getbyte(3) <> &H33 then CheckChipVer = 0
+end function
+Function TimeDiff (StartTime, EndTime)
+Dim Hours, Minutes, Seconds
+Seconds = DateDiff("s", StartTime, EndTime)
+If Seconds > 90000 Then Seconds = 90000
+If Seconds < 0 Then Seconds = 0
+Minutes = Seconds / 60
+Minutes = Fix(Minutes)
+Seconds = Seconds - (Minutes * 60)
+Hours = Minutes / 60
+Hours = Fix(Hours)
+Minutes = Minutes - (Hours * 60)
+Seconds = CStr(Seconds)
+Minutes = CStr(Minutes)
+Hours = CStr(Hours)
+If Len(Seconds) = 1 Then Seconds = "0" + Seconds
+If Len(Minutes) = 1 Then Minutes = "0" + Minutes
+If Len(Hours) = 1 Then Hours = "0" + Hours
+TimeDiff = Hours & ":" & Minutes & ":" & Seconds
+End Function
+
+Sub SaveEEprom()
+
+Dim ThisByte
+Dim Address
+Dim RetValue
+Dim ByteCnt
+Dim totalcount
+Dim insidecount
+Dim RcvdBytes
+
+totalcount = 0
+sc.verbose = true
+
+Sc.Write("06 0E 50 0F" & HexString(Dump, 4) & "00")
+Sc.Delay(Dump)
+Sc.Read(Dump)
+Do
+
+RcvdBytes = Sc.Getbyte(totalcount)
+call Fs.FilePutc(OutFile, RcvdBytes)
+Call Sc.ProgressBox ("Dumping ROM 110 EEPROM", totalcount, Dump, "FINISHED!!")
+
+totalcount = totalcount +1
+loop until totalcount = Dump
+
+Fs.FileClose(OutFile)
+end sub
+
+Sub GetFileName()
+FileName = Fs.FileSaveDialog(FileFilter, "Please select a name for the new bin file","Eeprom.bin")
+If FileName <> "" Then
+OutFile = Fs.FileCreate(FileName)
+end if
+End sub
+
+
+Function SetupLoader()
+sc.print "****************** Setting up WinExplorer ************************" & VbCr
+Wx.BaudRate = 115200
+Wx.ResetBaudRate = 115200
+Wx.Parity = 0
+Wx.StopBits = 0
+Wx.DTRControl = 0
+Wx.RTSControl = 1
+Wx.ResetDelay = 0
+Wx.ByteDelay = 0
+Wx.RxByteTimeout = 2500
+Wx.ResetMode = 2
+Wx.ResetLine = 1
+Wx.ByteConvention = 1
+Wx.FlushEchoByte = 0
+Wx.FlushBeforeWrite = 1
+Wx.IgnoreTimeouts = 1
+Wx.ResetAfterTimeout = 0
+Wx.LogTransactions = 0
+Wx.DisplayUSW = 0
+Wx.DisplayFuse = 0
+End function

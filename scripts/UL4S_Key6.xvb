@@ -1,0 +1,822 @@
+' Author: Lee Gibling
+' Preliminary attempt of a DTA (differential timing analysis) of the
+' (3)DES accelerator of the P4/SLE66. The challenging 6 byte key
+'  is entered in the ATR_DM of the P4 after reset.
+
+' Self check of the 8 watershed intervals
+
+' 0x3bfd/e  0x350d/e  0x370d/e  0x342d/e  
+' 0x313d/e  0x302d/e  0x2e4d/e  0x2e2d/e  
+
+' for the 6 byte key values:
+
+' 00 00 00 00 00 00
+' ...
+' 00 00 00 00 FF FF
+
+' Tested with T911/UL4S on a looped P4/2001
+
+Dim AI_cmd(&h1B), AI_timeouts (255, 255), AI_timeout_bracket(15)
+
+Dim I_nbr_key_bytes_f0, I_nbr_key_bytes_f1
+Dim I_idx_key_0_start_f0, I_cmd_ubound 
+Dim I_nbr_attempts_f1, I_wait_rs232, I_wait_rs232_ext
+
+' -------------------------------------
+
+Sub Main()
+
+Dim i1, i2, i3, i4, I_timeout, AI_key(13), I_nbr_bytes_received_f1
+Dim I_idx_timeout_f0, I_idx_timeout_max_f0
+Dim H_timeout
+
+Success = Sc.Log ("Start of Test Run")
+if Success = 1 Then
+   Sc.Err("Unable to open LogFile")
+End If
+Success = Sc.Log("")
+
+I_nbr_key_bytes_f1   = 6
+
+I_nbr_attempts_f1    = 8
+I_wait_rs232         = 300 ' in millisecs 
+I_wait_rs232_ext     = 100 ' extension
+
+I_key_lsb2_bracket      = 0
+
+
+AI_timeout_bracket(0) = &h3bfe  ' 00 00
+AI_timeout_bracket(1) = &h350e  ' 00 01
+AI_timeout_bracket(2) = &h370e  ' 00 02
+
+AI_timeout_bracket(3) = &h342e  ' 01 01
+AI_timeout_bracket(4) = &h313e  ' 01 02
+AI_timeout_bracket(5) = &h302e  ' 02 04
+AI_timeout_bracket(6) = &h2e4e  ' 01 04
+AI_timeout_bracket(7) = &h2e2e  ' 01 08
+
+I_nbr_key_bytes_f0 = I_nbr_key_bytes_f1 - 1
+For i1 = 0 to 255
+  For i2 = 0 to I_nbr_key_bytes_f0
+     AI_timeouts(i2, i1) = 0
+  Next
+Next
+
+'----------------------------------------
+
+' 256 6 byte key values:
+' 00 00 00 00 00 00
+' ...
+' 00 00 00 00 00 FF
+
+for i1 = 0 to 255
+   i2 = FI_timeout_lsb (i1)
+   AI_timeouts(0, i1) = i2 
+next
+
+' 256 5 byte key values:
+' 00 00 00 00 01 00
+' ...
+' 00 00 00 00 01 FF
+
+for i1 = 0 to 255
+   i2 = FI_timeout_lsb2_1 (i1)
+   AI_timeouts(1, i1) = i2 
+next
+
+'------------------
+
+' 256 5byte key values:
+' 00 00 00 00 02 00
+' ...
+' 00 00 00 00 02 FF
+
+for i1 = 0 to 255
+   i2 = FI_timeout_lsb2_2 (i1)
+   AI_timeouts(2, i1) = i2 
+next
+
+'------------------
+
+For i1 = 0 to 255
+   For i2 = 3 to 255
+      i3 = FI_timeout_bracket_lsb(i2)
+      AI_timeouts(i2, i1) = AI_timeouts (i3,i1) 
+   Next
+Next
+
+I_idx_key_0_start_f0 = &h0F
+
+AI_cmd(&h00) = &h1A  ' gl**ch packet len
+AI_cmd(&h01) = &h10  ' set to 9.6 kBaud
+AI_cmd(&h02) = &h01  ' 1st power up
+AI_cmd(&h03) = &h30  ' delay
+AI_cmd(&h04) = &h00  ' delay
+AI_cmd(&h05) = &h00  ' delay
+AI_cmd(&h06) = &h01  ' 2nd power up
+
+AI_cmd(&h07) = &h20  ' wait for ATR_DM past the 0x0390 watershed
+AI_cmd(&h08) = &h03  '
+AI_cmd(&h09) = &hB0  '
+AI_cmd(&h0A) = &h80  ' receive byte 33 (beginning of ATR_DM)
+AI_cmd(&h0B) = &h0E  ' watchdog timer CMD
+AI_cmd(&h0C) = &h03  ' watchdog timer value
+AI_cmd(&h0D) = &h8c  ' receive 13 (dec) bytes from card (remainder of ATR_DM)
+AI_cmd(&h0E) = &hC5  ' send 5 bytes to card 
+AI_cmd(&h0F) = &h00  ' pseudo key
+AI_cmd(&h10) = &h00  ' -"-
+AI_cmd(&h11) = &h00  ' -"-
+AI_cmd(&h12) = &h00  ' -"-
+AI_cmd(&h13) = &h00  ' -"-
+AI_cmd(&h14) = &h00  ' -"-
+'-------------------------
+AI_cmd(&h15) = &h20  ' critical watershed, if increased by one
+AI_cmd(&h16) = &h5A  ' a regular ATR (3F 78 ...) will be appended to the output
+AI_cmd(&h17) = &h26
+AI_cmd(&h18) = &h10  ' set to 9.6 kBaud again after watchdog timer unl@@per reset
+AI_cmd(&h19) = &h8C  ' receive 13 (dec) bytes from card
+AI_cmd(&h1A) = &h00  ' packet end
+I_cmd_ubound = Ubound(AI_cmd)
+
+AI_key(0) = 0
+AI_key(1) = 0
+AI_key(2) = 0
+AI_key(3) = 0
+AI_key(4) = 0
+
+i3 = I_nbr_key_bytes_f0 - 1
+
+I_key_lsb2_bracket = FI_key_lsb2_bracket()
+
+I_key_range_lsb2_from_f0 = I_key_lsb2_bracket * &h20
+I_key_range_lsb2_to_f0 = I_key_range_lsb2_from_f0 + &h1F
+
+For i1 = 0 to 255
+  For i2 = 0 to 1
+    i4 = I_nbr_key_bytes_f0 - i2
+    AI_key(i4) = 0
+  Next
+
+  For i2 = I_key_range_lsb2_from_f0  to I_key_range_lsb2_to_f0
+     
+     I_idx_timeout_f0 = i2
+     I_timeout = AI_timeouts(I_idx_timeout_f0, i1)
+     if I_timeout > 0 Then
+        AI_key(I_nbr_key_bytes_f0) = i1
+        AI_key(i3)                 = i2
+      
+      S_key = FS_HexString_ary( _
+         AI_key, _
+         0, _
+         I_nbr_key_bytes_f1)
+      
+      H_timeout = HexString(I_timeout, 4) 
+      Call Sc.ProgressBox ( _
+        "verifying timeout: 0x" & H_timeout, _ 
+         i1 + 1, 256, _
+         "P4 6 byte DTA - Key value: " & S_key )
+
+        I_nbr_bytes_received_f1 = FI_verify_limit ( _
+            AI_key, _
+            I_timeout, _
+            &h10, _
+            &h1d)
+      End If
+   Next
+Next
+
+End Sub
+
+'------------------------
+
+Function FI_key_lsb2_bracket
+
+Dim I_retval, I_loop, I_res_prompt
+Dim S_menu_prompt 
+
+S_menu_prompt = "key range: 00 00 00 00 ss 0x00-0xff " & vbCrLf & vbCrLf
+S_menu_prompt = S_menu_prompt & "0: 00 - 1F" & vbCrLf
+S_menu_prompt = S_menu_prompt & "1: 20 - 3F" & vbCrLf
+S_menu_prompt = S_menu_prompt & "2: 40 - 5F" & vbCrLf
+S_menu_prompt = S_menu_prompt & "3: 60 - 7F" & vbCrLf
+S_menu_prompt = S_menu_prompt & "4: 80 - 1F" & vbCrLf
+S_menu_prompt = S_menu_prompt & "5: A0 - BF" & vbCrLf
+S_menu_prompt = S_menu_prompt & "6: C0 - DF" & vbCrLf
+S_menu_prompt = S_menu_prompt & "7: E0 - FF" & vbCrLf
+
+I_loop = 0
+While I_loop = 0
+    I_res_prompt = Sc.InputBox(S_menu_prompt, "Select Your Key Range: ss", 0)
+    if (I_res_prompt >= 0) AND (I_res_prompt <= 7) Then
+       I_loop = 1
+    End If
+Wend
+
+FI_key_lsb2_bracket = I_res_prompt
+ 
+End Function
+
+'------------------------
+' 00 00 00 00 00 00
+' ...
+' 00 00 00 00 00 FF
+
+Function FI_timeout_bracket_lsb (P_I_key_lsb)
+Dim I_retval
+
+If (P_I_key_lsb MOD 2) = 1 Then
+   I_retval = 1
+else  
+  Select Case P_I_key_lsb
+  Case &h00
+     I_retval = 0
+  Case &h06
+     I_retval = 0
+  Case &h0A
+     I_retval = 0
+  Case &h0C
+     I_retval = 0
+  Case &h12
+     I_retval = 0
+  Case &h14
+     I_retval = 0
+  Case &h18
+     I_retval = 0
+  Case &h1E
+     I_retval = 0
+  Case &h22
+     I_retval = 0
+  Case &h24
+     I_retval = 0
+  Case &h28
+     I_retval = 0
+  Case &h2E
+     I_retval = 0
+  Case &h30
+     I_retval = 0
+  Case &h36
+     I_retval = 0
+  Case &h3A
+     I_retval = 0
+  Case &h3C
+     I_retval = 0
+  Case &h42
+     I_retval = 0
+  Case &h42
+     I_retval = 0
+  Case &h44
+     I_retval = 0
+  Case &h48
+     I_retval = 0
+  Case &h4E
+     I_retval = 0
+  Case &h50
+     I_retval = 0
+  Case &h56
+     I_retval = 0
+  Case &h5A
+     I_retval = 0
+  Case &h5C
+     I_retval = 0
+  Case &h60
+     I_retval = 0
+  Case &h66
+     I_retval = 0
+  Case &h6A
+     I_retval = 0
+  Case &h6C
+     I_retval = 0
+  Case &h72
+     I_retval = 0
+  Case &h74
+     I_retval = 0
+  Case &h78
+     I_retval = 0
+  Case &h7E
+     I_retval = 0
+  Case &h82
+     I_retval = 0
+  Case &h84
+     I_retval = 0
+  Case &h88
+     I_retval = 0
+  Case &h8E
+     I_retval = 0
+  Case &h90
+     I_retval = 0
+  Case &h96
+     I_retval = 0
+  Case &h9A
+     I_retval = 0
+  Case &h9C
+     I_retval = 0
+  Case &hA0
+     I_retval = 0
+  Case &hA6
+     I_retval = 0
+  Case &hAA
+     I_retval = 0
+  Case &hAC
+     I_retval = 0
+  Case &hB2
+     I_retval = 0
+  Case &hB4
+     I_retval = 0
+  Case &hB8
+     I_retval = 0
+  Case &hC0
+     I_retval = 0
+  Case &hC6
+     I_retval = 0
+  Case &hCA
+     I_retval = 0
+  Case &hCC
+     I_retval = 0
+  Case &hD2
+     I_retval = 0
+  Case &hD4
+     I_retval = 0
+  Case &hD8
+     I_retval = 0
+  Case &hBE
+     I_retval = 0
+  Case &hC0
+     I_retval = 0
+  Case &hC6
+     I_retval = 0
+  Case &hCA
+     I_retval = 0
+  Case &hD2
+     I_retval = 0
+  Case &hD4
+     I_retval = 0
+  Case &hCC
+     I_retval = 0
+  Case &hD2
+     I_retval = 0
+  Case &hD4
+     I_retval = 0
+  Case &hD8
+     I_retval = 0
+  Case &hDE
+     I_retval = 0
+  Case &hE2
+     I_retval = 0
+  Case &hE4
+     I_retval = 0
+  Case &hE8
+     I_retval = 0
+  Case &hEE
+     I_retval = 0
+  Case &hF0
+     I_retval = 0
+  Case &hF6
+     I_retval = 0
+  Case &hFA
+     I_retval = 0
+  Case &hFC
+     I_retval = 0
+  Case Else
+     I_retval = 2
+  End Select
+End If
+
+FI_timeout_bracket_lsb = I_retval
+
+End Function
+
+'-----------------------------------
+' 00 00 00 01 00
+' ...
+' 00 00 00 01 FF
+
+Function FI_timeout_bracket_lsb2_1 (P_I_key_lsb)
+
+Dim I_retval, I_low_nibble
+
+I_retval = -1
+
+I_low_nibble = P_I_key_lsb  MOD  16
+' Sc.print ("trace-1: P_I_key_lsb " & P_I_key_lsb & " - I_low_nibble " & I_low_nibble & vbcrlf) 
+
+if I_low_nibble = 0 Then
+   I_retval =  FI_timeout_bracket_lsb (P_I_key_lsb)
+   ' Sc.print ("trace-2: P_I_key_lsb " & P_I_key_lsb & " - I_timeout_bracket " & I_retval & vbcrlf) 
+else   
+   if I_low_nibble = 1 Then 
+      I_retval = 3
+      ' Sc.print ("trace-3: P_I_key_lsb " & P_I_key_lsb & " - I_timeout_bracket " & I_retval & vbcrlf) 
+   else 
+      if (I_low_nibble = 2) OR (I_low_nibble = 3) Then
+         I_retval = 4  
+      else 
+         if (I_low_nibble >= 4) AND (I_low_nibble <= 7) Then
+            I_retval = 6
+         else 
+            if (I_low_nibble >= 8) AND (I_low_nibble <= 15) Then
+               I_retval = 7
+            end if
+         end if
+      end if
+   end if
+end if  
+
+FI_timeout_bracket_lsb2_1 = I_retval
+
+End Function
+
+'----------------------------
+' 00 00 00 00 02 00
+' ...
+' 00 00 00 00 02 FF
+
+Function FI_timeout_bracket_lsb2_2 (P_I_key_lsb)
+
+Dim I_retval, I_low_nibble
+
+I_retval = -1
+
+I_low_nibble = P_I_key_lsb  MOD  8 
+
+if (I_low_nibble = 0) Then
+   I_retval =  FI_timeout_bracket_lsb (P_I_key_lsb) 
+else    
+   if I_low_nibble = 1 Then 
+      I_retval = 3
+   else 
+      if (I_low_nibble = 2) OR (I_low_nibble = 3) Then
+         I_retval = 4  
+      else       
+         if (I_low_nibble >= 4) AND (I_low_nibble <= 7) Then
+            I_retval = 5
+         end if
+      end if
+   end if
+end if  
+
+FI_timeout_bracket_lsb2_2 = I_retval 
+
+End Function
+
+'---------------------------
+' 00 00 00 00 00 00
+' ...
+' 00 00 00 00 00 FF
+
+function FI_timeout_lsb (P_I_key_lsb)
+
+Dim I_retval, I_res_bracket, StringToLog
+Dim H_lsb
+
+I_retval      = 0 
+I_res_bracket = FI_timeout_bracket_lsb(P_I_key_lsb)
+
+if (I_res_bracket >= 0) AND (I_res_bracket <= 3)  Then
+  I_retval = AI_timeout_bracket(I_res_bracket)
+else
+   H_lsb = HexString(P_I_key_lsb, 2)  
+   StringToLog = "Error in timeout_lsb : " & H_lsb & " - bracket: " & I_res_bracket 
+   I_retval = -1
+   Sc.Print(StringToLog & vbcrlf)
+   Sc.Log(StringToLog)
+   Sc.Log("")
+End If
+
+FI_timeout_lsb = I_retval
+
+End Function
+
+'---------------------------
+' 00 00 00 00 01 00
+' ...
+' 00 00 00 00 01 FF
+
+Function FI_timeout_lsb2_1 (P_I_key_lsb)
+
+Dim I_retval, I_res_bracket, StringToLog
+Dim H_lsb
+
+I_retval      = 0 
+I_res_bracket = FI_timeout_bracket_lsb2_1(P_I_key_lsb)
+
+if (I_res_bracket >= 0) AND (I_res_bracket <= 7) Then
+  I_retval = AI_timeout_bracket(I_res_bracket)
+Else
+   H_lsb = HexString(P_I_key_lsb, 2)  
+   StringToLog = "Error in timeout_lsb2_1 : " & H_lsb & " - bracket: " & I_res_bracket 
+   I_retval = -1
+   Sc.Print(StringToLog & vbcrlf)
+   Sc.Log(StringToLog)
+   Sc.Log("")
+End If
+
+FI_timeout_lsb2_1 = I_retval
+
+End Function
+
+'----------------------------------------
+' 00 00 00 00 02 00
+' ...
+' 00 00 00 00 02 FF
+
+Function FI_timeout_lsb2_2 (P_I_key_lsb)
+
+Dim I_retval, I_res_bracket, StringToLog
+Dim H_lsb
+
+I_retval      = 0 
+I_res_bracket = FI_timeout_bracket_lsb2_2(P_I_key_lsb)
+
+if (I_res_bracket >= 0) AND (I_res_bracket <= 5)  Then
+  I_retval = AI_timeout_bracket(I_res_bracket)
+else
+   H_lsb = HexString(P_I_lsb, 2)  
+   StringToLog = "Error in timeout_lsb2_2 : " & H_lsb & " - bracket: " & I_res_bracket 
+   I_retval = -1
+   Sc.Print(StringToLog & vbcrlf)
+   Sc.Log(StringToLog)
+   Sc.Log("")
+End If
+
+FI_timeout_lsb2_2 = I_retval
+
+End Function
+
+'-------------------------------------------------------
+
+Function FI_verify_limit ( _
+   P_AI_key, _
+   P_I_timeout_1, _
+   P_I_len_expected_0_f1, _
+   P_I_len_expected_1_f1)
+
+Dim I_len_received_0_f1, I_len_received_1_f1
+Dim I_timeout_0, I_retval
+Dim StringToLog
+
+I_retval = -1
+
+I_timeout_0 = P_I_timeout_1 - 1
+
+I_len_received_0_f1 = FI_Verify_single_limit_ma ( _
+   P_AI_key, _
+   I_timeout_0, _
+   P_I_len_expected_0_f1, _
+   0) ' part
+
+' sc.print ("trace-1  I_len_received_0_f1: "   & I_len_received_0_f1 & vbcrlf)
+' sc.print ("trace-2  P_I_len_expected_0_f1: " & P_I_len_expected_0_f1 & vbcrlf)
+
+If I_len_received_0_f1 = P_I_len_expected_0_f1 Then
+   I_len_received_1_f1 = FI_Verify_single_limit_ma ( _
+   P_AI_key, _
+   P_I_timeout_1, _
+   P_I_len_expected_1_f1, _
+   1) ' part
+
+   If (I_len_received_1_f1 = P_I_len_expected_1_f1) Then
+      I_retval = I_len_received_1_f1
+   End If
+End If
+
+FI_verify_limit = I_retval
+
+End Function
+
+'---------------------------
+' multiple attempts
+
+Function FI_Verify_single_limit_ma ( _
+  P_AI_key(), _
+  P_I_timeout, _
+  P_I_len_expected_f1, _
+  P_I_part_f0)
+
+Dim I_retval, i1, I_res, I_loop, I_pos_key_f1, I_wait_rs232_lcl
+' I_wait_rs232_ext
+Dim StringToLog, H_timeout, H_len_expected_f1, S_key
+
+I_wait_rs232_lcl = I_wait_rs232
+i1               = 1
+I_retval         = -1
+
+I_loop       = 0
+While I_loop = 0
+   If i1 < I_nbr_attempts_f1 Then
+      I_res = FI_Verify_single_limit ( _
+          P_AI_key, _
+          P_I_timeout, _
+          P_I_len_expected_f1, _
+          i1, _
+          P_I_part_f0, _
+          I_wait_rs232_lcl)
+      If I_res = P_I_len_expected_f1 Then
+         I_retval = I_res
+         I_loop = 1
+      Else
+         i1 = i1 + 1
+         If I_res < P_I_len_expected_f1 Then
+            StringToLog = "Waited for unlooper's response: " & I_wait_rs232_lcl & " ms."
+            Sc.Print(StringToLog & vbcrlf)
+            Sc.Log(StringToLog)
+            Sc.Log("")
+            I_wait_rs232_lcl = I_wait_rs232_lcl + I_wait_rs232_ext
+         End If
+      End If
+   Else
+      I_loop = -1
+      S_key = FS_HexString_ary( _
+           AI_cmd, _
+           I_idx_key_0_start_f0, _
+           I_nbr_key_bytes_f1)
+      H_timeout = HexString(P_I_timeout, 4)
+      H_len_expected_f1 = HexString(P_I_len_expected_f1, 2)
+      StringToLog = "Error for key: " & S_key & vbcrlf & _
+                    "Didn't get expected result length of (hex) " & _
+                    H_len_expected_f1 &  " - at a timeout of: (hex) " & H_timeout & vbcr & _
+                    "after " &  I_nbr_attempts_f1 & " attempts"
+      Sc.Print(StringToLog & vbcrlf)
+      Sc.Log(StringToLog)
+      Sc.Log("")
+
+   End If
+Wend
+
+FI_Verify_single_limit_ma = I_retval
+
+End Function
+
+'---------------------------
+
+Function FI_Verify_single_limit ( _
+  P_AI_key(), _
+  P_I_timeout, _
+  P_I_len_expected_f1, _
+  P_I_nbr_attempt_f1, _
+  P_I_part_f0, _
+  P_I_wait_rs232)
+
+Dim i1, i2, I_nbr_bytes_received_f1, I_key
+Dim I_timeout_0, I_timeout_1, S_timeout_0, S_timeout_1
+
+For i1        = 0 to I_nbr_key_bytes_f0
+   I_key      = P_AI_key(i1)
+   i2         = I_idx_key_0_start_f0 + i1
+   AI_cmd(i2) = I_key
+Next
+
+I_timeout_1  = P_I_timeout MOD &h100
+I_timeout_0  = P_I_timeout \   &h100 ' integer division
+
+AI_cmd(&h16) = I_timeout_0
+AI_cmd(&h17) = I_timeout_1
+
+I_nbr_bytes_received_f1 = FI_send_to_card_wait_rs232 _
+    ("", 0, I_cmd_ubound, P_I_wait_rs232)
+If I_nbr_bytes_received_f1 <> P_I_len_expected_f1 Then
+   StringToLog = "Expected[" & P_I_part_f0  &  "] " & _
+   P_I_len_expected_f1 & _
+   " --- Received " & _
+   I_nbr_bytes_received_f1
+
+   Sc.Print(StringToLog & vbcrlf)
+   Sc.Log(StringToLog)
+   Sc.Log("")
+
+End If
+
+FI_verify_single_limit = I_nbr_bytes_received_f1
+
+End Function
+
+'---------------------------
+Function FI_send_to_card ( _
+ P_StringToSend_head, _
+ P_idx_start_f0, _
+ P_idx_end_f0) 
+
+Dim I_retval, I_wait_rs232_dflt ' timeout in milliseconds
+
+I_wait_rs232_dflt = 400
+
+I_retval = FI_send_to_card_wait_rs232 ( _
+ P_StringToSend_head, _
+ P_idx_start_f0, _
+ P_idx_end_f0, _
+ I_wait_rs232_dflt)
+
+FI_send_to_card = I_retval
+ 
+End Function
+'---------------------------
+
+Function FI_send_to_card_wait_rs232 ( _
+ P_StringToSend_head, _
+ P_idx_start_f0, _
+ P_idx_end_f0, _
+ P_I_wait_rs232) ' wait in milliseconds for signal to  RS232 interface
+
+Dim i1, I_bytes_received_f1, I_len_f1 , StringToSend, I_max_idx_f0 
+
+StringToSend = P_StringToSend_head
+
+I_len_f1 = P_idx_end_f0 - P_idx_start_f0 + 1
+
+StringToSend = FS_HexString_ary( _
+    AI_cmd, _
+    P_idx_start_f0, _
+    I_len_f1) 
+
+Sc.Write(StringToSend)
+Sc.Log(StringToSend)
+
+Sc.Delay(P_I_wait_rs232)
+I_bytes_received_f1 = Sc.BytesInBuffer
+StringToLog = ("Received: (dec) " & I_bytes_received_f1 & " bytes")
+Sc.Print(StringToLog)
+Sc.Log(StringToLog)
+
+Sc.Read(I_bytes_received_f1)
+I_max_idx_f0 = I_bytes_received_f1 - 1
+StringReceived = ""
+For i1 = 0 to I_max_idx_f0
+    I_byte = Sc.GetByte(i1)
+    S_byte = HexString(I_byte, 2)
+    StringReceived = StringReceived & S_byte
+    If i1 < I_max_idx_f0 Then
+       StringReceived = StringReceived & " "
+    End If
+Next
+
+Success = Sc.Log(StringReceived)
+Sc.Print(vbcrlf)
+Success = Sc.Log("")
+
+FI_send_to_card_wait_rs232 = I_bytes_received_f1
+
+End Function ' FI_send_to_card
+
+'-----------------------------------------
+Function FS_HexString_Ary( _
+P_AI_ary(), _ 
+P_I_idx_start_f0, _
+P_I_idx_len_f1)
+
+Dim S_retval, H_byte
+Dim i1, I_count_f1, I_loop, U_bound_f0, L_bound_f0, I_byte 
+
+Dim StringToLog
+StringToLog = "P_I_idx_start_f0: " & P_I_idx_start_f0
+
+S_retval = ""
+
+I_count_f1 = 0
+U_bound_f0 = Ubound(P_AI_ary)
+L_bound_f0 = Lbound(P_AI_ary)
+
+i1 = P_I_idx_start_f0
+
+I_loop = 0
+While I_loop = 0
+   if I_count_f1 < P_I_idx_len_f1 Then
+      if i1 <= U_bound_f0 Then
+         if i1 >= L_bound_f0 Then 
+            I_byte = P_AI_ary(i1)
+            H_byte = HexString(I_byte, 2)
+            S_retval = S_retval & H_byte
+            if i1 < U_bound_f0 Then
+               S_retval =  S_retval + " "
+            End If
+         End If
+         i1 = i1 + 1
+         I_count_f1 = I_count_f1 + 1 
+      Else
+         I_loop = 1
+      End If
+   Else
+      I_loop = 1
+   End If
+Wend
+
+FS_HexString_Ary = S_retval
+
+End Function
+
+'-------------------------   
+
+Function HexString(Number,Length)
+' This function takes 2 arguments, a number and a length. It converts the decimal
+' number given by the first argument to a Hexidecimal string with its length
+' equal to the number of digits given by the second argument
+Dim RetVal
+Dim CurLen
+
+RetVal=Hex(Number)
+CurLen=Len(RetVal)
+
+If CurLen<Length Then
+   RetVal=String(Length-CurLen, "0") & RetVal
+End If
+
+HexString=RetVal
+End Function

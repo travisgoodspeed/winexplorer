@@ -1,0 +1,450 @@
+'**************************************************************************************
+'* New VB SCRIPT CREATED BY RebelSerf - 1/31/06                                      *
+'*                                                                                    *
+'* FOR STREAM LOCKED, PASSWORD LOCKED or SOFT LOOPED  ROM 102s.                       *
+'* AUTOMATIC VCC, SEMI-AUTO DELAY RANGE                                               *
+'* USES ONLY NEWD13.HEX WITH LOADER                                                   *
+'* THANKS TO A CERTAIN SLAVE DRIVER  ;-)                                              *
+'*                                                                                    *
+'*                          HAPPY UNLOCKING AND GOOD LUCK!!                           *
+'*                                                                                    *
+'**************************************************************************************
+Option Explicit
+    Dim StartDate
+    Dim BuffFlg
+    Dim bytes2
+    Dim IntTim
+    Dim RngFlg
+    Dim RngHi
+    Dim RngLo
+    Dim SlFlg
+    Dim RdLen
+    Dim DtPnt
+    Dim bytes
+    Dim Uflg
+    Dim Acnt
+    Dim Mix
+    Dim VS1
+    Dim VT1
+    Dim DS1
+    Dim LP1
+    Dim LP2
+    Dim RT2
+    Dim RT3
+    Dim RT7
+    Dim VG
+    Dim DD
+    Dim TL
+    Dim RT
+    Dim T1
+    Dim T2
+    Dim T3
+    Dim T4
+    Dim T5
+    Dim T6
+    Dim GT
+    RT7 = 0
+    LP1 = 1
+    BuffFlg = 0
+    RngFlg = 0
+    SlFlg = 0
+    Uflg = 0
+    VT1 = 1
+    DS1 = 960
+    DD = DS1 + 96
+    GT=  6
+    RngLo = DS1
+    RngHi = DD
+    RT = RngLo
+    RT3 = RT                        'Do not change any values above this line
+'^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+Sub Main()
+
+    Setupunlocker()
+    If CheckChipVer <> 1 then
+     Sc.MsgBox("Flash Version ND13 needed to run this script" & VbCr & "Flash your Loader with NewD13.hex")
+     Exit Sub
+    End if
+' These, AND ONLY THESE :), are the variables you can change for rom 102 any revision up to 105/241
+    LP1       =  40      'Number of tries per delay FROM 20-100 in multiples of 20
+    VS1       =  40    'YOU CAN CHANGE THIS FROM 02-255 = semi-automatic VCC range - Loader dependent
+    Mix       =  0.5      'Glitch VCC resolution - attempts per VCC = 1/mix
+'^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    VG = VS1
+    sc.verbose = 0
+    Sc.Write("A0") ' turn led off
+    Clearoutputwindow
+    If ChkCard() = 0 then
+    Sc.MsgBox("  Unsupported Rom Version: Rom " & T1 & ", Rev " & T4 & " found." & VbCr & "This Script is for use with Rom 102, Revs up to 105/241")
+     Exit Sub
+    End if
+    If RT7 <> 0 then
+    Sc.MsgBox(" Invalid or no atr. Card may be looped or an unsupported rom." & vbcr & "                                Unable to continue.")
+     exit sub
+     end if
+    Clearoutputwindow
+    StartDate = Now()
+    Print "Initial Parameters = Delay:" & HexString(RT, 4) & "  VCC:" & HexString(VG, 2) & "  Glitch Type:" & HexString(GT, 2)& vbcr & vbcr
+ Do
+    If BuffFlg = 0 then
+    Acnt = 0
+   Do
+    sc.delay(10)
+    Sc.Write("07 0E 03 10 01 03 9A 00")    'reset card
+    Sc.Read(02)
+    Bytes = Sc.Getbyte(1)
+    If Bytes > 25 then
+    Sc.Read(27)
+    Exit Do
+    End if
+    Acnt = Acnt + 1
+    If Acnt > 5 then
+    Exit Do
+    End If
+ Loop
+    If Acnt > 5 then
+    Sc.MsgBox(" Check Loader Settings. Invalid or no atr. Card may be looped." & vbcr & "                                Unable to continue.")
+    exit sub
+    End If
+    Sc.Write("B0" & HexString(VG, 2))
+      Sc.Delay(10)
+     'sc.verbose = 1   'debug the packets
+       Sc.write("15 03 15 600C 2100098D00EE3100A7559D9D88 0E" & HexString(IntTim, 2) & "85 00")
+       Sc.Read(2)
+       bytes = sc.getbyte(1)
+       sc.read(bytes)
+       If bytes > 5 then
+       bytes = sc.getbyte(3)
+       If bytes = 111 then
+       BuffFlg = 1
+       sc.delay(10)
+       Sc.write("64 03 15 60 5B 2100588ECA9D9D9D9D559D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D9D71801864A64BB76BCD7C1630C0B5021864CD7C168219B7071864CD7C163176BE08CC7A95" & HexString(DtPnt, 2) & "BFA1FF270187BC88011E050060DB82199D9DE49D9D9D88 0E01 83 00")
+       Sc.Read(02)
+       bytes = sc.getbyte(1)
+       Sc.read(bytes)
+       End If
+       End If
+       End If
+       If BuffFlg = 1 then
+       Sc.Write("A0")
+       Sc.Delay(20)
+       Sc.write("0D 03 15 6004 F4C101BC88 0E01 83 00")
+       Sc.Read(2)
+       bytes = sc.getbyte(1)
+       sc.read(bytes)
+       Sc.Write("12 03 15 6003 48C00088 0E01 83 20" & HexString(RT,4) & HexString(GT, 2) & "0E10 00")
+       sc.read(2)
+       Bytes = Sc.Getbyte(1)
+       Sc.Read(Bytes)
+       End If
+       Sc.write("0D 03 15 6004 F4C101BC88 0E01 83 00")
+       Sc.Read(2)
+       bytes = sc.getbyte(1)
+       If bytes > 3 then
+       sc.read(bytes)
+       bytes = sc.getbyte(0)
+       bytes2 = sc.getbyte(3)
+       If bytes2 = 144 then
+       BuffFlg = 0
+       UFlg = 1
+       End If
+       If bytes = 79 then
+       print "-"
+       VG = VG - mix
+       Else
+       If  bytes =< 72 and RngFlg = 0 then
+       If bytes >= 64 then
+       If RngFlg < 3 then
+       RngFlg = RngFlg + 1
+       End If
+       RngLo = RT - 3
+       If RngLo < DS1 then
+       RngLo = DS1
+       End If
+       RngHi = RngLo + 5
+       RT = RngLo
+       End If
+       End If
+       BuffFlg = 0
+       Print "+" & HexString(bytes,2)
+       VG = VG + mix
+       End If
+       Else
+       PRINT " Rst" & HexString(VG, 2)
+       BuffFlg = 0
+       VG = VG + mix
+       sc.write("02 03 00")
+       sc.write("02 02 00")
+       End if
+         If BuffFlg = 0 then
+            Sc.Write("08 0E 03 10 01 01 03 9A 00")   'reset card
+            sc.read(02)
+            bytes = sc.getbyte(1)
+            sc.read(bytes)
+            sc.delay(16)
+         If SlFlg = 1 then
+         Sc.write("2C 03 15 6023 210020A0CA00001A041801018600AA9D9D9D9D9D9D9D9D9DAE69CC7A9BBE000000000088 0E06" & HexString(RdLen, 2) &  "00")
+         Sc.Read(2)
+        bytes = sc.getbyte(1)
+        If bytes > 5 then
+        sc.read(bytes)
+        bytes = sc.getbyte(0)
+        bytes2 = sc.getbyte(3)
+        If bytes = 18 and bytes2 = 132 then
+        sc.write("13 03 15 600A  210007A0FF0000024800330E02 85 00")
+        Sc.Read(2)
+        bytes = sc.getbyte(1)
+        If bytes > 5 then
+        sc.read(bytes)
+        bytes = sc.getbyte(0)
+        bytes2 = sc.getbyte(3)
+        If bytes = 18 and bytes2 = 105 then
+        UFlg = 1
+            End If
+           End If
+          End If
+         End if
+        End If
+        If SlFlg = 0 then
+       Sc.write("14 03 15 600B 210008A0CA0000020400CD88 0E06" & HexString(RdLen, 2) &  "00")
+        Sc.Read(2)
+        bytes = sc.getbyte(1)
+        If bytes > 5 then
+        sc.read(bytes)
+        bytes = sc.getbyte(0)
+        bytes2 = sc.getbyte(3)
+        If bytes = 18 and bytes2 = 132 then
+        If SlFlg <> 1 then
+        bytes2 = sc.getbyte(5)
+        Uflg =1
+             End If
+            End If
+           End If
+          End If
+        End If
+        If Uflg = 1 then
+        Print " !!!!!!!" & VBCr
+        Sc.Write("A1")
+        Sc.delay(500)
+            print
+            print "******* Good response received! *********"& VbCr
+            PRINT "     " & HEXSTRING(bytes2,2) & VbCr
+             Sc.Print "===========================================" & VbCr
+            print "     " & HexString(bytes2, 2) & " was hit at:  Delay:" & HexString(RT3, 4) & " VCC:" & HexString(VG, 2) & " GlitchType:" & HexString(GT, 2) &VBCr
+            print "     Elapsed: " & TimeDiff(StartDate,Now())& vbcr
+            Print "     VCC Resolution: " & mix & vbcr
+            Print "     Delay Range: " & HexString(RngLo, 4) & " to " & HexString(RngHi, 4) & VBCr
+            print
+            SC.DELAY(700)
+            If Rdlen = 135 then
+            PRINT "********************************" & VBCR
+            PRINT "*      102 CAM NOW OPEN!!      *" & VBCR
+            PRINT "*      PROCEED AS NORMAL       *" & VBCR
+            PRINT "*       GOOD LUCK! :-)         *" & VBCR
+            PRINT "********************************" & VBCR
+            Else
+            PRINT "********************************" & VBCR
+            PRINT "*      102 CAM REVIVED!!!      *" & VBCR
+            PRINT "*        READ THE CARD         *" & VBCR
+            PRINT "*     CLEAN CODESPACE AND      *" & VBCR
+            PRINT "*  WRITE CLEANED BIN TO CARD   *" & VBCR
+            PRINT "*      GOOD LUCK! :-)          *" & VBCR
+            PRINT "********************************" & VBCR
+            End If
+            exit sub
+        End If
+        If VG < VT1 then
+        VG = VS1
+        End if
+        If VG > VS1 then
+        If VG >= 254 then
+        VG = VS1 / 2
+         End If
+        End If
+        If VG + mix = 0 or VG + 1 = 0 then
+        VG = VS1
+        End if
+        GT = GT - 3
+        If GT < 6 then
+        GT = 9
+        End If
+        LP2 = LP2 + 1
+        If LP2 > LP1 / mix then
+            ClearOutputWindow
+            RT = RT + 1
+            RT3 = RT
+            BuffFlg = 0
+            LP2 = 0
+            print
+            print "" &vbcr
+            print  "Buffer Intercept Installed. Trying to Open the 102....    Delay:" & HexString(RT, 4) & "  VCC:" & HexString(VG, 2) & "  Glitch Type:" & HexString(GT, 2) & VBCr & vbcr
+            sc.print "Elapsed = " & TimeDiff(StartDate,Now())& vbcr & vbcr
+            If RT >= RngHi  and RngFlg > 0 then
+            RT = RngLo
+            RngFlg = RngFlg + 1
+            If RngFlg >= 3 then
+            RngFlg = 0
+            RngLo = DS1
+            RngHi = DD
+            End If
+            End If
+            If RT > 1056 then
+            DS1 = 864
+            DD = DS1 + 96
+            RngLo = DS1
+            RngHi = DD
+            RT = RngLo
+            End If
+            If RT = 960 then
+            DS1 = 960
+            DD = DS1 + 96
+            RngLo = DS1
+            RngHi = DD
+            RT = RngLo
+           End If
+         End If
+       Loop
+End Sub
+
+Function HexString(Number,Length)
+    Dim RetVal
+    Dim CurLen
+    RetVal=Hex(Number)
+    CurLen=Len(RetVal)
+    If CurLen<Length Then
+    RetVal=String(Length-CurLen,"0") & RetVal
+    End If
+    HexString=RetVal
+End Function
+
+Function CheckChipVer()
+    CheckChipVer = 1
+    sc.write("90")
+    delay(80)
+    If sc.read(4) <> 4 then
+     CheckChipVer = 0
+     Exit Function
+    End if
+    If getbyte(0) <> &H4E then CheckChipVer = 0
+    If getbyte(1) <> &H44 then CheckChipVer = 0
+    If getbyte(2) <> &H31 then CheckChipVer = 0
+    If getbyte(3) <> &H33 then CheckChipVer = 0
+
+End Function
+
+Function TimeDiff (StartTime, EndTime)
+    Dim Hours, Minutes, Seconds
+    Seconds = DateDiff("s", StartTime, EndTime)
+    If Seconds > 90000 Then Seconds = 90000
+    If Seconds < 0 Then Seconds = 0
+    Minutes = Seconds / 60
+    Minutes = Fix(Minutes)
+    Seconds = Seconds - (Minutes * 60)
+    Hours = Minutes / 60
+    Hours = Fix(Hours)
+    Minutes = Minutes - (Hours * 60)
+    Seconds = CStr(Seconds)
+    Minutes = CStr(Minutes)
+    Hours = CStr(Hours)
+    If Len(Seconds) = 1 Then Seconds = "0" + Seconds
+    If Len(Minutes) = 1 Then Minutes = "0" + Minutes
+    If Len(Hours) = 1 Then Hours = "0" + Hours
+    TimeDiff = Hours & ":" & Minutes & ":" & Seconds
+End Function
+
+Function ChkCard()
+    ChkCard = 1
+        Print ""
+        Print "    Determining type of Unlock needed ......." & VBCr
+        sc.delay(2000)
+        ClearOutputWindow
+        Sc.Write("08 0E 03 10 01 01 03 9A 00")   'reset card
+        sc.read(02)
+        bytes = sc.getbyte(1)
+        If bytes = 0 or bytes < 27 or bytes > 27 then
+        RT7 = 1
+        ClearOutputWindow
+        Exit function
+        End If
+        sc.read(bytes)
+        sc.delay(16)
+        T1 = chr(sc.getbyte(16))
+        T2 = chr(sc.getbyte(17))
+        T3 = chr(sc.getbyte(18))
+        T4 = chr(sc.getbyte(23))
+        T5 = chr(sc.getbyte(24))
+        T6 = chr(sc.getbyte(25))
+        T1 = T1+T2+T3
+        T4 = T4+T5+T6
+        If asc(T4) = 0 then
+        T4 = "000"
+        End If
+        If left(T4, 1) = "2" then
+        DtPnt = 156
+        Else
+        DtPnt = 167
+        End If
+        If T1 <> "102" then
+        ChkCard = 0
+        exit function
+        End If
+        If T1 = "102" and T4 = "106" or T4 = "242" then
+        ChkCard = 0
+        exit function
+        End If
+        Print "     Rom " & T1 & ", Rev " & T4 & " found." & VBCR
+        print
+        Sc.delay(1500)
+        Sc.write("14 03 15 600B 210008A0CA0000020400CD88 0E08 86 00")
+        Sc.Read(2)
+        bytes = sc.getbyte(1)
+        If bytes < 6 then
+        RdLen = 133
+        IntTim = 48
+        print "     Proceeding with Really Fooked Unlocking :-D......"
+        Sc.Delay(2000)
+         exit function
+        end If
+        if bytes > 5 then
+        sc.read(bytes)
+        bytes = sc.getbyte(0)
+        bytes2 = sc.getbyte(3)
+        If bytes = 18 and bytes2 = 132 then
+        RdLen = 133
+        IntTim = 21
+        SlFlg = 1
+        print "     Proceeding with Normal Unlocking......"
+        Sc.Delay(2000)
+         exit function
+        Else
+        RdLen = 131
+        IntTim = 48
+        print "     Proceeding with Fubared Unlocking :-)......"
+        Sc.Delay(2000)
+         end If
+        End If
+    End Function
+
+Function setupunlocker()
+Wx.BaudRate = 115200
+Wx.ResetBaudRate = 115200
+Wx.Parity = 0 ' 0 = None, 1 = Odd, 2 = Even, 3 = Mark, 4 = Space
+Wx.StopBits = 0 ' 0 = 1 stop bit, 1 = 1.5 stop bits, 2 = 2 stop bits
+Wx.DTRControl = 0 ' Initial state of DTR 0 = off, 1 = on
+Wx.RTSControl = 1 ' Initial state of RTS 0 = off, 1 = on
+Wx.ResetDelay = 100 ' In microseconds
+Wx.ByteDelay = 10 ' In microseconds
+Wx.RxByteTimeout = 500 ' In milliseconds
+Wx.ResetMode = 2 ' 0 = No Resets, 1 = ISO Reset (Expect a ATR), 2 = Device Reset (No ATR)
+Wx.ResetLine = 1 ' 0 = Toggle RTS for Reset, 1 = Toggle DTR for Reset
+Wx.ByteConvention = 1 ' 0 = Inverse, 1 = Direct
+Wx.FlushEchoByte = 0 ' 0 = no flush, 1 = flush - A Phoenix interface will echo each byte transmitted.
+Wx.FlushBeforeWrite = 1 ' 0 = no flush, 1 = flush - Flush the receive buffer before each write to strip off Null bytes.
+Wx.IgnoreTimeouts = 1 ' 0 = Abort script on a receive timeout, 1 = Ignore all receive timeouts
+Wx.ResetAfterTimeout = 0 ' 0 = Don't reset after a timeout, 1 = do a reset after a timeout - Not used if "IgnoreTimeouts=0"
+Wx.LogTransactions = 0 ' 0 = Don't log transactions, 1 = log transactions
+Wx.DisplayUSW = 0 ' Display USW after script complete 0 = no, 1 = yes
+Wx.DisplayFuse = 0 ' Display Fuse after script complete 0 = no, 1 = yes
+End function

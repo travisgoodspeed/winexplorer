@@ -1,0 +1,461 @@
+' --------------------------
+' Alt-EE Repair Kit
+' --------------------------
+'
+' The bulk of this script is UL4S-700 (Thanks Anonymous)
+' The custimizations are to repair ALT-EE thanks
+' to the info provided by the Alt-EECmdTeam
+'
+' Additional functions removed to make this a light weight,
+' ALT-EE script only.
+'
+' By Somebody For EVERYONE!
+'
+' ===============================================================
+' Original UL4S Comments, thanks too all who contributed
+'
+'---------ATTENTION---------
+'
+'
+'USW0700 Glitch
+'
+'This Glitch is being posted for a reason. There is a certain person in this "hobby' that
+'actually was going to "RIP" another private program and use it in his own Freeware.
+'
+'I as a 'hobbiest' did not understand as to why someone would actually do this.
+'
+'I am releasing this glitch so that will not happen.
+'
+'BY ANONYMOUS
+'
+'
+' Modified by no1b4me to include unlooper option
+'
+' Requirements: UL4S Atmel code to work!!!
+'
+' Special thanks to all the testers and contributors,
+' Especially:    Canard
+'                Shadz
+'                mpk
+'                MoeDaddy
+'                RAM9999
+'                Mr. Bowling
+'
+' Special thanks go to AOL6945 and especially CLIPGRP, both of whom without their help
+' this would not be possible.
+'
+' Bits and pieces taken from various places are commented with the original author, if known.
+'
+
+Option Explicit
+
+    Dim SFBbuf(4)
+    Dim AEEbuf(32)
+
+
+Sub Main()
+
+    Dim ErrorString
+    Dim MenuPrompt
+    Dim Choice
+    Dim RetVal
+
+    Sc.Verbose = 0
+
+    If Sc.Version < 4.6 Then
+        ErrorString = "You need version 4.6 or greater of WinExplorer to run this script"
+        Sc.MsgBox ErrorString, vbCritical
+        Err.Raise 1050, , ErrorString
+    End If
+
+    If ChipVer <> 1 then
+        Sc.MsgBox("You need chip version UL4S to run this script" & VbCr & "Flash your chip with UL4S code")
+        Exit Sub
+    End if
+
+    Do
+        MenuPrompt = "              UL4S-700 Glitch based Alt-EE Repair Kit" & vbCrLf & vbCrLf
+        MenuPrompt = MenuPrompt & "              Please choose from the following menu choices:" & vbCrLf
+        Choice = Sc.ButtonBox(MenuPrompt, 0, "UL4S-700 Alt-EE Repair Kit", "Read Alt-EE", "Fix Alt-EE", "Exit")
+
+        Select Case Choice
+            Case "1"
+                If (GetATR = False) Then
+                    Call CardIsLooped()
+                Else
+                    Call LoadBootStrap()
+                    Call ReadAEE()
+                End If
+
+            Case "2"
+                If (GetATR = False) Then
+                    Call CardIsLooped()
+                Else
+                    Call LoadBootStrap()
+                    Call FixAEE()
+                End If
+
+            Case "3"
+                Exit Sub
+
+            Case Else
+                MenuPrompt = "Invalid Input!" & vbCrLf
+
+        End Select
+
+    Loop While True = True
+
+End Sub
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+Sub LoadBootStrap()
+
+    Dim RetValue
+    Dim GotInput
+    Dim DAC4C
+    Dim Counter
+    Dim Attempts
+
+    Counter = 0
+    Attempts = 1
+    DAC4C = &h85
+
+    Call IsCardPresent()
+
+    Do
+        Sc.Write("A1")
+        GotInput = False
+
+        If Counter = 12 Then
+            Counter = 0
+        End If
+
+        If Counter = 1 Then
+            DAC4C = &h85
+        End If
+
+        If Counter = 4 Then
+            DAC4C = &h82
+        End If
+
+        If Counter = 8 Then
+            DAC4C = &h80
+        End If
+
+        If Counter = 11 Then
+            DAC4C = &h71
+        End If
+
+        Call Sc.ProgressBox ("Glitching...               Attempts:        " & Attempts & vbcr & "                                 DAC4C:        " & HexString(DAC4C,2), 1, 999, "UnLooper/Loader")
+
+        Sc.Write("06100E10019300")
+        Sc.Delay(80)
+        Sc.Read(&h02)
+            RetValue = Sc.GetByte(&h01)
+            Sc.Read (RetValue)
+
+        Sc.Write("B0")
+        Sc.Write(HexString(DAC4C,2))
+        'INS 4C
+        Sc.Write("0B 15 C4 48 48 FF 56 B9 70 C9 08 00")
+        Sc.Delay(80)
+        If Sc.BytesInBuffer > 0 Then
+            Sc.Read(&h02)
+                RetValue = Sc.GetByte(&h01)
+                Sc.Read (RetValue)
+        End If
+
+    Sc.Write("B0 80")
+        Sc.Write("38F00000000069FFFFFFFF523FFD2284E1727B0772FF14C5E2AB0100C3DA07F88C010000000000000000000000000000000000200011098000")
+
+        Sc.Read(&h02)
+
+        If Sc.GetByte(&h0) = &h38 Then
+            If Sc.GetByte(&h01) = &h01 Then
+                Sc.Read(&h01)
+                If Sc.GetByte(&h0) = &h84 Then
+                    GotInput = True
+                Else
+                    GotInput = False
+                End If
+            End If
+        End If
+
+        Counter = Counter + 1
+        Attempts = Attempts + 1
+
+    Loop Until GotInput = True
+
+' send the bootloader
+    Sc.Write("42FF22BE72FF14E1E2B0025E52729201522022FFAB005F5D100601B5CAF672AA6472F36D72F36FF71011F76013C5AA0060AB2000C35D2006F5F72011F721118EFB8700")
+
+    Sc.Read(&h02)
+    Sc.Write("3DFAF72211F723118EFB87F70013C5AA2020AB0060C35D0406F5526A9201C5AA0060E1C35D0406F70098C5F76013AA2000F70013E1C35D2406F18C010000")
+    Sc.Read(&h02)
+
+    Call Sc.ProgressBox ("", 0, 0, "")
+
+End Sub
+
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+Sub IsCardPresent()
+
+    Dim RetValue
+    Dim GotInput
+
+    Do
+        Sc.Write("A0")                ' Turn the LED off
+        Sc.Write("80")                ' Is card present?
+        Sc.Delay(100)
+        If Sc.BytesInBuffer > 0 Then
+            Sc.Read(&h01)
+            RetValue = Sc.GetByte(0)
+        End If
+
+        If RetValue = &h0 Then
+            Call Sc.ProgressBox ("*** Please insert your card... ***", 1, 999, "Unlooper/Loader")
+            GotInput = False
+        Else
+            If RetValue = &hFF Then
+                GotInput = True
+            Else
+                If RetValue <> &h0 or RetValue <> &hFF Then
+                    Sc.Write("A0")                ' turn the LED off
+                    Sc.Write("020200")
+                    Sc.Delay(100)
+                    If Sc.BytesInBuffer > 1 Then
+                        Sc.Read(&h02)
+                        GotInput = False
+                    Else
+                        GotInput = False
+                    End If
+                End If
+            End If
+        End If
+    Loop Until GotInput = True
+
+End Sub
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+Function HexString(Number,Length)
+
+    ' This function takes 2 arguments, a number and a length.  It converts the decimal
+    ' number given by the first argument to a Hexidecimal string with its length
+    ' equal to the number of digits given by the second argument
+
+    Dim RetVal
+    Dim CurLen
+
+    RetVal=Hex(Number)
+    CurLen=Len(RetVal)
+    If CurLen<Length Then
+        RetVal=String(Length-CurLen,"0") & RetVal
+    End If
+    HexString=RetVal
+
+End Function
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+Function HexToDec(HexNumber)
+
+    ' This function takes a string as input, assuming it to be a Hexidecimal string,
+    ' and converts it to a decimal number.
+
+    HexNumber=Replace(UCase(HexNumber)," ","")
+    HexToDec=CLng("&H"+HexNumber)
+
+End Function
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+Function GetATR ()
+
+    Dim temp
+
+    Call Sc.ProgressBox(0,0,0,0)
+    Sc.Write("06100E10019300")
+    Sc.Delay(500)
+    Sc.Read(&h02)
+        temp = Sc.GetByte(&h01)
+        Sc.Read (temp)
+
+    If (temp <> 20) Then
+        GetATR = False
+    Else
+        GetATR = True
+    End If
+
+End Function
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+Sub CardIsLooped ()
+Sc.MsgBox("Card is not returning an ATR." &VbCr & "The card may not be fully Inserted" & VbCr &" or the card contacts may be dirty." & VbCr & "If everything is ok then the card is looped"&VbCr& "You must Unloop the card before using this script")
+
+End Sub
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+Function ChipVer()
+
+    ChipVer = 1
+
+    sc.write("90")
+    delay(80)
+
+    if sc.read(4) <> 4 then
+        ChipVer = 0
+        Exit Function
+    end if
+
+    if getbyte(0) <> &h55 then ChipVer = 0
+    if getbyte(1) <> &h4c then ChipVer = 0
+    if getbyte(2) <> &h34 then ChipVer = 0
+    if getbyte(3) <> &h53 then ChipVer = 0
+
+End Function
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+Sub ShutdownCard()
+
+    Sc.Write("A0")              ' Turn the LED off
+    Sc.Write("020200")             ' Shutdown card
+    Sc.Delay(100)
+    Sc.Read(&h02)
+
+End Sub
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+Sub WDTMR()
+
+    Dim RetValue
+
+    Sc.Write("05150E108000")    'SET WDTMR
+    Sc.Delay(80)
+    Sc.Read(&h02)
+        RetValue = Sc.GetByte(&h01)
+        Sc.Read(RetValue)
+
+End Sub
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+Sub ReadAEE()
+    dim    i
+    dim msg
+
+    msg = "Your Cards Alt-EE Contents Are:" & VbCr
+    Sc.Write("A2")
+    Call WDTMR()
+
+    Sc.Write("06C0000EFFA400")
+    Sc.Read(2)
+    Sc.Read(&h20)
+    For i=0 To &H1F&
+       AEEbuf(i)=Sc.GetByte(i)
+       msg = msg & HexString(Sc.GetByte(i),2) & " "
+       If i = &h0f&    Then
+            msg = msg & VbCr
+       End If
+    Next
+
+    msg = msg & VbCr & VbCr
+
+    Sc.Read(4)
+    For i=0 To &H03&
+       SFBbuf(i)=Sc.GetByte(i)
+       msg = msg & HexString(Sc.GetByte(i),2) & " "
+    Next
+    Sc.Read(1)
+    Call ShutdownCard()
+
+    if (AnalyseAEE = True) AND (AnalyseSFB = TRUE) Then
+        msg = msg & VbCr & VbCr & "The Alt-EE Contents Are Valid"
+        Call Sc.MsgBox(msg,vbExclamation,"Alt-EE Repair Kit Results")
+    Else
+        msg = msg & VbCr & VbCr & "WARNING: The Alt-EE Contents Are Invalid!"
+        Call Sc.MsgBox(msg,vbCritical,"Alt-EE Repair Kit Results")
+    End If
+
+End Sub
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+Sub FixAEE()
+    dim    i
+    dim msg
+
+    msg = ""
+    Sc.Write("A2")
+    Call WDTMR()
+
+    Sc.Write("06C0FF0EFF8400")
+    Sc.Read(2)
+    Sc.Read(4)
+    For i=0 To &H03&
+       SFBbuf(i)=Sc.GetByte(i)
+       msg = msg & HexString(Sc.GetByte(i),2) & " "
+    Next
+    Sc.Read(1)
+    Call ShutdownCard()
+    if AnalyseSFB = TRUE Then
+        msg = "The Repair of Alt-EE Was Successful (" & msg & ")"
+        Call Sc.MsgBox(msg,vbExclamation,"Alt-EE Repair Kit Results")
+    Else
+        msg = "WARNING The Repair of Alt-EE FAILED (" & msg & ")"
+        Call Sc.MsgBox(msg,vbCritical,"Alt-EE Repair Kit Results")
+    End If
+
+End Sub
+
+
+Function AnalyseAEE()
+    Dim i
+    Dim GoodAEE(32)
+
+    AnalyseAEE=False
+    '00 00 00 00  AA 00 00 00  00 00 00 00  00 F3 00 F3
+    'FF FF FF FF  FF FF FF FF  FF FF FF FF  FF FF FF FF
+    For i=0 To &H0F&
+        GoodAEE(i)=&H00&
+        GoodAEE(i+&H10&)=&HFF&
+    Next
+    GoodAEE(&H04&)=&HAA&
+    GoodAEE(&H0D&)=&HF3&
+    GoodAEE(&H0F&)=&HF3&
+
+
+    For i=0 To &H1F&
+        If GoodAEE(i) <> AEEbuf(i) Then
+            Exit Function
+        End If
+    Next
+    AnalyseAEE=True
+End Function
+
+Function AnalyseSFB()
+    Dim i
+    dim GoodSFB(4)
+
+    AnalyseSFB=False
+    '14 01 24 20
+    GoodSFB(0)=&H14&
+    GoodSFB(1)=&H01&
+    GoodSFB(2)=&H24&
+    GoodSFB(3)=&H20&
+
+
+    For i=0 To &03&
+        If GoodSFB(i) <> SFBbuf(i) Then
+            Exit Function
+        End If
+    Next
+    AnalyseSFB=True
+End Function

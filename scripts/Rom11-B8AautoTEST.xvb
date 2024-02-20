@@ -1,0 +1,287 @@
+' New VB Script File - Created 12/28/04
+' FOR Dish rom 11 B8A rev STREAMLOCKED only.
+' AUTOMATIC SCRIPT
+' USES Newd11.hex on LOADER only!!!!!!!!!!
+
+'**************************************************************************************
+
+'Instruction Table
+'01 Reset Card (Leaves card clock off)
+'02 4.608 MHz Card Clock Off -FREEZE CAM
+'03 4.608 MHz Card Clock On - FREE RUNNING CAM
+
+'04 DOUBLE HIT, CLOCK LOW, .5 CYCLE DELAY--2*CARD CLOCKS -- ex. 2x xx xx 04 for timing
+'05 DOUBLE HIT, CLOCK LOW, 1.5 CYCLE DELAY-2*CARD CLOCKS -- ex. 2x xx xx 05 for timing
+'06 Double HIT, CLOCK LOW, 6 CYCLE DELAY-- 2*CARD CLOCKS -- ex. 2x xx xx 06 for timing
+'07 Three HIT, CLOCK LOW , 6 CYCLE DELAY-- 2*CARD CLOCKS -- ex. 2x xx xx 07 for rom11 hopeful.
+'08 Five HIT, CLOCK LOW,  5 CYCLE DELAY--- 2*CARD CLOCKS -- ex. 2x xx xx 08 for rom11 hopeful.
+'09 LOW CLOCK single hit------------------ 2*CARD CLOCKS -- ex. 2x xx xx 09 for timing
+'0E XX SET WD TIMER
+'0F POWER DOWN CAM
+'1X TX RX SPEED
+
+'2X XX XX Delay $2X XX XX Atmel clock cycles
+
+'8X-9X Rx from card, instruction anded with $1f plus 1 bytes Ex. $9F = rx $20 bytes
+'aX-FX Tx to card, instruction anded with $5f plus 1 bytes Ex. $FF = Tx $60 bytes
+'**************************************************************************************
+'Commands
+'80 Check Card Presence - Sends 1 byte
+'90 Get chip ID - Sends 4 Bytes (DISH)
+'AX Set Bi-color Led - X = 0 off, X = 1 Red, X = 2 Green
+'B0 XX Set Glitch VCC - VCC = (5/255) * XX
+
+Option Explicit
+    Dim Bytes
+    dim TestMode
+    Dim BR2(5)
+    Dim VCCStart
+    Dim VCCLimit
+    Dim VCC
+    Dim DelayEnd
+    Dim DelayStart
+    Dim GlitchType
+    Dim TryCnt
+    DIM TryLimit
+    DIM TRYCNT2
+    DIM RT
+    DIM RT2
+    DIM CL
+    DIM Packet
+    TRYCNT2=1
+    CL=0
+
+Sub Main()
+
+' These are the variables you can change for rom 11
+
+
+    ' Packet = what packet does the cam need?
+    ' Use this if you know packet one is on cam and you
+    ' want to send Packet 2 or 3
+    ' ex. Packet = 1
+    ' ex. Packet = 2
+    ' ex. Packet = 3 to send the open emm and exit.
+
+    Packet = 1          'packet 1, 2, or 3
+    DelayStart=&h1780   'testing rom 11 - 1780
+                        'hit at 140F & 1557 & 16F4 & 14F6 & 1438 & 1398 & 1555
+    DelayEnd = &H1380   'testing rom 11 - 1380
+    TryCnt = 330        '330 is good - Number of tries per delay FROM 5-50000
+
+' end of variables
+
+
+    VCCStart  =  &h40     'YOU CAN CHANGE THIS FROM 21-99 = this is automatic now
+    VCCLimit  =  &h00     'YOU CAN CHANGE THIS FROM 00-20 = this is automatic now
+    GlitchType=  &h06     'This is automatic now
+    VCC = VCCStart
+    RT = DelayStart
+    ' turn led off
+    sc.verbose=TRUE
+    Sc.Write("A0")
+    Sc.Delay(100)
+    ' card is in turn led on
+    Sc.Write("A1")
+
+
+' get atr
+    sc.verbose=TRUE
+    Sc.Write("07 0e 03 10 01 03 9a 00")    'reset card
+    Sc.Read(02)
+    Bytes = Sc.Getbyte(1)
+    if Bytes > 25 then
+    Sc.Read(25)
+    end if
+
+ SC.DELAY(30)
+
+ Sc.Write("14 03 10 15 AB 21 00 08 A0 CA 00 00 02 12 00 06 55 0E 03 87 00")
+   Sc.Read(02)
+   Bytes = Sc.Getbyte(1)
+    if Bytes > 7 then
+    Sc.Read(8)
+    end if
+
+print
+print " Now we will try "  & HexString(RT, 4) & " delay" & vbcr
+
+SC.DELAY(30)
+
+Do
+
+Sc.Write("B0" & HexString(VCC, 2))
+
+SC.DELAY(5)
+
+    IF CL = 0 then
+    Sc.Write("07 0e 03 10 01 03 9a 00")   'reset card
+    sc.read(02)
+    SC.DELAY(5)
+    ' LOGIN NIPPER
+    Sc.Write("47 15 E0")
+    Sc.Write("21003DA0CA000037033500011031054E69705045722049E3407CADFDB96429F4F677C2356D7474")
+    Sc.Write("000000000000000000000000000000000000000000000000059A")
+    Sc.Write("0E 05 8A 00")
+    Sc.Read(02)
+    Bytes = Sc.Getbyte(1)
+            if Bytes > 8 then
+            Sc.Read(9)
+           'bytes=sc.getbyte(8)
+           'PRINT HexString(bytes, 2)
+            end if
+    SC.DELAY(10)
+    end if
+
+    CL=0
+
+    if Packet = 1 then
+    ' Send D7 Write Packet one
+    Sc.Write("53 15 E8")
+    Sc.Write("210045A0D71080403783EC11F85E3AAB448F66AF522CAA950FC9204299EB0BC083652A999CFEDF")
+    Sc.Write("989F4695BD82F88C28D4C030748D27D5DF25F36031B2ABC44D66")
+    Sc.Write("EA50DCFC529F0963 20" & HexString(RT, 4) & HexString(GlitchType, 2) & "0E 05 85 00")
+    Sc.Read(2)
+    Bytes = Sc.Getbyte(1)
+    end if
+
+    if Packet = 2 then
+    ' Send D7 Write Packet two
+    Sc.Write("53 15 E8")
+    Sc.Write("210045A0D710C040DC58F3BD883F0B5D97E50F82E0364E6F9F83764CB9D23C7118E66DACD924D6")
+    Sc.Write("340DFB2B93B581E5A58EB10B9E71BDDFBAEA372F79AC65FD0099")
+    Sc.Write("F873330A0EA8B73C 20" & HexString(RT, 4) & HexString(GlitchType, 2) & "0E 05 85 00")
+    Sc.Read(2)
+    Bytes = Sc.Getbyte(1)
+    end if
+
+    if Packet = 3 then
+    ' Send Emm to 00 Bugs at C0A1
+    sc.verbose=TRUE
+    Sc.Write("07 0e 03 10 01 03 9a 00")    'reset card
+    Sc.Read(02)
+    Bytes = Sc.Getbyte(1)
+        if Bytes > 25 then
+        Sc.Read(25)
+        end if
+        SC.DELAY(50)
+
+    Sc.Write("60 15 F6 21 40")
+    Sc.Write("53 A0 CA 00 00 4D 00 4B 00 01 02 28 E2 FE EF 6F")
+    Sc.Write("E0 1A 8D EE 21 88 E4 9E 9D 76 AA 32 AE 1D 1E 6F")
+    Sc.Write("34 B6 6C F4 72 81 9A 65 D3 80 8A F6 B5 B1 E3 04")
+    Sc.Write("39 30 C4 A7 45 4B 67 7F 7D B2 24 E1 A6 ED 30 1E")
+    Sc.Write("9F 48 1C 93 14 AB FD 1D FC 90 FF 74 E2 43 BF 2D")
+    Sc.Write("27 63 7E 05 37 20 00 FF 0E 05 85 00")
+    SC.READ(2)
+            Bytes = Sc.Getbyte(1)
+            if Bytes > 4 then
+                Sc.Read(5)
+                bytes=sc.getbyte(3)
+            END IF
+
+            SC.DELAY(200)
+            print
+            PRINT "********************************" & VBCR
+            PRINT "*   DISH ROM11 B8A EMM sent    *" & VBCR
+            PRINT "* ROM11 B8A cam should be open *" & VBCR
+            PRINT "*    test in Nagra to see.     *" & VBCR
+            PRINT "*     if not, try again.       *" & VBCR
+            PRINT "********************************" & VBCR
+        exit sub
+    end if
+
+if Bytes > 4 then
+        Sc.Read(5)
+        bytes=sc.getbyte(3)
+        RT2 = bytes
+        'print HexString(bytes, 2)
+        if RT2 = &H6F then
+            VCC = VCC - .4 '.2
+            print "+"
+            CL=1
+            SC.DELAY(5)
+        end IF
+
+        if  RT2 = &HFF then
+            VCC = VCC + 1
+            print "-"
+        end if
+
+
+        TryCnt2 = TryCnt2 + 1
+        if trycnt2 > trycnt then
+             RT = RT - 1.5
+             TRYCNT2 = 0
+                if rt < DelayEnd then
+                rt = DelayStart
+                END IF
+             print
+             print " Now we will try "  & HexString(RT, 4) & " delay, our VCC is about " & HexString(VCC, 2) & " and our Glitch Type was " & HexString(GlitchType, 2)
+             print
+        END IF
+
+        if RT2 = &H90 then
+            print
+            print
+            print "*********** we hit our bug *************"& VbCr
+            print "9000 was our loggin = good loggin, D7 packet " & Packet & " wrote to cam"
+            print
+            PRINT HEXSTRING(SC.GETBYTE(0),2) & HEXSTRING(SC.GETBYTE(1),2) & HEXSTRING(SC.GETBYTE(2),2) & HEXSTRING(SC.GETBYTE(3),2)& HEXSTRING(SC.GETBYTE(4),2)& VbCr
+             Sc.Print "===========================================" & VbCr
+            PRINT HexString(bytes, 2)
+            print " was hit at " & HexString(RT, 4) & " delay ----VCC WAS " & HexString(VCC, 2) & " , our GlitchType was " & HexString(GlitchType, 2)
+            print
+            print
+            Packet = Packet + 1
+            SC.DELAY(2500)
+
+        end if
+        if RT2 = &H63 then
+         print
+            print
+            print "*********** we hit our bug *************"& VbCr
+            print "6300 was our loggin = not logged in, packet didnt take!!"
+            PRINT HEXSTRING(SC.GETBYTE(0),2) & HEXSTRING(SC.GETBYTE(1),2) & HEXSTRING(SC.GETBYTE(2),2) & HEXSTRING(SC.GETBYTE(3),2)& HEXSTRING(SC.GETBYTE(4),2)& VbCr
+             Sc.Print "===========================================" & VbCr
+            PRINT HexString(bytes, 2)
+            print " was hit at " & HexString(RT, 4) & " delay ----VCC WAS " & HexString(VCC, 2) & " , our GlitchType was " & HexString(GlitchType, 2)
+            print
+            print
+            CL=0
+            SC.DELAY(2500)
+
+        end if
+
+else
+        PRINT" RESET "
+        VCC = VCC + 1
+end if
+
+                    GlitchType = GlitchType + 0.02
+                    'print HexString(GlitchType, 2)
+                    if GlitchType > 9.4 then
+                    GlitchType = &h06
+                    end if
+                    'if you want just one Glitchtype remove the ' below
+                    'GlitchType=  &h08
+            SC.DELAY(5)
+            sc.verbose=false
+
+LOOP
+
+End Sub
+
+Function HexString(Number,Length)
+    ' This function takes 2 arguments, a number and a length.  It converts the decimal
+    ' number given by the first argument to a Hexidecimal string with its length
+    ' equal to the number of digits given by the second argument
+    Dim RetVal
+    Dim CurLen
+    RetVal=Hex(Number)
+    CurLen=Len(RetVal)
+    If CurLen<Length Then
+        RetVal=String(Length-CurLen,"0") & RetVal
+    End If
+    HexString=RetVal
+End Function
